@@ -263,8 +263,10 @@ const TradingPairs = ({ prices, selectedCoin, onSelectCoin }) => {
 // Candlestick Chart Component (Real Trading Chart with Timeframes)
 const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, onTimeframeChange }) => {
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
   const [timeframe, setTimeframe] = useState('1H');
   const [candleData, setCandleData] = useState([]);
+  const [dimensions, setDimensions] = useState({ width: 400, height: 250 });
 
   // Timeframe configurations
   const timeframeConfig = {
@@ -275,6 +277,23 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
     '1W': { candles: 20, interval: 7 * 24 * 60 * 60 * 1000, label: '1 week', dateFormat: 'MM/DD' },
   };
 
+  // Get container dimensions
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        setDimensions({
+          width: Math.max(300, rect.width),
+          height: 250
+        });
+      }
+    };
+    
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
+
   // Generate realistic candle data based on timeframe
   useEffect(() => {
     const config = timeframeConfig[timeframe];
@@ -282,7 +301,6 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
     const now = new Date();
     const candles = [];
     
-    // Different volatility for different timeframes
     const volatilityMap = {
       '15m': 0.001,
       '1H': 0.002,
@@ -297,20 +315,14 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
     for (let i = 0; i < config.candles; i++) {
       const candleTime = new Date(now.getTime() - (config.candles - i) * config.interval);
       
-      // Create realistic OHLC with trend
       const trend = Math.sin(i / (config.candles / 4)) * volatility;
       const randomMove = (Math.random() - 0.5) * volatility * 2;
       
       const open = lastClose;
       const change = trend + randomMove;
       const close = open * (1 + change);
-      
-      // High is always above both open and close
       const high = Math.max(open, close) * (1 + Math.random() * volatility * 0.5);
-      // Low is always below both open and close
       const low = Math.min(open, close) * (1 - Math.random() * volatility * 0.5);
-      
-      // Volume varies with price movement
       const volume = Math.abs(change) * 1000000 + Math.random() * 500000;
       
       candles.push({
@@ -329,7 +341,6 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
     setCandleData(candles);
   }, [timeframe, currentPrice]);
 
-  // Format time label based on timeframe
   const formatTimeLabel = (date, tf) => {
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
@@ -348,18 +359,26 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
+    
+    // Set canvas size for high DPI
     const dpr = window.devicePixelRatio || 1;
-    const width = canvas.width / dpr;
-    const height = canvas.height / dpr;
+    canvas.width = dimensions.width * dpr;
+    canvas.height = dimensions.height * dpr;
+    canvas.style.width = `${dimensions.width}px`;
+    canvas.style.height = `${dimensions.height}px`;
+    ctx.scale(dpr, dpr);
+    
+    const width = dimensions.width;
+    const height = dimensions.height;
     
     // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, width, height);
     
     // Background
     ctx.fillStyle = '#0B0E11';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, width, height);
     
-    // Calculate price range with padding
+    // Calculate price range
     const allPrices = candleData.flatMap(c => [c.high, c.low]);
     const minPrice = Math.min(...allPrices);
     const maxPrice = Math.max(...allPrices);
@@ -368,7 +387,7 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
     const adjustedMax = maxPrice + pricePadding;
     const priceRange = adjustedMax - adjustedMin;
     
-    const padding = { top: 20, right: 55, bottom: 35, left: 5 };
+    const padding = { top: 15, right: 50, bottom: 30, left: 5 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
     
@@ -376,44 +395,45 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
     ctx.strokeStyle = '#1E2329';
     ctx.lineWidth = 0.5;
     
-    // Horizontal grid lines with price labels
-    for (let i = 0; i <= 5; i++) {
-      const y = padding.top + (chartHeight / 5) * i;
+    // Horizontal grid lines
+    for (let i = 0; i <= 4; i++) {
+      const y = padding.top + (chartHeight / 4) * i;
       ctx.beginPath();
       ctx.moveTo(padding.left, y);
       ctx.lineTo(width - padding.right, y);
       ctx.stroke();
       
       // Price labels
-      const price = adjustedMax - (priceRange / 5) * i;
+      const price = adjustedMax - (priceRange / 4) * i;
       ctx.fillStyle = '#848E9C';
-      ctx.font = '9px monospace';
+      ctx.font = '9px Arial';
       ctx.textAlign = 'left';
-      ctx.fillText(price.toFixed(price < 10 ? 4 : 2), width - padding.right + 3, y + 3);
+      ctx.fillText(price.toFixed(0), width - padding.right + 3, y + 3);
     }
     
     // Calculate candle dimensions
-    const candleWidth = Math.max(2, Math.min(12, (chartWidth / candleData.length) * 0.7));
-    const candleGap = (chartWidth - candleWidth * candleData.length) / (candleData.length + 1);
+    const totalCandleSpace = chartWidth;
+    const candleWidth = Math.max(2, Math.min(8, (totalCandleSpace / candleData.length) * 0.7));
+    const spacing = (totalCandleSpace - candleWidth * candleData.length) / (candleData.length + 1);
     
-    // Draw time labels on x-axis
-    const labelInterval = Math.ceil(candleData.length / 6);
+    // Draw time labels
+    const labelInterval = Math.ceil(candleData.length / 5);
+    ctx.fillStyle = '#848E9C';
+    ctx.font = '8px Arial';
+    ctx.textAlign = 'center';
+    
     candleData.forEach((candle, i) => {
-      if (i % labelInterval === 0 || i === candleData.length - 1) {
-        const x = padding.left + candleGap + i * (candleWidth + candleGap) + candleWidth / 2;
-        ctx.fillStyle = '#848E9C';
-        ctx.font = '9px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(candle.timeLabel, x, height - padding.bottom + 15);
+      if (i % labelInterval === 0) {
+        const x = padding.left + spacing + i * (candleWidth + spacing) + candleWidth / 2;
+        ctx.fillText(candle.timeLabel, x, height - 8);
       }
     });
     
     // Draw candles
     candleData.forEach((candle, i) => {
-      const x = padding.left + candleGap + i * (candleWidth + candleGap);
+      const x = padding.left + spacing + i * (candleWidth + spacing);
       const isGreen = candle.close >= candle.open;
       
-      // Calculate Y positions
       const highY = padding.top + ((adjustedMax - candle.high) / priceRange) * chartHeight;
       const lowY = padding.top + ((adjustedMax - candle.low) / priceRange) * chartHeight;
       const openY = padding.top + ((adjustedMax - candle.open) / priceRange) * chartHeight;
@@ -421,7 +441,7 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
       
       const candleColor = isGreen ? '#0ECB81' : '#F6465D';
       
-      // Draw wick (high-low line)
+      // Draw wick
       ctx.strokeStyle = candleColor;
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -429,7 +449,7 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
       ctx.lineTo(x + candleWidth / 2, lowY);
       ctx.stroke();
       
-      // Draw body (open-close rectangle)
+      // Draw body
       ctx.fillStyle = candleColor;
       const bodyTop = Math.min(openY, closeY);
       const bodyHeight = Math.max(1, Math.abs(closeY - openY));
@@ -440,69 +460,65 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
     if (currentPrice && currentPrice >= adjustedMin && currentPrice <= adjustedMax) {
       const priceY = padding.top + ((adjustedMax - currentPrice) / priceRange) * chartHeight;
       
-      // Dashed line
       ctx.strokeStyle = '#F0B90B';
       ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
+      ctx.setLineDash([3, 3]);
       ctx.beginPath();
       ctx.moveTo(padding.left, priceY);
       ctx.lineTo(width - padding.right, priceY);
       ctx.stroke();
       ctx.setLineDash([]);
       
-      // Price label box
+      // Price label
       ctx.fillStyle = '#F0B90B';
-      const labelWidth = 50;
-      ctx.fillRect(width - padding.right, priceY - 8, labelWidth, 16);
+      ctx.fillRect(width - padding.right, priceY - 8, 48, 16);
       ctx.fillStyle = '#000';
-      ctx.font = 'bold 9px monospace';
+      ctx.font = 'bold 8px Arial';
       ctx.textAlign = 'left';
-      ctx.fillText(currentPrice.toFixed(currentPrice < 10 ? 4 : 2), width - padding.right + 2, priceY + 3);
+      ctx.fillText(currentPrice.toFixed(0), width - padding.right + 2, priceY + 3);
     }
     
-    // Draw volume bars at bottom
-    const volumeHeight = 30;
-    const volumeTop = height - padding.bottom - volumeHeight - 5;
+    // Draw volume bars
+    const volumeHeight = 25;
+    const volumeTop = height - padding.bottom - volumeHeight - 3;
     const maxVolume = Math.max(...candleData.map(c => c.volume));
     
     candleData.forEach((candle, i) => {
-      const x = padding.left + candleGap + i * (candleWidth + candleGap);
+      const x = padding.left + spacing + i * (candleWidth + spacing);
       const isGreen = candle.close >= candle.open;
       const volHeight = (candle.volume / maxVolume) * volumeHeight;
       
-      ctx.fillStyle = isGreen ? 'rgba(14, 203, 129, 0.3)' : 'rgba(246, 70, 93, 0.3)';
+      ctx.fillStyle = isGreen ? 'rgba(14, 203, 129, 0.4)' : 'rgba(246, 70, 93, 0.4)';
       ctx.fillRect(x, volumeTop + volumeHeight - volHeight, candleWidth, volHeight);
     });
     
-  }, [candleData, currentPrice]);
+  }, [candleData, currentPrice, dimensions]);
 
   const handleTimeframeChange = (tf) => {
     setTimeframe(tf);
-    if (onTimeframeChange) {
-      onTimeframeChange(tf);
-    }
+    if (onTimeframeChange) onTimeframeChange(tf);
   };
 
   return (
     <div className="bg-[#0B0E11] border border-[#2B3139] overflow-hidden">
-      <div className="p-2 md:p-3 border-b border-[#2B3139] flex items-center justify-between">
-        <div className="flex items-center gap-2 md:gap-4">
-          <span className="text-lg md:text-2xl font-bold text-white font-mono">
+      <div className="p-2 border-b border-[#2B3139] flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-bold text-white font-mono">
             {currentPrice?.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </span>
-          <span className={`text-xs md:text-sm font-mono ${priceChange >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+          <span className={`text-xs font-mono ${priceChange >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
             {priceChange >= 0 ? '+' : ''}{priceChange?.toFixed(2)}%
           </span>
         </div>
-        <div className="flex gap-0.5 md:gap-1 text-[10px] md:text-xs">
+        <div className="flex gap-1 text-[10px]">
           {['15m', '1H', '4H', '1D', '1W'].map(tf => (
             <button 
               key={tf} 
               onClick={() => handleTimeframeChange(tf)}
-              className={`px-1.5 md:px-2 py-1 rounded transition-colors ${
+              className={`px-2 py-1 rounded ${
                 timeframe === tf 
-                  ? 'bg-[#F0B90B] text-black font-semibold' 
-                  : 'text-[#848E9C] hover:text-white hover:bg-[#2B3139]'
+                  ? 'bg-[#F0B90B] text-black font-bold' 
+                  : 'text-[#848E9C] hover:bg-[#2B3139]'
               }`}
             >
               {tf}
@@ -510,16 +526,12 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
           ))}
         </div>
       </div>
-      <div className="relative">
+      <div ref={containerRef} className="relative w-full" style={{ minHeight: '250px' }}>
         <canvas 
-          ref={canvasRef} 
-          width={800} 
-          height={300} 
+          ref={canvasRef}
           className="w-full"
-          style={{ maxHeight: '300px' }}
         />
-        {/* Timeframe indicator */}
-        <div className="absolute top-2 left-2 text-[10px] text-[#848E9C] bg-[#0B0E11]/80 px-2 py-1 rounded">
+        <div className="absolute top-1 left-1 text-[9px] text-[#848E9C] bg-[#0B0E11]/90 px-1 rounded">
           {selectedCoin?.toUpperCase()}/USDT • {timeframeConfig[timeframe].label}
         </div>
       </div>
