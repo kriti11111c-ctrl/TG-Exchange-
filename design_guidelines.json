@@ -1,0 +1,118 @@
+{
+  "theme": "dark",
+  "typography": {
+    "headings": {
+      "font_family": "Unbounded, system-ui, sans-serif",
+      "weights": ["400", "700", "900"],
+      "classes": "font-sans tracking-tight text-white",
+      "strategy": "Unbounded provides a structural, Web3, blocky aesthetic perfect for a crypto bank. Use tracking-tight for tight letter spacing on large sizes."
+    },
+    "body": {
+      "font_family": "Manrope, system-ui, sans-serif",
+      "weights": ["400", "500"],
+      "classes": "font-sans text-slate-300 leading-relaxed",
+      "strategy": "Manrope is highly legible and geometric, balancing the brutalism of Unbounded."
+    },
+    "mono_data": {
+      "font_family": "JetBrains Mono, monospace",
+      "weights": ["400", "500"],
+      "classes": "font-mono tracking-tight",
+      "strategy": "MANDATORY for all crypto prices, wallet balances, and chart axis labels. Ensures numbers align vertically."
+    }
+  },
+  "colors": {
+    "background": "#0A0A0A",
+    "surface": "#12121A",
+    "surface_hover": "#1A1A24",
+    "primary": "#00E599",
+    "primary_hover": "#00C282",
+    "secondary": "#FFFFFF",
+    "danger": "#FF3B30",
+    "warning": "#F5A623",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#8F8F9D",
+    "border": "rgba(255, 255, 255, 0.08)",
+    "strategy": "Tactical Minimalism. Deep Obsidian base for a high-end vault feel. Pure White for clarity. Electric Green for positive actions (deposit, buy, price up). Crimson for negative (withdraw, sell, price down)."
+  },
+  "visual_enhancers": {
+    "gradients": "BANNED. Do not use generic background gradients. Use flat solid colors for structural integrity.",
+    "shadows": "Minimal. Use 1px solid strokes (border-white/10) instead of soft drop shadows to define boundaries.",
+    "textures": "Include a subtle SVG noise overlay fixed to the viewport background (opacity 2-3%) to remove digital flatness.",
+    "glassmorphism": "For Sticky Headers/Navs only: bg-[#0A0A0A]/70, backdrop-blur-xl, border-b border-white/10. NO complete transparency."
+  },
+  "components": {
+    "buttons": "Sharp edges (rounded-sm). Primary buttons: bg-[#00E599] text-black font-semibold. Hover: brightness-110 and scale-105.",
+    "cards": "Flat, sharp rectangular. bg-surface, 1px border-white/10. No drop shadows. High density.",
+    "tables": "Dense rows. Hover states MUST explicitly set text color (hover:bg-white/5 hover:text-white). No zebra striping.",
+    "inputs_forms": "Shadcn based. Dark background, border-white/20. Focus: ring-1 ring-[#00E599] border-[#00E599].",
+    "charts": "Recharts via Shadcn. Tooltip must have dark glassmorphism background. Green/Red stroke colors for line charts."
+  },
+  "grids_layouts": {
+    "dashboard_grid": "High Density Grid. grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-4 or gap-6. Every pixel utilized.",
+    "marketing_grid": "Asymmetric bento grid for landing page features. Mix span-4, span-8 sizes.",
+    "spacing": "Generous container padding. Tailwind scale: p-6, p-8. Ensure text doesn't touch borders."
+  },
+  "motion": {
+    "interactions": "Smooth transitions for hover: transition-transform duration-200 ease-out. Do not use 'transition-all'.",
+    "entrance": "Staggered fade-up for table rows and cards on dashboard load."
+  },
+  "accessibility": {
+    "contrast": "Ensure text contrast meets APCA/WCAG. Minimum 4.5:1 for normal text.",
+    "focus": "High contrast focus rings on all interactive elements.",
+    "data_testid": "MANDATORY data-testid attributes on ALL interactive and key data elements (e.g., login-submit-button, wallet-balance, crypto-buy-btn)."
+  },
+  "media": {
+    "icons": "Use Phosphor Icons (@phosphor-icons/react). Use duotone or regular weight for a high-end technical look.",
+    "3d_libraries": "Use 'react-tsparticles' for a subtle, slow-moving constellation/node network on the landing page background to represent blockchain/crypto. Keep opacity very low."
+  },
+  "image_urls": [
+    {
+      "url": "https://images.unsplash.com/photo-1642432556591-72cbc671b707",
+      "category": "hero",
+      "description": "Abstract colored shapes on dark background. Use for Landing Page hero background."
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1642413598014-7742a18e85aa",
+      "category": "feature",
+      "description": "Pyramid with bitcoins. Use for Crypto Trading feature section on Landing Page."
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1710770563074-6d9cc0d3e338",
+      "category": "team_trader",
+      "description": "Professional trader at computer. Use for 'Pro Trading' or testimonial section."
+    },
+    {
+      "url": "https://images.pexels.com/photos/19920920/pexels-photo-19920920.jpeg",
+      "category": "trust_vault",
+      "description": "Secure vintage safety deposit boxes. Use for 'Bank-grade Security' feature section."
+    },
+    {
+      "url": "https://images.pexels.com/photos/9949424/pexels-photo-9949424.jpeg",
+      "category": "sponsor_logo",
+      "description": "Tech sponsor logo (retro Apple on black). Use for partner/sponsor marquee or list."
+    }
+  ],
+  "instructions_to_main_agent": [
+    "You are building a React.js (JavaScript, NO TypeScript) application with Tailwind CSS and Shadcn.",
+    "Do not build a Datepicker or Dialog from scratch. Heavily customize Shadcn components.",
+    "Always explicitly set text color on hover states (e.g., hover:bg-white/10 hover:text-white).",
+    "Run: yarn add @phosphor-icons/react react-tsparticles tsparticles recharts",
+    "Use Recharts for the Trading Dashboard to plot live CoinGecko data.",
+    "Dashboard container should NOT be center-aligned.",
+    "Use Glassmorphism (backdrop-blur-xl) for sticky navs and modal overlays.",
+    "Add 'data-testid' to EVERY button, input, and important text node.",
+    "The UI should feel like a secure Swiss bank adapted for Web3. Rigid, authoritative, high-contrast. Use borders instead of shadows."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Avoid the 'AI slop' aesthetic. Create depth with z-index hierarchy and glass-morphism.",
+    "Dark colors look good independently without gradients. DO NOT use dark colors as gradients.",
+    "NEVER use universal transition (transition: all). Use specific properties (transition: transform 0.2s ease).",
+    "DO NOT center align the app container (.App { text-align: center; } is banned).",
+    "Use sharp or slightly rounded buttons with micro-animations.",
+    "NEVER use AI assistant emojis for icons.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "Missing categories (especially sponsor logos) must NOT use placeholder text. Use the provided image URLs.",
+    "Components MUST use named exports. Pages MUST use default exports.",
+    "Use sonner for toasts (/app/src/components/ui/sonner.js). Note the .js extension as this is a JavaScript project."
+  ]
+}
