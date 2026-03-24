@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth, API } from "../App";
 import axios from "axios";
 import { toast } from "sonner";
@@ -12,8 +12,18 @@ import {
   SignOut,
   ArrowDown,
   ArrowUp,
+  ArrowsDownUp,
+  Eye,
+  EyeSlash,
+  CaretRight,
+  MagnifyingGlass,
   Copy,
-  QrCode
+  Info,
+  CaretDown,
+  Coins,
+  ChartLine,
+  Percent,
+  Clock
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -34,77 +44,103 @@ import {
   SelectValue,
 } from "../components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Progress } from "../components/ui/progress";
 
-// Navigation Component
-const DashboardNav = () => {
-  const { user, logout } = useAuth();
-
+// Navigation Component (Bottom Nav for mobile feel)
+const BottomNav = () => {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <Link to="/dashboard" className="flex items-center gap-3" data-testid="wallet-logo">
-          <Vault size={32} weight="duotone" className="text-[#00E599]" />
-          <span className="font-bold text-xl tracking-tight" style={{ fontFamily: 'Unbounded' }}>
-            CryptoVault
-          </span>
+    <nav className="fixed bottom-0 left-0 right-0 bg-[#0B0E11] border-t border-[#2B3139] z-50">
+      <div className="flex items-center justify-around py-2">
+        <Link to="/dashboard" className="flex flex-col items-center gap-1 text-[#848E9C] hover:text-white">
+          <Vault size={24} />
+          <span className="text-xs">Home</span>
         </Link>
-        
-        <div className="flex items-center gap-6">
-          <Link to="/dashboard" className="text-[#8F8F9D] hover:text-[#00E599] transition-colors" data-testid="nav-dashboard">
-            <ChartLineUp size={24} />
-          </Link>
-          <Link to="/wallet" className="text-white hover:text-[#00E599] transition-colors" data-testid="nav-wallet">
-            <WalletIcon size={24} />
-          </Link>
-          <Link to="/trade" className="text-[#8F8F9D] hover:text-[#00E599] transition-colors" data-testid="nav-trade">
-            <ArrowsLeftRight size={24} />
-          </Link>
-          <Link to="/transactions" className="text-[#8F8F9D] hover:text-[#00E599] transition-colors" data-testid="nav-transactions">
-            <ClockCounterClockwise size={24} />
-          </Link>
-          <div className="flex items-center gap-4 ml-4 pl-4 border-l border-white/10">
-            <span className="text-sm text-[#8F8F9D]">{user?.name}</span>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={logout}
-              className="text-[#8F8F9D] hover:text-[#FF3B30] hover:bg-transparent"
-              data-testid="logout-btn"
-            >
-              <SignOut size={20} />
-            </Button>
+        <Link to="/trade" className="flex flex-col items-center gap-1 text-[#848E9C] hover:text-white">
+          <ChartLineUp size={24} />
+          <span className="text-xs">Markets</span>
+        </Link>
+        <Link to="/trade" className="flex flex-col items-center gap-1">
+          <div className="w-12 h-12 bg-[#F0B90B] rounded-full flex items-center justify-center -mt-4">
+            <ArrowsLeftRight size={24} className="text-black" />
           </div>
-        </div>
+          <span className="text-xs text-[#F0B90B]">Trade</span>
+        </Link>
+        <Link to="/transactions" className="flex flex-col items-center gap-1 text-[#848E9C] hover:text-white">
+          <Clock size={24} />
+          <span className="text-xs">Futures</span>
+        </Link>
+        <Link to="/wallet" className="flex flex-col items-center gap-1 text-[#F0B90B]">
+          <WalletIcon size={24} />
+          <span className="text-xs">Assets</span>
+        </Link>
       </div>
     </nav>
   );
 };
 
+// Top Header
+const WalletHeader = ({ user, logout }) => {
+  return (
+    <div className="bg-[#0B0E11] px-4 py-3 flex items-center justify-between">
+      <Link to="/dashboard" className="flex items-center gap-2">
+        <Vault size={28} weight="duotone" className="text-[#F0B90B]" />
+        <span className="font-bold text-lg text-white">CryptoVault</span>
+      </Link>
+      <div className="flex items-center gap-3">
+        <span className="text-sm text-[#848E9C]">{user?.name}</span>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={logout}
+          className="text-[#848E9C] hover:text-[#F0B90B] hover:bg-transparent p-1"
+        >
+          <SignOut size={18} />
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 const WalletPage = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [wallet, setWallet] = useState(null);
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showBalance, setShowBalance] = useState(true);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  // Dialog states
   const [depositOpen, setDepositOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   
   // Form states
   const [selectedCoin, setSelectedCoin] = useState("btc");
   const [amount, setAmount] = useState("");
   const [address, setAddress] = useState("");
   const [txHash, setTxHash] = useState("");
+  const [transferTo, setTransferTo] = useState("margin");
   const [submitting, setSubmitting] = useState(false);
 
   const supportedCoins = [
-    { id: "btc", name: "Bitcoin", symbol: "BTC" },
-    { id: "eth", name: "Ethereum", symbol: "ETH" },
-    { id: "usdt", name: "Tether", symbol: "USDT" },
-    { id: "bnb", name: "BNB", symbol: "BNB" },
-    { id: "xrp", name: "XRP", symbol: "XRP" },
-    { id: "sol", name: "Solana", symbol: "SOL" },
+    { id: "btc", name: "Bitcoin", symbol: "BTC", color: "#F7931A", apy: "1.0047" },
+    { id: "eth", name: "Ethereum", symbol: "ETH", color: "#627EEA", apy: "2.15" },
+    { id: "usdt", name: "Tether", symbol: "USDT", color: "#26A17B", apy: "5.25" },
+    { id: "bnb", name: "BNB", symbol: "BNB", color: "#F0B90B", apy: "0.85" },
+    { id: "xrp", name: "XRP", symbol: "XRP", color: "#23292F", apy: "3.50" },
+    { id: "sol", name: "Solana", symbol: "SOL", color: "#9945FF", apy: "4.20" },
   ];
 
-  // Simulated deposit addresses
+  const accountTypes = [
+    { id: "spot", name: "Spot", color: "#3B82F6", balance: 0 },
+    { id: "margin", name: "Margin", color: "#F59E0B", balance: 0 },
+    { id: "futures", name: "Futures", color: "#10B981", balance: 0 },
+    { id: "omni", name: "Omni", color: "#22D3EE", balance: 0 },
+    { id: "earn", name: "Earn", color: "#F43F5E", balance: 0 },
+  ];
+
   const depositAddresses = {
     btc: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
     eth: "0x742d35Cc6634C0532925a3b844Bc9e7595f3e472",
@@ -133,17 +169,44 @@ const WalletPage = () => {
     }
   };
 
+  const getCoinValue = (coin, amount) => {
+    if (coin === 'usdt') return amount;
+    const coinMap = { btc: 'bitcoin', eth: 'ethereum', bnb: 'binancecoin', xrp: 'ripple', sol: 'solana' };
+    const priceData = prices.find(p => p.coin_id === coinMap[coin]);
+    return priceData ? amount * priceData.current_price : 0;
+  };
+
+  const getCoinPrice = (coin) => {
+    if (coin === 'usdt') return 1;
+    const coinMap = { btc: 'bitcoin', eth: 'ethereum', bnb: 'binancecoin', xrp: 'ripple', sol: 'solana' };
+    const priceData = prices.find(p => p.coin_id === coinMap[coin]);
+    return priceData?.current_price || 0;
+  };
+
+  const getTotalValue = () => {
+    if (!wallet) return 0;
+    return Object.entries(wallet.balances).reduce((total, [coin, amount]) => {
+      return total + getCoinValue(coin, amount);
+    }, 0);
+  };
+
+  // Calculate PnL (mock data for demo)
+  const getPnL = () => {
+    const total = getTotalValue();
+    const pnlPercent = -1.28; // Mock
+    const pnlValue = total * (pnlPercent / 100);
+    return { value: pnlValue, percent: pnlPercent };
+  };
+
   const handleDeposit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-
     try {
       await axios.post(`${API}/wallet/deposit`, {
         coin: selectedCoin,
         amount: parseFloat(amount),
         tx_hash: txHash || `tx_${Date.now()}`
       }, { withCredentials: true });
-
       toast.success(`Deposited ${amount} ${selectedCoin.toUpperCase()} successfully!`);
       setDepositOpen(false);
       setAmount("");
@@ -159,14 +222,12 @@ const WalletPage = () => {
   const handleWithdraw = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-
     try {
       await axios.post(`${API}/wallet/withdraw`, {
         coin: selectedCoin,
         amount: parseFloat(amount),
         address: address
       }, { withCredentials: true });
-
       toast.success(`Withdrawal of ${amount} ${selectedCoin.toUpperCase()} initiated!`);
       setWithdrawOpen(false);
       setAmount("");
@@ -179,274 +240,370 @@ const WalletPage = () => {
     }
   };
 
+  const handleTransfer = async (e) => {
+    e.preventDefault();
+    // Mock transfer between accounts
+    toast.success(`Transferred ${amount} ${selectedCoin.toUpperCase()} to ${transferTo}`);
+    setTransferOpen(false);
+    setAmount("");
+  };
+
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    toast.success("Address copied to clipboard!");
+    toast.success("Address copied!");
   };
 
-  const getCoinValue = (coin, amount) => {
-    if (coin === 'usdt') return amount;
-    const coinMap = { btc: 'bitcoin', eth: 'ethereum', bnb: 'binancecoin', xrp: 'ripple', sol: 'solana' };
-    const priceData = prices.find(p => p.coin_id === coinMap[coin]);
-    return priceData ? amount * priceData.current_price : 0;
-  };
-
-  const getTotalValue = () => {
-    if (!wallet) return 0;
-    return Object.entries(wallet.balances).reduce((total, [coin, amount]) => {
-      return total + getCoinValue(coin, amount);
-    }, 0);
-  };
+  const filteredCoins = supportedCoins.filter(coin => 
+    coin.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    coin.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A]">
-        <DashboardNav />
-        <div className="pt-24 flex items-center justify-center">
-          <p className="text-white">Loading...</p>
-        </div>
+      <div className="min-h-screen bg-[#0B0E11] flex items-center justify-center">
+        <p className="text-white">Loading...</p>
       </div>
     );
   }
 
+  const pnl = getPnL();
+  const totalBalance = getTotalValue();
+
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
-      <DashboardNav />
+    <div className="min-h-screen bg-[#0B0E11] pb-20">
+      <WalletHeader user={user} logout={logout} />
       
-      <main className="pt-24 pb-12 px-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 
-                className="text-2xl font-bold mb-2" 
-                style={{ fontFamily: 'Unbounded' }}
-                data-testid="wallet-title"
-              >
-                Wallet
-              </h1>
-              <p className="text-[#8F8F9D]">Manage your crypto assets</p>
-            </div>
-            <div className="flex gap-4">
-              {/* Deposit Dialog */}
-              <Dialog open={depositOpen} onOpenChange={setDepositOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-[#00E599] hover:bg-[#00C282] text-black font-semibold flex items-center gap-2" data-testid="deposit-btn">
-                    <ArrowDown size={20} /> Deposit
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-[#12121A] border-white/10">
-                  <DialogHeader>
-                    <DialogTitle style={{ fontFamily: 'Unbounded' }}>Deposit Crypto</DialogTitle>
-                    <DialogDescription>
-                      Send crypto to your CryptoVault wallet
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <form onSubmit={handleDeposit} className="space-y-6 mt-4">
-                    <div className="space-y-2">
-                      <Label>Select Coin</Label>
-                      <Select value={selectedCoin} onValueChange={setSelectedCoin}>
-                        <SelectTrigger className="bg-[#0A0A0A] border-white/20" data-testid="deposit-coin-select">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#12121A] border-white/10">
-                          {supportedCoins.map(coin => (
-                            <SelectItem key={coin.id} value={coin.id}>
-                              {coin.name} ({coin.symbol})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+      {/* Tabs - Overview, Spot, Margin, Futures, Omni, Earn */}
+      <div className="border-b border-[#2B3139] overflow-x-auto">
+        <div className="flex px-4">
+          {["Overview", "Spot", "Margin", "Futures", "Omni", "Earn"].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab.toLowerCase())}
+              className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
+                activeTab === tab.toLowerCase() 
+                  ? 'text-white border-b-2 border-[#F0B90B]' 
+                  : 'text-[#848E9C]'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
 
-                    <div className="space-y-2">
-                      <Label>Deposit Address</Label>
-                      <div className="flex items-center gap-2">
-                        <Input 
-                          value={depositAddresses[selectedCoin]}
-                          readOnly
-                          className="bg-[#0A0A0A] border-white/20 font-mono text-xs"
-                          data-testid="deposit-address"
-                        />
-                        <Button 
-                          type="button"
-                          variant="outline" 
-                          size="icon"
-                          onClick={() => copyToClipboard(depositAddresses[selectedCoin])}
-                          className="border-white/20"
-                          data-testid="copy-address-btn"
-                        >
-                          <Copy size={16} />
-                        </Button>
-                      </div>
-                      <p className="text-xs text-[#8F8F9D]">
-                        Send only {selectedCoin.toUpperCase()} to this address
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Amount (for demo)</Label>
-                      <Input
-                        type="number"
-                        step="any"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder="0.00"
-                        className="bg-[#0A0A0A] border-white/20"
-                        required
-                        data-testid="deposit-amount-input"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Transaction Hash (optional)</Label>
-                      <Input
-                        value={txHash}
-                        onChange={(e) => setTxHash(e.target.value)}
-                        placeholder="0x..."
-                        className="bg-[#0A0A0A] border-white/20 font-mono"
-                        data-testid="deposit-txhash-input"
-                      />
-                    </div>
-
-                    <Button 
-                      type="submit" 
-                      disabled={submitting}
-                      className="w-full bg-[#00E599] hover:bg-[#00C282] text-black font-semibold"
-                      data-testid="deposit-submit-btn"
-                    >
-                      {submitting ? "Processing..." : "Confirm Deposit"}
-                    </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-
-              {/* Withdraw Dialog */}
-              <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="border-white/20 hover:bg-white/10 flex items-center gap-2" data-testid="withdraw-btn">
-                    <ArrowUp size={20} /> Withdraw
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-[#12121A] border-white/10">
-                  <DialogHeader>
-                    <DialogTitle style={{ fontFamily: 'Unbounded' }}>Withdraw Crypto</DialogTitle>
-                    <DialogDescription>
-                      Withdraw crypto to an external wallet
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <form onSubmit={handleWithdraw} className="space-y-6 mt-4">
-                    <div className="space-y-2">
-                      <Label>Select Coin</Label>
-                      <Select value={selectedCoin} onValueChange={setSelectedCoin}>
-                        <SelectTrigger className="bg-[#0A0A0A] border-white/20" data-testid="withdraw-coin-select">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#12121A] border-white/10">
-                          {supportedCoins.map(coin => (
-                            <SelectItem key={coin.id} value={coin.id}>
-                              {coin.name} ({coin.symbol})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label>Amount</Label>
-                        <span className="text-xs text-[#8F8F9D]">
-                          Available: {wallet?.balances?.[selectedCoin]?.toFixed(6) || '0'} {selectedCoin.toUpperCase()}
-                        </span>
-                      </div>
-                      <Input
-                        type="number"
-                        step="any"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder="0.00"
-                        className="bg-[#0A0A0A] border-white/20"
-                        required
-                        data-testid="withdraw-amount-input"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Withdrawal Address</Label>
-                      <Input
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        placeholder="Enter wallet address"
-                        className="bg-[#0A0A0A] border-white/20 font-mono"
-                        required
-                        data-testid="withdraw-address-input"
-                      />
-                    </div>
-
-                    <Button 
-                      type="submit" 
-                      disabled={submitting}
-                      className="w-full bg-[#FF3B30] hover:bg-[#E62E23] text-white font-semibold"
-                      data-testid="withdraw-submit-btn"
-                    >
-                      {submitting ? "Processing..." : "Confirm Withdrawal"}
-                    </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-
-          {/* Total Balance Card */}
-          <div className="bg-[#12121A] border border-white/10 p-8 mb-8" data-testid="total-balance-card">
-            <p className="text-[#8F8F9D] text-sm mb-2">Total Balance</p>
-            <p className="text-4xl font-bold font-mono text-[#00E599]" data-testid="total-balance">
-              ${getTotalValue().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-          </div>
-
-          {/* Assets List */}
-          <div className="bg-[#12121A] border border-white/10" data-testid="assets-list">
-            <div className="p-6 border-b border-white/10">
-              <h2 className="font-bold" style={{ fontFamily: 'Unbounded' }}>Your Assets</h2>
-            </div>
-            <div className="divide-y divide-white/5">
-              {wallet && supportedCoins.map(coin => {
-                const balance = wallet.balances[coin.id] || 0;
-                const value = getCoinValue(coin.id, balance);
-                
-                return (
-                  <div 
-                    key={coin.id}
-                    className="flex items-center justify-between p-6 hover:bg-white/5 transition-colors"
-                    data-testid={`asset-${coin.id}`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-[#00E599]/20 flex items-center justify-center">
-                        <span className="font-bold text-[#00E599]">{coin.symbol}</span>
-                      </div>
-                      <div>
-                        <p className="font-medium">{coin.name}</p>
-                        <p className="text-sm text-[#8F8F9D]">{coin.symbol}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-mono font-medium" data-testid={`balance-${coin.id}`}>
-                        {balance.toFixed(coin.id === 'usdt' ? 2 : 6)} {coin.symbol}
-                      </p>
-                      <p className="text-sm text-[#8F8F9D] font-mono">
-                        ≈ ${value.toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+      {/* Total Balance Card */}
+      <div className="px-4 py-6">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-[#848E9C] text-sm">Total Balance</span>
+          <button onClick={() => setShowBalance(!showBalance)}>
+            {showBalance ? <Eye size={16} className="text-[#848E9C]" /> : <EyeSlash size={16} className="text-[#848E9C]" />}
+          </button>
+        </div>
+        
+        <div className="flex items-baseline gap-2 mb-1">
+          <span className="text-4xl font-bold text-white font-mono">
+            {showBalance ? totalBalance.toFixed(2) : '****'}
+          </span>
+          <div className="flex items-center gap-1 text-white text-sm">
+            <span>USD</span>
+            <CaretDown size={14} />
           </div>
         </div>
-      </main>
+        
+        <div className="flex items-center gap-2">
+          <span className="text-[#848E9C] text-sm">Today's PnL</span>
+          <span className={`text-sm ${pnl.value >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+            {showBalance ? `${pnl.value >= 0 ? '+' : ''}$${pnl.value.toFixed(2)} (${pnl.percent >= 0 ? '+' : ''}${pnl.percent.toFixed(2)}%)` : '****'}
+          </span>
+          <CaretRight size={14} className="text-[#848E9C]" />
+        </div>
+      </div>
+
+      {/* Action Buttons - Deposit, Withdraw, Transfer, History */}
+      <div className="px-4 pb-6">
+        <div className="flex justify-around">
+          {/* Deposit */}
+          <Dialog open={depositOpen} onOpenChange={setDepositOpen}>
+            <DialogTrigger asChild>
+              <button className="flex flex-col items-center gap-2">
+                <div className="w-14 h-14 rounded-full bg-[#2B3139] flex items-center justify-center hover:bg-[#3B4149] transition-colors">
+                  <ArrowDown size={24} className="text-white" />
+                </div>
+                <span className="text-white text-sm">Deposit</span>
+              </button>
+            </DialogTrigger>
+            <DialogContent className="bg-[#1E2329] border-[#2B3139]">
+              <DialogHeader>
+                <DialogTitle className="text-white">Deposit Crypto</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleDeposit} className="space-y-4 mt-4">
+                <div>
+                  <Label className="text-[#848E9C]">Select Coin</Label>
+                  <Select value={selectedCoin} onValueChange={setSelectedCoin}>
+                    <SelectTrigger className="bg-[#0B0E11] border-[#2B3139] text-white mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1E2329] border-[#2B3139]">
+                      {supportedCoins.map(coin => (
+                        <SelectItem key={coin.id} value={coin.id} className="text-white">
+                          {coin.name} ({coin.symbol})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[#848E9C]">Deposit Address</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input value={depositAddresses[selectedCoin]} readOnly className="bg-[#0B0E11] border-[#2B3139] text-white font-mono text-xs" />
+                    <Button type="button" variant="outline" size="icon" onClick={() => copyToClipboard(depositAddresses[selectedCoin])} className="border-[#2B3139]">
+                      <Copy size={16} />
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-[#848E9C]">Amount (Demo)</Label>
+                  <Input type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="bg-[#0B0E11] border-[#2B3139] text-white mt-1" required />
+                </div>
+                <Button type="submit" disabled={submitting} className="w-full bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black font-semibold">
+                  {submitting ? "Processing..." : "Confirm Deposit"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Withdraw */}
+          <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
+            <DialogTrigger asChild>
+              <button className="flex flex-col items-center gap-2">
+                <div className="w-14 h-14 rounded-full bg-[#2B3139] flex items-center justify-center hover:bg-[#3B4149] transition-colors">
+                  <ArrowUp size={24} className="text-white" />
+                </div>
+                <span className="text-white text-sm">Withdraw</span>
+              </button>
+            </DialogTrigger>
+            <DialogContent className="bg-[#1E2329] border-[#2B3139]">
+              <DialogHeader>
+                <DialogTitle className="text-white">Withdraw Crypto</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleWithdraw} className="space-y-4 mt-4">
+                <div>
+                  <Label className="text-[#848E9C]">Select Coin</Label>
+                  <Select value={selectedCoin} onValueChange={setSelectedCoin}>
+                    <SelectTrigger className="bg-[#0B0E11] border-[#2B3139] text-white mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1E2329] border-[#2B3139]">
+                      {supportedCoins.map(coin => (
+                        <SelectItem key={coin.id} value={coin.id} className="text-white">
+                          {coin.name} ({coin.symbol})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <div className="flex justify-between">
+                    <Label className="text-[#848E9C]">Amount</Label>
+                    <span className="text-xs text-[#848E9C]">Available: {wallet?.balances?.[selectedCoin]?.toFixed(6) || '0'}</span>
+                  </div>
+                  <Input type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="bg-[#0B0E11] border-[#2B3139] text-white mt-1" required />
+                </div>
+                <div>
+                  <Label className="text-[#848E9C]">Withdrawal Address</Label>
+                  <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Enter address" className="bg-[#0B0E11] border-[#2B3139] text-white font-mono mt-1" required />
+                </div>
+                <Button type="submit" disabled={submitting} className="w-full bg-[#F6465D] hover:bg-[#F6465D]/90 text-white font-semibold">
+                  {submitting ? "Processing..." : "Withdraw"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Transfer */}
+          <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
+            <DialogTrigger asChild>
+              <button className="flex flex-col items-center gap-2">
+                <div className="w-14 h-14 rounded-full bg-[#2B3139] flex items-center justify-center hover:bg-[#3B4149] transition-colors">
+                  <ArrowsDownUp size={24} className="text-white" />
+                </div>
+                <span className="text-white text-sm">Transfer</span>
+              </button>
+            </DialogTrigger>
+            <DialogContent className="bg-[#1E2329] border-[#2B3139]">
+              <DialogHeader>
+                <DialogTitle className="text-white">Transfer Between Accounts</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleTransfer} className="space-y-4 mt-4">
+                <div>
+                  <Label className="text-[#848E9C]">From</Label>
+                  <Select defaultValue="spot">
+                    <SelectTrigger className="bg-[#0B0E11] border-[#2B3139] text-white mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1E2329] border-[#2B3139]">
+                      <SelectItem value="spot" className="text-white">Spot</SelectItem>
+                      <SelectItem value="margin" className="text-white">Margin</SelectItem>
+                      <SelectItem value="futures" className="text-white">Futures</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[#848E9C]">To</Label>
+                  <Select value={transferTo} onValueChange={setTransferTo}>
+                    <SelectTrigger className="bg-[#0B0E11] border-[#2B3139] text-white mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1E2329] border-[#2B3139]">
+                      <SelectItem value="margin" className="text-white">Margin</SelectItem>
+                      <SelectItem value="futures" className="text-white">Futures</SelectItem>
+                      <SelectItem value="earn" className="text-white">Earn</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[#848E9C]">Coin</Label>
+                  <Select value={selectedCoin} onValueChange={setSelectedCoin}>
+                    <SelectTrigger className="bg-[#0B0E11] border-[#2B3139] text-white mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1E2329] border-[#2B3139]">
+                      {supportedCoins.map(coin => (
+                        <SelectItem key={coin.id} value={coin.id} className="text-white">{coin.symbol}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-[#848E9C]">Amount</Label>
+                  <Input type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="bg-[#0B0E11] border-[#2B3139] text-white mt-1" required />
+                </div>
+                <Button type="submit" className="w-full bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black font-semibold">
+                  Transfer
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* History */}
+          <button onClick={() => navigate('/transactions')} className="flex flex-col items-center gap-2">
+            <div className="w-14 h-14 rounded-full bg-[#2B3139] flex items-center justify-center hover:bg-[#3B4149] transition-colors">
+              <ClockCounterClockwise size={24} className="text-white" />
+            </div>
+            <span className="text-white text-sm">History</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Account Section */}
+      <div className="px-4 pb-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-white font-medium">Account</span>
+            <Info size={14} className="text-[#848E9C]" />
+          </div>
+          <CaretDown size={16} className="text-[#848E9C]" />
+        </div>
+        
+        {/* Progress Bar */}
+        <div className="h-2 bg-[#2B3139] rounded-full overflow-hidden mb-4">
+          <div className="h-full bg-[#3B82F6]" style={{ width: '100%' }} />
+        </div>
+        
+        {/* Account Types List */}
+        <div className="space-y-3">
+          {accountTypes.map((account, index) => {
+            const accountBalance = index === 0 ? totalBalance : 0; // Only Spot has balance
+            const percentage = index === 0 ? 100 : 0;
+            
+            return (
+              <div key={account.id} className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: account.color }} />
+                  <span className="text-white">{account.name}</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-white font-mono">${showBalance ? accountBalance.toFixed(2) : '****'}</p>
+                  <p className="text-xs text-[#848E9C]">{percentage.toFixed(2)}%</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="h-2 bg-[#181A20]" />
+
+      {/* Crypto Assets Section */}
+      <div className="px-4 py-4">
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-white font-medium text-lg">Crypto</span>
+          <MagnifyingGlass size={20} className="text-[#848E9C]" />
+        </div>
+        
+        {/* Search */}
+        <div className="relative mb-4">
+          <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#848E9C]" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search coins"
+            className="pl-9 bg-[#1E2329] border-[#2B3139] text-white"
+          />
+        </div>
+        
+        {/* Column Headers */}
+        <div className="flex items-center justify-between px-2 mb-2">
+          <span className="text-[#848E9C] text-xs">Assets</span>
+          <span className="text-[#848E9C] text-xs">Amount</span>
+        </div>
+        
+        {/* Crypto List */}
+        <div className="space-y-1">
+          {filteredCoins.map(coin => {
+            const balance = wallet?.balances?.[coin.id] || 0;
+            const value = getCoinValue(coin.id, balance);
+            const price = getCoinPrice(coin.id);
+            
+            return (
+              <div 
+                key={coin.id}
+                className="flex items-center justify-between p-3 rounded-lg hover:bg-[#1E2329] transition-colors cursor-pointer"
+                onClick={() => navigate(`/trade?coin=${coin.id}`)}
+              >
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="w-10 h-10 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: coin.color }}
+                  >
+                    <span className="text-white font-bold text-sm">{coin.symbol.charAt(0)}</span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-medium">{coin.symbol}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#0ECB81]/20 text-[#0ECB81]">
+                        APY ↑ {coin.apy}%
+                      </span>
+                    </div>
+                    <span className="text-[#848E9C] text-sm">{coin.name}</span>
+                  </div>
+                </div>
+                <div className="text-right flex items-center gap-2">
+                  <div>
+                    <p className="text-white font-mono">{showBalance ? balance.toFixed(balance < 1 ? 8 : 4) : '****'}</p>
+                    <p className="text-[#848E9C] text-sm">≈ ${showBalance ? value.toFixed(2) : '****'}</p>
+                  </div>
+                  <CaretRight size={16} className="text-[#848E9C]" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <BottomNav />
     </div>
   );
 };
