@@ -789,6 +789,72 @@ async def get_price_chart(coin_id: str, days: int = 7):
                 "volumes": []
             }
 
+# OHLC cache
+ohlc_cache = {}
+
+@api_router.get("/market/ohlc/{coin_id}")
+async def get_ohlc_data(coin_id: str, days: int = 1):
+    """Get OHLC (candlestick) data from CoinGecko
+    days: 1 = 30min candles, 7 = 4h candles, 30 = 4h candles, 90/365 = daily candles
+    """
+    global ohlc_cache
+    
+    cache_key = f"ohlc_{coin_id}_{days}"
+    
+    # Check cache (2 min TTL for real-time feel)
+    if cache_key in ohlc_cache:
+        cached = ohlc_cache[cache_key]
+        age = (datetime.now(timezone.utc) - cached["timestamp"]).total_seconds()
+        if age < 120:  # 2 minutes
+            return cached["data"]
+    
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            response = await client.get(
+                f"{COINGECKO_API_URL}/coins/{coin_id}/ohlc",
+                params={
+                    "vs_currency": "usd",
+                    "days": days
+                }
+            )
+            
+            if response.status_code == 200:
+                ohlc_data = response.json()
+                # Format: [[timestamp, open, high, low, close], ...]
+                candles = []
+                for item in ohlc_data:
+                    if len(item) >= 5:
+                        candles.append({
+                            "time": item[0],
+                            "open": item[1],
+                            "high": item[2],
+                            "low": item[3],
+                            "close": item[4]
+                        })
+                
+                result = {
+                    "coin_id": coin_id,
+                    "days": days,
+                    "candles": candles
+                }
+                
+                ohlc_cache[cache_key] = {
+                    "data": result,
+                    "timestamp": datetime.now(timezone.utc)
+                }
+                
+                return result
+            else:
+                logger.warning(f"CoinGecko OHLC returned {response.status_code}")
+                return {"coin_id": coin_id, "days": days, "candles": []}
+                
+        except httpx.TimeoutException:
+            logger.error(f"Timeout fetching OHLC for {coin_id}")
+            return {"coin_id": coin_id, "days": days, "candles": []}
+        except Exception as e:
+            logger.error(f"Error fetching OHLC data: {e}")
+            return {"coin_id": coin_id, "days": days, "candles": []}
+
 # ================= ROOT ROUTE =================
 
 @api_router.get("/")

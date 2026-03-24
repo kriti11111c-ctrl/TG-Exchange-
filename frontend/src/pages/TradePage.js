@@ -261,20 +261,29 @@ const TradingPairs = ({ prices, selectedCoin, onSelectCoin }) => {
 };
 
 // Candlestick Chart Component (Real Trading Chart with Timeframes)
-const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, onTimeframeChange }) => {
+const CandlestickChart = ({ currentPrice, priceChange, selectedCoin }) => {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [timeframe, setTimeframe] = useState('1H');
   const [candleData, setCandleData] = useState([]);
   const [dimensions, setDimensions] = useState({ width: 400, height: 250 });
+  const [loading, setLoading] = useState(true);
 
-  // Timeframe configurations
-  const timeframeConfig = {
-    '15m': { candles: 48, interval: 15 * 60 * 1000, label: '15 min', dateFormat: 'HH:mm' },
-    '1H': { candles: 24, interval: 60 * 60 * 1000, label: '1 hour', dateFormat: 'HH:mm' },
-    '4H': { candles: 30, interval: 4 * 60 * 60 * 1000, label: '4 hours', dateFormat: 'HH:mm' },
-    '1D': { candles: 30, interval: 24 * 60 * 60 * 1000, label: '1 day', dateFormat: 'MM/DD' },
-    '1W': { candles: 20, interval: 7 * 24 * 60 * 60 * 1000, label: '1 week', dateFormat: 'MM/DD' },
+  // Timeframe to CoinGecko days mapping
+  const timeframeToDays = {
+    '15m': 1,   // 1 day = 30min candles (we'll use half)
+    '1H': 1,    // 1 day = 30min candles
+    '4H': 7,    // 7 days = 4h candles
+    '1D': 30,   // 30 days = 4h candles (we'll aggregate)
+    '1W': 90,   // 90 days = daily candles
+  };
+
+  const coinIdMap = {
+    'btc': 'bitcoin',
+    'eth': 'ethereum',
+    'bnb': 'binancecoin',
+    'xrp': 'ripple',
+    'sol': 'solana'
   };
 
   // Get container dimensions
@@ -294,52 +303,80 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Generate realistic candle data based on timeframe
+  // Fetch real OHLC data from CoinGecko
   useEffect(() => {
-    const config = timeframeConfig[timeframe];
-    const basePrice = currentPrice || 69500;
-    const now = new Date();
-    const candles = [];
-    
-    const volatilityMap = {
-      '15m': 0.001,
-      '1H': 0.002,
-      '4H': 0.005,
-      '1D': 0.015,
-      '1W': 0.04
+    const fetchOHLC = async () => {
+      setLoading(true);
+      try {
+        const coinId = coinIdMap[selectedCoin] || 'bitcoin';
+        const days = timeframeToDays[timeframe];
+        
+        const response = await axios.get(`${API}/market/ohlc/${coinId}?days=${days}`);
+        
+        if (response.data.candles && response.data.candles.length > 0) {
+          let candles = response.data.candles;
+          
+          // Filter/aggregate based on timeframe
+          if (timeframe === '15m') {
+            // Take last 48 candles for 15m view
+            candles = candles.slice(-48);
+          } else if (timeframe === '1H') {
+            // Aggregate every 2 candles for 1H (since CoinGecko gives 30min)
+            const aggregated = [];
+            for (let i = 0; i < candles.length; i += 2) {
+              if (i + 1 < candles.length) {
+                aggregated.push({
+                  time: candles[i].time,
+                  open: candles[i].open,
+                  high: Math.max(candles[i].high, candles[i + 1].high),
+                  low: Math.min(candles[i].low, candles[i + 1].low),
+                  close: candles[i + 1].close
+                });
+              }
+            }
+            candles = aggregated.slice(-24);
+          } else if (timeframe === '4H') {
+            candles = candles.slice(-42); // 7 days of 4H candles
+          } else if (timeframe === '1D') {
+            // Aggregate every 6 candles for 1D
+            const aggregated = [];
+            for (let i = 0; i < candles.length; i += 6) {
+              const chunk = candles.slice(i, Math.min(i + 6, candles.length));
+              if (chunk.length > 0) {
+                aggregated.push({
+                  time: chunk[0].time,
+                  open: chunk[0].open,
+                  high: Math.max(...chunk.map(c => c.high)),
+                  low: Math.min(...chunk.map(c => c.low)),
+                  close: chunk[chunk.length - 1].close
+                });
+              }
+            }
+            candles = aggregated.slice(-30);
+          } else {
+            candles = candles.slice(-20);
+          }
+          
+          // Add time labels
+          candles = candles.map(c => ({
+            ...c,
+            timeLabel: formatTimeLabel(new Date(c.time), timeframe)
+          }));
+          
+          setCandleData(candles);
+        }
+      } catch (error) {
+        console.error('Error fetching OHLC:', error);
+      } finally {
+        setLoading(false);
+      }
     };
-    
-    const volatility = volatilityMap[timeframe];
-    let lastClose = basePrice * (1 - volatility * config.candles / 2);
-    
-    for (let i = 0; i < config.candles; i++) {
-      const candleTime = new Date(now.getTime() - (config.candles - i) * config.interval);
-      
-      const trend = Math.sin(i / (config.candles / 4)) * volatility;
-      const randomMove = (Math.random() - 0.5) * volatility * 2;
-      
-      const open = lastClose;
-      const change = trend + randomMove;
-      const close = open * (1 + change);
-      const high = Math.max(open, close) * (1 + Math.random() * volatility * 0.5);
-      const low = Math.min(open, close) * (1 - Math.random() * volatility * 0.5);
-      const volume = Math.abs(change) * 1000000 + Math.random() * 500000;
-      
-      candles.push({
-        time: candleTime,
-        open,
-        high,
-        low,
-        close,
-        volume,
-        timeLabel: formatTimeLabel(candleTime, timeframe)
-      });
-      
-      lastClose = close;
-    }
-    
-    setCandleData(candles);
-  }, [timeframe, currentPrice]);
+
+    fetchOHLC();
+    // Refresh every 2 minutes
+    const interval = setInterval(fetchOHLC, 120000);
+    return () => clearInterval(interval);
+  }, [timeframe, selectedCoin]);
 
   const formatTimeLabel = (date, tf) => {
     const hours = date.getHours().toString().padStart(2, '0');
@@ -387,7 +424,7 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
     const adjustedMax = maxPrice + pricePadding;
     const priceRange = adjustedMax - adjustedMin;
     
-    const padding = { top: 15, right: 50, bottom: 30, left: 5 };
+    const padding = { top: 15, right: 55, bottom: 30, left: 5 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
     
@@ -408,12 +445,12 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
       ctx.fillStyle = '#848E9C';
       ctx.font = '9px Arial';
       ctx.textAlign = 'left';
-      ctx.fillText(price.toFixed(0), width - padding.right + 3, y + 3);
+      ctx.fillText(price.toFixed(price < 100 ? 2 : 0), width - padding.right + 3, y + 3);
     }
     
     // Calculate candle dimensions
     const totalCandleSpace = chartWidth;
-    const candleWidth = Math.max(2, Math.min(8, (totalCandleSpace / candleData.length) * 0.7));
+    const candleWidth = Math.max(3, Math.min(10, (totalCandleSpace / candleData.length) * 0.75));
     const spacing = (totalCandleSpace - candleWidth * candleData.length) / (candleData.length + 1);
     
     // Draw time labels
@@ -471,22 +508,26 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
       
       // Price label
       ctx.fillStyle = '#F0B90B';
-      ctx.fillRect(width - padding.right, priceY - 8, 48, 16);
+      ctx.fillRect(width - padding.right, priceY - 8, 53, 16);
       ctx.fillStyle = '#000';
-      ctx.font = 'bold 8px Arial';
+      ctx.font = 'bold 9px Arial';
       ctx.textAlign = 'left';
-      ctx.fillText(currentPrice.toFixed(0), width - padding.right + 2, priceY + 3);
+      ctx.fillText(currentPrice.toFixed(currentPrice < 100 ? 2 : 0), width - padding.right + 2, priceY + 3);
     }
     
     // Draw volume bars
+    const volumes = candleData.map((c, i) => {
+      const prevClose = i > 0 ? candleData[i-1].close : c.open;
+      return Math.abs(c.close - prevClose) * 100000;
+    });
+    const maxVolume = Math.max(...volumes);
     const volumeHeight = 25;
     const volumeTop = height - padding.bottom - volumeHeight - 3;
-    const maxVolume = Math.max(...candleData.map(c => c.volume));
     
     candleData.forEach((candle, i) => {
       const x = padding.left + spacing + i * (candleWidth + spacing);
       const isGreen = candle.close >= candle.open;
-      const volHeight = (candle.volume / maxVolume) * volumeHeight;
+      const volHeight = (volumes[i] / maxVolume) * volumeHeight;
       
       ctx.fillStyle = isGreen ? 'rgba(14, 203, 129, 0.4)' : 'rgba(246, 70, 93, 0.4)';
       ctx.fillRect(x, volumeTop + volumeHeight - volHeight, candleWidth, volHeight);
@@ -496,7 +537,6 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
 
   const handleTimeframeChange = (tf) => {
     setTimeframe(tf);
-    if (onTimeframeChange) onTimeframeChange(tf);
   };
 
   return (
@@ -527,12 +567,15 @@ const CandlestickChart = ({ chartData, currentPrice, priceChange, selectedCoin, 
         </div>
       </div>
       <div ref={containerRef} className="relative w-full" style={{ minHeight: '250px' }}>
-        <canvas 
-          ref={canvasRef}
-          className="w-full"
-        />
+        {loading && candleData.length === 0 ? (
+          <div className="absolute inset-0 flex items-center justify-center text-[#848E9C]">
+            Loading chart...
+          </div>
+        ) : (
+          <canvas ref={canvasRef} className="w-full" />
+        )}
         <div className="absolute top-1 left-1 text-[9px] text-[#848E9C] bg-[#0B0E11]/90 px-1 rounded">
-          {selectedCoin?.toUpperCase()}/USDT • {timeframeConfig[timeframe].label}
+          {selectedCoin?.toUpperCase()}/USDT • {timeframe === '15m' ? '15 min' : timeframe === '1H' ? '1 hour' : timeframe === '4H' ? '4 hours' : timeframe === '1D' ? '1 day' : '1 week'}
         </div>
       </div>
     </div>
@@ -720,7 +763,6 @@ const TradePage = () => {
           {/* Center - Chart */}
           <div className="w-full lg:col-span-6 overflow-hidden">
             <CandlestickChart 
-              chartData={chartData} 
               currentPrice={getCurrentPrice()} 
               priceChange={getPriceChange()}
               selectedCoin={selectedCoin}
