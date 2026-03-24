@@ -1,15 +1,19 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response
+from fastapi.security import HTTPBearer
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from typing import List, Optional, Dict
 import uuid
-from datetime import datetime, timezone
-
+from datetime import datetime, timezone, timedelta
+import bcrypt
+from jose import jwt, JWTError
+import httpx
+from pycoingecko import CoinGeckoAPI
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -19,56 +23,678 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
-app = FastAPI()
+# JWT Config
+JWT_SECRET = os.environ.get('JWT_SECRET', 'your-super-secret-key-change-in-production')
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
 
-# Create a router with the /api prefix
+# CoinGecko API
+cg = CoinGeckoAPI()
+
+# Create the main app
+app = FastAPI(title="CryptoVault Exchange")
+
+# Create router with /api prefix
 api_router = APIRouter(prefix="/api")
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
+# ================= MODELS =================
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    user_id: str
+    email: str
+    name: str
+    picture: Optional[str] = None
+    created_at: datetime
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+class WalletResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    user_id: str
+    balances: Dict[str, float]
+    updated_at: datetime
+
+class DepositRequest(BaseModel):
+    coin: str
+    amount: float
+    tx_hash: str  # Simulated blockchain tx hash
+
+class WithdrawRequest(BaseModel):
+    coin: str
+    amount: float
+    address: str
+
+class TradeRequest(BaseModel):
+    coin: str
+    amount: float
+    trade_type: str  # "buy" or "sell"
+
+class TransactionResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    tx_id: str
+    user_id: str
+    type: str
+    coin: str
+    amount: float
+    price_usd: Optional[float] = None
+    total_usd: Optional[float] = None
+    status: str
+    created_at: datetime
+
+class CryptoPrice(BaseModel):
+    coin_id: str
+    symbol: str
+    name: str
+    current_price: float
+    price_change_24h: float
+    price_change_percentage_24h: float
+    market_cap: float
+    volume_24h: float
+    image: Optional[str] = None
+
+# ================= AUTH HELPERS =================
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+
+def create_jwt_token(user_id: str, email: str) -> str:
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS),
+        "iat": datetime.now(timezone.utc)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+async def get_current_user(request: Request) -> dict:
+    # Check cookie first
+    session_token = request.cookies.get("session_token")
     
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    # Then check Authorization header
+    if not session_token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            session_token = auth_header.split(" ")[1]
+    
+    if not session_token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # Check if it's a Google OAuth session
+    session = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
+    if session:
+        expires_at = session.get("expires_at")
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at)
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            raise HTTPException(status_code=401, detail="Session expired")
+        
+        user = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    
+    # Try JWT token
+    try:
+        payload = jwt.decode(session_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user_id = payload.get("sub")
+        user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+# ================= AUTH ROUTES =================
 
-# Add your routes to the router instead of directly to app
+@api_router.post("/auth/register", response_model=TokenResponse)
+async def register(user_data: UserCreate, response: Response):
+    # Check if user exists
+    existing = await db.users.find_one({"email": user_data.email}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
+    now = datetime.now(timezone.utc)
+    
+    user_doc = {
+        "user_id": user_id,
+        "email": user_data.email,
+        "password_hash": hash_password(user_data.password),
+        "name": user_data.name,
+        "picture": None,
+        "created_at": now.isoformat()
+    }
+    
+    await db.users.insert_one(user_doc)
+    
+    # Create wallet with initial balances
+    wallet_doc = {
+        "user_id": user_id,
+        "balances": {
+            "btc": 0.0,
+            "eth": 0.0,
+            "usdt": 1000.0,  # Give 1000 USDT for testing
+            "bnb": 0.0,
+            "xrp": 0.0,
+            "sol": 0.0
+        },
+        "updated_at": now.isoformat()
+    }
+    await db.wallets.insert_one(wallet_doc)
+    
+    token = create_jwt_token(user_id, user_data.email)
+    
+    response.set_cookie(
+        key="session_token",
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=JWT_EXPIRATION_HOURS * 3600,
+        path="/"
+    )
+    
+    return TokenResponse(
+        access_token=token,
+        user=UserResponse(
+            user_id=user_id,
+            email=user_data.email,
+            name=user_data.name,
+            picture=None,
+            created_at=now
+        )
+    )
+
+@api_router.post("/auth/login", response_model=TokenResponse)
+async def login(credentials: UserLogin, response: Response):
+    user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not verify_password(credentials.password, user.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = create_jwt_token(user["user_id"], user["email"])
+    
+    response.set_cookie(
+        key="session_token",
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=JWT_EXPIRATION_HOURS * 3600,
+        path="/"
+    )
+    
+    created_at = user.get("created_at")
+    if isinstance(created_at, str):
+        created_at = datetime.fromisoformat(created_at)
+    
+    return TokenResponse(
+        access_token=token,
+        user=UserResponse(
+            user_id=user["user_id"],
+            email=user["email"],
+            name=user["name"],
+            picture=user.get("picture"),
+            created_at=created_at
+        )
+    )
+
+@api_router.post("/auth/session")
+async def process_google_session(request: Request, response: Response):
+    """Process Google OAuth session from Emergent Auth"""
+    body = await request.json()
+    session_id = body.get("session_id")
+    
+    if not session_id:
+        raise HTTPException(status_code=400, detail="Session ID required")
+    
+    # Call Emergent Auth to get session data
+    async with httpx.AsyncClient() as client:
+        try:
+            auth_response = await client.get(
+                "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+                headers={"X-Session-ID": session_id},
+                timeout=10.0
+            )
+            if auth_response.status_code != 200:
+                raise HTTPException(status_code=401, detail="Invalid session")
+            
+            session_data = auth_response.json()
+        except Exception as e:
+            logger.error(f"Error fetching session data: {e}")
+            raise HTTPException(status_code=500, detail="Authentication service error")
+    
+    email = session_data.get("email")
+    name = session_data.get("name", email.split("@")[0])
+    picture = session_data.get("picture")
+    session_token = session_data.get("session_token")
+    
+    # Find or create user
+    user = await db.users.find_one({"email": email}, {"_id": 0})
+    now = datetime.now(timezone.utc)
+    
+    if user:
+        user_id = user["user_id"]
+        # Update user info
+        await db.users.update_one(
+            {"email": email},
+            {"$set": {"name": name, "picture": picture}}
+        )
+    else:
+        user_id = f"user_{uuid.uuid4().hex[:12]}"
+        user_doc = {
+            "user_id": user_id,
+            "email": email,
+            "name": name,
+            "picture": picture,
+            "password_hash": None,  # Google users don't have password
+            "created_at": now.isoformat()
+        }
+        await db.users.insert_one(user_doc)
+        
+        # Create wallet
+        wallet_doc = {
+            "user_id": user_id,
+            "balances": {
+                "btc": 0.0,
+                "eth": 0.0,
+                "usdt": 1000.0,
+                "bnb": 0.0,
+                "xrp": 0.0,
+                "sol": 0.0
+            },
+            "updated_at": now.isoformat()
+        }
+        await db.wallets.insert_one(wallet_doc)
+    
+    # Store session
+    expires_at = now + timedelta(days=7)
+    await db.user_sessions.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "user_id": user_id,
+            "session_token": session_token,
+            "expires_at": expires_at.isoformat(),
+            "created_at": now.isoformat()
+        }},
+        upsert=True
+    )
+    
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=7 * 24 * 3600,
+        path="/"
+    )
+    
+    return {
+        "user_id": user_id,
+        "email": email,
+        "name": name,
+        "picture": picture
+    }
+
+@api_router.get("/auth/me", response_model=UserResponse)
+async def get_me(user: dict = Depends(get_current_user)):
+    created_at = user.get("created_at")
+    if isinstance(created_at, str):
+        created_at = datetime.fromisoformat(created_at)
+    
+    return UserResponse(
+        user_id=user["user_id"],
+        email=user["email"],
+        name=user["name"],
+        picture=user.get("picture"),
+        created_at=created_at
+    )
+
+@api_router.post("/auth/logout")
+async def logout(response: Response, user: dict = Depends(get_current_user)):
+    # Delete session
+    await db.user_sessions.delete_one({"user_id": user["user_id"]})
+    
+    response.delete_cookie(key="session_token", path="/")
+    return {"message": "Logged out successfully"}
+
+# ================= WALLET ROUTES =================
+
+@api_router.get("/wallet", response_model=WalletResponse)
+async def get_wallet(user: dict = Depends(get_current_user)):
+    wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    
+    updated_at = wallet.get("updated_at")
+    if isinstance(updated_at, str):
+        updated_at = datetime.fromisoformat(updated_at)
+    
+    return WalletResponse(
+        user_id=wallet["user_id"],
+        balances=wallet["balances"],
+        updated_at=updated_at
+    )
+
+@api_router.post("/wallet/deposit", response_model=TransactionResponse)
+async def deposit_crypto(deposit: DepositRequest, user: dict = Depends(get_current_user)):
+    coin = deposit.coin.lower()
+    valid_coins = ["btc", "eth", "usdt", "bnb", "xrp", "sol"]
+    
+    if coin not in valid_coins:
+        raise HTTPException(status_code=400, detail=f"Invalid coin. Supported: {valid_coins}")
+    
+    if deposit.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+    
+    now = datetime.now(timezone.utc)
+    tx_id = f"tx_{uuid.uuid4().hex[:16]}"
+    
+    # Update wallet balance
+    await db.wallets.update_one(
+        {"user_id": user["user_id"]},
+        {
+            "$inc": {f"balances.{coin}": deposit.amount},
+            "$set": {"updated_at": now.isoformat()}
+        }
+    )
+    
+    # Record transaction
+    tx_doc = {
+        "tx_id": tx_id,
+        "user_id": user["user_id"],
+        "type": "deposit",
+        "coin": coin,
+        "amount": deposit.amount,
+        "tx_hash": deposit.tx_hash,
+        "status": "completed",
+        "created_at": now.isoformat()
+    }
+    await db.transactions.insert_one(tx_doc)
+    
+    return TransactionResponse(
+        tx_id=tx_id,
+        user_id=user["user_id"],
+        type="deposit",
+        coin=coin,
+        amount=deposit.amount,
+        status="completed",
+        created_at=now
+    )
+
+@api_router.post("/wallet/withdraw", response_model=TransactionResponse)
+async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_current_user)):
+    coin = withdraw.coin.lower()
+    valid_coins = ["btc", "eth", "usdt", "bnb", "xrp", "sol"]
+    
+    if coin not in valid_coins:
+        raise HTTPException(status_code=400, detail=f"Invalid coin. Supported: {valid_coins}")
+    
+    if withdraw.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+    
+    # Check balance
+    wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    if not wallet or wallet["balances"].get(coin, 0) < withdraw.amount:
+        raise HTTPException(status_code=400, detail="Insufficient balance")
+    
+    now = datetime.now(timezone.utc)
+    tx_id = f"tx_{uuid.uuid4().hex[:16]}"
+    
+    # Update wallet balance
+    await db.wallets.update_one(
+        {"user_id": user["user_id"]},
+        {
+            "$inc": {f"balances.{coin}": -withdraw.amount},
+            "$set": {"updated_at": now.isoformat()}
+        }
+    )
+    
+    # Record transaction
+    tx_doc = {
+        "tx_id": tx_id,
+        "user_id": user["user_id"],
+        "type": "withdraw",
+        "coin": coin,
+        "amount": withdraw.amount,
+        "address": withdraw.address,
+        "status": "pending",  # In real app, this would be processed
+        "created_at": now.isoformat()
+    }
+    await db.transactions.insert_one(tx_doc)
+    
+    return TransactionResponse(
+        tx_id=tx_id,
+        user_id=user["user_id"],
+        type="withdraw",
+        coin=coin,
+        amount=withdraw.amount,
+        status="pending",
+        created_at=now
+    )
+
+# ================= TRADING ROUTES =================
+
+@api_router.post("/trade", response_model=TransactionResponse)
+async def execute_trade(trade: TradeRequest, user: dict = Depends(get_current_user)):
+    coin = trade.coin.lower()
+    valid_coins = ["btc", "eth", "bnb", "xrp", "sol"]
+    
+    if coin not in valid_coins:
+        raise HTTPException(status_code=400, detail=f"Invalid coin. Supported: {valid_coins}")
+    
+    if trade.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+    
+    if trade.trade_type not in ["buy", "sell"]:
+        raise HTTPException(status_code=400, detail="Trade type must be 'buy' or 'sell'")
+    
+    # Get current price from CoinGecko
+    try:
+        price_data = cg.get_price(ids=coin if coin != "bnb" else "binancecoin", vs_currencies='usd')
+        coin_key = coin if coin != "bnb" else "binancecoin"
+        current_price = price_data[coin_key]['usd']
+    except Exception as e:
+        logger.error(f"Error fetching price: {e}")
+        # Fallback prices
+        fallback_prices = {"btc": 95000, "eth": 3500, "bnb": 650, "xrp": 2.5, "sol": 180}
+        current_price = fallback_prices.get(coin, 100)
+    
+    total_usd = trade.amount * current_price
+    wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    
+    now = datetime.now(timezone.utc)
+    tx_id = f"tx_{uuid.uuid4().hex[:16]}"
+    
+    if trade.trade_type == "buy":
+        # Check USDT balance
+        if wallet["balances"].get("usdt", 0) < total_usd:
+            raise HTTPException(status_code=400, detail="Insufficient USDT balance")
+        
+        # Deduct USDT, add crypto
+        await db.wallets.update_one(
+            {"user_id": user["user_id"]},
+            {
+                "$inc": {
+                    "balances.usdt": -total_usd,
+                    f"balances.{coin}": trade.amount
+                },
+                "$set": {"updated_at": now.isoformat()}
+            }
+        )
+    else:  # sell
+        # Check crypto balance
+        if wallet["balances"].get(coin, 0) < trade.amount:
+            raise HTTPException(status_code=400, detail=f"Insufficient {coin.upper()} balance")
+        
+        # Deduct crypto, add USDT
+        await db.wallets.update_one(
+            {"user_id": user["user_id"]},
+            {
+                "$inc": {
+                    f"balances.{coin}": -trade.amount,
+                    "balances.usdt": total_usd
+                },
+                "$set": {"updated_at": now.isoformat()}
+            }
+        )
+    
+    # Record transaction
+    tx_doc = {
+        "tx_id": tx_id,
+        "user_id": user["user_id"],
+        "type": trade.trade_type,
+        "coin": coin,
+        "amount": trade.amount,
+        "price_usd": current_price,
+        "total_usd": total_usd,
+        "status": "completed",
+        "created_at": now.isoformat()
+    }
+    await db.transactions.insert_one(tx_doc)
+    
+    return TransactionResponse(
+        tx_id=tx_id,
+        user_id=user["user_id"],
+        type=trade.trade_type,
+        coin=coin,
+        amount=trade.amount,
+        price_usd=current_price,
+        total_usd=total_usd,
+        status="completed",
+        created_at=now
+    )
+
+# ================= TRANSACTION ROUTES =================
+
+@api_router.get("/transactions", response_model=List[TransactionResponse])
+async def get_transactions(limit: int = 50, user: dict = Depends(get_current_user)):
+    transactions = await db.transactions.find(
+        {"user_id": user["user_id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    result = []
+    for tx in transactions:
+        created_at = tx.get("created_at")
+        if isinstance(created_at, str):
+            created_at = datetime.fromisoformat(created_at)
+        
+        result.append(TransactionResponse(
+            tx_id=tx["tx_id"],
+            user_id=tx["user_id"],
+            type=tx["type"],
+            coin=tx["coin"],
+            amount=tx["amount"],
+            price_usd=tx.get("price_usd"),
+            total_usd=tx.get("total_usd"),
+            status=tx["status"],
+            created_at=created_at
+        ))
+    
+    return result
+
+# ================= MARKET DATA ROUTES =================
+
+@api_router.get("/market/prices", response_model=List[CryptoPrice])
+async def get_market_prices():
+    """Get current prices for major cryptocurrencies"""
+    try:
+        data = cg.get_coins_markets(
+            vs_currency='usd',
+            ids='bitcoin,ethereum,binancecoin,ripple,solana,cardano,dogecoin,polkadot',
+            order='market_cap_desc',
+            per_page=10,
+            page=1,
+            sparkline=False,
+            price_change_percentage='24h'
+        )
+        
+        return [
+            CryptoPrice(
+                coin_id=coin['id'],
+                symbol=coin['symbol'],
+                name=coin['name'],
+                current_price=coin['current_price'] or 0,
+                price_change_24h=coin.get('price_change_24h') or 0,
+                price_change_percentage_24h=coin.get('price_change_percentage_24h') or 0,
+                market_cap=coin.get('market_cap') or 0,
+                volume_24h=coin.get('total_volume') or 0,
+                image=coin.get('image')
+            )
+            for coin in data
+        ]
+    except Exception as e:
+        logger.error(f"Error fetching market data: {e}")
+        # Return fallback data
+        fallback = [
+            {"coin_id": "bitcoin", "symbol": "btc", "name": "Bitcoin", "current_price": 95000, "price_change_24h": 1200, "price_change_percentage_24h": 1.28, "market_cap": 1870000000000, "volume_24h": 45000000000},
+            {"coin_id": "ethereum", "symbol": "eth", "name": "Ethereum", "current_price": 3500, "price_change_24h": 85, "price_change_percentage_24h": 2.49, "market_cap": 420000000000, "volume_24h": 18000000000},
+            {"coin_id": "binancecoin", "symbol": "bnb", "name": "BNB", "current_price": 650, "price_change_24h": 12, "price_change_percentage_24h": 1.88, "market_cap": 95000000000, "volume_24h": 2500000000},
+            {"coin_id": "ripple", "symbol": "xrp", "name": "XRP", "current_price": 2.5, "price_change_24h": 0.08, "price_change_percentage_24h": 3.31, "market_cap": 140000000000, "volume_24h": 12000000000},
+            {"coin_id": "solana", "symbol": "sol", "name": "Solana", "current_price": 180, "price_change_24h": 5.4, "price_change_percentage_24h": 3.09, "market_cap": 85000000000, "volume_24h": 4500000000},
+        ]
+        return [CryptoPrice(**coin, image=None) for coin in fallback]
+
+@api_router.get("/market/chart/{coin_id}")
+async def get_price_chart(coin_id: str, days: int = 7):
+    """Get historical price data for charts"""
+    try:
+        data = cg.get_coin_market_chart_by_id(
+            id=coin_id,
+            vs_currency='usd',
+            days=days
+        )
+        
+        return {
+            "coin_id": coin_id,
+            "days": days,
+            "prices": data['prices'],
+            "market_caps": data['market_caps'],
+            "volumes": data['total_volumes']
+        }
+    except Exception as e:
+        logger.error(f"Error fetching chart data: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch chart data")
+
+# ================= ROOT ROUTE =================
+
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "CryptoVault Exchange API", "version": "1.0.0"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
-
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
-
-# Include the router in the main app
+# Include router
 app.include_router(api_router)
 
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
@@ -76,13 +702,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

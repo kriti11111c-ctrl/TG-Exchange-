@@ -1,51 +1,202 @@
-import { useEffect } from "react";
+import { useState, useEffect, useCallback, createContext, useContext } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate, Link } from "react-router-dom";
 import axios from "axios";
+import { Toaster, toast } from "sonner";
+
+// Pages
+import LandingPage from "./pages/LandingPage";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
+import Dashboard from "./pages/Dashboard";
+import WalletPage from "./pages/WalletPage";
+import TradePage from "./pages/TradePage";
+import TransactionsPage from "./pages/TransactionsPage";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+export const API = `${BACKEND_URL}/api`;
 
-const Home = () => {
-  const helloWorldApi = async () => {
+// Auth Context
+const AuthContext = createContext(null);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return context;
+};
+
+// Auth Provider
+const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const checkAuth = useCallback(async () => {
+    // CRITICAL: If returning from OAuth callback, skip the /me check.
+    // AuthCallback will exchange the session_id and establish the session first.
+    if (window.location.hash?.includes('session_id=')) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
+      const response = await axios.get(`${API}/auth/me`, {
+        withCredentials: true
+      });
+      setUser(response.data);
+    } catch (error) {
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  const login = (userData, token) => {
+    setUser(userData);
+    if (token) {
+      localStorage.setItem('auth_token', token);
     }
   };
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+  const logout = async () => {
+    try {
+      await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+    setUser(null);
+    localStorage.removeItem('auth_token');
+  };
 
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
+    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// Protected Route
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+};
+
+// Auth Callback Component
+const AuthCallback = () => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const location = useLocation();
+
+  useEffect(() => {
+    const processSession = async () => {
+      const hash = window.location.hash;
+      const sessionId = hash.split('session_id=')[1];
+      
+      if (!sessionId) {
+        navigate('/login');
+        return;
+      }
+
+      try {
+        const response = await axios.post(`${API}/auth/session`, {
+          session_id: sessionId
+        }, { withCredentials: true });
+
+        login(response.data);
+        toast.success("Login successful!");
+        navigate('/dashboard', { replace: true });
+      } catch (error) {
+        console.error("Auth callback error:", error);
+        toast.error("Authentication failed");
+        navigate('/login');
+      }
+    };
+
+    processSession();
+  }, [navigate, login, location]);
+
+  return (
+    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+      <div className="text-white text-xl">Authenticating...</div>
     </div>
   );
 };
 
+// App Router
+function AppRouter() {
+  const location = useLocation();
+  
+  // Check URL fragment for session_id (OAuth callback)
+  if (location.hash?.includes('session_id=')) {
+    return <AuthCallback />;
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/wallet" element={
+        <ProtectedRoute>
+          <WalletPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/trade" element={
+        <ProtectedRoute>
+          <TradePage />
+        </ProtectedRoute>
+      } />
+      <Route path="/transactions" element={
+        <ProtectedRoute>
+          <TransactionsPage />
+        </ProtectedRoute>
+      } />
+    </Routes>
+  );
+}
+
 function App() {
   return (
-    <div className="App">
+    <div className="min-h-screen bg-[#0A0A0A]">
+      <div className="noise-overlay" />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
+        <AuthProvider>
+          <AppRouter />
+          <Toaster 
+            position="top-right" 
+            toastOptions={{
+              style: {
+                background: '#12121A',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: '#fff'
+              }
+            }}
+          />
+        </AuthProvider>
       </BrowserRouter>
     </div>
   );
