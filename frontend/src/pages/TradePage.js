@@ -71,7 +71,7 @@ const OrderBook = ({ selectedCoin, currentPrice }) => {
       const asks = [];
       const bids = [];
       
-      for (let i = 0; i < 12; i++) {
+      for (let i = 0; i < 8; i++) {
         const askPrice = price * (1 + (i + 1) * 0.0005);
         const bidPrice = price * (1 - (i + 1) * 0.0005);
         const askAmount = (Math.random() * 2 + 0.1).toFixed(5);
@@ -95,56 +95,50 @@ const OrderBook = ({ selectedCoin, currentPrice }) => {
   );
 
   return (
-    <div className="bg-[#0B0E11] border border-[#2B3139] h-full">
-      <div className="p-3 border-b border-[#2B3139] flex items-center justify-between">
-        <span className="text-sm font-medium text-white">Order Book</span>
-        <div className="flex gap-1">
-          <button className="p-1 hover:bg-[#2B3139] rounded">
-            <List size={14} className="text-[#848E9C]" />
-          </button>
-        </div>
+    <div className="bg-[#0B0E11] border border-[#2B3139] h-full overflow-hidden">
+      <div className="p-2 border-b border-[#2B3139]">
+        <span className="text-xs font-medium text-white">Order Book</span>
       </div>
       
-      <div className="px-3 py-2 grid grid-cols-3 text-xs text-[#848E9C] border-b border-[#2B3139]">
-        <span>Price(USDT)</span>
-        <span className="text-right">Amount({selectedCoin?.toUpperCase()})</span>
+      <div className="px-2 py-1 grid grid-cols-3 text-[10px] text-[#848E9C] border-b border-[#2B3139]">
+        <span>Price</span>
+        <span className="text-right">Amt</span>
         <span className="text-right">Total</span>
       </div>
       
       {/* Asks (Sell orders) */}
-      <div className="max-h-[200px] overflow-hidden">
+      <div className="max-h-[120px] lg:max-h-[150px] overflow-hidden">
         {orders.asks.map((order, i) => (
-          <div key={`ask-${i}`} className="relative px-3 py-1 grid grid-cols-3 text-xs hover:bg-[#1E2329]">
+          <div key={`ask-${i}`} className="relative px-2 py-0.5 grid grid-cols-3 text-[10px]">
             <div 
               className="absolute right-0 top-0 bottom-0 bg-[#F6465D]/10" 
               style={{ width: `${(order.amount / maxTotal) * 100}%` }}
             />
-            <span className="text-[#F6465D] font-mono relative z-10">{order.price.toFixed(2)}</span>
-            <span className="text-right text-[#EAECEF] font-mono relative z-10">{order.amount.toFixed(5)}</span>
-            <span className="text-right text-[#848E9C] font-mono relative z-10">{(order.price * order.amount).toFixed(2)}</span>
+            <span className="text-[#F6465D] font-mono relative z-10">{order.price.toFixed(1)}</span>
+            <span className="text-right text-[#EAECEF] font-mono relative z-10">{order.amount.toFixed(4)}</span>
+            <span className="text-right text-[#848E9C] font-mono relative z-10">{(order.price * order.amount / 1000).toFixed(1)}K</span>
           </div>
         ))}
       </div>
       
       {/* Current Price */}
-      <div className="px-3 py-2 border-y border-[#2B3139] bg-[#1E2329]">
-        <span className="text-lg font-bold text-[#0ECB81] font-mono">
+      <div className="px-2 py-1 border-y border-[#2B3139] bg-[#1E2329]">
+        <span className="text-sm font-bold text-[#0ECB81] font-mono">
           {currentPrice?.toLocaleString('en-US', { minimumFractionDigits: 2 })}
         </span>
-        <span className="text-xs text-[#848E9C] ml-2">≈ ${currentPrice?.toLocaleString()}</span>
       </div>
       
       {/* Bids (Buy orders) */}
-      <div className="max-h-[200px] overflow-hidden">
+      <div className="max-h-[120px] lg:max-h-[150px] overflow-hidden">
         {orders.bids.map((order, i) => (
-          <div key={`bid-${i}`} className="relative px-3 py-1 grid grid-cols-3 text-xs hover:bg-[#1E2329]">
+          <div key={`bid-${i}`} className="relative px-2 py-0.5 grid grid-cols-3 text-[10px]">
             <div 
               className="absolute right-0 top-0 bottom-0 bg-[#0ECB81]/10" 
               style={{ width: `${(order.amount / maxTotal) * 100}%` }}
             />
-            <span className="text-[#0ECB81] font-mono relative z-10">{order.price.toFixed(2)}</span>
-            <span className="text-right text-[#EAECEF] font-mono relative z-10">{order.amount.toFixed(5)}</span>
-            <span className="text-right text-[#848E9C] font-mono relative z-10">{(order.price * order.amount).toFixed(2)}</span>
+            <span className="text-[#0ECB81] font-mono relative z-10">{order.price.toFixed(1)}</span>
+            <span className="text-right text-[#EAECEF] font-mono relative z-10">{order.amount.toFixed(4)}</span>
+            <span className="text-right text-[#848E9C] font-mono relative z-10">{(order.price * order.amount / 1000).toFixed(1)}K</span>
           </div>
         ))}
       </div>
@@ -161,7 +155,7 @@ const RecentTrades = ({ selectedCoin, currentPrice }) => {
       const price = currentPrice || 69500;
       const newTrades = [];
       
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 15; i++) {
         const isBuy = Math.random() > 0.5;
         const tradePrice = price * (1 + (Math.random() - 0.5) * 0.002);
         const amount = (Math.random() * 0.5 + 0.001).toFixed(5);
@@ -170,7 +164,7 @@ const RecentTrades = ({ selectedCoin, currentPrice }) => {
         newTrades.push({
           price: tradePrice,
           amount: parseFloat(amount),
-          time: time.toLocaleTimeString('en-US', { hour12: false }),
+          time: time.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
           isBuy
         });
       }
@@ -184,24 +178,24 @@ const RecentTrades = ({ selectedCoin, currentPrice }) => {
   }, [currentPrice]);
 
   return (
-    <div className="bg-[#0B0E11] border border-[#2B3139] h-full">
-      <div className="p-3 border-b border-[#2B3139]">
-        <span className="text-sm font-medium text-white">Recent Trades</span>
+    <div className="bg-[#0B0E11] border border-[#2B3139] h-full overflow-hidden">
+      <div className="p-2 border-b border-[#2B3139]">
+        <span className="text-xs font-medium text-white">Recent Trades</span>
       </div>
       
-      <div className="px-3 py-2 grid grid-cols-3 text-xs text-[#848E9C] border-b border-[#2B3139]">
-        <span>Price(USDT)</span>
-        <span className="text-right">Amount({selectedCoin?.toUpperCase()})</span>
+      <div className="px-2 py-1 grid grid-cols-3 text-[10px] text-[#848E9C] border-b border-[#2B3139]">
+        <span>Price</span>
+        <span className="text-right">Amt</span>
         <span className="text-right">Time</span>
       </div>
       
-      <div className="max-h-[400px] overflow-y-auto">
+      <div className="max-h-[250px] lg:max-h-[350px] overflow-y-auto">
         {trades.map((trade, i) => (
-          <div key={i} className="px-3 py-1 grid grid-cols-3 text-xs hover:bg-[#1E2329]">
+          <div key={i} className="px-2 py-0.5 grid grid-cols-3 text-[10px]">
             <span className={`font-mono ${trade.isBuy ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
-              {trade.price.toFixed(2)}
+              {trade.price.toFixed(1)}
             </span>
-            <span className="text-right text-[#EAECEF] font-mono">{trade.amount.toFixed(5)}</span>
+            <span className="text-right text-[#EAECEF] font-mono">{trade.amount.toFixed(4)}</span>
             <span className="text-right text-[#848E9C] font-mono">{trade.time}</span>
           </div>
         ))}
@@ -634,9 +628,9 @@ const TradePage = () => {
         </div>
 
         {/* Main Grid */}
-        <div className="grid grid-cols-12 gap-[1px] bg-[#2B3139]">
-          {/* Left - Trading Pairs */}
-          <div className="col-span-2 hidden lg:block">
+        <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-[1px] bg-[#2B3139]">
+          {/* Left - Trading Pairs (Hidden on mobile) */}
+          <div className="hidden lg:block lg:col-span-2">
             <TradingPairs 
               prices={prices} 
               selectedCoin={selectedCoin} 
@@ -645,7 +639,7 @@ const TradePage = () => {
           </div>
           
           {/* Center - Chart */}
-          <div className="col-span-12 lg:col-span-6">
+          <div className="w-full lg:col-span-6 overflow-hidden">
             <CandlestickChart 
               chartData={chartData} 
               currentPrice={getCurrentPrice()} 
@@ -653,53 +647,42 @@ const TradePage = () => {
             />
             
             {/* Buy/Sell Panel */}
-            <div className="bg-[#0B0E11] border border-[#2B3139] p-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="bg-[#0B0E11] border border-[#2B3139] p-3 md:p-4">
+              <div className="grid grid-cols-2 gap-2 md:gap-4">
                 {/* Buy Side */}
-                <div>
-                  <Tabs value={orderType} onValueChange={setOrderType} className="mb-4">
-                    <TabsList className="bg-transparent border-b border-[#2B3139] w-full justify-start rounded-none p-0">
-                      <TabsTrigger value="limit" className="text-xs data-[state=active]:text-[#F0B90B] data-[state=active]:border-b-2 data-[state=active]:border-[#F0B90B] rounded-none">
-                        Limit
-                      </TabsTrigger>
-                      <TabsTrigger value="market" className="text-xs data-[state=active]:text-[#F0B90B] data-[state=active]:border-b-2 data-[state=active]:border-[#F0B90B] rounded-none">
-                        Market
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
+                <div className="min-w-0">
+                  <div className="text-xs text-[#848E9C] flex justify-between mb-2">
+                    <span>Avbl</span>
+                    <span className="text-white truncate ml-1">{wallet?.balances?.usdt?.toFixed(2) || '0.00'} USDT</span>
+                  </div>
                   
                   <form onSubmit={(e) => { setTradeType('buy'); handleTrade(e); }}>
-                    <div className="space-y-3">
-                      <div className="text-xs text-[#848E9C] flex justify-between">
-                        <span>Avbl</span>
-                        <span className="text-white">{wallet?.balances?.usdt?.toFixed(2) || '0.00'} USDT</span>
-                      </div>
-                      
+                    <div className="space-y-2">
                       {orderType === 'limit' && (
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#848E9C]">Price</span>
                           <Input
                             type="number"
                             step="any"
                             value={price}
                             onChange={(e) => setPrice(e.target.value)}
-                            className="pl-14 pr-16 bg-[#1E2329] border-[#2B3139] text-right font-mono"
+                            placeholder="Price"
+                            className="pr-12 text-xs bg-[#1E2329] border-[#2B3139] text-right font-mono h-9"
                           />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#848E9C]">USDT</span>
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#848E9C]">USDT</span>
                         </div>
                       )}
                       
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#848E9C]">Amount</span>
                         <Input
                           type="number"
                           step="any"
                           value={amount}
                           onChange={(e) => setAmount(e.target.value)}
-                          className="pl-16 pr-16 bg-[#1E2329] border-[#2B3139] text-right font-mono"
+                          placeholder="Amount"
+                          className="pr-12 text-xs bg-[#1E2329] border-[#2B3139] text-right font-mono h-9"
                           data-testid="buy-amount-input"
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#848E9C]">{selectedCoin.toUpperCase()}</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#848E9C]">{selectedCoin.toUpperCase()}</span>
                       </div>
                       
                       <div className="grid grid-cols-4 gap-1">
@@ -708,7 +691,7 @@ const TradePage = () => {
                             key={pct}
                             type="button"
                             onClick={() => { setTradeType('buy'); setPercentage(pct); }}
-                            className="py-1 text-xs bg-[#1E2329] text-[#848E9C] hover:bg-[#2B3139] rounded"
+                            className="py-1 text-[10px] bg-[#1E2329] text-[#848E9C] hover:bg-[#2B3139] rounded"
                           >
                             {pct}%
                           </button>
@@ -716,20 +699,20 @@ const TradePage = () => {
                       </div>
                       
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#848E9C]">Total</span>
                         <Input
                           type="text"
                           value={calculateTotal().toFixed(2)}
                           readOnly
-                          className="pl-14 pr-16 bg-[#1E2329] border-[#2B3139] text-right font-mono"
+                          placeholder="Total"
+                          className="pr-12 text-xs bg-[#1E2329] border-[#2B3139] text-right font-mono h-9"
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#848E9C]">USDT</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#848E9C]">USDT</span>
                       </div>
                       
                       <Button
                         type="submit"
                         disabled={submitting || !amount}
-                        className="w-full bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white font-semibold"
+                        className="w-full h-10 bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white font-semibold text-sm"
                         data-testid="buy-submit-btn"
                       >
                         Buy {selectedCoin.toUpperCase()}
@@ -739,50 +722,39 @@ const TradePage = () => {
                 </div>
                 
                 {/* Sell Side */}
-                <div>
-                  <Tabs value={orderType} onValueChange={setOrderType} className="mb-4">
-                    <TabsList className="bg-transparent border-b border-[#2B3139] w-full justify-start rounded-none p-0">
-                      <TabsTrigger value="limit" className="text-xs data-[state=active]:text-[#F0B90B] data-[state=active]:border-b-2 data-[state=active]:border-[#F0B90B] rounded-none">
-                        Limit
-                      </TabsTrigger>
-                      <TabsTrigger value="market" className="text-xs data-[state=active]:text-[#F0B90B] data-[state=active]:border-b-2 data-[state=active]:border-[#F0B90B] rounded-none">
-                        Market
-                      </TabsTrigger>
-                    </TabsList>
-                  </Tabs>
+                <div className="min-w-0">
+                  <div className="text-xs text-[#848E9C] flex justify-between mb-2">
+                    <span>Avbl</span>
+                    <span className="text-white truncate ml-1">{wallet?.balances?.[selectedCoin]?.toFixed(4) || '0'} {selectedCoin.toUpperCase()}</span>
+                  </div>
                   
                   <form onSubmit={(e) => { setTradeType('sell'); handleTrade(e); }}>
-                    <div className="space-y-3">
-                      <div className="text-xs text-[#848E9C] flex justify-between">
-                        <span>Avbl</span>
-                        <span className="text-white">{wallet?.balances?.[selectedCoin]?.toFixed(6) || '0.00'} {selectedCoin.toUpperCase()}</span>
-                      </div>
-                      
+                    <div className="space-y-2">
                       {orderType === 'limit' && (
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#848E9C]">Price</span>
                           <Input
                             type="number"
                             step="any"
                             value={price}
                             onChange={(e) => setPrice(e.target.value)}
-                            className="pl-14 pr-16 bg-[#1E2329] border-[#2B3139] text-right font-mono"
+                            placeholder="Price"
+                            className="pr-12 text-xs bg-[#1E2329] border-[#2B3139] text-right font-mono h-9"
                           />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#848E9C]">USDT</span>
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#848E9C]">USDT</span>
                         </div>
                       )}
                       
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#848E9C]">Amount</span>
                         <Input
                           type="number"
                           step="any"
                           value={amount}
                           onChange={(e) => setAmount(e.target.value)}
-                          className="pl-16 pr-16 bg-[#1E2329] border-[#2B3139] text-right font-mono"
+                          placeholder="Amount"
+                          className="pr-12 text-xs bg-[#1E2329] border-[#2B3139] text-right font-mono h-9"
                           data-testid="sell-amount-input"
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#848E9C]">{selectedCoin.toUpperCase()}</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#848E9C]">{selectedCoin.toUpperCase()}</span>
                       </div>
                       
                       <div className="grid grid-cols-4 gap-1">
@@ -791,7 +763,7 @@ const TradePage = () => {
                             key={pct}
                             type="button"
                             onClick={() => { setTradeType('sell'); setPercentage(pct); }}
-                            className="py-1 text-xs bg-[#1E2329] text-[#848E9C] hover:bg-[#2B3139] rounded"
+                            className="py-1 text-[10px] bg-[#1E2329] text-[#848E9C] hover:bg-[#2B3139] rounded"
                           >
                             {pct}%
                           </button>
@@ -799,20 +771,20 @@ const TradePage = () => {
                       </div>
                       
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[#848E9C]">Total</span>
                         <Input
                           type="text"
                           value={calculateTotal().toFixed(2)}
                           readOnly
-                          className="pl-14 pr-16 bg-[#1E2329] border-[#2B3139] text-right font-mono"
+                          placeholder="Total"
+                          className="pr-12 text-xs bg-[#1E2329] border-[#2B3139] text-right font-mono h-9"
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[#848E9C]">USDT</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#848E9C]">USDT</span>
                       </div>
                       
                       <Button
                         type="submit"
                         disabled={submitting || !amount}
-                        className="w-full bg-[#F6465D] hover:bg-[#F6465D]/90 text-white font-semibold"
+                        className="w-full h-10 bg-[#F6465D] hover:bg-[#F6465D]/90 text-white font-semibold text-sm"
                         data-testid="sell-submit-btn"
                       >
                         Sell {selectedCoin.toUpperCase()}
@@ -824,8 +796,8 @@ const TradePage = () => {
             </div>
           </div>
           
-          {/* Right - Order Book & Trades */}
-          <div className="col-span-12 lg:col-span-4 grid grid-rows-2 gap-[1px]">
+          {/* Right - Order Book & Trades (Side by side on mobile, stacked on desktop) */}
+          <div className="w-full lg:col-span-4 grid grid-cols-2 lg:grid-cols-1 lg:grid-rows-2 gap-[1px]">
             <OrderBook selectedCoin={selectedCoin} currentPrice={getCurrentPrice()} />
             <RecentTrades selectedCoin={selectedCoin} currentPrice={getCurrentPrice()} />
           </div>
