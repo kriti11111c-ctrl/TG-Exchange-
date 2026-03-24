@@ -13,7 +13,7 @@ from datetime import datetime, timezone, timedelta
 import bcrypt
 from jose import jwt, JWTError
 import httpx
-from pycoingecko import CoinGeckoAPI
+import asyncio
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -28,8 +28,17 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'your-super-secret-key-change-in-produ
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
 
-# CoinGecko API
-cg = CoinGeckoAPI()
+# Simple in-memory cache for prices
+price_cache = {
+    "data": None,
+    "timestamp": None,
+    "ttl": 60  # Cache for 60 seconds
+}
+
+chart_cache = {}
+
+# CoinGecko API Base URL
+COINGECKO_API_URL = "https://api.coingecko.com/api/v3"
 
 # Create the main app
 app = FastAPI(title="CryptoVault Exchange")
@@ -514,16 +523,34 @@ async def execute_trade(trade: TradeRequest, user: dict = Depends(get_current_us
     if trade.trade_type not in ["buy", "sell"]:
         raise HTTPException(status_code=400, detail="Trade type must be 'buy' or 'sell'")
     
-    # Get current price from CoinGecko
-    try:
-        price_data = cg.get_price(ids=coin if coin != "bnb" else "binancecoin", vs_currencies='usd')
-        coin_key = coin if coin != "bnb" else "binancecoin"
-        current_price = price_data[coin_key]['usd']
-    except Exception as e:
-        logger.error(f"Error fetching price: {e}")
-        # Fallback prices
-        fallback_prices = {"btc": 95000, "eth": 3500, "bnb": 650, "xrp": 2.5, "sol": 180}
-        current_price = fallback_prices.get(coin, 100)
+    # Get current price - try cache first, then API
+    coin_id_map = {"btc": "bitcoin", "eth": "ethereum", "bnb": "binancecoin", "xrp": "ripple", "sol": "solana"}
+    coin_id = coin_id_map.get(coin, coin)
+    
+    # Fallback prices
+    fallback_prices = {"btc": 69500, "eth": 2100, "bnb": 625, "xrp": 1.38, "sol": 88}
+    current_price = fallback_prices.get(coin, 100)
+    
+    # Try to get from cache first
+    if price_cache["data"]:
+        for p in price_cache["data"]:
+            if p.get('id') == coin_id or p.get('symbol') == coin:
+                current_price = p.get('current_price', current_price)
+                break
+    else:
+        # Try to fetch fresh
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as http_client:
+                response = await http_client.get(
+                    f"{COINGECKO_API_URL}/simple/price",
+                    params={"ids": coin_id, "vs_currencies": "usd"}
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    if coin_id in data:
+                        current_price = data[coin_id].get('usd', current_price)
+        except Exception as e:
+            logger.warning(f"Could not fetch price for {coin}, using fallback: {e}")
     
     total_usd = trade.amount * current_price
     wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
@@ -624,66 +651,143 @@ async def get_transactions(limit: int = 50, user: dict = Depends(get_current_use
 
 # ================= MARKET DATA ROUTES =================
 
+async def fetch_coingecko_prices():
+    """Fetch prices from CoinGecko with timeout and caching"""
+    global price_cache
+    
+    # Check cache
+    if price_cache["data"] and price_cache["timestamp"]:
+        age = (datetime.now(timezone.utc) - price_cache["timestamp"]).total_seconds()
+        if age < price_cache["ttl"]:
+            return price_cache["data"]
+    
+    # Fetch from API with timeout
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            response = await client.get(
+                f"{COINGECKO_API_URL}/coins/markets",
+                params={
+                    "vs_currency": "usd",
+                    "ids": "bitcoin,ethereum,binancecoin,ripple,solana,cardano,dogecoin,polkadot",
+                    "order": "market_cap_desc",
+                    "per_page": 10,
+                    "page": 1,
+                    "sparkline": "false",
+                    "price_change_percentage": "24h"
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                price_cache["data"] = data
+                price_cache["timestamp"] = datetime.now(timezone.utc)
+                return data
+            else:
+                logger.warning(f"CoinGecko API returned {response.status_code}")
+                return None
+        except Exception as e:
+            logger.error(f"Error fetching from CoinGecko: {e}")
+            return None
+
+def get_fallback_prices():
+    """Return fallback prices when API fails"""
+    return [
+        {"id": "bitcoin", "symbol": "btc", "name": "Bitcoin", "current_price": 69500, "price_change_24h": -850, "price_change_percentage_24h": -1.21, "market_cap": 1390000000000, "total_volume": 38000000000, "image": "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png"},
+        {"id": "ethereum", "symbol": "eth", "name": "Ethereum", "current_price": 2100, "price_change_24h": -25, "price_change_percentage_24h": -1.18, "market_cap": 253000000000, "total_volume": 17000000000, "image": "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png"},
+        {"id": "binancecoin", "symbol": "bnb", "name": "BNB", "current_price": 625, "price_change_24h": -10, "price_change_percentage_24h": -1.57, "market_cap": 85000000000, "total_volume": 1100000000, "image": "https://coin-images.coingecko.com/coins/images/825/large/bnb-icon2_2x.png"},
+        {"id": "ripple", "symbol": "xrp", "name": "XRP", "current_price": 1.38, "price_change_24h": -0.05, "price_change_percentage_24h": -3.5, "market_cap": 85000000000, "total_volume": 2200000000, "image": "https://coin-images.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png"},
+        {"id": "solana", "symbol": "sol", "name": "Solana", "current_price": 88, "price_change_24h": -1.2, "price_change_percentage_24h": -1.34, "market_cap": 50000000000, "total_volume": 4000000000, "image": "https://coin-images.coingecko.com/coins/images/4128/large/solana.png"},
+        {"id": "cardano", "symbol": "ada", "name": "Cardano", "current_price": 0.26, "price_change_24h": -0.002, "price_change_percentage_24h": -0.76, "market_cap": 9500000000, "total_volume": 420000000, "image": "https://coin-images.coingecko.com/coins/images/975/large/cardano.png"},
+        {"id": "dogecoin", "symbol": "doge", "name": "Dogecoin", "current_price": 0.092, "price_change_24h": -0.001, "price_change_percentage_24h": -1.07, "market_cap": 14000000000, "total_volume": 1100000000, "image": "https://coin-images.coingecko.com/coins/images/5/large/dogecoin.png"},
+        {"id": "polkadot", "symbol": "dot", "name": "Polkadot", "current_price": 1.37, "price_change_24h": -0.05, "price_change_percentage_24h": -3.52, "market_cap": 2300000000, "total_volume": 190000000, "image": "https://coin-images.coingecko.com/coins/images/12171/large/polkadot.jpg"},
+    ]
+
 @api_router.get("/market/prices", response_model=List[CryptoPrice])
 async def get_market_prices():
     """Get current prices for major cryptocurrencies"""
-    try:
-        data = cg.get_coins_markets(
-            vs_currency='usd',
-            ids='bitcoin,ethereum,binancecoin,ripple,solana,cardano,dogecoin,polkadot',
-            order='market_cap_desc',
-            per_page=10,
-            page=1,
-            sparkline=False,
-            price_change_percentage='24h'
-        )
-        
-        return [
-            CryptoPrice(
-                coin_id=coin['id'],
-                symbol=coin['symbol'],
-                name=coin['name'],
-                current_price=coin['current_price'] or 0,
-                price_change_24h=coin.get('price_change_24h') or 0,
-                price_change_percentage_24h=coin.get('price_change_percentage_24h') or 0,
-                market_cap=coin.get('market_cap') or 0,
-                volume_24h=coin.get('total_volume') or 0,
-                image=coin.get('image')
-            )
-            for coin in data
-        ]
-    except Exception as e:
-        logger.error(f"Error fetching market data: {e}")
-        # Return fallback data
-        fallback = [
-            {"coin_id": "bitcoin", "symbol": "btc", "name": "Bitcoin", "current_price": 95000, "price_change_24h": 1200, "price_change_percentage_24h": 1.28, "market_cap": 1870000000000, "volume_24h": 45000000000},
-            {"coin_id": "ethereum", "symbol": "eth", "name": "Ethereum", "current_price": 3500, "price_change_24h": 85, "price_change_percentage_24h": 2.49, "market_cap": 420000000000, "volume_24h": 18000000000},
-            {"coin_id": "binancecoin", "symbol": "bnb", "name": "BNB", "current_price": 650, "price_change_24h": 12, "price_change_percentage_24h": 1.88, "market_cap": 95000000000, "volume_24h": 2500000000},
-            {"coin_id": "ripple", "symbol": "xrp", "name": "XRP", "current_price": 2.5, "price_change_24h": 0.08, "price_change_percentage_24h": 3.31, "market_cap": 140000000000, "volume_24h": 12000000000},
-            {"coin_id": "solana", "symbol": "sol", "name": "Solana", "current_price": 180, "price_change_24h": 5.4, "price_change_percentage_24h": 3.09, "market_cap": 85000000000, "volume_24h": 4500000000},
-        ]
-        return [CryptoPrice(**coin, image=None) for coin in fallback]
+    data = await fetch_coingecko_prices()
+    
+    if not data:
+        # Use fallback data
+        data = get_fallback_prices()
+    
+    result = []
+    for coin in data:
+        result.append(CryptoPrice(
+            coin_id=coin.get('id', coin.get('coin_id', '')),
+            symbol=coin['symbol'],
+            name=coin['name'],
+            current_price=coin.get('current_price', 0) or 0,
+            price_change_24h=coin.get('price_change_24h', 0) or 0,
+            price_change_percentage_24h=coin.get('price_change_percentage_24h', 0) or 0,
+            market_cap=coin.get('market_cap', 0) or 0,
+            volume_24h=coin.get('total_volume', coin.get('volume_24h', 0)) or 0,
+            image=coin.get('image')
+        ))
+    
+    return result
 
 @api_router.get("/market/chart/{coin_id}")
 async def get_price_chart(coin_id: str, days: int = 7):
     """Get historical price data for charts"""
-    try:
-        data = cg.get_coin_market_chart_by_id(
-            id=coin_id,
-            vs_currency='usd',
-            days=days
-        )
-        
-        return {
-            "coin_id": coin_id,
-            "days": days,
-            "prices": data['prices'],
-            "market_caps": data['market_caps'],
-            "volumes": data['total_volumes']
-        }
-    except Exception as e:
-        logger.error(f"Error fetching chart data: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch chart data")
+    global chart_cache
+    
+    cache_key = f"{coin_id}_{days}"
+    
+    # Check cache (5 min TTL)
+    if cache_key in chart_cache:
+        cached = chart_cache[cache_key]
+        age = (datetime.now(timezone.utc) - cached["timestamp"]).total_seconds()
+        if age < 300:  # 5 minutes
+            return cached["data"]
+    
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            response = await client.get(
+                f"{COINGECKO_API_URL}/coins/{coin_id}/market_chart",
+                params={
+                    "vs_currency": "usd",
+                    "days": days
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                result = {
+                    "coin_id": coin_id,
+                    "days": days,
+                    "prices": data.get('prices', []),
+                    "market_caps": data.get('market_caps', []),
+                    "volumes": data.get('total_volumes', [])
+                }
+                
+                chart_cache[cache_key] = {
+                    "data": result,
+                    "timestamp": datetime.now(timezone.utc)
+                }
+                
+                return result
+            else:
+                raise HTTPException(status_code=500, detail="Failed to fetch chart data")
+        except httpx.TimeoutException:
+            logger.error(f"Timeout fetching chart for {coin_id}")
+            # Return empty chart data instead of error
+            return {
+                "coin_id": coin_id,
+                "days": days,
+                "prices": [],
+                "market_caps": [],
+                "volumes": []
+            }
+        except Exception as e:
+            logger.error(f"Error fetching chart data: {e}")
+            return {
+                "coin_id": coin_id,
+                "days": days,
+                "prices": [],
+                "market_caps": [],
+                "volumes": []
+            }
 
 # ================= ROOT ROUTE =================
 
