@@ -16,6 +16,38 @@ import TransactionsPage from "./pages/TransactionsPage";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
 
+// Theme Context
+const ThemeContext = createContext(null);
+
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error("useTheme must be used within ThemeProvider");
+  }
+  return context;
+};
+
+// Theme Provider
+const ThemeProvider = ({ children }) => {
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved ? saved === 'dark' : true; // Default to dark
+  });
+
+  useEffect(() => {
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
+
+  const toggleTheme = () => setIsDark(!isDark);
+
+  return (
+    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};
+
 // Auth Context
 const AuthContext = createContext(null);
 
@@ -181,8 +213,18 @@ function AppRouter() {
 
 function App() {
   return (
-    <div className="min-h-screen bg-[#0A0A0A]">
-      <div className="noise-overlay" />
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
+}
+
+function AppContent() {
+  const { isDark } = useTheme();
+  
+  return (
+    <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0B0E11]' : 'bg-[#FAFAFA]'}`}>
+      {isDark && <div className="noise-overlay" />}
       <BrowserRouter>
         <AuthProvider>
           <AppRouter />
@@ -190,9 +232,9 @@ function App() {
             position="top-right" 
             toastOptions={{
               style: {
-                background: '#12121A',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: '#fff'
+                background: isDark ? '#1E2329' : '#FFFFFF',
+                border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
+                color: isDark ? '#fff' : '#1E2329'
               }
             }}
           />

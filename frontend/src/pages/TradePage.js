@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useAuth, API } from "../App";
+import { useAuth, API, useTheme } from "../App";
 import axios from "axios";
 import { toast } from "sonner";
 import { 
@@ -16,40 +16,52 @@ import {
   ArrowUp,
   MagnifyingGlass,
   Star,
-  List
+  List,
+  Sun,
+  Moon
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 
-// Navigation Component
+// Navigation Component with Theme Toggle
 const DashboardNav = () => {
   const { user, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0B0E11] border-b border-[#2B3139]">
+    <nav className={`fixed top-0 left-0 right-0 z-50 border-b transition-colors ${isDark ? 'bg-[#0B0E11] border-[#2B3139]' : 'bg-white border-gray-200'}`}>
       <div className="max-w-full mx-auto px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link to="/dashboard" className="flex items-center gap-2" data-testid="trade-logo">
             <Vault size={28} weight="duotone" className="text-[#F0B90B]" />
-            <span className="font-bold text-lg text-white">CryptoVault</span>
+            <span className={`font-bold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>CryptoVault</span>
           </Link>
           
           <div className="hidden md:flex items-center gap-4 text-sm">
-            <Link to="/dashboard" className="text-[#848E9C] hover:text-white">Dashboard</Link>
+            <Link to="/dashboard" className={`${isDark ? 'text-[#848E9C] hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>Dashboard</Link>
             <Link to="/trade" className="text-[#F0B90B]">Trade</Link>
-            <Link to="/wallet" className="text-[#848E9C] hover:text-white">Wallet</Link>
-            <Link to="/transactions" className="text-[#848E9C] hover:text-white">History</Link>
+            <Link to="/wallet" className={`${isDark ? 'text-[#848E9C] hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>Wallet</Link>
+            <Link to="/transactions" className={`${isDark ? 'text-[#848E9C] hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>History</Link>
           </div>
         </div>
         
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-[#848E9C]">{user?.name}</span>
+        <div className="flex items-center gap-3">
+          {/* Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className={`p-2 rounded-full transition-colors ${isDark ? 'bg-[#2B3139] hover:bg-[#3B4149] text-[#F0B90B]' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+            data-testid="theme-toggle"
+          >
+            {isDark ? <Sun size={20} weight="fill" /> : <Moon size={20} weight="fill" />}
+          </button>
+          
+          <span className={`text-sm ${isDark ? 'text-[#848E9C]' : 'text-gray-600'}`}>{user?.name}</span>
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={logout}
-            className="text-[#848E9C] hover:text-[#F0B90B] hover:bg-transparent"
+            className={`${isDark ? 'text-[#848E9C] hover:text-[#F0B90B]' : 'text-gray-600 hover:text-red-500'} hover:bg-transparent`}
             data-testid="logout-btn"
           >
             <SignOut size={18} />
@@ -61,7 +73,7 @@ const DashboardNav = () => {
 };
 
 // Order Book Component
-const OrderBook = ({ selectedCoin, currentPrice }) => {
+const OrderBook = ({ selectedCoin, currentPrice, isDark }) => {
   const [orders, setOrders] = useState({ asks: [], bids: [] });
 
   useEffect(() => {
@@ -94,13 +106,20 @@ const OrderBook = ({ selectedCoin, currentPrice }) => {
     ...orders.bids.map(o => o.amount)
   );
 
+  const bg = isDark ? 'bg-[#0B0E11]' : 'bg-white';
+  const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
+  const text = isDark ? 'text-white' : 'text-gray-900';
+  const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
+  const textPrice = isDark ? 'text-[#EAECEF]' : 'text-gray-800';
+  const priceBg = isDark ? 'bg-[#1E2329]' : 'bg-gray-100';
+
   return (
-    <div className="bg-[#0B0E11] border border-[#2B3139] h-full overflow-hidden">
-      <div className="p-2 border-b border-[#2B3139]">
-        <span className="text-xs font-medium text-white">Order Book</span>
+    <div className={`${bg} border ${border} h-full overflow-hidden`}>
+      <div className={`p-2 border-b ${border}`}>
+        <span className={`text-xs font-medium ${text}`}>Order Book</span>
       </div>
       
-      <div className="px-2 py-1 grid grid-cols-3 text-[10px] text-[#848E9C] border-b border-[#2B3139]">
+      <div className={`px-2 py-1 grid grid-cols-3 text-[10px] ${textMuted} border-b ${border}`}>
         <span>Price</span>
         <span className="text-right">Amt</span>
         <span className="text-right">Total</span>
@@ -115,14 +134,14 @@ const OrderBook = ({ selectedCoin, currentPrice }) => {
               style={{ width: `${(order.amount / maxTotal) * 100}%` }}
             />
             <span className="text-[#F6465D] font-mono relative z-10">{order.price.toFixed(1)}</span>
-            <span className="text-right text-[#EAECEF] font-mono relative z-10">{order.amount.toFixed(4)}</span>
-            <span className="text-right text-[#848E9C] font-mono relative z-10">{(order.price * order.amount / 1000).toFixed(1)}K</span>
+            <span className={`text-right ${textPrice} font-mono relative z-10`}>{order.amount.toFixed(4)}</span>
+            <span className={`text-right ${textMuted} font-mono relative z-10`}>{(order.price * order.amount / 1000).toFixed(1)}K</span>
           </div>
         ))}
       </div>
       
       {/* Current Price */}
-      <div className="px-2 py-1 border-y border-[#2B3139] bg-[#1E2329]">
+      <div className={`px-2 py-1 border-y ${border} ${priceBg}`}>
         <span className="text-sm font-bold text-[#0ECB81] font-mono">
           {currentPrice?.toLocaleString('en-US', { minimumFractionDigits: 2 })}
         </span>
@@ -137,8 +156,8 @@ const OrderBook = ({ selectedCoin, currentPrice }) => {
               style={{ width: `${(order.amount / maxTotal) * 100}%` }}
             />
             <span className="text-[#0ECB81] font-mono relative z-10">{order.price.toFixed(1)}</span>
-            <span className="text-right text-[#EAECEF] font-mono relative z-10">{order.amount.toFixed(4)}</span>
-            <span className="text-right text-[#848E9C] font-mono relative z-10">{(order.price * order.amount / 1000).toFixed(1)}K</span>
+            <span className={`text-right ${textPrice} font-mono relative z-10`}>{order.amount.toFixed(4)}</span>
+            <span className={`text-right ${textMuted} font-mono relative z-10`}>{(order.price * order.amount / 1000).toFixed(1)}K</span>
           </div>
         ))}
       </div>
@@ -147,7 +166,7 @@ const OrderBook = ({ selectedCoin, currentPrice }) => {
 };
 
 // Recent Trades Component
-const RecentTrades = ({ selectedCoin, currentPrice }) => {
+const RecentTrades = ({ selectedCoin, currentPrice, isDark }) => {
   const [trades, setTrades] = useState([]);
 
   useEffect(() => {
@@ -177,13 +196,19 @@ const RecentTrades = ({ selectedCoin, currentPrice }) => {
     return () => clearInterval(interval);
   }, [currentPrice]);
 
+  const bg = isDark ? 'bg-[#0B0E11]' : 'bg-white';
+  const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
+  const text = isDark ? 'text-white' : 'text-gray-900';
+  const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
+  const textPrice = isDark ? 'text-[#EAECEF]' : 'text-gray-800';
+
   return (
-    <div className="bg-[#0B0E11] border border-[#2B3139] h-full overflow-hidden">
-      <div className="p-2 border-b border-[#2B3139]">
-        <span className="text-xs font-medium text-white">Recent Trades</span>
+    <div className={`${bg} border ${border} h-full overflow-hidden`}>
+      <div className={`p-2 border-b ${border}`}>
+        <span className={`text-xs font-medium ${text}`}>Recent Trades</span>
       </div>
       
-      <div className="px-2 py-1 grid grid-cols-3 text-[10px] text-[#848E9C] border-b border-[#2B3139]">
+      <div className={`px-2 py-1 grid grid-cols-3 text-[10px] ${textMuted} border-b ${border}`}>
         <span>Price</span>
         <span className="text-right">Amt</span>
         <span className="text-right">Time</span>
@@ -195,8 +220,8 @@ const RecentTrades = ({ selectedCoin, currentPrice }) => {
             <span className={`font-mono ${trade.isBuy ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
               {trade.price.toFixed(1)}
             </span>
-            <span className="text-right text-[#EAECEF] font-mono">{trade.amount.toFixed(4)}</span>
-            <span className="text-right text-[#848E9C] font-mono">{trade.time}</span>
+            <span className={`text-right ${textPrice} font-mono`}>{trade.amount.toFixed(4)}</span>
+            <span className={`text-right ${textMuted} font-mono`}>{trade.time}</span>
           </div>
         ))}
       </div>
@@ -205,7 +230,7 @@ const RecentTrades = ({ selectedCoin, currentPrice }) => {
 };
 
 // Trading Pairs Sidebar
-const TradingPairs = ({ prices, selectedCoin, onSelectCoin }) => {
+const TradingPairs = ({ prices, selectedCoin, onSelectCoin, isDark }) => {
   const [search, setSearch] = useState("");
   
   const filteredPrices = prices.filter(p => 
@@ -213,21 +238,30 @@ const TradingPairs = ({ prices, selectedCoin, onSelectCoin }) => {
     p.symbol.toLowerCase().includes(search.toLowerCase())
   );
 
+  const bg = isDark ? 'bg-[#0B0E11]' : 'bg-white';
+  const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
+  const text = isDark ? 'text-white' : 'text-gray-900';
+  const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
+  const textPrice = isDark ? 'text-[#EAECEF]' : 'text-gray-800';
+  const inputBg = isDark ? 'bg-[#1E2329]' : 'bg-gray-100';
+  const hoverBg = isDark ? 'hover:bg-[#1E2329]' : 'hover:bg-gray-100';
+  const activeBg = isDark ? 'bg-[#1E2329]' : 'bg-gray-100';
+
   return (
-    <div className="bg-[#0B0E11] border border-[#2B3139] h-full">
-      <div className="p-3 border-b border-[#2B3139]">
+    <div className={`${bg} border ${border} h-full`}>
+      <div className={`p-3 border-b ${border}`}>
         <div className="relative">
-          <MagnifyingGlass size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-[#848E9C]" />
+          <MagnifyingGlass size={14} className={`absolute left-2 top-1/2 -translate-y-1/2 ${textMuted}`} />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search"
-            className="pl-7 py-1 h-8 bg-[#1E2329] border-[#2B3139] text-xs"
+            className={`pl-7 py-1 h-8 ${inputBg} ${border} text-xs ${text}`}
           />
         </div>
       </div>
       
-      <div className="px-3 py-2 grid grid-cols-3 text-xs text-[#848E9C] border-b border-[#2B3139]">
+      <div className={`px-3 py-2 grid grid-cols-3 text-xs ${textMuted} border-b ${border}`}>
         <span>Pair</span>
         <span className="text-right">Price</span>
         <span className="text-right">24h%</span>
@@ -238,16 +272,16 @@ const TradingPairs = ({ prices, selectedCoin, onSelectCoin }) => {
           <div 
             key={coin.coin_id}
             onClick={() => onSelectCoin(coin.symbol)}
-            className={`px-3 py-2 grid grid-cols-3 text-xs cursor-pointer hover:bg-[#1E2329] ${
-              selectedCoin === coin.symbol ? 'bg-[#1E2329]' : ''
+            className={`px-3 py-2 grid grid-cols-3 text-xs cursor-pointer ${hoverBg} ${
+              selectedCoin === coin.symbol ? activeBg : ''
             }`}
           >
             <div className="flex items-center gap-1">
-              <Star size={12} className="text-[#848E9C]" />
-              <span className="text-white font-medium">{coin.symbol.toUpperCase()}</span>
-              <span className="text-[#848E9C]">/USDT</span>
+              <Star size={12} className={textMuted} />
+              <span className={`${text} font-medium`}>{coin.symbol.toUpperCase()}</span>
+              <span className={textMuted}>/USDT</span>
             </div>
-            <span className="text-right text-[#EAECEF] font-mono">
+            <span className={`text-right ${textPrice} font-mono`}>
               {coin.current_price < 1 ? coin.current_price.toFixed(4) : coin.current_price.toLocaleString()}
             </span>
             <span className={`text-right font-mono ${coin.price_change_percentage_24h >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
@@ -261,7 +295,7 @@ const TradingPairs = ({ prices, selectedCoin, onSelectCoin }) => {
 };
 
 // Candlestick Chart Component (Real Trading Chart with Timeframes)
-const CandlestickChart = ({ currentPrice, priceChange, selectedCoin }) => {
+const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) => {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [timeframe, setTimeframe] = useState('1H');
@@ -436,8 +470,8 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin }) => {
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
     
-    // Background
-    ctx.fillStyle = '#0B0E11';
+    // Background - theme aware
+    ctx.fillStyle = isDark ? '#0B0E11' : '#FFFFFF';
     ctx.fillRect(0, 0, width, height);
     
     // Calculate price range
@@ -454,7 +488,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin }) => {
     const chartHeight = height - padding.top - padding.bottom;
     
     // Draw grid lines
-    ctx.strokeStyle = '#1E2329';
+    ctx.strokeStyle = isDark ? '#1E2329' : '#E5E7EB';
     ctx.lineWidth = 0.5;
     
     // Horizontal grid lines
@@ -467,7 +501,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin }) => {
       
       // Price labels
       const price = adjustedMax - (priceRange / 4) * i;
-      ctx.fillStyle = '#848E9C';
+      ctx.fillStyle = isDark ? '#848E9C' : '#6B7280';
       ctx.font = '9px Arial';
       ctx.textAlign = 'left';
       ctx.fillText(price.toFixed(price < 100 ? 2 : 0), width - padding.right + 3, y + 3);
@@ -480,7 +514,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin }) => {
     
     // Draw time labels
     const labelInterval = Math.ceil(candleData.length / 5);
-    ctx.fillStyle = '#848E9C';
+    ctx.fillStyle = isDark ? '#848E9C' : '#6B7280';
     ctx.font = '8px Arial';
     ctx.textAlign = 'center';
     
@@ -558,17 +592,23 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin }) => {
       ctx.fillRect(x, volumeTop + volumeHeight - volHeight, candleWidth, volHeight);
     });
     
-  }, [candleData, currentPrice, dimensions]);
+  }, [candleData, currentPrice, dimensions, isDark]);
 
   const handleTimeframeChange = (tf) => {
     setTimeframe(tf);
   };
 
+  const bg = isDark ? 'bg-[#0B0E11]' : 'bg-white';
+  const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
+  const text = isDark ? 'text-white' : 'text-gray-900';
+  const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
+  const btnBg = isDark ? 'bg-[#0B0E11]/90' : 'bg-white/90';
+
   return (
-    <div className="bg-[#0B0E11] border border-[#2B3139] overflow-hidden">
-      <div className="p-2 border-b border-[#2B3139] flex items-center justify-between">
+    <div className={`${bg} border ${border} overflow-hidden`}>
+      <div className={`p-2 border-b ${border} flex items-center justify-between`}>
         <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-white font-mono">
+          <span className={`text-lg font-bold ${text} font-mono`}>
             {currentPrice?.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </span>
           <span className={`text-xs font-mono ${priceChange >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
@@ -583,7 +623,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin }) => {
               className={`px-2 py-1 rounded ${
                 timeframe === tf 
                   ? 'bg-[#F0B90B] text-black font-bold' 
-                  : 'text-[#848E9C] hover:bg-[#2B3139]'
+                  : `${textMuted} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-200'}`
               }`}
             >
               {tf}
@@ -593,13 +633,13 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin }) => {
       </div>
       <div ref={containerRef} className="relative w-full" style={{ minHeight: '250px' }}>
         {loading && candleData.length === 0 ? (
-          <div className="absolute inset-0 flex items-center justify-center text-[#848E9C]">
+          <div className={`absolute inset-0 flex items-center justify-center ${textMuted}`}>
             Loading chart...
           </div>
         ) : (
           <canvas ref={canvasRef} className="w-full" />
         )}
-        <div className="absolute top-1 left-1 text-[9px] text-[#848E9C] bg-[#0B0E11]/90 px-1 rounded">
+        <div className={`absolute top-1 left-1 text-[9px] ${textMuted} ${btnBg} px-1 rounded`}>
           {selectedCoin?.toUpperCase()}/USDT • {timeframe === '15m' ? '15 min' : timeframe === '1H' ? '1 hour' : timeframe === '4H' ? '4 hours' : timeframe === '1D' ? '1 day' : '1 week'}
         </div>
       </div>
@@ -611,6 +651,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin }) => {
 const TradePage = () => {
   const [searchParams] = useSearchParams();
   const initialCoin = searchParams.get('coin') || 'btc';
+  const { isDark } = useTheme();
   
   const [selectedCoin, setSelectedCoin] = useState(initialCoin);
   const [orderType, setOrderType] = useState("limit");
@@ -732,10 +773,10 @@ const TradePage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B0E11]">
+      <div className={`min-h-screen ${isDark ? 'bg-[#0B0E11]' : 'bg-[#FAFAFA]'}`}>
         <DashboardNav />
         <div className="pt-16 flex items-center justify-center h-screen">
-          <p className="text-white">Loading...</p>
+          <p className={isDark ? 'text-white' : 'text-gray-900'}>Loading...</p>
         </div>
       </div>
     );
@@ -743,45 +784,54 @@ const TradePage = () => {
 
   const currentCoin = tradableCoins.find(c => c.id === selectedCoin);
 
+  // Theme colors
+  const bg = isDark ? 'bg-[#0B0E11]' : 'bg-[#FAFAFA]';
+  const cardBg = isDark ? 'bg-[#0B0E11]' : 'bg-white';
+  const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
+  const text = isDark ? 'text-white' : 'text-gray-900';
+  const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
+  const inputBg = isDark ? 'bg-[#1E2329]' : 'bg-gray-100';
+
   return (
-    <div className="min-h-screen bg-[#0B0E11]">
+    <div className={`min-h-screen ${bg}`}>
       <DashboardNav />
       
       <main className="pt-12">
         {/* Trading Pair Header */}
-        <div className="bg-[#0B0E11] border-b border-[#2B3139] px-4 py-2">
+        <div className={`${cardBg} border-b ${border} px-4 py-2`}>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              <span className="text-xl font-bold text-white">{selectedCoin.toUpperCase()}/USDT</span>
+              <span className={`text-xl font-bold ${text}`}>{selectedCoin.toUpperCase()}/USDT</span>
               <span className={`text-sm ${getPriceChange() >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
                 {getPriceChange() >= 0 ? '+' : ''}{getPriceChange().toFixed(2)}%
               </span>
             </div>
             <div className="hidden md:flex items-center gap-6 text-xs">
               <div>
-                <span className="text-[#848E9C]">24h High</span>
-                <p className="text-white font-mono">{(getCurrentPrice() * 1.02).toLocaleString()}</p>
+                <span className={textMuted}>24h High</span>
+                <p className={`${text} font-mono`}>{(getCurrentPrice() * 1.02).toLocaleString()}</p>
               </div>
               <div>
-                <span className="text-[#848E9C]">24h Low</span>
-                <p className="text-white font-mono">{(getCurrentPrice() * 0.98).toLocaleString()}</p>
+                <span className={textMuted}>24h Low</span>
+                <p className={`${text} font-mono`}>{(getCurrentPrice() * 0.98).toLocaleString()}</p>
               </div>
               <div>
-                <span className="text-[#848E9C]">24h Volume</span>
-                <p className="text-white font-mono">12,345.67 {selectedCoin.toUpperCase()}</p>
+                <span className={textMuted}>24h Volume</span>
+                <p className={`${text} font-mono`}>12,345.67 {selectedCoin.toUpperCase()}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Main Grid */}
-        <div className="flex flex-col lg:grid lg:grid-cols-12 lg:gap-[1px] bg-[#2B3139]">
+        <div className={`flex flex-col lg:grid lg:grid-cols-12 lg:gap-[1px] ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
           {/* Left - Trading Pairs (Hidden on mobile) */}
           <div className="hidden lg:block lg:col-span-2">
             <TradingPairs 
               prices={prices} 
               selectedCoin={selectedCoin} 
               onSelectCoin={setSelectedCoin}
+              isDark={isDark}
             />
           </div>
           
@@ -791,16 +841,17 @@ const TradePage = () => {
               currentPrice={getCurrentPrice()} 
               priceChange={getPriceChange()}
               selectedCoin={selectedCoin}
+              isDark={isDark}
             />
             
             {/* Buy/Sell Panel */}
-            <div className="bg-[#0B0E11] border border-[#2B3139] p-3 md:p-4">
+            <div className={`${cardBg} border ${border} p-3 md:p-4`}>
               <div className="grid grid-cols-2 gap-2 md:gap-4">
                 {/* Buy Side */}
                 <div className="min-w-0">
-                  <div className="text-xs text-[#848E9C] flex justify-between mb-2">
+                  <div className={`text-xs ${textMuted} flex justify-between mb-2`}>
                     <span>Avbl</span>
-                    <span className="text-white truncate ml-1">{wallet?.balances?.usdt?.toFixed(2) || '0.00'} USDT</span>
+                    <span className={`${text} truncate ml-1`}>{wallet?.balances?.usdt?.toFixed(2) || '0.00'} USDT</span>
                   </div>
                   
                   <form onSubmit={(e) => { setTradeType('buy'); handleTrade(e); }}>
@@ -813,9 +864,9 @@ const TradePage = () => {
                             value={price}
                             onChange={(e) => setPrice(e.target.value)}
                             placeholder="Price"
-                            className="pr-12 text-xs bg-[#1E2329] border-[#2B3139] text-right font-mono h-9"
+                            className={`pr-12 text-xs ${inputBg} ${border} text-right font-mono h-9 ${text}`}
                           />
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#848E9C]">USDT</span>
+                          <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[10px] ${textMuted}`}>USDT</span>
                         </div>
                       )}
                       
@@ -826,10 +877,10 @@ const TradePage = () => {
                           value={amount}
                           onChange={(e) => setAmount(e.target.value)}
                           placeholder="Amount"
-                          className="pr-12 text-xs bg-[#1E2329] border-[#2B3139] text-right font-mono h-9"
+                          className={`pr-12 text-xs ${inputBg} ${border} text-right font-mono h-9 ${text}`}
                           data-testid="buy-amount-input"
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#848E9C]">{selectedCoin.toUpperCase()}</span>
+                        <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[10px] ${textMuted}`}>{selectedCoin.toUpperCase()}</span>
                       </div>
                       
                       <div className="grid grid-cols-4 gap-1">
@@ -838,7 +889,7 @@ const TradePage = () => {
                             key={pct}
                             type="button"
                             onClick={() => { setTradeType('buy'); setPercentage(pct); }}
-                            className="py-1 text-[10px] bg-[#1E2329] text-[#848E9C] hover:bg-[#2B3139] rounded"
+                            className={`py-1 text-[10px] ${inputBg} ${textMuted} hover:opacity-80 rounded`}
                           >
                             {pct}%
                           </button>
@@ -851,9 +902,9 @@ const TradePage = () => {
                           value={calculateTotal().toFixed(2)}
                           readOnly
                           placeholder="Total"
-                          className="pr-12 text-xs bg-[#1E2329] border-[#2B3139] text-right font-mono h-9"
+                          className={`pr-12 text-xs ${inputBg} ${border} text-right font-mono h-9 ${text}`}
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#848E9C]">USDT</span>
+                        <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[10px] ${textMuted}`}>USDT</span>
                       </div>
                       
                       <Button
@@ -870,9 +921,9 @@ const TradePage = () => {
                 
                 {/* Sell Side */}
                 <div className="min-w-0">
-                  <div className="text-xs text-[#848E9C] flex justify-between mb-2">
+                  <div className={`text-xs ${textMuted} flex justify-between mb-2`}>
                     <span>Avbl</span>
-                    <span className="text-white truncate ml-1">{wallet?.balances?.[selectedCoin]?.toFixed(4) || '0'} {selectedCoin.toUpperCase()}</span>
+                    <span className={`${text} truncate ml-1`}>{wallet?.balances?.[selectedCoin]?.toFixed(4) || '0'} {selectedCoin.toUpperCase()}</span>
                   </div>
                   
                   <form onSubmit={(e) => { setTradeType('sell'); handleTrade(e); }}>
@@ -885,9 +936,9 @@ const TradePage = () => {
                             value={price}
                             onChange={(e) => setPrice(e.target.value)}
                             placeholder="Price"
-                            className="pr-12 text-xs bg-[#1E2329] border-[#2B3139] text-right font-mono h-9"
+                            className={`pr-12 text-xs ${inputBg} ${border} text-right font-mono h-9 ${text}`}
                           />
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#848E9C]">USDT</span>
+                          <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[10px] ${textMuted}`}>USDT</span>
                         </div>
                       )}
                       
@@ -898,10 +949,10 @@ const TradePage = () => {
                           value={amount}
                           onChange={(e) => setAmount(e.target.value)}
                           placeholder="Amount"
-                          className="pr-12 text-xs bg-[#1E2329] border-[#2B3139] text-right font-mono h-9"
+                          className={`pr-12 text-xs ${inputBg} ${border} text-right font-mono h-9 ${text}`}
                           data-testid="sell-amount-input"
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#848E9C]">{selectedCoin.toUpperCase()}</span>
+                        <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[10px] ${textMuted}`}>{selectedCoin.toUpperCase()}</span>
                       </div>
                       
                       <div className="grid grid-cols-4 gap-1">
@@ -910,7 +961,7 @@ const TradePage = () => {
                             key={pct}
                             type="button"
                             onClick={() => { setTradeType('sell'); setPercentage(pct); }}
-                            className="py-1 text-[10px] bg-[#1E2329] text-[#848E9C] hover:bg-[#2B3139] rounded"
+                            className={`py-1 text-[10px] ${inputBg} ${textMuted} hover:opacity-80 rounded`}
                           >
                             {pct}%
                           </button>
@@ -923,9 +974,9 @@ const TradePage = () => {
                           value={calculateTotal().toFixed(2)}
                           readOnly
                           placeholder="Total"
-                          className="pr-12 text-xs bg-[#1E2329] border-[#2B3139] text-right font-mono h-9"
+                          className={`pr-12 text-xs ${inputBg} ${border} text-right font-mono h-9 ${text}`}
                         />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#848E9C]">USDT</span>
+                        <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[10px] ${textMuted}`}>USDT</span>
                       </div>
                       
                       <Button
@@ -945,8 +996,8 @@ const TradePage = () => {
           
           {/* Right - Order Book & Trades (Side by side on mobile, stacked on desktop) */}
           <div className="w-full lg:col-span-4 grid grid-cols-2 lg:grid-cols-1 lg:grid-rows-2 gap-[1px]">
-            <OrderBook selectedCoin={selectedCoin} currentPrice={getCurrentPrice()} />
-            <RecentTrades selectedCoin={selectedCoin} currentPrice={getCurrentPrice()} />
+            <OrderBook selectedCoin={selectedCoin} currentPrice={getCurrentPrice()} isDark={isDark} />
+            <RecentTrades selectedCoin={selectedCoin} currentPrice={getCurrentPrice()} isDark={isDark} />
           </div>
         </div>
       </main>

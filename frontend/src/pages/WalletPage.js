@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth, API } from "../App";
+import { useAuth, API, useTheme } from "../App";
 import axios from "axios";
 import { toast } from "sonner";
 import { 
@@ -23,7 +23,9 @@ import {
   Coins,
   ChartLine,
   Percent,
-  Clock
+  Clock,
+  Sun,
+  Moon
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -47,15 +49,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Progress } from "../components/ui/progress";
 
 // Navigation Component (Bottom Nav for mobile feel)
-const BottomNav = () => {
+const BottomNav = ({ isDark }) => {
+  const bg = isDark ? 'bg-[#0B0E11]' : 'bg-white';
+  const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
+  const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
+  const textHover = isDark ? 'hover:text-white' : 'hover:text-gray-900';
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-[#0B0E11] border-t border-[#2B3139] z-50">
+    <nav className={`fixed bottom-0 left-0 right-0 ${bg} border-t ${border} z-50`}>
       <div className="flex items-center justify-around py-2">
-        <Link to="/dashboard" className="flex flex-col items-center gap-1 text-[#848E9C] hover:text-white">
+        <Link to="/dashboard" className={`flex flex-col items-center gap-1 ${textMuted} ${textHover}`}>
           <Vault size={24} />
           <span className="text-xs">Home</span>
         </Link>
-        <Link to="/trade" className="flex flex-col items-center gap-1 text-[#848E9C] hover:text-white">
+        <Link to="/trade" className={`flex flex-col items-center gap-1 ${textMuted} ${textHover}`}>
           <ChartLineUp size={24} />
           <span className="text-xs">Markets</span>
         </Link>
@@ -65,7 +72,7 @@ const BottomNav = () => {
           </div>
           <span className="text-xs text-[#F0B90B]">Trade</span>
         </Link>
-        <Link to="/transactions" className="flex flex-col items-center gap-1 text-[#848E9C] hover:text-white">
+        <Link to="/transactions" className={`flex flex-col items-center gap-1 ${textMuted} ${textHover}`}>
           <Clock size={24} />
           <span className="text-xs">Futures</span>
         </Link>
@@ -79,20 +86,32 @@ const BottomNav = () => {
 };
 
 // Top Header
-const WalletHeader = ({ user, logout }) => {
+const WalletHeader = ({ user, logout, isDark, toggleTheme }) => {
+  const bg = isDark ? 'bg-[#0B0E11]' : 'bg-white';
+  const text = isDark ? 'text-white' : 'text-gray-900';
+  const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
+
   return (
-    <div className="bg-[#0B0E11] px-4 py-3 flex items-center justify-between">
+    <div className={`${bg} px-4 py-3 flex items-center justify-between`}>
       <Link to="/dashboard" className="flex items-center gap-2">
         <Vault size={28} weight="duotone" className="text-[#F0B90B]" />
-        <span className="font-bold text-lg text-white">CryptoVault</span>
+        <span className={`font-bold text-lg ${text}`}>CryptoVault</span>
       </Link>
       <div className="flex items-center gap-3">
-        <span className="text-sm text-[#848E9C]">{user?.name}</span>
+        {/* Theme Toggle Button */}
+        <button
+          onClick={toggleTheme}
+          className={`p-2 rounded-full transition-colors ${isDark ? 'bg-[#2B3139] hover:bg-[#3B4149] text-[#F0B90B]' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+          data-testid="wallet-theme-toggle"
+        >
+          {isDark ? <Sun size={20} weight="fill" /> : <Moon size={20} weight="fill" />}
+        </button>
+        <span className={`text-sm ${textMuted}`}>{user?.name}</span>
         <Button 
           variant="ghost" 
           size="sm" 
           onClick={logout}
-          className="text-[#848E9C] hover:text-[#F0B90B] hover:bg-transparent p-1"
+          className={`${textMuted} hover:text-[#F0B90B] hover:bg-transparent p-1`}
         >
           <SignOut size={18} />
         </Button>
@@ -103,6 +122,7 @@ const WalletHeader = ({ user, logout }) => {
 
 const WalletPage = () => {
   const { user, logout } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [wallet, setWallet] = useState(null);
   const [prices, setPrices] = useState([]);
@@ -123,6 +143,20 @@ const WalletPage = () => {
   const [txHash, setTxHash] = useState("");
   const [transferTo, setTransferTo] = useState("margin");
   const [submitting, setSubmitting] = useState(false);
+
+  // Theme colors
+  const bg = isDark ? 'bg-[#0B0E11]' : 'bg-[#FAFAFA]';
+  const cardBg = isDark ? 'bg-[#0B0E11]' : 'bg-white';
+  const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
+  const text = isDark ? 'text-white' : 'text-gray-900';
+  const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
+  const inputBg = isDark ? 'bg-[#1E2329]' : 'bg-gray-100';
+  const hoverBg = isDark ? 'hover:bg-[#1E2329]' : 'hover:bg-gray-100';
+  const actionBtnBg = isDark ? 'bg-[#2B3139]' : 'bg-gray-200';
+  const actionBtnHover = isDark ? 'hover:bg-[#3B4149]' : 'hover:bg-gray-300';
+  const dividerBg = isDark ? 'bg-[#181A20]' : 'bg-gray-100';
+  const dialogBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
+  const dialogInputBg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-100';
 
   const supportedCoins = [
     { id: "btc", name: "Bitcoin", symbol: "BTC", color: "#F7931A", apy: "1.0047" },
@@ -260,8 +294,8 @@ const WalletPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B0E11] flex items-center justify-center">
-        <p className="text-white">Loading...</p>
+      <div className={`min-h-screen ${bg} flex items-center justify-center`}>
+        <p className={text}>Loading...</p>
       </div>
     );
   }
@@ -270,11 +304,11 @@ const WalletPage = () => {
   const totalBalance = getTotalValue();
 
   return (
-    <div className="min-h-screen bg-[#0B0E11] pb-20">
-      <WalletHeader user={user} logout={logout} />
+    <div className={`min-h-screen ${bg} pb-20`}>
+      <WalletHeader user={user} logout={logout} isDark={isDark} toggleTheme={toggleTheme} />
       
       {/* Tabs - Overview, Spot, Margin, Futures, Omni, Earn */}
-      <div className="border-b border-[#2B3139] overflow-x-auto">
+      <div className={`border-b ${border} overflow-x-auto ${cardBg}`}>
         <div className="flex px-4">
           {["Overview", "Spot", "Margin", "Futures", "Omni", "Earn"].map(tab => (
             <button
@@ -282,8 +316,8 @@ const WalletPage = () => {
               onClick={() => setActiveTab(tab.toLowerCase())}
               className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
                 activeTab === tab.toLowerCase() 
-                  ? 'text-white border-b-2 border-[#F0B90B]' 
-                  : 'text-[#848E9C]'
+                  ? `${text} border-b-2 border-[#F0B90B]` 
+                  : textMuted
               }`}
             >
               {tab}
@@ -293,60 +327,60 @@ const WalletPage = () => {
       </div>
 
       {/* Total Balance Card */}
-      <div className="px-4 py-6">
+      <div className={`px-4 py-6 ${cardBg}`}>
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-[#848E9C] text-sm">Total Balance</span>
+          <span className={`${textMuted} text-sm`}>Total Balance</span>
           <button onClick={() => setShowBalance(!showBalance)}>
-            {showBalance ? <Eye size={16} className="text-[#848E9C]" /> : <EyeSlash size={16} className="text-[#848E9C]" />}
+            {showBalance ? <Eye size={16} className={textMuted} /> : <EyeSlash size={16} className={textMuted} />}
           </button>
         </div>
         
         <div className="flex items-baseline gap-2 mb-1">
-          <span className="text-4xl font-bold text-white font-mono">
+          <span className={`text-4xl font-bold ${text} font-mono`}>
             {showBalance ? totalBalance.toFixed(2) : '****'}
           </span>
-          <div className="flex items-center gap-1 text-white text-sm">
+          <div className={`flex items-center gap-1 ${text} text-sm`}>
             <span>USD</span>
             <CaretDown size={14} />
           </div>
         </div>
         
         <div className="flex items-center gap-2">
-          <span className="text-[#848E9C] text-sm">Today's PnL</span>
+          <span className={`${textMuted} text-sm`}>Today's PnL</span>
           <span className={`text-sm ${pnl.value >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
             {showBalance ? `${pnl.value >= 0 ? '+' : ''}$${pnl.value.toFixed(2)} (${pnl.percent >= 0 ? '+' : ''}${pnl.percent.toFixed(2)}%)` : '****'}
           </span>
-          <CaretRight size={14} className="text-[#848E9C]" />
+          <CaretRight size={14} className={textMuted} />
         </div>
       </div>
 
       {/* Action Buttons - Deposit, Withdraw, Transfer, History */}
-      <div className="px-4 pb-6">
+      <div className={`px-4 pb-6 ${cardBg}`}>
         <div className="flex justify-around">
           {/* Deposit */}
           <Dialog open={depositOpen} onOpenChange={setDepositOpen}>
             <DialogTrigger asChild>
               <button className="flex flex-col items-center gap-2">
-                <div className="w-14 h-14 rounded-full bg-[#2B3139] flex items-center justify-center hover:bg-[#3B4149] transition-colors">
-                  <ArrowDown size={24} className="text-white" />
+                <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center ${actionBtnHover} transition-colors`}>
+                  <ArrowDown size={24} className={text} />
                 </div>
-                <span className="text-white text-sm">Deposit</span>
+                <span className={`${text} text-sm`}>Deposit</span>
               </button>
             </DialogTrigger>
-            <DialogContent className="bg-[#1E2329] border-[#2B3139]">
+            <DialogContent className={`${dialogBg} ${border}`}>
               <DialogHeader>
-                <DialogTitle className="text-white">Deposit Crypto</DialogTitle>
+                <DialogTitle className={text}>Deposit Crypto</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleDeposit} className="space-y-4 mt-4">
                 <div>
-                  <Label className="text-[#848E9C]">Select Coin</Label>
+                  <Label className={textMuted}>Select Coin</Label>
                   <Select value={selectedCoin} onValueChange={setSelectedCoin}>
-                    <SelectTrigger className="bg-[#0B0E11] border-[#2B3139] text-white mt-1">
+                    <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`}>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1E2329] border-[#2B3139]">
+                    <SelectContent className={`${dialogBg} ${border}`}>
                       {supportedCoins.map(coin => (
-                        <SelectItem key={coin.id} value={coin.id} className="text-white">
+                        <SelectItem key={coin.id} value={coin.id} className={text}>
                           {coin.name} ({coin.symbol})
                         </SelectItem>
                       ))}
@@ -354,17 +388,17 @@ const WalletPage = () => {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-[#848E9C]">Deposit Address</Label>
+                  <Label className={textMuted}>Deposit Address</Label>
                   <div className="flex items-center gap-2 mt-1">
-                    <Input value={depositAddresses[selectedCoin]} readOnly className="bg-[#0B0E11] border-[#2B3139] text-white font-mono text-xs" />
-                    <Button type="button" variant="outline" size="icon" onClick={() => copyToClipboard(depositAddresses[selectedCoin])} className="border-[#2B3139]">
+                    <Input value={depositAddresses[selectedCoin]} readOnly className={`${dialogInputBg} ${border} ${text} font-mono text-xs`} />
+                    <Button type="button" variant="outline" size="icon" onClick={() => copyToClipboard(depositAddresses[selectedCoin])} className={border}>
                       <Copy size={16} />
                     </Button>
                   </div>
                 </div>
                 <div>
-                  <Label className="text-[#848E9C]">Amount (Demo)</Label>
-                  <Input type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="bg-[#0B0E11] border-[#2B3139] text-white mt-1" required />
+                  <Label className={textMuted}>Amount (Demo)</Label>
+                  <Input type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className={`${dialogInputBg} ${border} ${text} mt-1`} required />
                 </div>
                 <Button type="submit" disabled={submitting} className="w-full bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black font-semibold">
                   {submitting ? "Processing..." : "Confirm Deposit"}
@@ -377,26 +411,26 @@ const WalletPage = () => {
           <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
             <DialogTrigger asChild>
               <button className="flex flex-col items-center gap-2">
-                <div className="w-14 h-14 rounded-full bg-[#2B3139] flex items-center justify-center hover:bg-[#3B4149] transition-colors">
-                  <ArrowUp size={24} className="text-white" />
+                <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center ${actionBtnHover} transition-colors`}>
+                  <ArrowUp size={24} className={text} />
                 </div>
-                <span className="text-white text-sm">Withdraw</span>
+                <span className={`${text} text-sm`}>Withdraw</span>
               </button>
             </DialogTrigger>
-            <DialogContent className="bg-[#1E2329] border-[#2B3139]">
+            <DialogContent className={`${dialogBg} ${border}`}>
               <DialogHeader>
-                <DialogTitle className="text-white">Withdraw Crypto</DialogTitle>
+                <DialogTitle className={text}>Withdraw Crypto</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleWithdraw} className="space-y-4 mt-4">
                 <div>
-                  <Label className="text-[#848E9C]">Select Coin</Label>
+                  <Label className={textMuted}>Select Coin</Label>
                   <Select value={selectedCoin} onValueChange={setSelectedCoin}>
-                    <SelectTrigger className="bg-[#0B0E11] border-[#2B3139] text-white mt-1">
+                    <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`}>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1E2329] border-[#2B3139]">
+                    <SelectContent className={`${dialogBg} ${border}`}>
                       {supportedCoins.map(coin => (
-                        <SelectItem key={coin.id} value={coin.id} className="text-white">
+                        <SelectItem key={coin.id} value={coin.id} className={text}>
                           {coin.name} ({coin.symbol})
                         </SelectItem>
                       ))}
@@ -405,14 +439,14 @@ const WalletPage = () => {
                 </div>
                 <div>
                   <div className="flex justify-between">
-                    <Label className="text-[#848E9C]">Amount</Label>
-                    <span className="text-xs text-[#848E9C]">Available: {wallet?.balances?.[selectedCoin]?.toFixed(6) || '0'}</span>
+                    <Label className={textMuted}>Amount</Label>
+                    <span className={`text-xs ${textMuted}`}>Available: {wallet?.balances?.[selectedCoin]?.toFixed(6) || '0'}</span>
                   </div>
-                  <Input type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="bg-[#0B0E11] border-[#2B3139] text-white mt-1" required />
+                  <Input type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className={`${dialogInputBg} ${border} ${text} mt-1`} required />
                 </div>
                 <div>
-                  <Label className="text-[#848E9C]">Withdrawal Address</Label>
-                  <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Enter address" className="bg-[#0B0E11] border-[#2B3139] text-white font-mono mt-1" required />
+                  <Label className={textMuted}>Withdrawal Address</Label>
+                  <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Enter address" className={`${dialogInputBg} ${border} ${text} font-mono mt-1`} required />
                 </div>
                 <Button type="submit" disabled={submitting} className="w-full bg-[#F6465D] hover:bg-[#F6465D]/90 text-white font-semibold">
                   {submitting ? "Processing..." : "Withdraw"}
@@ -425,59 +459,59 @@ const WalletPage = () => {
           <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
             <DialogTrigger asChild>
               <button className="flex flex-col items-center gap-2">
-                <div className="w-14 h-14 rounded-full bg-[#2B3139] flex items-center justify-center hover:bg-[#3B4149] transition-colors">
-                  <ArrowsDownUp size={24} className="text-white" />
+                <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center ${actionBtnHover} transition-colors`}>
+                  <ArrowsDownUp size={24} className={text} />
                 </div>
-                <span className="text-white text-sm">Transfer</span>
+                <span className={`${text} text-sm`}>Transfer</span>
               </button>
             </DialogTrigger>
-            <DialogContent className="bg-[#1E2329] border-[#2B3139]">
+            <DialogContent className={`${dialogBg} ${border}`}>
               <DialogHeader>
-                <DialogTitle className="text-white">Transfer Between Accounts</DialogTitle>
+                <DialogTitle className={text}>Transfer Between Accounts</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleTransfer} className="space-y-4 mt-4">
                 <div>
-                  <Label className="text-[#848E9C]">From</Label>
+                  <Label className={textMuted}>From</Label>
                   <Select defaultValue="spot">
-                    <SelectTrigger className="bg-[#0B0E11] border-[#2B3139] text-white mt-1">
+                    <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`}>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1E2329] border-[#2B3139]">
-                      <SelectItem value="spot" className="text-white">Spot</SelectItem>
-                      <SelectItem value="margin" className="text-white">Margin</SelectItem>
-                      <SelectItem value="futures" className="text-white">Futures</SelectItem>
+                    <SelectContent className={`${dialogBg} ${border}`}>
+                      <SelectItem value="spot" className={text}>Spot</SelectItem>
+                      <SelectItem value="margin" className={text}>Margin</SelectItem>
+                      <SelectItem value="futures" className={text}>Futures</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-[#848E9C]">To</Label>
+                  <Label className={textMuted}>To</Label>
                   <Select value={transferTo} onValueChange={setTransferTo}>
-                    <SelectTrigger className="bg-[#0B0E11] border-[#2B3139] text-white mt-1">
+                    <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`}>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1E2329] border-[#2B3139]">
-                      <SelectItem value="margin" className="text-white">Margin</SelectItem>
-                      <SelectItem value="futures" className="text-white">Futures</SelectItem>
-                      <SelectItem value="earn" className="text-white">Earn</SelectItem>
+                    <SelectContent className={`${dialogBg} ${border}`}>
+                      <SelectItem value="margin" className={text}>Margin</SelectItem>
+                      <SelectItem value="futures" className={text}>Futures</SelectItem>
+                      <SelectItem value="earn" className={text}>Earn</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-[#848E9C]">Coin</Label>
+                  <Label className={textMuted}>Coin</Label>
                   <Select value={selectedCoin} onValueChange={setSelectedCoin}>
-                    <SelectTrigger className="bg-[#0B0E11] border-[#2B3139] text-white mt-1">
+                    <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`}>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#1E2329] border-[#2B3139]">
+                    <SelectContent className={`${dialogBg} ${border}`}>
                       {supportedCoins.map(coin => (
-                        <SelectItem key={coin.id} value={coin.id} className="text-white">{coin.symbol}</SelectItem>
+                        <SelectItem key={coin.id} value={coin.id} className={text}>{coin.symbol}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-[#848E9C]">Amount</Label>
-                  <Input type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="bg-[#0B0E11] border-[#2B3139] text-white mt-1" required />
+                  <Label className={textMuted}>Amount</Label>
+                  <Input type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className={`${dialogInputBg} ${border} ${text} mt-1`} required />
                 </div>
                 <Button type="submit" className="w-full bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black font-semibold">
                   Transfer
@@ -488,26 +522,26 @@ const WalletPage = () => {
 
           {/* History */}
           <button onClick={() => navigate('/transactions')} className="flex flex-col items-center gap-2">
-            <div className="w-14 h-14 rounded-full bg-[#2B3139] flex items-center justify-center hover:bg-[#3B4149] transition-colors">
-              <ClockCounterClockwise size={24} className="text-white" />
+            <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center ${actionBtnHover} transition-colors`}>
+              <ClockCounterClockwise size={24} className={text} />
             </div>
-            <span className="text-white text-sm">History</span>
+            <span className={`${text} text-sm`}>History</span>
           </button>
         </div>
       </div>
 
       {/* Account Section */}
-      <div className="px-4 pb-4">
+      <div className={`px-4 pb-4 ${cardBg}`}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <span className="text-white font-medium">Account</span>
-            <Info size={14} className="text-[#848E9C]" />
+            <span className={`${text} font-medium`}>Account</span>
+            <Info size={14} className={textMuted} />
           </div>
-          <CaretDown size={16} className="text-[#848E9C]" />
+          <CaretDown size={16} className={textMuted} />
         </div>
         
         {/* Progress Bar */}
-        <div className="h-2 bg-[#2B3139] rounded-full overflow-hidden mb-4">
+        <div className={`h-2 ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} rounded-full overflow-hidden mb-4`}>
           <div className="h-full bg-[#3B82F6]" style={{ width: '100%' }} />
         </div>
         
@@ -521,11 +555,11 @@ const WalletPage = () => {
               <div key={account.id} className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: account.color }} />
-                  <span className="text-white">{account.name}</span>
+                  <span className={text}>{account.name}</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-white font-mono">${showBalance ? accountBalance.toFixed(2) : '****'}</p>
-                  <p className="text-xs text-[#848E9C]">{percentage.toFixed(2)}%</p>
+                  <p className={`${text} font-mono`}>${showBalance ? accountBalance.toFixed(2) : '****'}</p>
+                  <p className={`text-xs ${textMuted}`}>{percentage.toFixed(2)}%</p>
                 </div>
               </div>
             );
@@ -534,30 +568,30 @@ const WalletPage = () => {
       </div>
 
       {/* Divider */}
-      <div className="h-2 bg-[#181A20]" />
+      <div className={`h-2 ${dividerBg}`} />
 
       {/* Crypto Assets Section */}
-      <div className="px-4 py-4">
+      <div className={`px-4 py-4 ${cardBg}`}>
         <div className="flex items-center justify-between mb-4">
-          <span className="text-white font-medium text-lg">Crypto</span>
-          <MagnifyingGlass size={20} className="text-[#848E9C]" />
+          <span className={`${text} font-medium text-lg`}>Crypto</span>
+          <MagnifyingGlass size={20} className={textMuted} />
         </div>
         
         {/* Search */}
         <div className="relative mb-4">
-          <MagnifyingGlass size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#848E9C]" />
+          <MagnifyingGlass size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search coins"
-            className="pl-9 bg-[#1E2329] border-[#2B3139] text-white"
+            className={`pl-9 ${inputBg} ${border} ${text}`}
           />
         </div>
         
         {/* Column Headers */}
         <div className="flex items-center justify-between px-2 mb-2">
-          <span className="text-[#848E9C] text-xs">Assets</span>
-          <span className="text-[#848E9C] text-xs">Amount</span>
+          <span className={`${textMuted} text-xs`}>Assets</span>
+          <span className={`${textMuted} text-xs`}>Amount</span>
         </div>
         
         {/* Crypto List */}
@@ -570,7 +604,7 @@ const WalletPage = () => {
             return (
               <div 
                 key={coin.id}
-                className="flex items-center justify-between p-3 rounded-lg hover:bg-[#1E2329] transition-colors cursor-pointer"
+                className={`flex items-center justify-between p-3 rounded-lg ${hoverBg} transition-colors cursor-pointer`}
                 onClick={() => navigate(`/trade?coin=${coin.id}`)}
               >
                 <div className="flex items-center gap-3">
@@ -582,20 +616,20 @@ const WalletPage = () => {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-white font-medium">{coin.symbol}</span>
+                      <span className={`${text} font-medium`}>{coin.symbol}</span>
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#0ECB81]/20 text-[#0ECB81]">
                         APY ↑ {coin.apy}%
                       </span>
                     </div>
-                    <span className="text-[#848E9C] text-sm">{coin.name}</span>
+                    <span className={`${textMuted} text-sm`}>{coin.name}</span>
                   </div>
                 </div>
                 <div className="text-right flex items-center gap-2">
                   <div>
-                    <p className="text-white font-mono">{showBalance ? balance.toFixed(balance < 1 ? 8 : 4) : '****'}</p>
-                    <p className="text-[#848E9C] text-sm">≈ ${showBalance ? value.toFixed(2) : '****'}</p>
+                    <p className={`${text} font-mono`}>{showBalance ? balance.toFixed(balance < 1 ? 8 : 4) : '****'}</p>
+                    <p className={`${textMuted} text-sm`}>≈ ${showBalance ? value.toFixed(2) : '****'}</p>
                   </div>
-                  <CaretRight size={16} className="text-[#848E9C]" />
+                  <CaretRight size={16} className={textMuted} />
                 </div>
               </div>
             );
@@ -603,7 +637,7 @@ const WalletPage = () => {
         </div>
       </div>
 
-      <BottomNav />
+      <BottomNav isDark={isDark} />
     </div>
   );
 };
