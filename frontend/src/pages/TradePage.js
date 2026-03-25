@@ -270,12 +270,16 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin }) => {
   const [loading, setLoading] = useState(true);
 
   // Timeframe to CoinGecko days mapping
+  // CoinGecko OHLC granularity:
+  // 1-2 days: 30 min candles
+  // 3-30 days: 4 hour candles  
+  // 31+ days: daily candles
   const timeframeToDays = {
-    '15m': 1,   // 1 day = 30min candles (we'll use half)
-    '1H': 1,    // 1 day = 30min candles
-    '4H': 7,    // 7 days = 4h candles
-    '1D': 30,   // 30 days = 4h candles (we'll aggregate)
-    '1W': 90,   // 90 days = daily candles
+    '15m': 1,   // 30min candles, take every candle
+    '1H': 1,    // 30min candles, aggregate 2 for 1H
+    '4H': 14,   // 4H candles directly
+    '1D': 30,   // 30 days = 4H candles, aggregate to daily
+    '1W': 180,  // 180 days = daily candles, aggregate to weekly
   };
 
   const coinIdMap = {
@@ -316,12 +320,12 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin }) => {
         if (response.data.candles && response.data.candles.length > 0) {
           let candles = response.data.candles;
           
-          // Filter/aggregate based on timeframe
+          // Process based on timeframe
           if (timeframe === '15m') {
-            // Take last 48 candles for 15m view
+            // Take last 48 candles (30min each = 24 hours)
             candles = candles.slice(-48);
           } else if (timeframe === '1H') {
-            // Aggregate every 2 candles for 1H (since CoinGecko gives 30min)
+            // Aggregate every 2 candles for 1H (since CoinGecko gives 30min for 1 day)
             const aggregated = [];
             for (let i = 0; i < candles.length; i += 2) {
               if (i + 1 < candles.length) {
@@ -332,17 +336,21 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin }) => {
                   low: Math.min(candles[i].low, candles[i + 1].low),
                   close: candles[i + 1].close
                 });
+              } else {
+                aggregated.push(candles[i]);
               }
             }
             candles = aggregated.slice(-24);
           } else if (timeframe === '4H') {
-            candles = candles.slice(-42); // 7 days of 4H candles
+            // 4H candles - take last 42 (7 days worth)
+            candles = candles.slice(-42);
           } else if (timeframe === '1D') {
-            // Aggregate every 6 candles for 1D
+            // For 90 days, CoinGecko gives 4H candles
+            // Aggregate every 6 candles for daily
             const aggregated = [];
             for (let i = 0; i < candles.length; i += 6) {
               const chunk = candles.slice(i, Math.min(i + 6, candles.length));
-              if (chunk.length > 0) {
+              if (chunk.length >= 4) {
                 aggregated.push({
                   time: chunk[0].time,
                   open: chunk[0].open,
@@ -352,9 +360,23 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin }) => {
                 });
               }
             }
-            candles = aggregated.slice(-30);
-          } else {
-            candles = candles.slice(-20);
+            candles = aggregated.slice(-30); // Last 30 days
+          } else if (timeframe === '1W') {
+            // For 365 days, aggregate to weekly
+            const aggregated = [];
+            for (let i = 0; i < candles.length; i += 7) {
+              const chunk = candles.slice(i, Math.min(i + 7, candles.length));
+              if (chunk.length >= 3) {
+                aggregated.push({
+                  time: chunk[0].time,
+                  open: chunk[0].open,
+                  high: Math.max(...chunk.map(c => c.high)),
+                  low: Math.min(...chunk.map(c => c.low)),
+                  close: chunk[chunk.length - 1].close
+                });
+              }
+            }
+            candles = aggregated.slice(-20); // Last 20 weeks
           }
           
           // Add time labels
@@ -383,8 +405,11 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin }) => {
     const minutes = date.getMinutes().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const day = date.getDate().toString().padStart(2, '0');
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
-    if (tf === '1D' || tf === '1W') {
+    if (tf === '1W') {
+      return `${monthNames[date.getMonth()]} ${day}`;
+    } else if (tf === '1D') {
       return `${month}/${day}`;
     }
     return `${hours}:${minutes}`;
