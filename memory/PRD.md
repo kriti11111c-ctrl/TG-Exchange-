@@ -45,6 +45,7 @@
   
 - ✅ **Technical Indicators on Charts** - Professional trading analysis tools
   - **MA (Moving Average)**: 7-period (yellow) and 25-period (purple) lines on main chart
+  - **VOL (Volume)**: Volume bars (green/red) with MA(5) and MA(10) lines - exactly like Binance
   - **RSI (Relative Strength Index)**: 14-period RSI in sub-chart with 30/70 levels
   - **MACD**: 12,26,9 configuration with histogram, MACD line, and Signal line
   - Indicator selector dropdown with easy toggle

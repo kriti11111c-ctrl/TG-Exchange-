@@ -409,11 +409,18 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
     const updateDimensions = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        // Increase height if RSI or MACD is active
+        // Increase height based on active indicators
         const hasSubChart = activeIndicators.includes('RSI') || activeIndicators.includes('MACD');
+        const hasVolume = activeIndicators.includes('VOL');
+        
+        let height = 280;
+        if (hasSubChart && hasVolume) height = 420;
+        else if (hasSubChart) height = 350;
+        else if (hasVolume) height = 340;
+        
         setDimensions({
           width: Math.max(300, rect.width),
-          height: hasSubChart ? 350 : 280
+          height: height
         });
       }
     };
@@ -514,11 +521,34 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
     ctx.fillStyle = isDark ? '#0B0E11' : '#FFFFFF';
     ctx.fillRect(0, 0, width, height);
     
-    // Determine chart areas
+    // Determine chart areas - now includes volume section
     const hasSubChart = activeIndicators.includes('RSI') || activeIndicators.includes('MACD');
-    const mainChartHeight = hasSubChart ? height * 0.65 : height * 0.85;
-    const subChartHeight = hasSubChart ? height * 0.25 : 0;
-    const subChartTop = mainChartHeight + 10;
+    const hasVolume = activeIndicators.includes('VOL');
+    
+    // Adjust heights based on active indicators
+    let mainChartHeight, volumeHeight, subChartHeight, volumeTop, subChartTop;
+    
+    if (hasSubChart && hasVolume) {
+      mainChartHeight = height * 0.50;
+      volumeHeight = height * 0.15;
+      subChartHeight = height * 0.25;
+      volumeTop = mainChartHeight + 5;
+      subChartTop = volumeTop + volumeHeight + 5;
+    } else if (hasSubChart) {
+      mainChartHeight = height * 0.65;
+      volumeHeight = 0;
+      subChartHeight = height * 0.25;
+      subChartTop = mainChartHeight + 10;
+    } else if (hasVolume) {
+      mainChartHeight = height * 0.70;
+      volumeHeight = height * 0.20;
+      subChartHeight = 0;
+      volumeTop = mainChartHeight + 5;
+    } else {
+      mainChartHeight = height * 0.85;
+      volumeHeight = 0;
+      subChartHeight = 0;
+    }
     
     // Calculate price range
     const allPrices = candleData.flatMap(c => [c.high, c.low]);
@@ -538,7 +568,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
     const adjustedMax = maxPrice + pricePadding;
     const priceRange = adjustedMax - adjustedMin;
     
-    const padding = { top: 15, right: 55, bottom: hasSubChart ? 5 : 30, left: 5 };
+    const padding = { top: 15, right: 55, bottom: (hasSubChart || hasVolume) ? 5 : 30, left: 5 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = mainChartHeight - padding.top - padding.bottom;
     
@@ -658,6 +688,107 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
       ctx.font = 'bold 9px Arial';
       ctx.textAlign = 'left';
       ctx.fillText(currentPrice.toFixed(currentPrice < 100 ? 2 : 0), width - padding.right + 2, priceY + 3);
+    }
+    
+    // Draw Volume bars if active
+    if (hasVolume && volumeHeight > 0) {
+      const volumes = candleData.map(c => c.volume || 0);
+      const maxVolume = Math.max(...volumes);
+      const volChartHeight = volumeHeight - 20;
+      
+      // Volume background
+      ctx.fillStyle = isDark ? '#0B0E11' : '#FFFFFF';
+      ctx.fillRect(0, volumeTop, width, volumeHeight);
+      
+      // Separator line
+      ctx.strokeStyle = isDark ? '#2B3139' : '#E5E7EB';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(0, volumeTop);
+      ctx.lineTo(width, volumeTop);
+      ctx.stroke();
+      
+      // Volume label with current volume
+      const lastVolume = volumes[volumes.length - 1] || 0;
+      ctx.fillStyle = isDark ? '#848E9C' : '#6B7280';
+      ctx.font = '9px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText(`Vol: ${lastVolume.toFixed(2)}`, padding.left, volumeTop + 12);
+      
+      // Calculate Volume MA(5) and MA(10)
+      const volMA5 = [];
+      const volMA10 = [];
+      for (let i = 0; i < volumes.length; i++) {
+        if (i >= 4) {
+          const sum5 = volumes.slice(i - 4, i + 1).reduce((a, b) => a + b, 0);
+          volMA5.push(sum5 / 5);
+        } else {
+          volMA5.push(null);
+        }
+        if (i >= 9) {
+          const sum10 = volumes.slice(i - 9, i + 1).reduce((a, b) => a + b, 0);
+          volMA10.push(sum10 / 10);
+        } else {
+          volMA10.push(null);
+        }
+      }
+      
+      // Draw volume bars
+      candleData.forEach((candle, i) => {
+        const x = padding.left + spacing + i * (candleWidth + spacing);
+        const isGreen = candle.close >= candle.open;
+        const volHeight = maxVolume > 0 ? (volumes[i] / maxVolume) * volChartHeight : 0;
+        
+        ctx.fillStyle = isGreen ? 'rgba(14, 203, 129, 0.7)' : 'rgba(246, 70, 93, 0.7)';
+        ctx.fillRect(x, volumeTop + 15 + volChartHeight - volHeight, candleWidth, volHeight);
+      });
+      
+      // Draw Volume MA(5) line - Yellow
+      ctx.strokeStyle = '#F0B90B';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      let maStarted = false;
+      candleData.forEach((candle, i) => {
+        if (volMA5[i] !== null) {
+          const x = padding.left + spacing + i * (candleWidth + spacing) + candleWidth / 2;
+          const y = volumeTop + 15 + volChartHeight - (volMA5[i] / maxVolume) * volChartHeight;
+          if (!maStarted) {
+            ctx.moveTo(x, y);
+            maStarted = true;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+      });
+      ctx.stroke();
+      
+      // Draw Volume MA(10) line - Purple/Blue
+      ctx.strokeStyle = '#9B59B6';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      maStarted = false;
+      candleData.forEach((candle, i) => {
+        if (volMA10[i] !== null) {
+          const x = padding.left + spacing + i * (candleWidth + spacing) + candleWidth / 2;
+          const y = volumeTop + 15 + volChartHeight - (volMA10[i] / maxVolume) * volChartHeight;
+          if (!maStarted) {
+            ctx.moveTo(x, y);
+            maStarted = true;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+      });
+      ctx.stroke();
+      
+      // MA labels
+      const lastMA5 = volMA5.filter(v => v !== null).pop() || 0;
+      const lastMA10 = volMA10.filter(v => v !== null).pop() || 0;
+      ctx.font = '8px Arial';
+      ctx.fillStyle = '#F0B90B';
+      ctx.fillText(`MA(5): ${lastMA5.toFixed(2)}`, padding.left + 60, volumeTop + 12);
+      ctx.fillStyle = '#9B59B6';
+      ctx.fillText(`MA(10): ${lastMA10.toFixed(2)}`, padding.left + 140, volumeTop + 12);
     }
     
     // Draw RSI if active
@@ -824,10 +955,11 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
       if (prev.includes(indicator)) {
         return prev.filter(i => i !== indicator);
       } else {
-        // Only allow one sub-chart indicator at a time (RSI or MACD)
+        // RSI and MACD are mutually exclusive (only one sub-chart at a time)
         if (indicator === 'RSI' || indicator === 'MACD') {
           return [...prev.filter(i => i !== 'RSI' && i !== 'MACD'), indicator];
         }
+        // MA and VOL can be added independently
         return [...prev, indicator];
       }
     });
@@ -897,6 +1029,18 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
                     <span>MA (7, 25)</span>
                     {activeIndicators.includes('MA') && <span>✓</span>}
                   </button>
+                  <button
+                    onClick={() => toggleIndicator('VOL')}
+                    className={`w-full text-left px-2 py-1.5 text-[11px] rounded flex items-center justify-between ${
+                      activeIndicators.includes('VOL') 
+                        ? 'bg-[#0ECB81]/20 text-[#0ECB81]' 
+                        : `${text} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'}`
+                    }`}
+                    data-testid="indicator-vol"
+                  >
+                    <span>VOL (5, 10)</span>
+                    {activeIndicators.includes('VOL') && <span>✓</span>}
+                  </button>
                   
                   <p className={`text-[9px] ${textMuted} mt-2 mb-2`}>Sub Chart</p>
                   <button
@@ -945,6 +1089,22 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
               </span>
             </>
           )}
+          {activeIndicators.includes('VOL') && (
+            <>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-2 bg-[#0ECB81]/70"></span>
+                <span className={textMuted}>Vol</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-0.5 bg-[#F0B90B]"></span>
+                <span className={textMuted}>MA(5)</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-0.5 bg-[#9B59B6]"></span>
+                <span className={textMuted}>MA(10)</span>
+              </span>
+            </>
+          )}
           {activeIndicators.includes('RSI') && (
             <span className="flex items-center gap-1">
               <span className="w-3 h-0.5 bg-[#E91E63]"></span>
@@ -967,7 +1127,11 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
       )}
       
       {/* Chart Canvas */}
-      <div ref={containerRef} className="relative w-full" style={{ minHeight: activeIndicators.includes('RSI') || activeIndicators.includes('MACD') ? '350px' : '280px' }}>
+      <div ref={containerRef} className="relative w-full" style={{ 
+        minHeight: (activeIndicators.includes('RSI') || activeIndicators.includes('MACD')) 
+          ? (activeIndicators.includes('VOL') ? '420px' : '350px')
+          : (activeIndicators.includes('VOL') ? '340px' : '280px')
+      }}>
         {loading && candleData.length === 0 ? (
           <div className={`absolute inset-0 flex items-center justify-center ${textMuted}`}>
             Loading chart...
