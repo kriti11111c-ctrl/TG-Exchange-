@@ -14,19 +14,18 @@ import {
   CaretUp,
   CaretDown,
   Sun,
-  Moon
+  Moon,
+  Star,
+  Fire,
+  Rocket,
+  Trophy,
+  Gift,
+  MagnifyingGlass,
+  Bell,
+  Headset
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  ResponsiveContainer,
-  Area,
-  AreaChart
-} from "recharts";
+import { Input } from "../components/ui/input";
 
 // Navigation Component
 const DashboardNav = ({ isDark, toggleTheme }) => {
@@ -91,18 +90,18 @@ const Dashboard = () => {
   const { isDark, toggleTheme } = useTheme();
   const [wallet, setWallet] = useState(null);
   const [prices, setPrices] = useState([]);
-  const [chartData, setChartData] = useState([]);
-  const [selectedCoin, setSelectedCoin] = useState("bitcoin");
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("favorites");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Theme colors
-  const bg = isDark ? 'bg-[#0A0A0A]' : 'bg-[#FAFAFA]';
-  const cardBg = isDark ? 'bg-[#12121A]' : 'bg-white';
-  const border = isDark ? 'border-white/10' : 'border-gray-200';
+  const bg = isDark ? 'bg-[#0B0E11]' : 'bg-[#FAFAFA]';
+  const cardBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
+  const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
   const text = isDark ? 'text-white' : 'text-gray-900';
-  const textMuted = isDark ? 'text-[#8F8F9D]' : 'text-gray-500';
-  const selectBg = isDark ? 'bg-[#0A0A0A]' : 'bg-gray-100';
-  const tableBorder = isDark ? 'border-white/5' : 'border-gray-100';
+  const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
+  const inputBg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-100';
+  const hoverBg = isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100';
 
   useEffect(() => {
     const fetchData = async () => {
@@ -121,26 +120,71 @@ const Dashboard = () => {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 30000); // Refresh every 30s
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const fetchChart = async () => {
-      try {
-        const response = await axios.get(`${API}/market/chart/${selectedCoin}?days=7`);
-        const formattedData = response.data.prices.map(([timestamp, price]) => ({
-          time: new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          price: price
-        }));
-        setChartData(formattedData);
-      } catch (error) {
-        console.error("Error fetching chart:", error);
-      }
-    };
+  // Promotional banners data
+  const banners = [
+    {
+      title: "Trade Competition",
+      subtitle: "Share $100,000 in Rewards",
+      gradient: "from-[#F0B90B] to-[#F8D12F]",
+      icon: "🏆"
+    },
+    {
+      title: "Spot Earn Upgrade",
+      subtitle: "Up to 15% APY",
+      gradient: "from-[#0ECB81] to-[#00E599]",
+      icon: "💰"
+    },
+    {
+      title: "New Listing Event",
+      subtitle: "Trade & Win Rewards",
+      gradient: "from-[#9B59B6] to-[#8E44AD]",
+      icon: "🚀"
+    }
+  ];
 
-    fetchChart();
-  }, [selectedCoin]);
+  // Market tabs
+  const marketTabs = [
+    { id: "favorites", label: "Favorites", icon: Star },
+    { id: "hot", label: "Hot", icon: Fire },
+    { id: "gainers", label: "Gainers", icon: TrendUp },
+    { id: "losers", label: "Losers", icon: TrendDown },
+    { id: "new", label: "New", icon: Rocket }
+  ];
+
+  // Format volume
+  const formatVolume = (vol) => {
+    if (vol >= 1e9) return `${(vol / 1e9).toFixed(2)}B`;
+    if (vol >= 1e6) return `${(vol / 1e6).toFixed(2)}M`;
+    if (vol >= 1e3) return `${(vol / 1e3).toFixed(2)}K`;
+    return vol?.toFixed(2) || '0';
+  };
+
+  // Get filtered and sorted prices based on active tab
+  const getFilteredPrices = () => {
+    let filtered = [...prices];
+    
+    if (searchQuery) {
+      filtered = filtered.filter(p => 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    switch(activeTab) {
+      case "gainers":
+        return filtered.sort((a, b) => (b.price_change_percentage_24h || 0) - (a.price_change_percentage_24h || 0));
+      case "losers":
+        return filtered.sort((a, b) => (a.price_change_percentage_24h || 0) - (b.price_change_percentage_24h || 0));
+      case "hot":
+        return filtered.sort((a, b) => (b.volume_24h || 0) - (a.volume_24h || 0));
+      default:
+        return filtered;
+    }
+  };
 
   // Calculate portfolio value
   const calculatePortfolioValue = () => {
@@ -186,227 +230,167 @@ const Dashboard = () => {
     );
   }
 
+  const filteredPrices = getFilteredPrices();
+
   return (
     <div className={`min-h-screen ${bg}`}>
       <DashboardNav isDark={isDark} toggleTheme={toggleTheme} />
       
-      <main className="pt-24 pb-12 px-6">
+      <main className="pt-20 pb-12 px-4 md:px-6">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 
-              className={`text-2xl font-bold mb-2 ${text}`}
-              style={{ fontFamily: 'Unbounded' }}
-              data-testid="dashboard-title"
-            >
-              Dashboard
-            </h1>
-            <p className={textMuted}>Welcome back, {user?.name}</p>
-          </div>
-
-          {/* Portfolio Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            {/* Portfolio Value */}
-            <div className={`md:col-span-2 ${cardBg} border ${border} p-6`} data-testid="portfolio-card">
-              <p className={`${textMuted} text-sm mb-2`}>Portfolio Value</p>
-              <p className="text-4xl font-bold font-mono text-[#00E599]" data-testid="portfolio-value">
-                ${calculatePortfolioValue().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </p>
-              <div className="flex items-center gap-2 mt-2">
-                <TrendUp size={16} className="text-[#00E599]" />
-                <span className="text-sm text-[#00E599]">+12.5% this week</span>
-              </div>
-            </div>
-
-            {/* USDT Balance */}
-            <div className={`${cardBg} border ${border} p-6`} data-testid="usdt-balance-card">
-              <p className={`${textMuted} text-sm mb-2`}>USDT Balance</p>
-              <p className={`text-2xl font-bold font-mono ${text}`} data-testid="usdt-balance">
-                ${wallet?.balances?.usdt?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
-              </p>
-              <p className={`text-xs ${textMuted} mt-1`}>Available for trading</p>
-            </div>
-
-            {/* Quick Actions */}
-            <div className={`${cardBg} border ${border} p-6 flex flex-col justify-center gap-3`}>
-              <Link to="/trade" data-testid="quick-trade-btn">
-                <Button className="w-full bg-[#00E599] hover:bg-[#00C282] text-black font-semibold">
-                  Trade Now
-                </Button>
-              </Link>
-              <Link to="/wallet" data-testid="quick-deposit-btn">
-                <Button variant="outline" className={`w-full ${isDark ? 'border-white/20 hover:bg-white/10 text-white' : 'border-gray-300 hover:bg-gray-100 text-gray-900'}`}>
-                  Deposit
-                </Button>
-              </Link>
+          
+          {/* Search Bar */}
+          <div className="mb-4">
+            <div className="relative">
+              <MagnifyingGlass size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search coins..."
+                className={`pl-10 ${inputBg} ${border} ${text} h-10`}
+              />
             </div>
           </div>
 
-          {/* Chart and Market */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            {/* Price Chart */}
-            <div className={`lg:col-span-2 ${cardBg} border ${border} p-6`} data-testid="price-chart">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className={`font-bold ${text}`} style={{ fontFamily: 'Unbounded' }}>Price Chart</h2>
-                <select 
-                  value={selectedCoin}
-                  onChange={(e) => setSelectedCoin(e.target.value)}
-                  className={`${selectBg} border ${border} rounded px-3 py-2 text-sm ${text}`}
-                  data-testid="chart-coin-select"
+          {/* Promotional Banners Carousel */}
+          <div className="mb-6 overflow-x-auto pb-2">
+            <div className="flex gap-4 min-w-max">
+              {banners.map((banner, index) => (
+                <div 
+                  key={index}
+                  className={`relative w-72 h-28 rounded-xl overflow-hidden bg-gradient-to-r ${banner.gradient} p-4 cursor-pointer hover:scale-[1.02] transition-transform`}
                 >
-                  <option value="bitcoin">Bitcoin (BTC)</option>
-                  <option value="ethereum">Ethereum (ETH)</option>
-                  <option value="binancecoin">BNB</option>
-                  <option value="solana">Solana (SOL)</option>
-                </select>
-              </div>
-              
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#00E599" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#00E599" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis 
-                      dataKey="time" 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: isDark ? '#8F8F9D' : '#6B7280', fontSize: 12 }}
-                    />
-                    <YAxis 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: isDark ? '#8F8F9D' : '#6B7280', fontSize: 12 }}
-                      tickFormatter={(value) => `$${value.toLocaleString()}`}
-                      domain={['auto', 'auto']}
-                    />
-                    <Tooltip 
-                      contentStyle={{ 
-                        background: isDark ? '#12121A' : '#FFFFFF', 
-                        border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #E5E7EB',
-                        borderRadius: '4px'
-                      }}
-                      labelStyle={{ color: isDark ? '#8F8F9D' : '#6B7280' }}
-                      formatter={(value) => [`$${value.toLocaleString()}`, 'Price']}
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="price" 
-                      stroke="#00E599" 
-                      strokeWidth={2}
-                      fillOpacity={1} 
-                      fill="url(#colorPrice)" 
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Holdings */}
-            <div className={`${cardBg} border ${border} p-6`} data-testid="holdings-card">
-              <h2 className={`font-bold mb-4 ${text}`} style={{ fontFamily: 'Unbounded' }}>Your Holdings</h2>
-              <div className="space-y-4">
-                {wallet && Object.entries(wallet.balances).map(([coin, amount]) => {
-                  if (amount <= 0) return null;
-                  const coinMap = { btc: 'bitcoin', eth: 'ethereum', bnb: 'binancecoin', xrp: 'ripple', sol: 'solana', usdt: 'tether' };
-                  const priceData = prices.find(p => p.coin_id === coinMap[coin]);
-                  const value = coin === 'usdt' ? amount : (priceData ? amount * priceData.current_price : 0);
-                  
-                  return (
-                    <div 
-                      key={coin} 
-                      className={`flex items-center justify-between py-2 border-b ${tableBorder} last:border-0`}
-                      data-testid={`holding-${coin}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#00E599]/20 flex items-center justify-center">
-                          <span className="text-xs font-bold text-[#00E599]">{coin.toUpperCase()}</span>
-                        </div>
-                        <div>
-                          <p className={`font-medium ${text}`}>{coin.toUpperCase()}</p>
-                          <p className={`text-xs ${textMuted} font-mono`}>{amount.toFixed(coin === 'usdt' ? 2 : 6)}</p>
-                        </div>
-                      </div>
-                      <p className={`font-mono text-sm ${text}`}>${value.toFixed(2)}</p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-black font-bold text-lg">{banner.title}</h3>
+                      <p className="text-black/70 text-sm mt-1">{banner.subtitle}</p>
                     </div>
-                  );
-                })}
-              </div>
+                    <span className="text-3xl">{banner.icon}</span>
+                  </div>
+                  <div className="absolute bottom-2 left-4 flex gap-1">
+                    {[0, 1, 2].map(i => (
+                      <div key={i} className={`w-6 h-1 rounded-full ${i === index ? 'bg-black' : 'bg-black/30'}`} />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Market Overview */}
-          <div className={`${cardBg} border ${border}`} data-testid="market-table">
-            <div className={`p-6 border-b ${border}`}>
-              <h2 className={`font-bold ${text}`} style={{ fontFamily: 'Unbounded' }}>Market Overview</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className={`text-left text-sm ${textMuted} border-b ${border}`}>
-                    <th className="px-6 py-4 font-medium">#</th>
-                    <th className="px-6 py-4 font-medium">Name</th>
-                    <th className="px-6 py-4 font-medium text-right">Price</th>
-                    <th className="px-6 py-4 font-medium text-right">24h Change</th>
-                    <th className="px-6 py-4 font-medium text-right">Market Cap</th>
-                    <th className="px-6 py-4 font-medium text-right">Volume (24h)</th>
-                    <th className="px-6 py-4 font-medium text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {prices.map((coin, index) => (
-                    <tr 
-                      key={coin.coin_id} 
-                      className={`border-b ${tableBorder} ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}
-                      data-testid={`market-row-${coin.symbol}`}
-                    >
-                      <td className={`px-6 py-4 ${textMuted}`}>{index + 1}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          {coin.image && (
-                            <img src={coin.image} alt={coin.name} className="w-8 h-8 rounded-full" />
-                          )}
-                          <div>
-                            <p className={`font-medium ${text}`}>{coin.name}</p>
-                            <p className={`text-xs ${textMuted}`}>{coin.symbol.toUpperCase()}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className={`px-6 py-4 text-right font-mono ${text}`}>
-                        ${coin.current_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className={`flex items-center justify-end gap-1 font-mono ${coin.price_change_percentage_24h >= 0 ? 'text-[#00E599]' : 'text-[#FF3B30]'}`}>
-                          {coin.price_change_percentage_24h >= 0 ? <CaretUp size={14} /> : <CaretDown size={14} />}
-                          {Math.abs(coin.price_change_percentage_24h).toFixed(2)}%
-                        </span>
-                      </td>
-                      <td className={`px-6 py-4 text-right font-mono ${textMuted}`}>
-                        {formatNumber(coin.market_cap)}
-                      </td>
-                      <td className={`px-6 py-4 text-right font-mono ${textMuted}`}>
-                        {formatNumber(coin.volume_24h)}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <Link to={`/trade?coin=${coin.symbol}`}>
-                          <Button 
-                            size="sm" 
-                            className="bg-[#00E599] hover:bg-[#00C282] text-black text-xs"
-                            data-testid={`trade-btn-${coin.symbol}`}
-                          >
-                            Trade
-                          </Button>
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {/* Market Tabs */}
+          <div className={`border-b ${border} mb-4 overflow-x-auto`}>
+            <div className="flex gap-6 min-w-max">
+              {marketTabs.map(tab => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 pb-3 px-1 text-sm font-medium transition-colors ${
+                      activeTab === tab.id 
+                        ? `${text} border-b-2 border-[#F0B90B]` 
+                        : `${textMuted} hover:text-[#F0B90B]`
+                    }`}
+                  >
+                    <Icon size={16} weight={activeTab === tab.id ? "fill" : "regular"} />
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
+
+          {/* Market Table Header */}
+          <div className={`grid grid-cols-12 gap-2 px-3 py-2 text-xs ${textMuted}`}>
+            <div className="col-span-4">Pairs</div>
+            <div className="col-span-3 text-right">24h Vol</div>
+            <div className="col-span-3 text-right">Last Price</div>
+            <div className="col-span-2 text-right">Change</div>
+          </div>
+
+          {/* Market List */}
+          <div className="space-y-1">
+            {filteredPrices.map((coin, index) => (
+              <Link 
+                key={coin.coin_id || index}
+                to={`/trade?coin=${coin.symbol}`}
+                className={`grid grid-cols-12 gap-2 px-3 py-3 rounded-lg ${hoverBg} transition-colors cursor-pointer`}
+              >
+                {/* Pair Name */}
+                <div className="col-span-4 flex items-center gap-2">
+                  <Star size={14} className={textMuted} weight="regular" />
+                  <div>
+                    <div className="flex items-center gap-1">
+                      <span className={`font-medium ${text}`}>{coin.symbol?.toUpperCase()}</span>
+                      {coin.volume_24h > 100000000 && (
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-[#F0B90B]/20 text-[#F0B90B]">3x</span>
+                      )}
+                    </div>
+                    <span className={`text-xs ${textMuted}`}>/USDT</span>
+                  </div>
+                </div>
+                
+                {/* 24h Volume */}
+                <div className={`col-span-3 text-right ${textMuted} text-sm font-mono self-center`}>
+                  {formatVolume(coin.volume_24h)}
+                </div>
+                
+                {/* Last Price */}
+                <div className="col-span-3 text-right self-center">
+                  <p className={`${text} font-mono text-sm`}>
+                    {coin.current_price < 1 
+                      ? coin.current_price?.toFixed(4) 
+                      : coin.current_price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className={`text-xs ${textMuted}`}>
+                    ${coin.current_price < 1 
+                      ? coin.current_price?.toFixed(4) 
+                      : coin.current_price?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+                
+                {/* Change */}
+                <div className="col-span-2 text-right self-center">
+                  <span className={`text-sm font-mono px-2 py-1 rounded ${
+                    (coin.price_change_percentage_24h || 0) >= 0 
+                      ? 'bg-[#0ECB81] text-white' 
+                      : 'bg-[#F6465D] text-white'
+                  }`}>
+                    {(coin.price_change_percentage_24h || 0) >= 0 ? '+' : ''}
+                    {coin.price_change_percentage_24h?.toFixed(2) || '0.00'}%
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Bottom Navigation for Mobile */}
+          <nav className={`fixed bottom-0 left-0 right-0 ${isDark ? 'bg-[#0B0E11]' : 'bg-white'} border-t ${border} z-50 md:hidden`}>
+            <div className="flex items-center justify-around py-2">
+              <Link to="/dashboard" className="flex flex-col items-center gap-1 text-[#F0B90B]">
+                <Vault size={24} />
+                <span className="text-xs">Home</span>
+              </Link>
+              <Link to="/trade" className={`flex flex-col items-center gap-1 ${textMuted}`}>
+                <ChartLineUp size={24} />
+                <span className="text-xs">Markets</span>
+              </Link>
+              <Link to="/trade" className="flex flex-col items-center gap-1">
+                <div className="w-12 h-12 bg-[#F0B90B] rounded-full flex items-center justify-center -mt-4">
+                  <ArrowsLeftRight size={24} className="text-black" />
+                </div>
+                <span className="text-xs text-[#F0B90B]">Trade</span>
+              </Link>
+              <Link to="/transactions" className={`flex flex-col items-center gap-1 ${textMuted}`}>
+                <Trophy size={24} />
+                <span className="text-xs">Futures</span>
+              </Link>
+              <Link to="/wallet" className={`flex flex-col items-center gap-1 ${textMuted}`}>
+                <Wallet size={24} />
+                <span className="text-xs">Assets</span>
+              </Link>
+            </div>
+          </nav>
         </div>
       </main>
     </div>
