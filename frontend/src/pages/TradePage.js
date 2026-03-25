@@ -302,7 +302,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
   const [candleData, setCandleData] = useState([]);
   const [dimensions, setDimensions] = useState({ width: 400, height: 300 });
   const [loading, setLoading] = useState(true);
-  const [activeIndicators, setActiveIndicators] = useState(['MA']); // Default: MA enabled
+  const [activeIndicators, setActiveIndicators] = useState(['MA', 'VOL']); // Default: MA and VOL enabled
   const [showIndicatorMenu, setShowIndicatorMenu] = useState(false);
 
   // Technical Indicator Calculations
