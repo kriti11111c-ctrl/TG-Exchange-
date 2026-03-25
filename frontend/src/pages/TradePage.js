@@ -300,20 +300,100 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
   const containerRef = useRef(null);
   const [timeframe, setTimeframe] = useState('1H');
   const [candleData, setCandleData] = useState([]);
-  const [dimensions, setDimensions] = useState({ width: 400, height: 250 });
+  const [dimensions, setDimensions] = useState({ width: 400, height: 300 });
   const [loading, setLoading] = useState(true);
+  const [activeIndicators, setActiveIndicators] = useState(['MA']); // Default: MA enabled
+  const [showIndicatorMenu, setShowIndicatorMenu] = useState(false);
+
+  // Technical Indicator Calculations
+  const calculateMA = (data, period) => {
+    const result = [];
+    for (let i = 0; i < data.length; i++) {
+      if (i < period - 1) {
+        result.push(null);
+      } else {
+        const sum = data.slice(i - period + 1, i + 1).reduce((a, b) => a + b.close, 0);
+        result.push(sum / period);
+      }
+    }
+    return result;
+  };
+
+  const calculateEMA = (data, period) => {
+    const result = [];
+    const multiplier = 2 / (period + 1);
+    let ema = data.slice(0, period).reduce((a, b) => a + b.close, 0) / period;
+    
+    for (let i = 0; i < data.length; i++) {
+      if (i < period - 1) {
+        result.push(null);
+      } else if (i === period - 1) {
+        result.push(ema);
+      } else {
+        ema = (data[i].close - ema) * multiplier + ema;
+        result.push(ema);
+      }
+    }
+    return result;
+  };
+
+  const calculateRSI = (data, period = 14) => {
+    const result = [];
+    let gains = [];
+    let losses = [];
+
+    for (let i = 0; i < data.length; i++) {
+      if (i === 0) {
+        result.push(null);
+        continue;
+      }
+
+      const change = data[i].close - data[i - 1].close;
+      const gain = change > 0 ? change : 0;
+      const loss = change < 0 ? Math.abs(change) : 0;
+
+      gains.push(gain);
+      losses.push(loss);
+
+      if (i < period) {
+        result.push(null);
+      } else {
+        const avgGain = gains.slice(-period).reduce((a, b) => a + b, 0) / period;
+        const avgLoss = losses.slice(-period).reduce((a, b) => a + b, 0) / period;
+        
+        if (avgLoss === 0) {
+          result.push(100);
+        } else {
+          const rs = avgGain / avgLoss;
+          result.push(100 - (100 / (1 + rs)));
+        }
+      }
+    }
+    return result;
+  };
+
+  const calculateMACD = (data) => {
+    const ema12 = calculateEMA(data, 12);
+    const ema26 = calculateEMA(data, 26);
+    const macdLine = ema12.map((v, i) => (v && ema26[i]) ? v - ema26[i] : null);
+    
+    // Signal line (9-period EMA of MACD)
+    const signalData = macdLine.map((v, i) => ({ close: v || 0 }));
+    const signalLine = calculateEMA(signalData, 9);
+    
+    // Histogram
+    const histogram = macdLine.map((v, i) => (v && signalLine[i]) ? v - signalLine[i] : null);
+    
+    return { macdLine, signalLine, histogram };
+  };
 
   // Timeframe to CoinGecko days mapping
-  // CoinGecko OHLC granularity:
-  // 1-2 days: 30 min candles
-  // 3-30 days: 4 hour candles  
-  // 31+ days: daily candles
   const timeframeToDays = {
-    '15m': 1,   // 30min candles, take every candle
-    '1H': 1,    // 30min candles, aggregate 2 for 1H
-    '4H': 14,   // 4H candles directly
-    '1D': 30,   // 30 days = 4H candles, aggregate to daily
-    '1W': 180,  // 180 days = daily candles, aggregate to weekly
+    '15m': 1,
+    '1H': 1,
+    '4H': 14,
+    '1D': 30,
+    '1W': 180,
   };
 
   const coinIdMap = {
@@ -329,9 +409,11 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
     const updateDimensions = () => {
       if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
+        // Increase height if RSI or MACD is active
+        const hasSubChart = activeIndicators.includes('RSI') || activeIndicators.includes('MACD');
         setDimensions({
           width: Math.max(300, rect.width),
-          height: 250
+          height: hasSubChart ? 350 : 280
         });
       }
     };
@@ -339,7 +421,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
     updateDimensions();
     window.addEventListener('resize', updateDimensions);
     return () => window.removeEventListener('resize', updateDimensions);
-  }, []);
+  }, [activeIndicators]);
 
   // Fetch real OHLC data from CoinGecko
   useEffect(() => {
@@ -474,8 +556,23 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
     ctx.fillStyle = isDark ? '#0B0E11' : '#FFFFFF';
     ctx.fillRect(0, 0, width, height);
     
+    // Determine chart areas
+    const hasSubChart = activeIndicators.includes('RSI') || activeIndicators.includes('MACD');
+    const mainChartHeight = hasSubChart ? height * 0.65 : height * 0.85;
+    const subChartHeight = hasSubChart ? height * 0.25 : 0;
+    const subChartTop = mainChartHeight + 10;
+    
     // Calculate price range
     const allPrices = candleData.flatMap(c => [c.high, c.low]);
+    
+    // Include MA values in price range if active
+    let ma7Values = [], ma25Values = [];
+    if (activeIndicators.includes('MA')) {
+      ma7Values = calculateMA(candleData, 7).filter(v => v !== null);
+      ma25Values = calculateMA(candleData, 25).filter(v => v !== null);
+      allPrices.push(...ma7Values, ...ma25Values);
+    }
+    
     const minPrice = Math.min(...allPrices);
     const maxPrice = Math.max(...allPrices);
     const pricePadding = (maxPrice - minPrice) * 0.1;
@@ -483,9 +580,9 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
     const adjustedMax = maxPrice + pricePadding;
     const priceRange = adjustedMax - adjustedMin;
     
-    const padding = { top: 15, right: 55, bottom: 30, left: 5 };
+    const padding = { top: 15, right: 55, bottom: hasSubChart ? 5 : 30, left: 5 };
     const chartWidth = width - padding.left - padding.right;
-    const chartHeight = height - padding.top - padding.bottom;
+    const chartHeight = mainChartHeight - padding.top - padding.bottom;
     
     // Draw grid lines
     ctx.strokeStyle = isDark ? '#1E2329' : '#E5E7EB';
@@ -511,19 +608,6 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
     const totalCandleSpace = chartWidth;
     const candleWidth = Math.max(3, Math.min(10, (totalCandleSpace / candleData.length) * 0.75));
     const spacing = (totalCandleSpace - candleWidth * candleData.length) / (candleData.length + 1);
-    
-    // Draw time labels
-    const labelInterval = Math.ceil(candleData.length / 5);
-    ctx.fillStyle = isDark ? '#848E9C' : '#6B7280';
-    ctx.font = '8px Arial';
-    ctx.textAlign = 'center';
-    
-    candleData.forEach((candle, i) => {
-      if (i % labelInterval === 0) {
-        const x = padding.left + spacing + i * (candleWidth + spacing) + candleWidth / 2;
-        ctx.fillText(candle.timeLabel, x, height - 8);
-      }
-    });
     
     // Draw candles
     candleData.forEach((candle, i) => {
@@ -552,6 +636,50 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
       ctx.fillRect(x, bodyTop, candleWidth, bodyHeight);
     });
     
+    // Draw MA lines if active
+    if (activeIndicators.includes('MA')) {
+      const ma7 = calculateMA(candleData, 7);
+      const ma25 = calculateMA(candleData, 25);
+      
+      // MA7 - Yellow line
+      ctx.strokeStyle = '#F0B90B';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      let started = false;
+      candleData.forEach((candle, i) => {
+        if (ma7[i] !== null) {
+          const x = padding.left + spacing + i * (candleWidth + spacing) + candleWidth / 2;
+          const y = padding.top + ((adjustedMax - ma7[i]) / priceRange) * chartHeight;
+          if (!started) {
+            ctx.moveTo(x, y);
+            started = true;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+      });
+      ctx.stroke();
+      
+      // MA25 - Purple line
+      ctx.strokeStyle = '#9B59B6';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      started = false;
+      candleData.forEach((candle, i) => {
+        if (ma25[i] !== null) {
+          const x = padding.left + spacing + i * (candleWidth + spacing) + candleWidth / 2;
+          const y = padding.top + ((adjustedMax - ma25[i]) / priceRange) * chartHeight;
+          if (!started) {
+            ctx.moveTo(x, y);
+            started = true;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+      });
+      ctx.stroke();
+    }
+    
     // Draw current price line
     if (currentPrice && currentPrice >= adjustedMin && currentPrice <= adjustedMax) {
       const priceY = padding.top + ((adjustedMax - currentPrice) / priceRange) * chartHeight;
@@ -574,28 +702,177 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
       ctx.fillText(currentPrice.toFixed(currentPrice < 100 ? 2 : 0), width - padding.right + 2, priceY + 3);
     }
     
-    // Draw volume bars
-    const volumes = candleData.map((c, i) => {
-      const prevClose = i > 0 ? candleData[i-1].close : c.open;
-      return Math.abs(c.close - prevClose) * 100000;
-    });
-    const maxVolume = Math.max(...volumes);
-    const volumeHeight = 25;
-    const volumeTop = height - padding.bottom - volumeHeight - 3;
-    
-    candleData.forEach((candle, i) => {
-      const x = padding.left + spacing + i * (candleWidth + spacing);
-      const isGreen = candle.close >= candle.open;
-      const volHeight = (volumes[i] / maxVolume) * volumeHeight;
+    // Draw RSI if active
+    if (activeIndicators.includes('RSI') && hasSubChart) {
+      const rsi = calculateRSI(candleData, 14);
+      const rsiChartHeight = subChartHeight - 20;
       
-      ctx.fillStyle = isGreen ? 'rgba(14, 203, 129, 0.4)' : 'rgba(246, 70, 93, 0.4)';
-      ctx.fillRect(x, volumeTop + volumeHeight - volHeight, candleWidth, volHeight);
-    });
+      // RSI background
+      ctx.fillStyle = isDark ? '#0B0E11' : '#FFFFFF';
+      ctx.fillRect(0, subChartTop, width, subChartHeight);
+      
+      // RSI label
+      ctx.fillStyle = isDark ? '#848E9C' : '#6B7280';
+      ctx.font = '9px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('RSI(14)', padding.left, subChartTop + 10);
+      
+      // RSI lines (30, 70)
+      ctx.strokeStyle = isDark ? '#2B3139' : '#E5E7EB';
+      ctx.lineWidth = 0.5;
+      const rsi70Y = subChartTop + 15 + (1 - 70/100) * rsiChartHeight;
+      const rsi30Y = subChartTop + 15 + (1 - 30/100) * rsiChartHeight;
+      
+      ctx.beginPath();
+      ctx.moveTo(padding.left, rsi70Y);
+      ctx.lineTo(width - padding.right, rsi70Y);
+      ctx.stroke();
+      
+      ctx.beginPath();
+      ctx.moveTo(padding.left, rsi30Y);
+      ctx.lineTo(width - padding.right, rsi30Y);
+      ctx.stroke();
+      
+      // RSI labels
+      ctx.fillStyle = isDark ? '#848E9C' : '#6B7280';
+      ctx.font = '8px Arial';
+      ctx.fillText('70', width - padding.right + 3, rsi70Y + 3);
+      ctx.fillText('30', width - padding.right + 3, rsi30Y + 3);
+      
+      // Draw RSI line
+      ctx.strokeStyle = '#E91E63';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      let rsiStarted = false;
+      candleData.forEach((candle, i) => {
+        if (rsi[i] !== null) {
+          const x = padding.left + spacing + i * (candleWidth + spacing) + candleWidth / 2;
+          const y = subChartTop + 15 + (1 - rsi[i]/100) * rsiChartHeight;
+          if (!rsiStarted) {
+            ctx.moveTo(x, y);
+            rsiStarted = true;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+      });
+      ctx.stroke();
+    }
     
-  }, [candleData, currentPrice, dimensions, isDark]);
+    // Draw MACD if active
+    if (activeIndicators.includes('MACD') && hasSubChart) {
+      const { macdLine, signalLine, histogram } = calculateMACD(candleData);
+      const macdChartHeight = subChartHeight - 20;
+      
+      // Find MACD range
+      const allMacd = [...macdLine.filter(v => v !== null), ...signalLine.filter(v => v !== null)];
+      const macdMax = Math.max(...allMacd.map(v => Math.abs(v)));
+      
+      // MACD background
+      ctx.fillStyle = isDark ? '#0B0E11' : '#FFFFFF';
+      ctx.fillRect(0, subChartTop, width, subChartHeight);
+      
+      // MACD label
+      ctx.fillStyle = isDark ? '#848E9C' : '#6B7280';
+      ctx.font = '9px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('MACD(12,26,9)', padding.left, subChartTop + 10);
+      
+      // Zero line
+      ctx.strokeStyle = isDark ? '#2B3139' : '#E5E7EB';
+      ctx.lineWidth = 0.5;
+      const zeroY = subChartTop + 15 + macdChartHeight / 2;
+      ctx.beginPath();
+      ctx.moveTo(padding.left, zeroY);
+      ctx.lineTo(width - padding.right, zeroY);
+      ctx.stroke();
+      
+      // Draw histogram
+      candleData.forEach((candle, i) => {
+        if (histogram[i] !== null) {
+          const x = padding.left + spacing + i * (candleWidth + spacing);
+          const barHeight = (histogram[i] / macdMax) * (macdChartHeight / 2);
+          ctx.fillStyle = histogram[i] >= 0 ? 'rgba(14, 203, 129, 0.6)' : 'rgba(246, 70, 93, 0.6)';
+          if (histogram[i] >= 0) {
+            ctx.fillRect(x, zeroY - barHeight, candleWidth, barHeight);
+          } else {
+            ctx.fillRect(x, zeroY, candleWidth, Math.abs(barHeight));
+          }
+        }
+      });
+      
+      // Draw MACD line
+      ctx.strokeStyle = '#3498DB';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      let macdStarted = false;
+      candleData.forEach((candle, i) => {
+        if (macdLine[i] !== null) {
+          const x = padding.left + spacing + i * (candleWidth + spacing) + candleWidth / 2;
+          const y = zeroY - (macdLine[i] / macdMax) * (macdChartHeight / 2);
+          if (!macdStarted) {
+            ctx.moveTo(x, y);
+            macdStarted = true;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+      });
+      ctx.stroke();
+      
+      // Draw Signal line
+      ctx.strokeStyle = '#E67E22';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      let signalStarted = false;
+      candleData.forEach((candle, i) => {
+        if (signalLine[i] !== null) {
+          const x = padding.left + spacing + i * (candleWidth + spacing) + candleWidth / 2;
+          const y = zeroY - (signalLine[i] / macdMax) * (macdChartHeight / 2);
+          if (!signalStarted) {
+            ctx.moveTo(x, y);
+            signalStarted = true;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+      });
+      ctx.stroke();
+    }
+    
+    // Draw time labels at the bottom
+    if (!hasSubChart) {
+      const labelInterval = Math.ceil(candleData.length / 5);
+      ctx.fillStyle = isDark ? '#848E9C' : '#6B7280';
+      ctx.font = '8px Arial';
+      ctx.textAlign = 'center';
+      
+      candleData.forEach((candle, i) => {
+        if (i % labelInterval === 0) {
+          const x = padding.left + spacing + i * (candleWidth + spacing) + candleWidth / 2;
+          ctx.fillText(candle.timeLabel, x, height - 8);
+        }
+      });
+    }
+    
+  }, [candleData, currentPrice, dimensions, isDark, activeIndicators]);
 
   const handleTimeframeChange = (tf) => {
     setTimeframe(tf);
+  };
+
+  const toggleIndicator = (indicator) => {
+    setActiveIndicators(prev => {
+      if (prev.includes(indicator)) {
+        return prev.filter(i => i !== indicator);
+      } else {
+        // Only allow one sub-chart indicator at a time (RSI or MACD)
+        if (indicator === 'RSI' || indicator === 'MACD') {
+          return [...prev.filter(i => i !== 'RSI' && i !== 'MACD'), indicator];
+        }
+        return [...prev, indicator];
+      }
+    });
   };
 
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-white';
@@ -603,10 +880,12 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
   const text = isDark ? 'text-white' : 'text-gray-900';
   const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
   const btnBg = isDark ? 'bg-[#0B0E11]/90' : 'bg-white/90';
+  const dropdownBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
 
   return (
     <div className={`${bg} border ${border} overflow-hidden`}>
-      <div className={`p-2 border-b ${border} flex items-center justify-between`}>
+      {/* Chart Header with Price, Timeframes, and Indicators */}
+      <div className={`p-2 border-b ${border} flex flex-wrap items-center justify-between gap-2`}>
         <div className="flex items-center gap-2">
           <span className={`text-lg font-bold ${text} font-mono`}>
             {currentPrice?.toLocaleString('en-US', { minimumFractionDigits: 2 })}
@@ -615,23 +894,122 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
             {priceChange >= 0 ? '+' : ''}{priceChange?.toFixed(2)}%
           </span>
         </div>
-        <div className="flex gap-1 text-[10px]">
-          {['15m', '1H', '4H', '1D', '1W'].map(tf => (
+        
+        <div className="flex items-center gap-2">
+          {/* Timeframe Buttons */}
+          <div className="flex gap-1 text-[10px]">
+            {['15m', '1H', '4H', '1D', '1W'].map(tf => (
+              <button 
+                key={tf} 
+                onClick={() => handleTimeframeChange(tf)}
+                className={`px-2 py-1 rounded ${
+                  timeframe === tf 
+                    ? 'bg-[#F0B90B] text-black font-bold' 
+                    : `${textMuted} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-200'}`
+                }`}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
+          
+          {/* Indicator Dropdown */}
+          <div className="relative">
             <button 
-              key={tf} 
-              onClick={() => handleTimeframeChange(tf)}
-              className={`px-2 py-1 rounded ${
-                timeframe === tf 
-                  ? 'bg-[#F0B90B] text-black font-bold' 
-                  : `${textMuted} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-200'}`
-              }`}
+              onClick={() => setShowIndicatorMenu(!showIndicatorMenu)}
+              className={`px-2 py-1 text-[10px] rounded border ${border} ${textMuted} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-200'}`}
+              data-testid="indicator-menu-btn"
             >
-              {tf}
+              Indicators {activeIndicators.length > 0 && `(${activeIndicators.length})`}
             </button>
-          ))}
+            
+            {showIndicatorMenu && (
+              <div className={`absolute right-0 top-full mt-1 ${dropdownBg} border ${border} rounded-md shadow-lg z-50 min-w-[140px]`}>
+                <div className="p-2 space-y-1">
+                  <p className={`text-[9px] ${textMuted} mb-2`}>Main Chart</p>
+                  <button
+                    onClick={() => toggleIndicator('MA')}
+                    className={`w-full text-left px-2 py-1.5 text-[11px] rounded flex items-center justify-between ${
+                      activeIndicators.includes('MA') 
+                        ? 'bg-[#F0B90B]/20 text-[#F0B90B]' 
+                        : `${text} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'}`
+                    }`}
+                    data-testid="indicator-ma"
+                  >
+                    <span>MA (7, 25)</span>
+                    {activeIndicators.includes('MA') && <span>✓</span>}
+                  </button>
+                  
+                  <p className={`text-[9px] ${textMuted} mt-2 mb-2`}>Sub Chart</p>
+                  <button
+                    onClick={() => toggleIndicator('RSI')}
+                    className={`w-full text-left px-2 py-1.5 text-[11px] rounded flex items-center justify-between ${
+                      activeIndicators.includes('RSI') 
+                        ? 'bg-[#E91E63]/20 text-[#E91E63]' 
+                        : `${text} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'}`
+                    }`}
+                    data-testid="indicator-rsi"
+                  >
+                    <span>RSI (14)</span>
+                    {activeIndicators.includes('RSI') && <span>✓</span>}
+                  </button>
+                  <button
+                    onClick={() => toggleIndicator('MACD')}
+                    className={`w-full text-left px-2 py-1.5 text-[11px] rounded flex items-center justify-between ${
+                      activeIndicators.includes('MACD') 
+                        ? 'bg-[#3498DB]/20 text-[#3498DB]' 
+                        : `${text} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'}`
+                    }`}
+                    data-testid="indicator-macd"
+                  >
+                    <span>MACD (12,26,9)</span>
+                    {activeIndicators.includes('MACD') && <span>✓</span>}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-      <div ref={containerRef} className="relative w-full" style={{ minHeight: '250px' }}>
+      
+      {/* Indicator Legend */}
+      {activeIndicators.length > 0 && (
+        <div className={`px-2 py-1 flex flex-wrap gap-3 text-[9px] ${border} border-b`}>
+          {activeIndicators.includes('MA') && (
+            <>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-0.5 bg-[#F0B90B]"></span>
+                <span className={textMuted}>MA(7)</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-0.5 bg-[#9B59B6]"></span>
+                <span className={textMuted}>MA(25)</span>
+              </span>
+            </>
+          )}
+          {activeIndicators.includes('RSI') && (
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-0.5 bg-[#E91E63]"></span>
+              <span className={textMuted}>RSI(14)</span>
+            </span>
+          )}
+          {activeIndicators.includes('MACD') && (
+            <>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-0.5 bg-[#3498DB]"></span>
+                <span className={textMuted}>MACD</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-0.5 bg-[#E67E22]"></span>
+                <span className={textMuted}>Signal</span>
+              </span>
+            </>
+          )}
+        </div>
+      )}
+      
+      {/* Chart Canvas */}
+      <div ref={containerRef} className="relative w-full" style={{ minHeight: activeIndicators.includes('RSI') || activeIndicators.includes('MACD') ? '350px' : '280px' }}>
         {loading && candleData.length === 0 ? (
           <div className={`absolute inset-0 flex items-center justify-center ${textMuted}`}>
             Loading chart...

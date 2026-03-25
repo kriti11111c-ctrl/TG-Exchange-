@@ -36,6 +36,14 @@
 ## What's Been Implemented
 
 ### March 25, 2026
+- ✅ **Technical Indicators on Charts** - Professional trading analysis tools
+  - **MA (Moving Average)**: 7-period (yellow) and 25-period (purple) lines on main chart
+  - **RSI (Relative Strength Index)**: 14-period RSI in sub-chart with 30/70 levels
+  - **MACD**: 12,26,9 configuration with histogram, MACD line, and Signal line
+  - Indicator selector dropdown with easy toggle
+  - Visual legend showing active indicators
+  - Chart height auto-adjusts when sub-chart indicators active
+  
 - ✅ **Day/Night Mode Toggle** - Full light/dark theme support across all pages
   - Theme toggle button (☀️/🌙) in navbar on Dashboard, Trade, and Wallet pages
   - Theme state persists in localStorage
@@ -70,16 +78,17 @@
 - Market prices
 - Real Candlestick Charts
 - Light/Dark Mode toggle
+- Technical Indicators (MA, RSI, MACD)
 
 ### P1 (Backlog)
 - WebSocket connection for live price updates
-- Technical indicators (MA, RSI, MACD) on charts
 - KYC/Identity verification
 - 2FA authentication
 - Order book with limit orders
 
 ### P2 (Future)
 - Margin trading / Futures UI
+- Bollinger Bands indicator
 - Multiple fiat currencies
 - Staking/Earning features
 - Admin dashboard
@@ -87,7 +96,7 @@
 
 ## Next Tasks
 1. WebSocket connection for real-time price updates
-2. Add technical indicators to charts (MA, RSI, MACD)
-3. Implement limit orders functionality
-4. Add 2FA authentication
+2. Implement limit orders functionality
+3. Add 2FA authentication
+4. Add more indicators (Bollinger Bands, Volume Profile)
 5. KYC/Identity verification
