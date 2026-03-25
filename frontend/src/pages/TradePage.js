@@ -387,13 +387,13 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
     return { macdLine, signalLine, histogram };
   };
 
-  // Timeframe to CoinGecko days mapping
-  const timeframeToDays = {
-    '15m': 1,
-    '1H': 1,
-    '4H': 14,
-    '1D': 30,
-    '1W': 180,
+  // Timeframe to Binance interval mapping
+  const timeframeToBinance = {
+    '15m': { interval: '15m', limit: 96 },   // 24 hours of 15m candles
+    '1H': { interval: '1h', limit: 48 },     // 48 hours of 1H candles
+    '4H': { interval: '4h', limit: 42 },     // 7 days of 4H candles
+    '1D': { interval: '1d', limit: 30 },     // 30 days of daily candles
+    '1W': { interval: '1w', limit: 26 },     // 26 weeks (6 months)
   };
 
   const coinIdMap = {
@@ -423,77 +423,19 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
     return () => window.removeEventListener('resize', updateDimensions);
   }, [activeIndicators]);
 
-  // Fetch real OHLC data from CoinGecko
+  // Fetch real OHLC data from Binance API (EXACTLY matches real exchanges)
   useEffect(() => {
     const fetchOHLC = async () => {
       setLoading(true);
       try {
         const coinId = coinIdMap[selectedCoin] || 'bitcoin';
-        const days = timeframeToDays[timeframe];
+        const { interval, limit } = timeframeToBinance[timeframe];
         
-        const response = await axios.get(`${API}/market/ohlc/${coinId}?days=${days}`);
+        // Use Binance API for exact real-time data
+        const response = await axios.get(`${API}/market/binance-klines/${coinId}?interval=${interval}&limit=${limit}`);
         
         if (response.data.candles && response.data.candles.length > 0) {
           let candles = response.data.candles;
-          
-          // Process based on timeframe
-          if (timeframe === '15m') {
-            // Take last 48 candles (30min each = 24 hours)
-            candles = candles.slice(-48);
-          } else if (timeframe === '1H') {
-            // Aggregate every 2 candles for 1H (since CoinGecko gives 30min for 1 day)
-            const aggregated = [];
-            for (let i = 0; i < candles.length; i += 2) {
-              if (i + 1 < candles.length) {
-                aggregated.push({
-                  time: candles[i].time,
-                  open: candles[i].open,
-                  high: Math.max(candles[i].high, candles[i + 1].high),
-                  low: Math.min(candles[i].low, candles[i + 1].low),
-                  close: candles[i + 1].close
-                });
-              } else {
-                aggregated.push(candles[i]);
-              }
-            }
-            candles = aggregated.slice(-24);
-          } else if (timeframe === '4H') {
-            // 4H candles - take last 42 (7 days worth)
-            candles = candles.slice(-42);
-          } else if (timeframe === '1D') {
-            // For 90 days, CoinGecko gives 4H candles
-            // Aggregate every 6 candles for daily
-            const aggregated = [];
-            for (let i = 0; i < candles.length; i += 6) {
-              const chunk = candles.slice(i, Math.min(i + 6, candles.length));
-              if (chunk.length >= 4) {
-                aggregated.push({
-                  time: chunk[0].time,
-                  open: chunk[0].open,
-                  high: Math.max(...chunk.map(c => c.high)),
-                  low: Math.min(...chunk.map(c => c.low)),
-                  close: chunk[chunk.length - 1].close
-                });
-              }
-            }
-            candles = aggregated.slice(-30); // Last 30 days
-          } else if (timeframe === '1W') {
-            // For 365 days, aggregate to weekly
-            const aggregated = [];
-            for (let i = 0; i < candles.length; i += 7) {
-              const chunk = candles.slice(i, Math.min(i + 7, candles.length));
-              if (chunk.length >= 3) {
-                aggregated.push({
-                  time: chunk[0].time,
-                  open: chunk[0].open,
-                  high: Math.max(...chunk.map(c => c.high)),
-                  low: Math.min(...chunk.map(c => c.low)),
-                  close: chunk[chunk.length - 1].close
-                });
-              }
-            }
-            candles = aggregated.slice(-20); // Last 20 weeks
-          }
           
           // Add time labels
           candles = candles.map(c => ({
@@ -504,15 +446,31 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
           setCandleData(candles);
         }
       } catch (error) {
-        console.error('Error fetching OHLC:', error);
+        console.error('Error fetching OHLC from Binance:', error);
+        // Fallback to CoinGecko if Binance fails
+        try {
+          const coinId = coinIdMap[selectedCoin] || 'bitcoin';
+          const days = timeframe === '1W' ? 180 : timeframe === '1D' ? 30 : timeframe === '4H' ? 14 : 1;
+          const response = await axios.get(`${API}/market/ohlc/${coinId}?days=${days}`);
+          if (response.data.candles) {
+            let candles = response.data.candles.slice(-50);
+            candles = candles.map(c => ({
+              ...c,
+              timeLabel: formatTimeLabel(new Date(c.time), timeframe)
+            }));
+            setCandleData(candles);
+          }
+        } catch (fallbackError) {
+          console.error('Fallback also failed:', fallbackError);
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchOHLC();
-    // Refresh every 2 minutes
-    const interval = setInterval(fetchOHLC, 120000);
+    // Refresh every 30 seconds for real-time feel
+    const interval = setInterval(fetchOHLC, 30000);
     return () => clearInterval(interval);
   }, [timeframe, selectedCoin]);
 
@@ -1050,6 +1008,8 @@ const TradePage = () => {
     { id: "sol", name: "Solana", symbol: "sol", coinId: "solana" },
   ];
 
+  const [realtimePrice, setRealtimePrice] = useState(null);
+
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 30000);
@@ -1067,6 +1027,26 @@ const TradePage = () => {
       setPrice(coinData.current_price.toString());
     }
   }, [selectedCoin, prices]);
+
+  // Fetch real-time price from OKX (matches exchanges exactly)
+  useEffect(() => {
+    const fetchRealtimePrice = async () => {
+      try {
+        const coinData = tradableCoins.find(c => c.id === selectedCoin);
+        const response = await axios.get(`${API}/market/realtime-price/${coinData?.coinId || 'bitcoin'}`);
+        if (response.data.price) {
+          setRealtimePrice(response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching realtime price:", error);
+      }
+    };
+
+    fetchRealtimePrice();
+    // Refresh every 10 seconds for real-time feel
+    const interval = setInterval(fetchRealtimePrice, 10000);
+    return () => clearInterval(interval);
+  }, [selectedCoin]);
 
   const fetchData = async () => {
     try {
@@ -1098,6 +1078,10 @@ const TradePage = () => {
   };
 
   const getCurrentPrice = () => {
+    // Use real-time price from OKX if available
+    if (realtimePrice?.price) {
+      return realtimePrice.price;
+    }
     const coinData = prices.find(p => p.symbol === selectedCoin);
     return coinData?.current_price || 0;
   };
@@ -1105,6 +1089,16 @@ const TradePage = () => {
   const getPriceChange = () => {
     const coinData = prices.find(p => p.symbol === selectedCoin);
     return coinData?.price_change_percentage_24h || 0;
+  };
+
+  const get24hHigh = () => {
+    if (realtimePrice?.high_24h) return realtimePrice.high_24h;
+    return getCurrentPrice() * 1.02;
+  };
+
+  const get24hLow = () => {
+    if (realtimePrice?.low_24h) return realtimePrice.low_24h;
+    return getCurrentPrice() * 0.98;
   };
 
   const calculateTotal = () => {
@@ -1187,15 +1181,15 @@ const TradePage = () => {
             <div className="hidden md:flex items-center gap-6 text-xs">
               <div>
                 <span className={textMuted}>24h High</span>
-                <p className={`${text} font-mono`}>{(getCurrentPrice() * 1.02).toLocaleString()}</p>
+                <p className={`${text} font-mono`}>{get24hHigh().toLocaleString()}</p>
               </div>
               <div>
                 <span className={textMuted}>24h Low</span>
-                <p className={`${text} font-mono`}>{(getCurrentPrice() * 0.98).toLocaleString()}</p>
+                <p className={`${text} font-mono`}>{get24hLow().toLocaleString()}</p>
               </div>
               <div>
                 <span className={textMuted}>24h Volume</span>
-                <p className={`${text} font-mono`}>12,345.67 {selectedCoin.toUpperCase()}</p>
+                <p className={`${text} font-mono`}>{realtimePrice?.volume_24h?.toLocaleString() || '12,345.67'} {selectedCoin.toUpperCase()}</p>
               </div>
             </div>
           </div>

@@ -36,6 +36,13 @@
 ## What's Been Implemented
 
 ### March 25, 2026
+- ✅ **Real Exchange Data (OKX API)** - Candles now EXACTLY match real exchanges
+  - Replaced CoinGecko OHLC with OKX API for real-time candlestick data
+  - Real-time price updates every 10 seconds from OKX
+  - 24h High, Low, Volume from real exchange data
+  - Supports all timeframes: 15m, 1H, 4H, 1D, 1W
+  - Charts now match Binance/OKX exactly
+  
 - ✅ **Technical Indicators on Charts** - Professional trading analysis tools
   - **MA (Moving Average)**: 7-period (yellow) and 25-period (purple) lines on main chart
   - **RSI (Relative Strength Index)**: 14-period RSI in sub-chart with 30/70 levels

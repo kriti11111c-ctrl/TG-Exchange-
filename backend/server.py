@@ -728,6 +728,38 @@ async def get_market_prices():
     
     return result
 
+@api_router.get("/market/realtime-price/{coin_id}")
+async def get_realtime_price(coin_id: str):
+    """Get real-time price from OKX API (matches exchanges exactly)"""
+    symbol = OKX_SYMBOLS.get(coin_id.lower(), "BTC-USDT")
+    
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            response = await client.get(
+                f"{OKX_API_URL}/market/ticker",
+                params={"instId": symbol}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("code") == "0" and data.get("data"):
+                    ticker = data["data"][0]
+                    return {
+                        "coin_id": coin_id,
+                        "symbol": symbol,
+                        "price": float(ticker.get("last", 0)),
+                        "high_24h": float(ticker.get("high24h", 0)),
+                        "low_24h": float(ticker.get("low24h", 0)),
+                        "volume_24h": float(ticker.get("vol24h", 0)),
+                        "change_24h": float(ticker.get("sodUtc8", 0)) if ticker.get("sodUtc8") else 0,
+                        "timestamp": int(ticker.get("ts", 0))
+                    }
+        except Exception as e:
+            logger.error(f"Error fetching OKX ticker: {e}")
+    
+    # Fallback
+    return {"coin_id": coin_id, "price": 0, "error": "Could not fetch price"}
+
 @api_router.get("/market/chart/{coin_id}")
 async def get_price_chart(coin_id: str, days: int = 7):
     """Get historical price data for charts"""
@@ -792,6 +824,113 @@ async def get_price_chart(coin_id: str, days: int = 7):
 
 # OHLC cache
 ohlc_cache = {}
+
+# OKX API Base URL (no geo restrictions)
+OKX_API_URL = "https://www.okx.com/api/v5"
+
+# Symbol mapping for OKX (format: BTC-USDT)
+OKX_SYMBOLS = {
+    "bitcoin": "BTC-USDT",
+    "ethereum": "ETH-USDT", 
+    "binancecoin": "BNB-USDT",
+    "ripple": "XRP-USDT",
+    "solana": "SOL-USDT",
+    "cardano": "ADA-USDT",
+    "dogecoin": "DOGE-USDT",
+    "polkadot": "DOT-USDT",
+    "btc": "BTC-USDT",
+    "eth": "ETH-USDT",
+    "bnb": "BNB-USDT",
+    "xrp": "XRP-USDT",
+    "sol": "SOL-USDT",
+    "ada": "ADA-USDT",
+    "doge": "DOGE-USDT",
+    "dot": "DOT-USDT"
+}
+
+# Interval mapping for OKX
+OKX_INTERVALS = {
+    "1m": "1m",
+    "5m": "5m",
+    "15m": "15m",
+    "30m": "30m",
+    "1h": "1H",
+    "4h": "4H",
+    "1d": "1D",
+    "1w": "1W"
+}
+
+@api_router.get("/market/binance-klines/{coin_id}")
+async def get_binance_klines(coin_id: str, interval: str = "1h", limit: int = 100):
+    """Get REAL OHLC (candlestick) data from OKX API (matches real exchanges)
+    interval: 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w
+    limit: number of candles (max 300)
+    """
+    global ohlc_cache
+    
+    # Get OKX symbol
+    symbol = OKX_SYMBOLS.get(coin_id.lower(), "BTC-USDT")
+    okx_interval = OKX_INTERVALS.get(interval.lower(), "1H")
+    
+    cache_key = f"okx_{symbol}_{okx_interval}_{limit}"
+    
+    # Check cache (30 sec TTL for real-time feel)
+    if cache_key in ohlc_cache:
+        cached = ohlc_cache[cache_key]
+        age = (datetime.now(timezone.utc) - cached["timestamp"]).total_seconds()
+        if age < 30:  # 30 seconds cache for fresher data
+            return cached["data"]
+    
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            response = await client.get(
+                f"{OKX_API_URL}/market/candles",
+                params={
+                    "instId": symbol,
+                    "bar": okx_interval,
+                    "limit": min(limit, 300)
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("code") == "0" and data.get("data"):
+                    # OKX format: [timestamp, open, high, low, close, vol, volCcy, volCcyQuote, confirm]
+                    klines_data = data["data"]
+                    candles = []
+                    # OKX returns newest first, so reverse
+                    for item in reversed(klines_data):
+                        candles.append({
+                            "time": int(item[0]),  # Timestamp in ms
+                            "open": float(item[1]),
+                            "high": float(item[2]),
+                            "low": float(item[3]),
+                            "close": float(item[4]),
+                            "volume": float(item[5])
+                        })
+                    
+                    result = {
+                        "coin_id": coin_id,
+                        "symbol": symbol,
+                        "interval": interval,
+                        "candles": candles
+                    }
+                    
+                    ohlc_cache[cache_key] = {
+                        "data": result,
+                        "timestamp": datetime.now(timezone.utc)
+                    }
+                    
+                    return result
+            
+            logger.warning(f"OKX API returned {response.status_code}")
+            # Fallback to CoinGecko if OKX fails
+            return await get_ohlc_data(coin_id, 1)
+                
+        except Exception as e:
+            logger.error(f"Error fetching OKX klines: {e}")
+            # Fallback to CoinGecko
+            return await get_ohlc_data(coin_id, 1)
 
 @api_router.get("/market/ohlc/{coin_id}")
 async def get_ohlc_data(coin_id: str, days: int = 1):
