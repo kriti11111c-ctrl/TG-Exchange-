@@ -40,50 +40,50 @@ const DashboardNav = ({ isDark, toggleTheme }) => {
 
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 ${bg} border-b ${border}`}>
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <Link to="/dashboard" className="flex items-center gap-3" data-testid="dashboard-logo">
-          <Vault size={32} weight="duotone" className="text-[#00E599]" />
-          <span className={`font-bold text-xl tracking-tight ${text}`} style={{ fontFamily: 'Unbounded' }}>
+      <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between overflow-hidden">
+        <Link to="/dashboard" className="flex items-center gap-2 flex-shrink-0" data-testid="dashboard-logo">
+          <Vault size={28} weight="duotone" className="text-[#00E599]" />
+          <span className={`font-bold text-lg tracking-tight ${text} hidden sm:block`} style={{ fontFamily: 'Unbounded' }}>
             CryptoVault
           </span>
         </Link>
         
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 sm:gap-6">
           <Link to="/dashboard" className={`${text} hover:text-[#00E599] transition-colors`} data-testid="nav-dashboard">
-            <ChartLineUp size={24} />
+            <ChartLineUp size={22} />
           </Link>
           <Link to="/wallet" className={`${textMuted} hover:text-[#00E599] transition-colors`} data-testid="nav-wallet">
-            <Wallet size={24} />
+            <Wallet size={22} />
           </Link>
-          <Link to="/trade" className={`${textMuted} hover:text-[#00E599] transition-colors`} data-testid="nav-trade">
-            <ArrowsLeftRight size={24} />
+          <Link to="/trade" className={`${textMuted} hover:text-[#00E599] transition-colors hidden sm:block`} data-testid="nav-trade">
+            <ArrowsLeftRight size={22} />
           </Link>
-          <Link to="/transactions" className={`${textMuted} hover:text-[#00E599] transition-colors`} data-testid="nav-transactions">
-            <ClockCounterClockwise size={24} />
+          <Link to="/transactions" className={`${textMuted} hover:text-[#00E599] transition-colors hidden sm:block`} data-testid="nav-transactions">
+            <ClockCounterClockwise size={22} />
           </Link>
-          <div className={`flex items-center gap-4 ml-4 pl-4 border-l ${border}`}>
+          <div className={`flex items-center gap-2 sm:gap-4 ml-2 sm:ml-4 pl-2 sm:pl-4 border-l ${border}`}>
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
-              className={`p-2 rounded-full transition-colors ${isDark ? 'bg-[#2B3139] hover:bg-[#3B4149] text-[#F0B90B]' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+              className={`p-1.5 sm:p-2 rounded-full transition-colors ${isDark ? 'bg-[#2B3139] hover:bg-[#3B4149] text-[#F0B90B]' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
               data-testid="dashboard-theme-toggle"
             >
-              {isDark ? <Sun size={20} weight="fill" /> : <Moon size={20} weight="fill" />}
+              {isDark ? <Sun size={18} weight="fill" /> : <Moon size={18} weight="fill" />}
             </button>
             {/* Profile Link */}
             <Link to="/profile" className={`${textMuted} hover:text-[#00E599] transition-colors`}>
-              <div className="w-8 h-8 rounded-full bg-[#F0B90B] flex items-center justify-center">
-                <User size={18} className="text-black" weight="fill" />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#F0B90B] flex items-center justify-center">
+                <User size={16} className="text-black" weight="fill" />
               </div>
             </Link>
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={logout}
-              className={`${textMuted} hover:text-[#FF3B30] hover:bg-transparent`}
+              className={`${textMuted} hover:text-[#FF3B30] hover:bg-transparent p-1 hidden sm:flex`}
               data-testid="logout-btn"
             >
-              <SignOut size={20} />
+              <SignOut size={18} />
             </Button>
           </div>
         </div>
