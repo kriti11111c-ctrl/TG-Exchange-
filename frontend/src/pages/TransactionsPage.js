@@ -65,7 +65,10 @@ const TransactionsPage = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
-  const [bonusSummary, setBonusSummary] = useState({
+  const [summaryStats, setSummaryStats] = useState({
+    totalDeposits: 0,
+    totalWithdrawals: 0,
+    totalTrades: 0,
     welcomeBonus: 0,
     salary: 0,
     rankReward: 0
@@ -81,19 +84,28 @@ const TransactionsPage = () => {
       const txList = response.data || [];
       setTransactions(txList);
       
-      // Calculate bonus summary
+      // Calculate all summary stats
+      let totalDeposits = 0;
+      let totalWithdrawals = 0;
+      let totalTrades = 0;
       let welcomeBonus = 0;
       let salary = 0;
       let rankReward = 0;
       
       txList.forEach(tx => {
-        if (tx.type === 'welcome_bonus') welcomeBonus += tx.amount || 0;
-        if (tx.type === 'monthly_salary' || tx.type === 'team_bonus') salary += tx.amount || 0;
-        if (tx.type === 'levelup_reward') rankReward += tx.amount || 0;
-        if (tx.type === 'referral_bonus') salary += tx.amount || 0;
+        const amount = tx.amount || 0;
+        const totalUsd = tx.total_usd || amount;
+        
+        if (tx.type === 'deposit') totalDeposits += totalUsd;
+        if (tx.type === 'withdraw') totalWithdrawals += totalUsd;
+        if (tx.type === 'buy' || tx.type === 'sell') totalTrades += totalUsd;
+        if (tx.type === 'welcome_bonus') welcomeBonus += amount;
+        if (tx.type === 'monthly_salary' || tx.type === 'team_bonus') salary += amount;
+        if (tx.type === 'levelup_reward') rankReward += amount;
+        if (tx.type === 'referral_bonus') salary += amount;
       });
       
-      setBonusSummary({ welcomeBonus, salary, rankReward });
+      setSummaryStats({ totalDeposits, totalWithdrawals, totalTrades, welcomeBonus, salary, rankReward });
     } catch (error) {
       console.error("Error fetching transactions:", error);
     } finally {
@@ -179,7 +191,7 @@ const TransactionsPage = () => {
       <main className="pt-24 pb-12 px-6">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-6">
             <div>
               <h1 
                 className="text-2xl font-bold mb-2" 
@@ -189,6 +201,71 @@ const TransactionsPage = () => {
                 Transaction History
               </h1>
               <p className="text-[#8F8F9D]">View all your transactions</p>
+            </div>
+          </div>
+
+          {/* Summary Cards - 6 Cards in 2 Rows */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+            {/* Row 1: Basic Stats */}
+            <div className="bg-[#12121A] border border-white/10 rounded-xl p-4" data-testid="card-deposits">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-[#00E599]/20 flex items-center justify-center">
+                  <ArrowDown size={18} className="text-[#00E599]" />
+                </div>
+                <span className="text-[#8F8F9D] text-sm">Total Deposits</span>
+              </div>
+              <p className="text-xl font-bold text-white font-mono">${summaryStats.totalDeposits.toFixed(2)}</p>
+            </div>
+
+            <div className="bg-[#12121A] border border-white/10 rounded-xl p-4" data-testid="card-withdrawals">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-[#FF3B30]/20 flex items-center justify-center">
+                  <ArrowUp size={18} className="text-[#FF3B30]" />
+                </div>
+                <span className="text-[#8F8F9D] text-sm">Total Withdrawals</span>
+              </div>
+              <p className="text-xl font-bold text-white font-mono">${summaryStats.totalWithdrawals.toFixed(2)}</p>
+            </div>
+
+            <div className="bg-[#12121A] border border-white/10 rounded-xl p-4" data-testid="card-trades">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-[#F5A623]/20 flex items-center justify-center">
+                  <ArrowsDownUp size={18} className="text-[#F5A623]" />
+                </div>
+                <span className="text-[#8F8F9D] text-sm">Total Trades</span>
+              </div>
+              <p className="text-xl font-bold text-white font-mono">${summaryStats.totalTrades.toFixed(2)}</p>
+            </div>
+
+            {/* Row 2: Bonus Stats */}
+            <div className="bg-gradient-to-br from-[#00E599]/10 to-[#12121A] border border-[#00E599]/30 rounded-xl p-4" data-testid="card-welcome-bonus">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-[#00E599]/20 flex items-center justify-center">
+                  <span className="text-[#00E599] text-lg">🎁</span>
+                </div>
+                <span className="text-[#00E599] text-sm font-medium">Welcome Bonus</span>
+              </div>
+              <p className="text-xl font-bold text-[#00E599] font-mono">${summaryStats.welcomeBonus.toFixed(2)}</p>
+            </div>
+
+            <div className="bg-gradient-to-br from-[#F5A623]/10 to-[#12121A] border border-[#F5A623]/30 rounded-xl p-4" data-testid="card-salary">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-[#F5A623]/20 flex items-center justify-center">
+                  <span className="text-[#F5A623] text-lg">💰</span>
+                </div>
+                <span className="text-[#F5A623] text-sm font-medium">Salary</span>
+              </div>
+              <p className="text-xl font-bold text-[#F5A623] font-mono">${summaryStats.salary.toFixed(2)}</p>
+            </div>
+
+            <div className="bg-gradient-to-br from-[#9B59B6]/10 to-[#12121A] border border-[#9B59B6]/30 rounded-xl p-4" data-testid="card-rank-reward">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-[#9B59B6]/20 flex items-center justify-center">
+                  <span className="text-[#9B59B6] text-lg">🏆</span>
+                </div>
+                <span className="text-[#9B59B6] text-sm font-medium">Rank Reward</span>
+              </div>
+              <p className="text-xl font-bold text-[#9B59B6] font-mono">${summaryStats.rankReward.toFixed(2)}</p>
             </div>
           </div>
 

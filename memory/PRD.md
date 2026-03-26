@@ -35,6 +35,14 @@
 
 ## What's Been Implemented
 
+### March 27, 2026
+- ✅ **Transaction History 6 Summary Cards** - Complete overview at top of page
+  - **Row 1 (Basic Stats)**: Total Deposits, Total Withdrawals, Total Trades
+  - **Row 2 (Bonus Stats)**: Welcome Bonus (green), Salary (golden), Rank Reward (purple)
+  - Gradient borders and colored styling for bonus cards
+  - Responsive grid layout (2 cols on mobile, 3 cols on desktop)
+  - Auto-calculates totals from transaction history
+
 ### March 25, 2026
 - ✅ **Real Exchange Data (OKX API)** - Candles now EXACTLY match real exchanges
   - Replaced CoinGecko OHLC with OKX API for real-time candlestick data
