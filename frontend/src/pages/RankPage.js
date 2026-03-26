@@ -54,6 +54,20 @@ const RankPage = () => {
     10: "Immortal"
   };
 
+  // Rank requirements (Direct/Team)
+  const rankRequirements = {
+    1: { direct: 6, team: 0 },
+    2: { direct: 10, team: 30 },
+    3: { direct: 15, team: 75 },
+    4: { direct: 20, team: 150 },
+    5: { direct: 30, team: 300 },
+    6: { direct: 40, team: 600 },
+    7: { direct: 50, team: 1000 },
+    8: { direct: 75, team: 2000 },
+    9: { direct: 100, team: 4000 },
+    10: { direct: 150, team: 8000 }
+  };
+
   useEffect(() => {
     fetchRankInfo();
     fetchAllRanks();
@@ -140,7 +154,7 @@ const RankPage = () => {
                 {rankNames[rankInfo?.rank?.level || 1]}
               </h2>
               <p className={`text-sm ${textMuted}`}>
-                {formatVolume(rankInfo?.total_volume || 0)}+ volume
+                {rankRequirements[rankInfo?.rank?.level || 1]?.direct || 0}D/{rankRequirements[rankInfo?.rank?.level || 1]?.team || 0}T
               </p>
             </div>
             
@@ -256,7 +270,7 @@ const RankPage = () => {
                       )}
                     </div>
                     <p className={`text-sm ${textMuted}`}>
-                      {formatVolume(rank.min_volume)}+ volume
+                      {rankRequirements[rank.level]?.direct || 0}D/{rankRequirements[rank.level]?.team || 0}T
                     </p>
                   </div>
 
