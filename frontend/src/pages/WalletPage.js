@@ -160,12 +160,12 @@ const WalletPage = () => {
   const dialogInputBg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-100';
 
   const supportedCoins = [
-    { id: "btc", name: "Bitcoin", symbol: "BTC", color: "#F7931A", apy: "1.0047" },
-    { id: "eth", name: "Ethereum", symbol: "ETH", color: "#627EEA", apy: "2.15" },
-    { id: "usdt", name: "Tether", symbol: "USDT", color: "#26A17B", apy: "5.25" },
-    { id: "bnb", name: "BNB", symbol: "BNB", color: "#F0B90B", apy: "0.85" },
-    { id: "xrp", name: "XRP", symbol: "XRP", color: "#23292F", apy: "3.50" },
-    { id: "sol", name: "Solana", symbol: "SOL", color: "#9945FF", apy: "4.20" },
+    { id: "btc", name: "Bitcoin", symbol: "BTC", color: "#F7931A", apy: "1.0047", logo: "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png" },
+    { id: "eth", name: "Ethereum", symbol: "ETH", color: "#627EEA", apy: "2.15", logo: "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png" },
+    { id: "usdt", name: "Tether", symbol: "USDT", color: "#26A17B", apy: "5.25", logo: "https://coin-images.coingecko.com/coins/images/325/large/Tether.png" },
+    { id: "bnb", name: "BNB", symbol: "BNB", color: "#F0B90B", apy: "0.85", logo: "https://coin-images.coingecko.com/coins/images/825/large/bnb-icon2_2x.png" },
+    { id: "xrp", name: "XRP", symbol: "XRP", color: "#23292F", apy: "3.50", logo: "https://coin-images.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png" },
+    { id: "sol", name: "Solana", symbol: "SOL", color: "#9945FF", apy: "4.20", logo: "https://coin-images.coingecko.com/coins/images/4128/large/solana.png" },
   ];
 
   const accountTypes = [
@@ -714,11 +714,17 @@ const WalletPage = () => {
                 onClick={() => navigate(`/trade?coin=${coin.id}`)}
               >
                 <div className="flex items-center gap-3">
-                  <div 
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: coin.color }}
-                  >
-                    <span className="text-white font-bold text-sm">{coin.symbol.charAt(0)}</span>
+                  {/* Coin Logo */}
+                  <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center bg-white/10">
+                    <img 
+                      src={coin.logo} 
+                      alt={coin.symbol}
+                      className="w-8 h-8 object-contain"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.innerHTML = `<span class="text-white font-bold text-sm" style="background-color: ${coin.color}; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">${coin.symbol.charAt(0)}</span>`;
+                      }}
+                    />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
