@@ -26,7 +26,7 @@ const DashboardNav = () => {
         <Link to="/dashboard" className="flex items-center gap-3" data-testid="transactions-logo">
           <Vault size={32} weight="duotone" className="text-[#00E599]" />
           <span className="font-bold text-xl tracking-tight" style={{ fontFamily: 'Unbounded' }}>
-            CryptoVault
+            TG Xchange
           </span>
         </Link>
         

@@ -273,7 +273,7 @@ const ProfilePage = () => {
           <Link to="/profile/about" className={`flex items-center justify-between p-4 ${hoverBg}`}>
             <div className="flex items-center gap-3">
               <Info size={22} className={textMuted} />
-              <span className={text}>About CryptoVault</span>
+              <span className={text}>About TG Xchange</span>
             </div>
             <span className={`text-sm ${textMuted}`}>v1.0.0</span>
           </Link>

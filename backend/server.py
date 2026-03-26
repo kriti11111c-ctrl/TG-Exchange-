@@ -47,7 +47,7 @@ chart_cache = {}
 COINGECKO_API_URL = "https://api.coingecko.com/api/v3"
 
 # Create the main app
-app = FastAPI(title="CryptoVault Exchange")
+app = FastAPI(title="TG Xchange Exchange")
 
 # Create router with /api prefix
 api_router = APIRouter(prefix="/api")
@@ -1624,7 +1624,7 @@ def generate_fallback_ohlc(coin_id: str, days: int):
 
 @api_router.get("/")
 async def root():
-    return {"message": "CryptoVault Exchange API", "version": "1.0.0"}
+    return {"message": "TG Xchange Exchange API", "version": "1.0.0"}
 
 # ================= REFERRAL ROUTES =================
 
@@ -2221,7 +2221,7 @@ async def setup_2fa(user: dict = Depends(get_current_user)):
     
     # Generate provisioning URI for QR code
     email = user_data.get("email", "user@cryptovault.com")
-    provisioning_uri = totp.provisioning_uri(name=email, issuer_name="CryptoVault")
+    provisioning_uri = totp.provisioning_uri(name=email, issuer_name="TG Xchange")
     
     # Generate QR code
     qr = qrcode.QRCode(version=1, box_size=10, border=5)

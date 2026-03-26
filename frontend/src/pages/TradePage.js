@@ -35,7 +35,7 @@ const DashboardNav = () => {
         <div className="flex items-center gap-6">
           <Link to="/dashboard" className="flex items-center gap-2" data-testid="trade-logo">
             <Vault size={28} weight="duotone" className="text-[#F0B90B]" />
-            <span className={`font-bold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>CryptoVault</span>
+            <span className={`font-bold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>TG Xchange</span>
           </Link>
           
           <div className="hidden md:flex items-center gap-4 text-sm">

@@ -104,12 +104,12 @@ const ReferralPage = () => {
 
   const shareReferral = async () => {
     const link = `${window.location.origin}/register?ref=${stats?.referral_code}`;
-    const text = `Join CryptoVault and start trading crypto! Use my referral code: ${stats?.referral_code}`;
+    const text = `Join TG Xchange and start trading crypto! Use my referral code: ${stats?.referral_code}`;
     
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "Join CryptoVault",
+          title: "Join TG Xchange",
           text: text,
           url: link
         });

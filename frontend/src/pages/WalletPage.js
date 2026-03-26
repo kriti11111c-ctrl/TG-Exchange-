@@ -96,7 +96,7 @@ const WalletHeader = ({ user, logout, isDark, toggleTheme }) => {
     <div className={`${bg} px-4 py-3 flex items-center justify-between`}>
       <Link to="/dashboard" className="flex items-center gap-2">
         <Vault size={28} weight="duotone" className="text-[#F0B90B]" />
-        <span className={`font-bold text-lg ${text}`}>CryptoVault</span>
+        <span className={`font-bold text-lg ${text}`}>TG Xchange</span>
       </Link>
       <div className="flex items-center gap-3">
         {/* Theme Toggle Button */}
