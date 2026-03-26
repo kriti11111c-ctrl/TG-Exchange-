@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.security import HTTPBearer
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -15,6 +15,11 @@ from jose import jwt, JWTError
 import httpx
 import asyncio
 import math
+import pyotp
+import qrcode
+import io
+import base64
+import json
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -62,6 +67,7 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    totp_code: Optional[str] = None  # For 2FA
 
 class UserResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -642,6 +648,22 @@ async def login(credentials: UserLogin, response: Response):
     
     if not verify_password(credentials.password, user.get("password_hash", "")):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Check if 2FA is enabled
+    if user.get("two_fa_enabled"):
+        if not credentials.totp_code:
+            raise HTTPException(
+                status_code=403, 
+                detail="2FA_REQUIRED",
+                headers={"X-2FA-Required": "true"}
+            )
+        
+        # Verify TOTP code
+        secret = user.get("two_fa_secret")
+        if secret:
+            totp = pyotp.TOTP(secret)
+            if not totp.verify(credentials.totp_code, valid_window=1):
+                raise HTTPException(status_code=401, detail="Invalid 2FA code")
     
     token = create_jwt_token(user["user_id"], user["email"])
     
@@ -2037,6 +2059,244 @@ async def claim_monthly_salary(user: dict = Depends(get_current_user)):
         "team_bonus": bonus_amount,
         "total_payout": total_payout,
         "message": f"Successfully claimed ${total_payout:.2f}"
+    }
+
+# ==================== WebSocket Price Updates ====================
+
+class ConnectionManager:
+    """Manages WebSocket connections for real-time price updates"""
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+    
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        logger.info(f"WebSocket connected. Total connections: {len(self.active_connections)}")
+    
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+        logger.info(f"WebSocket disconnected. Total connections: {len(self.active_connections)}")
+    
+    async def broadcast(self, message: dict):
+        """Send message to all connected clients"""
+        disconnected = []
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(message)
+            except Exception:
+                disconnected.append(connection)
+        
+        # Clean up disconnected clients
+        for conn in disconnected:
+            self.disconnect(conn)
+
+manager = ConnectionManager()
+
+# Background task for fetching and broadcasting prices
+async def price_broadcast_task():
+    """Continuously fetch and broadcast prices to all connected clients"""
+    while True:
+        try:
+            if manager.active_connections:
+                # Fetch latest prices from OKX
+                prices = await fetch_okx_prices()
+                if prices:
+                    await manager.broadcast({
+                        "type": "price_update",
+                        "data": prices,
+                        "timestamp": datetime.now(timezone.utc).isoformat()
+                    })
+            await asyncio.sleep(3)  # Update every 3 seconds
+        except Exception as e:
+            logger.error(f"Price broadcast error: {e}")
+            await asyncio.sleep(5)
+
+async def fetch_okx_prices():
+    """Fetch real-time prices from OKX API"""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get("https://www.okx.com/api/v5/market/tickers?instType=SPOT")
+            if response.status_code == 200:
+                data = response.json()
+                tickers = data.get("data", [])
+                
+                # Filter relevant pairs
+                relevant_pairs = ["BTC-USDT", "ETH-USDT", "BNB-USDT", "XRP-USDT", "SOL-USDT", "ADA-USDT", "DOGE-USDT"]
+                prices = {}
+                
+                for ticker in tickers:
+                    inst_id = ticker.get("instId", "")
+                    if inst_id in relevant_pairs:
+                        symbol = inst_id.replace("-USDT", "").lower()
+                        prices[symbol] = {
+                            "price": float(ticker.get("last", 0)),
+                            "change24h": float(ticker.get("changeRate24h", 0)) * 100,
+                            "high24h": float(ticker.get("high24h", 0)),
+                            "low24h": float(ticker.get("low24h", 0)),
+                            "volume24h": float(ticker.get("vol24h", 0))
+                        }
+                
+                return prices
+    except Exception as e:
+        logger.error(f"Error fetching OKX prices: {e}")
+    return None
+
+@app.websocket("/ws/prices")
+async def websocket_prices(websocket: WebSocket):
+    """WebSocket endpoint for real-time price updates"""
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Keep connection alive, listen for any client messages
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
+                # Client can send ping, we respond with pong
+                if data == "ping":
+                    await websocket.send_text("pong")
+            except asyncio.TimeoutError:
+                # Send ping to keep connection alive
+                await websocket.send_text("ping")
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+    except Exception as e:
+        logger.error(f"WebSocket error: {e}")
+        manager.disconnect(websocket)
+
+# Start background price broadcast task
+@app.on_event("startup")
+async def start_price_broadcast():
+    asyncio.create_task(price_broadcast_task())
+
+# ==================== 2FA Authentication (Google Authenticator) ====================
+
+class Setup2FAResponse(BaseModel):
+    secret: str
+    qr_code: str  # Base64 encoded QR code image
+    manual_key: str
+
+class Verify2FARequest(BaseModel):
+    code: str
+
+class Login2FARequest(BaseModel):
+    email: str
+    password: str
+    totp_code: Optional[str] = None
+
+@api_router.post("/2fa/setup")
+async def setup_2fa(user: dict = Depends(get_current_user)):
+    """Generate 2FA secret and QR code for setup"""
+    user_id = user["user_id"]
+    
+    # Check if 2FA already enabled
+    user_data = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if user_data and user_data.get("two_fa_enabled"):
+        raise HTTPException(status_code=400, detail="2FA is already enabled")
+    
+    # Generate secret
+    secret = pyotp.random_base32()
+    
+    # Create TOTP object
+    totp = pyotp.TOTP(secret)
+    
+    # Generate provisioning URI for QR code
+    email = user_data.get("email", "user@cryptovault.com")
+    provisioning_uri = totp.provisioning_uri(name=email, issuer_name="CryptoVault")
+    
+    # Generate QR code
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(provisioning_uri)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Convert to base64
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    qr_base64 = base64.b64encode(buffer.getvalue()).decode()
+    
+    # Store secret temporarily (not enabled yet)
+    await db.users.update_one(
+        {"user_id": user_id},
+        {"$set": {"two_fa_secret": secret, "two_fa_pending": True}}
+    )
+    
+    return {
+        "secret": secret,
+        "qr_code": f"data:image/png;base64,{qr_base64}",
+        "manual_key": secret
+    }
+
+@api_router.post("/2fa/verify")
+async def verify_and_enable_2fa(request: Verify2FARequest, user: dict = Depends(get_current_user)):
+    """Verify TOTP code and enable 2FA"""
+    user_id = user["user_id"]
+    
+    user_data = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not user_data:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    secret = user_data.get("two_fa_secret")
+    if not secret:
+        raise HTTPException(status_code=400, detail="2FA setup not initiated")
+    
+    # Verify the code
+    totp = pyotp.TOTP(secret)
+    if not totp.verify(request.code, valid_window=1):
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+    
+    # Enable 2FA
+    await db.users.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {"two_fa_enabled": True},
+            "$unset": {"two_fa_pending": ""}
+        }
+    )
+    
+    return {"success": True, "message": "2FA enabled successfully"}
+
+@api_router.post("/2fa/disable")
+async def disable_2fa(request: Verify2FARequest, user: dict = Depends(get_current_user)):
+    """Disable 2FA after verifying current code"""
+    user_id = user["user_id"]
+    
+    user_data = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not user_data:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not user_data.get("two_fa_enabled"):
+        raise HTTPException(status_code=400, detail="2FA is not enabled")
+    
+    secret = user_data.get("two_fa_secret")
+    totp = pyotp.TOTP(secret)
+    
+    if not totp.verify(request.code, valid_window=1):
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+    
+    # Disable 2FA
+    await db.users.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {"two_fa_enabled": False},
+            "$unset": {"two_fa_secret": "", "two_fa_pending": ""}
+        }
+    )
+    
+    return {"success": True, "message": "2FA disabled successfully"}
+
+@api_router.get("/2fa/status")
+async def get_2fa_status(user: dict = Depends(get_current_user)):
+    """Get current 2FA status"""
+    user_id = user["user_id"]
+    
+    user_data = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not user_data:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "enabled": user_data.get("two_fa_enabled", False),
+        "pending": user_data.get("two_fa_pending", False)
     }
 
 # Include router

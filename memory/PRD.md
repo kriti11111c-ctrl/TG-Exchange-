@@ -36,6 +36,21 @@
 ## What's Been Implemented
 
 ### March 27, 2026
+- ✅ **WebSocket Real-Time Prices** - Live price updates without page refresh
+  - WebSocket connection at `/ws/prices`
+  - Automatic reconnection with exponential backoff
+  - LIVE/Offline status indicator on Dashboard
+  - Updates every 3 seconds from OKX API
+  - Fallback to REST API when WebSocket disconnected
+
+- ✅ **2FA Google Authenticator (TOTP)** - QR code based authentication
+  - Setup flow with QR code generation
+  - Manual key entry option with copy button
+  - 6-digit TOTP code verification
+  - Enable/Disable 2FA in Security settings
+  - Login integration - requires code when 2FA enabled
+  - Security page at `/profile/security`
+
 - ✅ **Transaction History 6 Summary Cards** - Complete overview at top of page
   - **Row 1 (Basic Stats)**: Total Deposits, Total Withdrawals, Total Trades
   - **Row 2 (Bonus Stats)**: Welcome Bonus (green), Salary (golden), Rank Reward (purple)
@@ -95,11 +110,11 @@
 - Real Candlestick Charts
 - Light/Dark Mode toggle
 - Technical Indicators (MA, RSI, MACD)
+- WebSocket Real-Time Prices
+- 2FA Google Authenticator
 
 ### P1 (Backlog)
-- WebSocket connection for live price updates
 - KYC/Identity verification
-- 2FA authentication
 - Order book with limit orders
 
 ### P2 (Future)
@@ -111,8 +126,6 @@
 - API keys for programmatic trading
 
 ## Next Tasks
-1. WebSocket connection for real-time price updates
+1. KYC/Identity verification
 2. Implement limit orders functionality
-3. Add 2FA authentication
-4. Add more indicators (Bollinger Bands, Volume Profile)
-5. KYC/Identity verification
+3. Add more indicators (Bollinger Bands, Volume Profile)

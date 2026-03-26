@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth, API } from "../App";
 import axios from "axios";
 import { toast } from "sonner";
-import { Vault, EnvelopeSimple, Lock, GoogleLogo } from "@phosphor-icons/react";
+import { Vault, EnvelopeSimple, Lock, GoogleLogo, ShieldCheck } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -11,6 +11,8 @@ import { Label } from "../components/ui/label";
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [requires2FA, setRequires2FA] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -20,16 +22,29 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API}/auth/login`, {
-        email,
-        password
-      }, { withCredentials: true });
+      const payload = { email, password };
+      if (requires2FA && totpCode) {
+        payload.totp_code = totpCode;
+      }
+
+      const response = await axios.post(`${API}/auth/login`, payload, { withCredentials: true });
 
       login(response.data.user, response.data.access_token);
       toast.success("Login successful!");
       navigate("/dashboard");
     } catch (error) {
-      toast.error(error.response?.data?.detail || "Login failed");
+      const detail = error.response?.data?.detail;
+      
+      // Check if 2FA is required
+      if (detail === "2FA_REQUIRED" || error.response?.status === 403) {
+        setRequires2FA(true);
+        toast.info("Please enter your 2FA code");
+      } else if (detail === "Invalid 2FA code") {
+        toast.error("Invalid 2FA code. Please try again.");
+        setTotpCode("");
+      } else {
+        toast.error(detail || "Login failed");
+      }
     } finally {
       setLoading(false);
     }
@@ -126,6 +141,37 @@ const LoginPage = () => {
                 />
               </div>
             </div>
+
+            {/* 2FA Code Input - Shows when required */}
+            {requires2FA && (
+              <div className="space-y-2">
+                <Label htmlFor="totp" className="text-[#8F8F9D] flex items-center gap-2">
+                  <ShieldCheck size={16} className="text-[#00E599]" />
+                  2FA Code (Google Authenticator)
+                </Label>
+                <div className="relative">
+                  <ShieldCheck 
+                    size={20} 
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[#00E599]" 
+                  />
+                  <Input
+                    id="totp"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Enter 6-digit code"
+                    className="pl-10 py-6 bg-[#12121A] border-[#00E599]/50 focus:border-[#00E599] focus:ring-[#00E599] text-center text-xl tracking-widest font-mono"
+                    autoFocus
+                    data-testid="login-2fa-input"
+                  />
+                </div>
+                <p className="text-xs text-[#8F8F9D]">
+                  Open Google Authenticator app and enter the 6-digit code
+                </p>
+              </div>
+            )}
 
             <Button
               type="submit"

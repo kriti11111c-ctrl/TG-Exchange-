@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth, API, useTheme } from "../App";
 import axios from "axios";
+import useWebSocket from "../hooks/useWebSocket";
 import { 
   Vault, 
   ChartLineUp, 
@@ -23,7 +24,8 @@ import {
   MagnifyingGlass,
   Bell,
   Headset,
-  User
+  User,
+  Lightning
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -99,6 +101,9 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("favorites");
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // WebSocket for real-time prices
+  const { prices: wsPrices, isConnected } = useWebSocket(true);
 
   // Theme colors
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-[#FAFAFA]';
@@ -126,9 +131,31 @@ const Dashboard = () => {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 30000);
+    // Only use interval as fallback if WebSocket not connected
+    const interval = setInterval(() => {
+      if (!isConnected) {
+        fetchData();
+      }
+    }, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isConnected]);
+
+  // Update prices from WebSocket
+  useEffect(() => {
+    if (wsPrices && Object.keys(wsPrices).length > 0) {
+      setPrices(prev => prev.map(coin => {
+        const wsData = wsPrices[coin.symbol?.toLowerCase()];
+        if (wsData) {
+          return {
+            ...coin,
+            current_price: wsData.price,
+            price_change_percentage_24h: wsData.change24h
+          };
+        }
+        return coin;
+      }));
+    }
+  }, [wsPrices]);
 
   // Promotional banners data
   const banners = [
@@ -245,9 +272,9 @@ const Dashboard = () => {
       <main className="pt-20 pb-12 px-4 md:px-6">
         <div className="max-w-7xl mx-auto">
           
-          {/* Search Bar */}
-          <div className="mb-4">
-            <div className="relative">
+          {/* Search Bar with Live Status */}
+          <div className="mb-4 flex gap-3 items-center">
+            <div className="relative flex-1">
               <MagnifyingGlass size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
               <Input
                 value={searchQuery}
@@ -255,6 +282,12 @@ const Dashboard = () => {
                 placeholder="Search coins..."
                 className={`pl-10 ${inputBg} ${border} ${text} h-10`}
               />
+            </div>
+            {/* Live Connection Status */}
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${cardBg} border ${border}`}>
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-[#0ECB81] animate-pulse' : 'bg-red-500'}`}></div>
+              <span className={`text-xs ${textMuted}`}>{isConnected ? 'LIVE' : 'Offline'}</span>
+              {isConnected && <Lightning size={14} className="text-[#F0B90B]" />}
             </div>
           </div>
 
