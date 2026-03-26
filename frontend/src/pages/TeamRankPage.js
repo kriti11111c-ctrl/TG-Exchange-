@@ -209,7 +209,7 @@ const TeamRankPage = () => {
               <div className={`p-3 rounded-xl ${isDark ? 'bg-[#F0B90B]/10' : 'bg-yellow-50'} border border-[#F0B90B]/30 mb-4`}>
                 <p className={`text-sm ${text} font-medium`}>🎯 Get your first rank!</p>
                 <p className={`text-xs ${textMuted} mt-1`}>
-                  Invite 6 members who deposit minimum $50 each to unlock 1st ⭐ rank
+                  Invite 6 members who deposit minimum $50 each to unlock Bronze rank
                 </p>
               </div>
             )}
@@ -278,7 +278,7 @@ const TeamRankPage = () => {
             {/* Table Header */}
             <div className={`grid grid-cols-5 gap-2 p-3 text-xs font-medium ${textMuted} border-b ${isDark ? 'border-[#2B3139]' : 'border-gray-200'}`}>
               <span>Rank</span>
-              <span className="text-center">Direct/$50</span>
+              <span className="text-center">Required</span>
               <span className="text-center">Bonus</span>
               <span className="text-center">Salary</span>
               <span className="text-right">Reward</span>
@@ -296,10 +296,11 @@ const TeamRankPage = () => {
                     isCurrentRank ? (isDark ? 'bg-[#F0B90B]/10' : 'bg-yellow-50') : ''
                   } ${isLocked ? 'opacity-50' : ''}`}
                 >
-                  {/* Rank Name with Emoji */}
+                  {/* Rank Name */}
                   <div className="flex items-center gap-1">
                     <span className="text-sm">{rank.emoji}</span>
-                    {isCurrentRank && <CheckCircle size={12} className="text-[#0ECB81]" />}
+                    <span className={`${text} text-xs truncate`}>{rank.name}</span>
+                    {isCurrentRank && <CheckCircle size={12} className="text-[#0ECB81] flex-shrink-0" />}
                   </div>
                   
                   {/* Requirements */}
@@ -394,7 +395,7 @@ const TeamRankPage = () => {
               </div>
               <div>
                 <p className={text}>Unlock Ranks</p>
-                <p className={`text-xs ${textMuted}`}>6 direct + $50 each = 1st ⭐ rank</p>
+                <p className={`text-xs ${textMuted}`}>6 direct + $50 each = Bronze rank</p>
               </div>
             </div>
             <div className="flex gap-3">
