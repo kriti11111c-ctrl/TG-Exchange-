@@ -155,16 +155,16 @@ const ProfilePage = () => {
       </div>
 
       {/* Referral Banner */}
-      <div className={`${cardBg} mx-4 mt-4 rounded-xl p-4 flex items-center justify-between`}>
+      <Link to="/referral" className={`${cardBg} mx-4 mt-4 rounded-xl p-4 flex items-center justify-between`}>
         <div>
           <p className={`font-semibold ${text}`}>Invite friends, earn together</p>
-          <p className={`text-sm ${textMuted} mt-1`}>Invite now</p>
+          <p className={`text-sm ${textMuted} mt-1`}>Earn up to 20% commission - 10 levels!</p>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Users size={32} className="text-[#F0B90B]" />
-          <Key size={24} className="text-[#0ECB81]" />
+          <CaretRight size={20} className={textMuted} />
         </div>
-      </div>
+      </Link>
 
       {/* Account Menu */}
       <div className={`${cardBg} mx-4 mt-4 rounded-xl overflow-hidden`}>

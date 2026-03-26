@@ -57,6 +57,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     name: str
+    referral_code: Optional[str] = None  # Optional referral code
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -118,6 +119,35 @@ class CryptoPrice(BaseModel):
     market_cap: float
     volume_24h: float
     image: Optional[str] = None
+
+# ================= REFERRAL MODELS =================
+
+class ReferralStats(BaseModel):
+    total_referrals: int
+    total_earnings: float
+    level_stats: List[Dict]
+
+class ReferralUser(BaseModel):
+    user_id: str
+    email: str
+    name: str
+    level: int
+    joined_at: datetime
+    earnings_from: float
+
+# Referral commission rates per level (10 levels)
+REFERRAL_COMMISSION_RATES = {
+    1: 0.20,   # 20% - Direct referral
+    2: 0.10,   # 10%
+    3: 0.05,   # 5%
+    4: 0.03,   # 3%
+    5: 0.02,   # 2%
+    6: 0.01,   # 1%
+    7: 0.005,  # 0.5%
+    8: 0.003,  # 0.3%
+    9: 0.002,  # 0.2%
+    10: 0.001  # 0.1%
+}
 
 # ================= AUTH HELPERS =================
 
@@ -186,7 +216,15 @@ async def register(user_data: UserCreate, response: Response):
         raise HTTPException(status_code=400, detail="Email already registered")
     
     user_id = f"user_{uuid.uuid4().hex[:12]}"
+    referral_code = f"CV{uuid.uuid4().hex[:8].upper()}"  # Generate unique referral code
     now = datetime.now(timezone.utc)
+    
+    # Find referrer if referral code provided
+    referrer_id = None
+    if user_data.referral_code:
+        referrer = await db.users.find_one({"referral_code": user_data.referral_code}, {"_id": 0})
+        if referrer:
+            referrer_id = referrer["user_id"]
     
     user_doc = {
         "user_id": user_id,
@@ -194,10 +232,16 @@ async def register(user_data: UserCreate, response: Response):
         "password_hash": hash_password(user_data.password),
         "name": user_data.name,
         "picture": None,
+        "referral_code": referral_code,
+        "referred_by": referrer_id,
         "created_at": now.isoformat()
     }
     
     await db.users.insert_one(user_doc)
+    
+    # If referred by someone, create referral chain (10 levels)
+    if referrer_id:
+        await create_referral_chain(user_id, referrer_id, now)
     
     # Create wallet with initial balances
     wallet_doc = {
@@ -236,6 +280,29 @@ async def register(user_data: UserCreate, response: Response):
             created_at=now
         )
     )
+
+async def create_referral_chain(new_user_id: str, direct_referrer_id: str, now: datetime):
+    """Create referral relationships for 10 levels"""
+    current_referrer_id = direct_referrer_id
+    level = 1
+    
+    while current_referrer_id and level <= 10:
+        # Create referral record
+        referral_doc = {
+            "referral_id": f"ref_{uuid.uuid4().hex[:12]}",
+            "referrer_id": current_referrer_id,
+            "referred_id": new_user_id,
+            "level": level,
+            "commission_rate": REFERRAL_COMMISSION_RATES.get(level, 0),
+            "total_earnings": 0.0,
+            "created_at": now.isoformat()
+        }
+        await db.referrals.insert_one(referral_doc)
+        
+        # Get next level referrer
+        referrer = await db.users.find_one({"user_id": current_referrer_id}, {"_id": 0})
+        current_referrer_id = referrer.get("referred_by") if referrer else None
+        level += 1
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(credentials: UserLogin, response: Response):
@@ -1060,6 +1127,137 @@ def generate_fallback_ohlc(coin_id: str, days: int):
 @api_router.get("/")
 async def root():
     return {"message": "CryptoVault Exchange API", "version": "1.0.0"}
+
+# ================= REFERRAL ROUTES =================
+
+@api_router.get("/referral/stats")
+async def get_referral_stats(user: dict = Depends(get_current_user)):
+    """Get referral statistics for the current user"""
+    user_id = user["user_id"]
+    
+    # Get user's referral code
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    referral_code = user_doc.get("referral_code", "")
+    
+    # If no referral code, generate one
+    if not referral_code:
+        referral_code = f"CV{uuid.uuid4().hex[:8].upper()}"
+        await db.users.update_one(
+            {"user_id": user_id},
+            {"$set": {"referral_code": referral_code}}
+        )
+    
+    # Get all referrals where this user is the referrer
+    referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=1000)
+    
+    # Calculate stats per level
+    level_stats = []
+    total_referrals = 0
+    total_earnings = 0.0
+    
+    for level in range(1, 11):
+        level_referrals = [r for r in referrals if r.get("level") == level]
+        count = len(level_referrals)
+        earnings = sum(r.get("total_earnings", 0) for r in level_referrals)
+        commission_rate = REFERRAL_COMMISSION_RATES.get(level, 0) * 100  # Convert to percentage
+        
+        level_stats.append({
+            "level": level,
+            "count": count,
+            "earnings": earnings,
+            "commission_rate": commission_rate
+        })
+        
+        total_referrals += count
+        total_earnings += earnings
+    
+    return {
+        "user_id": user_id,
+        "referral_code": referral_code,
+        "total_referrals": total_referrals,
+        "total_earnings": total_earnings,
+        "level_stats": level_stats
+    }
+
+@api_router.get("/referral/team")
+async def get_referral_team(user: dict = Depends(get_current_user), level: int = 0):
+    """Get list of referred users"""
+    user_id = user["user_id"]
+    
+    # Build query
+    query = {"referrer_id": user_id}
+    if level > 0:
+        query["level"] = level
+    
+    # Get referrals
+    referrals = await db.referrals.find(query, {"_id": 0}).sort("created_at", -1).to_list(length=100)
+    
+    # Get user details for each referral
+    team_members = []
+    for ref in referrals:
+        referred_user = await db.users.find_one({"user_id": ref["referred_id"]}, {"_id": 0})
+        if referred_user:
+            # Mask email
+            email = referred_user.get("email", "")
+            local_part = email.split("@")[0] if "@" in email else email
+            masked_email = local_part[:2] + "****" + ("@" + email.split("@")[1] if "@" in email else "")
+            
+            team_members.append({
+                "user_id": ref["referred_id"],
+                "name": referred_user.get("name", "User"),
+                "email": masked_email,
+                "level": ref.get("level", 1),
+                "joined_at": ref.get("created_at"),
+                "earnings_from": ref.get("total_earnings", 0)
+            })
+    
+    return {
+        "team_members": team_members,
+        "total": len(team_members)
+    }
+
+@api_router.post("/referral/claim-commission")
+async def claim_referral_commission(user: dict = Depends(get_current_user)):
+    """Claim accumulated referral commission"""
+    user_id = user["user_id"]
+    
+    # Get all referrals for this user
+    referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=1000)
+    
+    total_unclaimed = sum(r.get("total_earnings", 0) for r in referrals)
+    
+    if total_unclaimed <= 0:
+        raise HTTPException(status_code=400, detail="No commission to claim")
+    
+    # Add to wallet
+    await db.wallets.update_one(
+        {"user_id": user_id},
+        {"$inc": {"balances.usdt": total_unclaimed}}
+    )
+    
+    # Reset earnings
+    await db.referrals.update_many(
+        {"referrer_id": user_id},
+        {"$set": {"total_earnings": 0}}
+    )
+    
+    # Create transaction record
+    tx_doc = {
+        "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+        "user_id": user_id,
+        "type": "referral_commission",
+        "coin": "usdt",
+        "amount": total_unclaimed,
+        "status": "completed",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.transactions.insert_one(tx_doc)
+    
+    return {
+        "success": True,
+        "claimed_amount": total_unclaimed,
+        "message": f"Successfully claimed ${total_unclaimed:.2f} USDT"
+    }
 
 # Include router
 app.include_router(api_router)
