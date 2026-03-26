@@ -19,6 +19,7 @@ const RankPage = () => {
   const [leaderboard, setLeaderboard] = useState([]);
   const [activeTab, setActiveTab] = useState("myRank");
   const [loading, setLoading] = useState(true);
+  const [selectedRank, setSelectedRank] = useState(null);
 
   // Theme colors
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
@@ -68,6 +69,34 @@ const RankPage = () => {
     10: { direct: 150, team: 8000 }
   };
 
+  // Rank benefits (Bonus %, Monthly Salary, Level-up Reward)
+  const rankBenefits = {
+    1: { bonus: 0.5, salary: 30, reward: 50 },
+    2: { bonus: 1.0, salary: 100, reward: 150 },
+    3: { bonus: 1.5, salary: 250, reward: 400 },
+    4: { bonus: 2.0, salary: 500, reward: 800 },
+    5: { bonus: 2.5, salary: 1000, reward: 1500 },
+    6: { bonus: 3.0, salary: 2000, reward: 3000 },
+    7: { bonus: 3.5, salary: 4000, reward: 6000 },
+    8: { bonus: 4.0, salary: 7000, reward: 10000 },
+    9: { bonus: 4.5, salary: 12000, reward: 18000 },
+    10: { bonus: 5.0, salary: 20000, reward: 30000 }
+  };
+
+  // Calculate progress to a specific rank
+  const calculateProgressToRank = (targetLevel) => {
+    const currentDirect = rankInfo?.direct_referrals || 0;
+    const currentTeam = rankInfo?.total_team || 0;
+    const targetReq = rankRequirements[targetLevel];
+    
+    if (!targetReq) return 100;
+    
+    const directProgress = targetReq.direct > 0 ? Math.min(100, (currentDirect / targetReq.direct) * 100) : 100;
+    const teamProgress = targetReq.team > 0 ? Math.min(100, (currentTeam / targetReq.team) * 100) : 100;
+    
+    return Math.min(directProgress, teamProgress);
+  };
+
   useEffect(() => {
     fetchRankInfo();
     fetchAllRanks();
@@ -76,8 +105,17 @@ const RankPage = () => {
 
   const fetchRankInfo = async () => {
     try {
-      const response = await axios.get(`${API}/rank/info`, { withCredentials: true });
-      setRankInfo(response.data);
+      const [rankRes, teamRes] = await Promise.all([
+        axios.get(`${API}/rank/info`, { withCredentials: true }),
+        axios.get(`${API}/team-rank/info`, { withCredentials: true }).catch(() => ({ data: {} }))
+      ]);
+      
+      // Merge team stats into rankInfo
+      setRankInfo({
+        ...rankRes.data,
+        direct_referrals: teamRes.data?.direct_referrals || 0,
+        total_team: teamRes.data?.total_team || 0
+      });
     } catch (error) {
       console.error("Error fetching rank info:", error);
     } finally {
@@ -213,43 +251,95 @@ const RankPage = () => {
           <div className="space-y-2">
             {allRanks.map((rank) => {
               const isCurrentRank = rankInfo?.rank?.level === rank.level;
-              const isLocked = rank.level > (rankInfo?.rank?.level || 1);
+              const isLocked = rank.level > (rankInfo?.rank?.level || 0);
+              const isSelected = selectedRank === rank.level;
+              const progress = calculateProgressToRank(rank.level);
+              const benefits = rankBenefits[rank.level];
+              const requirements = rankRequirements[rank.level];
               
               return (
-                <div 
-                  key={rank.level}
-                  className={`${cardBg} rounded-xl p-4 flex items-center gap-4 ${
-                    isCurrentRank ? 'ring-2 ring-[#F0B90B]' : ''
-                  } ${isLocked ? 'opacity-50' : ''}`}
-                >
-                  {/* Circular Badge */}
+                <div key={rank.level}>
+                  {/* Rank Card - Clickable */}
                   <div 
-                    className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: rankColors[rank.level] }}
+                    onClick={() => setSelectedRank(isSelected ? null : rank.level)}
+                    className={`${cardBg} rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-all ${
+                      isCurrentRank ? 'ring-2 ring-[#F0B90B]' : ''
+                    } ${isLocked ? 'opacity-50' : ''} ${isSelected ? 'rounded-b-none' : ''}`}
                   >
-                    <span className="text-white font-bold text-xl">{rank.level}</span>
-                  </div>
+                    {/* Circular Badge */}
+                    <div 
+                      className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: rankColors[rank.level] }}
+                    >
+                      <span className="text-white font-bold text-xl">{rank.level}</span>
+                    </div>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`font-semibold ${text}`}>
-                        {rankNames[rank.level]}
-                      </span>
-                      {isCurrentRank && (
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-[#0ECB81] text-white font-medium">
-                          YOU
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-semibold ${text}`}>
+                          {rankNames[rank.level]}
                         </span>
-                      )}
+                        {isCurrentRank && (
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-[#0ECB81] text-white font-medium">
+                            YOU
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Requirements */}
+                    <div className="text-right flex-shrink-0">
+                      <p className={`font-medium ${textMuted}`}>
+                        {requirements?.direct || 0}D/{requirements?.team || 0}T
+                      </p>
                     </div>
                   </div>
 
-                  {/* Requirements */}
-                  <div className="text-right flex-shrink-0">
-                    <p className={`font-medium ${textMuted}`}>
-                      {rankRequirements[rank.level]?.direct || 0}D/{rankRequirements[rank.level]?.team || 0}T
-                    </p>
-                  </div>
+                  {/* Expanded Details */}
+                  {isSelected && (
+                    <div className={`${cardBg} rounded-b-xl border-t ${isDark ? 'border-[#2B3139]' : 'border-gray-200'} p-4`}>
+                      {/* Progress Bar */}
+                      <div className="mb-4">
+                        <div className="flex justify-between text-xs mb-1">
+                          <span className={textMuted}>Progress</span>
+                          <span className="text-[#F0B90B] font-medium">{progress.toFixed(0)}%</span>
+                        </div>
+                        <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                          <div 
+                            className="h-full rounded-full transition-all"
+                            style={{ 
+                              width: `${progress}%`,
+                              backgroundColor: rankColors[rank.level]
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Benefits Table */}
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className={textMuted}>Bonus %</span>
+                          <span className={`font-bold ${text}`}>{benefits?.bonus}%</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className={textMuted}>Monthly Salary</span>
+                          <span className="font-bold text-[#0ECB81]">${benefits?.salary}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className={textMuted}>Level-up Reward</span>
+                          <span className="font-bold text-[#F0B90B]">${benefits?.reward}</span>
+                        </div>
+                      </div>
+
+                      {/* Requirements Detail */}
+                      <div className={`mt-4 pt-3 border-t ${isDark ? 'border-[#2B3139]' : 'border-gray-200'}`}>
+                        <p className={`text-xs ${textMuted}`}>
+                          Required: {requirements?.direct} direct referrals + {requirements?.team} team members (min $50 deposit each)
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
