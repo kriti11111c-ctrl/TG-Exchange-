@@ -274,7 +274,7 @@ const RankPage = () => {
                   {/* Rank Card - Clickable */}
                   <div 
                     onClick={() => setSelectedRank(isSelected ? null : rank.level)}
-                    className={`rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-all ${isSelected ? 'rounded-b-none' : ''}`}
+                    className={`rounded-xl p-4 cursor-pointer transition-all ${isSelected ? 'rounded-b-none' : ''}`}
                     style={{
                       background: isCurrentRank 
                         ? (isDark 
@@ -290,42 +290,41 @@ const RankPage = () => {
                       opacity: isLocked ? 0.5 : 1
                     }}
                   >
-                    {/* Circular Badge */}
-                    <div 
-                      className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ 
-                        backgroundColor: rankColors[rank.level],
-                        boxShadow: isCurrentRank ? `0 0 15px ${rankColors[rank.level]}80` : 'none'
-                      }}
-                    >
-                      <span className="text-white font-bold text-xl">{rank.level}</span>
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`font-semibold ${text}`}>
-                          {rankNames[rank.level]}
-                        </span>
-                        {isCurrentRank && (
-                          <span 
-                            className="text-[10px] px-2 py-0.5 rounded font-bold"
-                            style={{
-                              background: 'linear-gradient(135deg, #F0B90B, #FFD700)',
-                              color: '#000'
-                            }}
-                          >
-                            YOU
-                          </span>
-                        )}
+                    <div className="flex items-center gap-3">
+                      {/* Circular Badge */}
+                      <div 
+                        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ 
+                          backgroundColor: rankColors[rank.level],
+                          boxShadow: isCurrentRank ? `0 0 15px ${rankColors[rank.level]}80` : 'none'
+                        }}
+                      >
+                        <span className="text-white font-bold text-lg">{rank.level}</span>
                       </div>
-                    </div>
 
-                    {/* Requirements */}
-                    <div className="text-right flex-shrink-0">
-                      <p className={`font-medium ${isCurrentRank ? 'text-[#F0B90B]' : textMuted}`}>
-                        {formatRequirement(rank.level)}
-                      </p>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-semibold ${text} truncate`}>
+                            {rankNames[rank.level]}
+                          </span>
+                          {isCurrentRank && (
+                            <span 
+                              className="text-[10px] px-2 py-0.5 rounded font-bold flex-shrink-0"
+                              style={{
+                                background: 'linear-gradient(135deg, #F0B90B, #FFD700)',
+                                color: '#000'
+                              }}
+                            >
+                              YOU
+                            </span>
+                          )}
+                        </div>
+                        {/* Requirements on second line */}
+                        <p className={`text-sm ${isCurrentRank ? 'text-[#F0B90B]' : textMuted}`}>
+                          {formatRequirement(rank.level)}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
