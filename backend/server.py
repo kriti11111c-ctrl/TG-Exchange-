@@ -163,98 +163,163 @@ ALLOWED_DEPOSIT_AMOUNTS = [50, 100, 200, 300, 400, 500]
 MIN_WITHDRAWAL = 10.0
 
 # ================= TEAM RANK SYSTEM =================
-# Team Building Ranks based on direct referrals and team size
+# Team Building Ranks based on direct referrals (with min $50 deposit) and team size
+# Minimum requirement: 6 direct members with $50+ deposit for first rank
+MIN_DEPOSIT_FOR_RANK = 50.0  # Minimum deposit required to count as valid referral
+
 TEAM_RANKS = [
     {
         "level": 1, 
-        "name": "Junior Promoter", 
-        "name_hi": "जूनियर प्रवक्ता",
-        "direct_required": 5, 
+        "name": "1st ⭐", 
+        "emoji": "⭐",
+        "direct_required": 6, 
         "team_required": 0,
-        "bonus_percent": 0.50,  # 0.50% of team level income
+        "bonus_percent": 0.50,
         "monthly_salary": 30,
-        "levelup_reward": 100,
+        "levelup_reward": 50,
         "color": "#9CA3AF"
     },
     {
         "level": 2, 
-        "name": "Intermediate Promoter", 
-        "name_hi": "मध्यवर्ती प्रवक्ता",
-        "direct_required": 2, 
-        "team_required": 25,
+        "name": "2nd ⭐⭐", 
+        "emoji": "⭐⭐",
+        "direct_required": 10, 
+        "team_required": 30,
         "bonus_percent": 1.00,
-        "monthly_salary": 150,
-        "levelup_reward": 300,
+        "monthly_salary": 100,
+        "levelup_reward": 150,
         "color": "#60A5FA"
     },
     {
         "level": 3, 
-        "name": "Senior Promoter", 
-        "name_hi": "वरिष्ठ प्रवक्ता",
-        "direct_required": 3, 
-        "team_required": 125,
-        "bonus_percent": 2.00,
-        "monthly_salary": 500,
-        "levelup_reward": 800,
+        "name": "3rd ⭐⭐⭐", 
+        "emoji": "⭐⭐⭐",
+        "direct_required": 15, 
+        "team_required": 75,
+        "bonus_percent": 1.50,
+        "monthly_salary": 250,
+        "levelup_reward": 400,
         "color": "#34D399"
     },
     {
         "level": 4, 
-        "name": "1-Star Promoter", 
-        "name_hi": "वन-स्टार प्रवक्ता",
-        "direct_required": 4, 
-        "team_required": 500,
-        "bonus_percent": 2.50,
-        "monthly_salary": 1200,
-        "levelup_reward": 2000,
+        "name": "4th ⭐⭐⭐⭐", 
+        "emoji": "⭐⭐⭐⭐",
+        "direct_required": 20, 
+        "team_required": 150,
+        "bonus_percent": 2.00,
+        "monthly_salary": 500,
+        "levelup_reward": 800,
         "color": "#FBBF24"
     },
     {
         "level": 5, 
-        "name": "2-Star Promoter", 
-        "name_hi": "टू-स्टार प्रवक्ता",
-        "direct_required": 5, 
-        "team_required": 1000,
-        "bonus_percent": 3.00,
-        "monthly_salary": 2400,
-        "levelup_reward": 5000,
+        "name": "5th ⭐⭐⭐⭐⭐", 
+        "emoji": "⭐⭐⭐⭐⭐",
+        "direct_required": 30, 
+        "team_required": 300,
+        "bonus_percent": 2.50,
+        "monthly_salary": 1000,
+        "levelup_reward": 1500,
         "color": "#F97316"
     },
     {
         "level": 6, 
-        "name": "3-Star Promoter", 
-        "name_hi": "श्री-स्टार प्रवक्ता",
-        "direct_required": 6, 
-        "team_required": 2000,
-        "bonus_percent": 3.50,
-        "monthly_salary": 5000,
-        "levelup_reward": 12000,
-        "color": "#EC4899"
+        "name": "6th 🌟", 
+        "emoji": "🌟",
+        "direct_required": 40, 
+        "team_required": 600,
+        "bonus_percent": 3.00,
+        "monthly_salary": 2000,
+        "levelup_reward": 3000,
+        "color": "#3B82F6"
     },
     {
         "level": 7, 
-        "name": "Regional Promoter", 
-        "name_hi": "क्षेत्रीय प्रवक्ता",
-        "direct_required": 7, 
-        "team_required": 5000,
+        "name": "7th 🌟🌟", 
+        "emoji": "🌟🌟",
+        "direct_required": 50, 
+        "team_required": 1000,
+        "bonus_percent": 3.50,
+        "monthly_salary": 4000,
+        "levelup_reward": 6000,
+        "color": "#8B5CF6"
+    },
+    {
+        "level": 8, 
+        "name": "8th 🌟🌟🌟", 
+        "emoji": "🌟🌟🌟",
+        "direct_required": 75, 
+        "team_required": 2000,
         "bonus_percent": 4.00,
-        "monthly_salary": 10000,
-        "levelup_reward": 25000,
+        "monthly_salary": 7000,
+        "levelup_reward": 10000,
+        "color": "#EC4899"
+    },
+    {
+        "level": 9, 
+        "name": "9th 🌟🌟🌟🌟", 
+        "emoji": "🌟🌟🌟🌟",
+        "direct_required": 100, 
+        "team_required": 4000,
+        "bonus_percent": 4.50,
+        "monthly_salary": 12000,
+        "levelup_reward": 18000,
+        "color": "#F59E0B"
+    },
+    {
+        "level": 10, 
+        "name": "10th 🌟🌟🌟🌟🌟", 
+        "emoji": "🌟🌟🌟🌟🌟",
+        "direct_required": 150, 
+        "team_required": 8000,
+        "bonus_percent": 5.00,
+        "monthly_salary": 20000,
+        "levelup_reward": 30000,
         "color": "#EF4444"
     }
 ]
 
 async def get_team_stats(user_id: str) -> dict:
-    """Get user's team statistics"""
-    # Count direct referrals (level 1)
-    direct_count = await db.referrals.count_documents({"referrer_id": user_id, "level": 1})
+    """Get user's team statistics - only counts referrals with $50+ deposit"""
+    # Get all direct referrals (level 1)
+    direct_referrals = await db.referrals.find({"referrer_id": user_id, "level": 1}, {"_id": 0}).to_list(length=10000)
     
-    # Count total team (all levels)
-    team_count = await db.referrals.count_documents({"referrer_id": user_id})
+    # Count only those with minimum deposit
+    valid_direct_count = 0
+    for ref in direct_referrals:
+        referred_id = ref["referred_id"]
+        # Check if this user has deposited at least $50
+        total_deposited = await db.transactions.aggregate([
+            {"$match": {"user_id": referred_id, "type": "deposit", "status": "completed"}},
+            {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+        ]).to_list(length=1)
+        
+        deposit_amount = total_deposited[0]["total"] if total_deposited else 0
+        if deposit_amount >= MIN_DEPOSIT_FOR_RANK:
+            valid_direct_count += 1
+    
+    # Count total team (all levels) - only those with deposits
+    all_referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=10000)
+    valid_team_count = 0
+    
+    for ref in all_referrals:
+        referred_id = ref["referred_id"]
+        # Check deposit
+        total_deposited = await db.transactions.aggregate([
+            {"$match": {"user_id": referred_id, "type": "deposit", "status": "completed"}},
+            {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+        ]).to_list(length=1)
+        
+        deposit_amount = total_deposited[0]["total"] if total_deposited else 0
+        if deposit_amount >= MIN_DEPOSIT_FOR_RANK:
+            valid_team_count += 1
     
     return {
-        "direct_referrals": direct_count,
-        "total_team": team_count
+        "direct_referrals": valid_direct_count,
+        "total_team": valid_team_count,
+        "total_direct_all": len(direct_referrals),
+        "total_team_all": len(all_referrals)
     }
 
 def get_team_rank(direct_referrals: int, total_team: int) -> dict:

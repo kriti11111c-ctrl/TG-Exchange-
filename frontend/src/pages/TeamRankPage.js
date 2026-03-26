@@ -89,10 +89,19 @@ const TeamRankPage = () => {
       3: "from-emerald-400 to-emerald-600",
       4: "from-yellow-400 to-amber-500",
       5: "from-orange-400 to-orange-600",
-      6: "from-pink-400 to-rose-600",
-      7: "from-red-500 to-red-700"
+      6: "from-blue-500 to-indigo-600",
+      7: "from-purple-400 to-purple-600",
+      8: "from-pink-400 to-rose-600",
+      9: "from-amber-400 to-yellow-500",
+      10: "from-red-500 to-red-700"
     };
     return gradients[level] || gradients[1];
+  };
+
+  // Get emoji for rank
+  const getRankEmoji = (level) => {
+    if (level <= 5) return "⭐".repeat(level);
+    return "🌟".repeat(level - 5);
   };
 
   if (loading) {
@@ -190,7 +199,17 @@ const TeamRankPage = () => {
                   />
                 </div>
                 <p className={`text-xs mt-1 ${textMuted}`}>
-                  Need: {rankInfo.next_rank.direct_required} direct + {rankInfo.next_rank.team_required} team
+                  Need: {rankInfo.next_rank.direct_required} direct (min $50 deposit) + {rankInfo.next_rank.team_required} team
+                </p>
+              </div>
+            )}
+            
+            {/* No rank yet - show first rank requirements */}
+            {!rankInfo?.current_rank && (
+              <div className={`p-3 rounded-xl ${isDark ? 'bg-[#F0B90B]/10' : 'bg-yellow-50'} border border-[#F0B90B]/30 mb-4`}>
+                <p className={`text-sm ${text} font-medium`}>🎯 Get your first rank!</p>
+                <p className={`text-xs ${textMuted} mt-1`}>
+                  Invite 6 members who deposit minimum $50 each to unlock 1st ⭐ rank
                 </p>
               </div>
             )}
@@ -259,8 +278,8 @@ const TeamRankPage = () => {
             {/* Table Header */}
             <div className={`grid grid-cols-5 gap-2 p-3 text-xs font-medium ${textMuted} border-b ${isDark ? 'border-[#2B3139]' : 'border-gray-200'}`}>
               <span>Rank</span>
-              <span className="text-center">Required</span>
-              <span className="text-center">Bonus %</span>
+              <span className="text-center">Direct/$50</span>
+              <span className="text-center">Bonus</span>
               <span className="text-center">Salary</span>
               <span className="text-right">Reward</span>
             </div>
@@ -277,16 +296,10 @@ const TeamRankPage = () => {
                     isCurrentRank ? (isDark ? 'bg-[#F0B90B]/10' : 'bg-yellow-50') : ''
                   } ${isLocked ? 'opacity-50' : ''}`}
                 >
-                  {/* Rank Name */}
+                  {/* Rank Name with Emoji */}
                   <div className="flex items-center gap-1">
-                    <div 
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold`}
-                      style={{ background: rank.color }}
-                    >
-                      {rank.level}
-                    </div>
-                    <span className={`${text} text-xs truncate`}>{rank.name.split(' ')[0]}</span>
-                    {isCurrentRank && <CheckCircle size={14} className="text-[#0ECB81] flex-shrink-0" />}
+                    <span className="text-sm">{rank.emoji}</span>
+                    {isCurrentRank && <CheckCircle size={12} className="text-[#0ECB81]" />}
                   </div>
                   
                   {/* Requirements */}
@@ -372,7 +385,7 @@ const TeamRankPage = () => {
               </div>
               <div>
                 <p className={text}>Build Your Team</p>
-                <p className={`text-xs ${textMuted}`}>Invite direct referrals to unlock ranks</p>
+                <p className={`text-xs ${textMuted}`}>Invite direct referrals with min $50 deposit</p>
               </div>
             </div>
             <div className="flex gap-3">
@@ -380,8 +393,8 @@ const TeamRankPage = () => {
                 <span className="text-white text-xs font-bold">2</span>
               </div>
               <div>
-                <p className={text}>Earn Bonus Income</p>
-                <p className={`text-xs ${textMuted}`}>Get % bonus from team's trading income</p>
+                <p className={text}>Unlock Ranks</p>
+                <p className={`text-xs ${textMuted}`}>6 direct + $50 each = 1st ⭐ rank</p>
               </div>
             </div>
             <div className="flex gap-3">
@@ -389,8 +402,8 @@ const TeamRankPage = () => {
                 <span className="text-white text-xs font-bold">3</span>
               </div>
               <div>
-                <p className={text}>Claim Monthly Salary</p>
-                <p className={`text-xs ${textMuted}`}>Salary paid 3 times/month (9th, 19th, 29th)</p>
+                <p className={text}>Earn Rewards</p>
+                <p className={`text-xs ${textMuted}`}>Salary paid 3x/month (9th, 19th, 29th)</p>
               </div>
             </div>
           </div>
