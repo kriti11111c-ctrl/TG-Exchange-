@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth, useTheme } from "../App";
+import { useAuth, useTheme, API } from "../App";
 import { toast } from "sonner";
+import axios from "axios";
 import { 
   CaretLeft,
   CaretRight,
@@ -28,16 +29,41 @@ import {
   Bell,
   Eye,
   Lock,
-  Fingerprint
+  Fingerprint,
+  UserPlus,
+  Wallet,
+  Robot,
+  UsersThree,
+  PencilSimple,
+  CurrencyBtc,
+  CalendarBlank,
+  PlusCircle,
+  Broadcast,
+  Star,
+  Ranking,
+  ChartLineUp
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
-import { Switch } from "../components/ui/switch";
 
 const ProfilePage = () => {
   const { user, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
+  const [rankInfo, setRankInfo] = useState(null);
+
+  useEffect(() => {
+    fetchRankInfo();
+  }, []);
+
+  const fetchRankInfo = async () => {
+    try {
+      const response = await axios.get(`${API}/rank/info`, { withCredentials: true });
+      setRankInfo(response.data);
+    } catch (error) {
+      console.error("Error fetching rank:", error);
+    }
+  };
 
   // Generate masked email
   const getMaskedEmail = () => {
@@ -50,12 +76,11 @@ const ProfilePage = () => {
   // Generate UID
   const getUID = () => {
     if (!user?.email) return "CV12345678";
-    // Generate a deterministic UID from email
     const hash = user.email.split("").reduce((a, b) => {
       a = ((a << 5) - a) + b.charCodeAt(0);
       return a & a;
     }, 0);
-    return `CV${Math.abs(hash).toString().slice(0, 8).padStart(8, '0')}`;
+    return `${Math.abs(hash).toString().slice(0, 10).padStart(10, '0')}`;
   };
 
   const copyUID = () => {
@@ -65,6 +90,15 @@ const ProfilePage = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Get rank display name
+  const getRankName = (level) => {
+    const names = {
+      1: "Bronze", 2: "Silver", 3: "Gold", 4: "Platinum", 5: "Diamond",
+      6: "Master", 7: "Grandmaster", 8: "Champion", 9: "Legend", 10: "Immortal"
+    };
+    return names[level] || "Bronze";
+  };
+
   // Theme colors
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-[#FAFAFA]';
   const cardBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
@@ -72,23 +106,27 @@ const ProfilePage = () => {
   const text = isDark ? 'text-white' : 'text-gray-900';
   const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
   const hoverBg = isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100';
-  const dividerBg = isDark ? 'bg-[#2B3139]' : 'bg-gray-200';
+  const iconBg = isDark ? 'bg-[#2B3139]' : 'bg-gray-100';
 
-  // Menu items grouped
-  const accountMenu = [
-    { icon: Shield, label: "Security", desc: "Protect your account", path: "/profile/security" },
-    { icon: Coins, label: "My Points", desc: "0 Points", path: "/profile/points" },
-    { icon: Gift, label: "My Red Packets", desc: "Send & receive rewards", path: "/profile/packets" },
-    { icon: Ticket, label: "My Coupons", desc: "Trading fee discounts", path: "/profile/coupons" },
-    { icon: Gear, label: "Preference", desc: "App settings", path: "/profile/preference" },
+  // Shortcut items
+  const shortcutItems = [
+    { icon: UserPlus, label: "Referral", path: "/referral", color: "#F0B90B" },
+    { icon: Coins, label: "Earn", path: "/wallet", color: "#F0B90B" },
+    { icon: Robot, label: "Trading Bots", path: "/trade", color: "#848E9C" },
+    { icon: UsersThree, label: "P2P", path: "/wallet", color: "#848E9C" },
+    { icon: PencilSimple, label: "Edit", path: "/profile/edit", color: "#848E9C" },
   ];
 
-  const supportMenu = [
-    { icon: Headset, label: "Self-service", desc: "Quick solutions", path: "/profile/self-service" },
-    { icon: Megaphone, label: "Official Channel", desc: "News & updates", path: "/profile/channel" },
-    { icon: Code, label: "API Settings", desc: "Manage API keys", path: "/profile/api" },
-    { icon: Question, label: "Support Center", desc: "Get help", path: "/profile/support" },
-    { icon: Info, label: "About CryptoVault", desc: "v1.0.0", path: "/profile/about" },
+  // Recommend items
+  const recommendItems = [
+    { icon: Coins, label: "Simple Earn", path: "/wallet", color: "#F0B90B" },
+    { icon: CurrencyBtc, label: "Bitcoin", path: "/trade/bitcoin", color: "#F7931A" },
+    { icon: UserPlus, label: "Referral", path: "/referral", color: "#F0B90B" },
+    { icon: CalendarBlank, label: "Events", path: "/events", color: "#848E9C" },
+    { icon: PlusCircle, label: "Add Funds", path: "/wallet", color: "#F0B90B" },
+    { icon: Broadcast, label: "News", path: "/news", color: "#848E9C" },
+    { icon: Star, label: "VIP Rank", path: "/rank", color: "#F0B90B" },
+    { icon: ChartLineUp, label: "Markets", path: "/trade", color: "#0ECB81" },
   ];
 
   const handleLogout = () => {
@@ -102,155 +140,181 @@ const ProfilePage = () => {
       {/* Header */}
       <div className={`${isDark ? 'bg-[#0B0E11]' : 'bg-white'} px-4 py-3 flex items-center justify-between sticky top-0 z-50`}>
         <button onClick={() => navigate(-1)} className={text}>
-          <CaretLeft size={24} />
+          <CaretLeft size={24} weight="bold" />
         </button>
-        <span className={`font-medium ${text}`}>Profile</span>
-        <button onClick={toggleTheme} className={text}>
-          <Globe size={24} />
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className={`p-2 rounded-full ${iconBg}`}
+          >
+            {isDark ? <Sun size={20} className="text-[#F0B90B]" /> : <Moon size={20} className="text-gray-600" />}
+          </button>
+          <Headset size={22} className={textMuted} />
+          <Gear size={22} className={textMuted} />
+        </div>
       </div>
 
-      {/* Profile Card */}
-      <div className={`${cardBg} mx-4 mt-4 rounded-xl p-4`}>
-        <div className="flex items-center gap-4">
-          {/* Avatar */}
-          <div className="w-16 h-16 rounded-full bg-[#F0B90B] flex items-center justify-center">
-            {user?.picture ? (
-              <img src={user.picture} alt="avatar" className="w-full h-full rounded-full object-cover" />
-            ) : (
-              <User size={32} className="text-black" weight="fill" />
-            )}
-          </div>
-          
-          {/* User Info */}
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className={`font-semibold text-lg ${text}`}>{getMaskedEmail()}</span>
-              <CaretRight size={16} className={textMuted} />
+      {/* Profile Card - Clickable */}
+      <Link to="/profile/details" className="block">
+        <div className={`mx-4 mt-4 ${cardBg} rounded-2xl p-4`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {/* Avatar */}
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#F0B90B] to-[#F7931A] flex items-center justify-center overflow-hidden">
+                {user?.picture ? (
+                  <img src={user.picture} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <User size={32} className="text-black" weight="fill" />
+                )}
+              </div>
+              
+              {/* Info */}
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className={`text-xs ${textMuted}`}>ID: {getUID()}</p>
+                  <button onClick={(e) => { e.preventDefault(); copyUID(); }}>
+                    {copied ? <CheckCircle size={14} className="text-[#0ECB81]" /> : <Copy size={14} className={textMuted} />}
+                  </button>
+                </div>
+                <h2 className={`text-lg font-bold ${text}`}>{user?.name || "User"}</h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs px-2 py-0.5 rounded bg-[#F0B90B]/20 text-[#F0B90B] font-medium">
+                    {getRankName(rankInfo?.rank?.level || 1)}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-[#0ECB81]/20 text-[#0ECB81] font-medium">
+                    Verified
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2 mt-1">
-              <span className={`text-sm ${textMuted}`}>UID: {getUID()}</span>
-              <button onClick={copyUID} className={textMuted}>
-                {copied ? <CheckCircle size={14} className="text-[#0ECB81]" /> : <Copy size={14} />}
-              </button>
-            </div>
-            <div className="flex items-center gap-1 mt-2">
-              <CheckCircle size={16} className="text-[#0ECB81]" weight="fill" />
-              <span className="text-[#0ECB81] text-sm font-medium">Verified</span>
-            </div>
+            <CaretRight size={20} className={textMuted} />
           </div>
-        </div>
-
-        {/* VIP/Rank Section */}
-        <Link to="/rank" className={`flex items-center justify-between mt-4 pt-4 border-t ${border}`}>
-          <div className="flex items-center gap-2">
-            <Crown size={20} className="text-[#F0B90B]" weight="fill" />
-            <span className={`font-bold ${text}`}>1st ⭐</span>
-          </div>
-          <div className="flex items-center gap-1 text-[#F0B90B]">
-            <span className="text-sm">View Rank Benefits</span>
-            <CaretRight size={14} />
-          </div>
-        </Link>
-      </div>
-
-      {/* Referral Banner */}
-      <Link to="/referral" className={`${cardBg} mx-4 mt-4 rounded-xl p-4 flex items-center justify-between`}>
-        <div>
-          <p className={`font-semibold ${text}`}>Invite friends, earn together</p>
-          <p className={`text-sm ${textMuted} mt-1`}>Earn up to 20% commission - 10 levels!</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Users size={32} className="text-[#F0B90B]" />
-          <CaretRight size={20} className={textMuted} />
         </div>
       </Link>
 
-      {/* Account Menu */}
-      <div className={`${cardBg} mx-4 mt-4 rounded-xl overflow-hidden`}>
-        {accountMenu.map((item, index) => {
-          const Icon = item.icon;
-          return (
-            <Link 
-              key={item.label}
-              to={item.path}
-              className={`flex items-center justify-between p-4 ${hoverBg} ${
-                index !== accountMenu.length - 1 ? `border-b ${border}` : ''
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Icon size={22} className={textMuted} />
-                <span className={text}>{item.label}</span>
-              </div>
-              <CaretRight size={18} className={textMuted} />
-            </Link>
-          );
-        })}
-      </div>
-
-      {/* Quick Settings */}
-      <div className={`${cardBg} mx-4 mt-4 rounded-xl overflow-hidden`}>
-        {/* Theme Toggle */}
-        <div className={`flex items-center justify-between p-4 border-b ${border}`}>
-          <div className="flex items-center gap-3">
-            {isDark ? <Moon size={22} className={textMuted} /> : <Sun size={22} className={textMuted} />}
-            <span className={text}>Dark Mode</span>
+      {/* Shortcut Section */}
+      <div className="mx-4 mt-6">
+        <h3 className={`font-semibold mb-3 ${text}`}>Shortcut</h3>
+        <div className={`${cardBg} rounded-2xl p-4`}>
+          <div className="grid grid-cols-5 gap-2">
+            {shortcutItems.map((item, index) => (
+              <Link 
+                key={index} 
+                to={item.path}
+                className="flex flex-col items-center gap-2"
+              >
+                <div className={`w-12 h-12 rounded-full ${iconBg} flex items-center justify-center`}>
+                  <item.icon size={24} style={{ color: item.color }} />
+                </div>
+                <span className={`text-xs ${text} text-center`}>{item.label}</span>
+              </Link>
+            ))}
           </div>
-          <Switch checked={isDark} onCheckedChange={toggleTheme} />
-        </div>
-        
-        {/* Notifications */}
-        <div className={`flex items-center justify-between p-4`}>
-          <div className="flex items-center gap-3">
-            <Bell size={22} className={textMuted} />
-            <span className={text}>Notifications</span>
-          </div>
-          <Switch defaultChecked />
         </div>
       </div>
 
-      {/* Support Menu */}
-      <div className={`${cardBg} mx-4 mt-4 rounded-xl overflow-hidden`}>
-        {supportMenu.map((item, index) => {
-          const Icon = item.icon;
-          return (
-            <Link 
-              key={item.label}
-              to={item.path}
-              className={`flex items-center justify-between p-4 ${hoverBg} ${
-                index !== supportMenu.length - 1 ? `border-b ${border}` : ''
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Icon size={22} className={textMuted} />
-                <span className={text}>{item.label}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {item.label === "About CryptoVault" && (
-                  <span className={`text-sm ${textMuted}`}>{item.desc}</span>
-                )}
-                <CaretRight size={18} className={textMuted} />
-              </div>
-            </Link>
-          );
-        })}
+      {/* Recommend Section */}
+      <div className="mx-4 mt-6">
+        <h3 className={`font-semibold mb-3 ${text}`}>Recommend</h3>
+        <div className={`${cardBg} rounded-2xl p-4`}>
+          <div className="grid grid-cols-4 gap-4">
+            {recommendItems.map((item, index) => (
+              <Link 
+                key={index} 
+                to={item.path}
+                className="flex flex-col items-center gap-2"
+              >
+                <div className={`w-12 h-12 rounded-full ${iconBg} flex items-center justify-center`}>
+                  <item.icon size={24} style={{ color: item.color }} />
+                </div>
+                <span className={`text-xs ${text} text-center leading-tight`}>{item.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* More Services Button */}
+      <div className="mx-4 mt-4">
+        <button className={`w-full py-3 rounded-full ${cardBg} ${text} font-medium border ${border}`}>
+          More Services
+        </button>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="mx-4 mt-6">
+        <h3 className={`font-semibold mb-3 ${text}`}>Account</h3>
+        <div className={`${cardBg} rounded-2xl overflow-hidden`}>
+          <Link to="/profile/security" className={`flex items-center justify-between p-4 ${hoverBg}`}>
+            <div className="flex items-center gap-3">
+              <Shield size={22} className="text-[#3498DB]" />
+              <span className={text}>Security</span>
+            </div>
+            <CaretRight size={18} className={textMuted} />
+          </Link>
+          <div className={`h-px ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} mx-4`}></div>
+          <Link to="/referral" className={`flex items-center justify-between p-4 ${hoverBg}`}>
+            <div className="flex items-center gap-3">
+              <Users size={22} className="text-[#F0B90B]" />
+              <span className={text}>Referral Program</span>
+            </div>
+            <CaretRight size={18} className={textMuted} />
+          </Link>
+          <div className={`h-px ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} mx-4`}></div>
+          <Link to="/rank" className={`flex items-center justify-between p-4 ${hoverBg}`}>
+            <div className="flex items-center gap-3">
+              <Crown size={22} className="text-[#F0B90B]" />
+              <span className={text}>VIP Rank</span>
+            </div>
+            <CaretRight size={18} className={textMuted} />
+          </Link>
+          <div className={`h-px ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} mx-4`}></div>
+          <Link to="/transactions" className={`flex items-center justify-between p-4 ${hoverBg}`}>
+            <div className="flex items-center gap-3">
+              <Wallet size={22} className="text-[#0ECB81]" />
+              <span className={text}>Transaction History</span>
+            </div>
+            <CaretRight size={18} className={textMuted} />
+          </Link>
+        </div>
+      </div>
+
+      {/* Support Section */}
+      <div className="mx-4 mt-6">
+        <h3 className={`font-semibold mb-3 ${text}`}>Support</h3>
+        <div className={`${cardBg} rounded-2xl overflow-hidden`}>
+          <Link to="/profile/support" className={`flex items-center justify-between p-4 ${hoverBg}`}>
+            <div className="flex items-center gap-3">
+              <Headset size={22} className="text-[#9B59B6]" />
+              <span className={text}>Help Center</span>
+            </div>
+            <CaretRight size={18} className={textMuted} />
+          </Link>
+          <div className={`h-px ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} mx-4`}></div>
+          <Link to="/profile/about" className={`flex items-center justify-between p-4 ${hoverBg}`}>
+            <div className="flex items-center gap-3">
+              <Info size={22} className={textMuted} />
+              <span className={text}>About CryptoVault</span>
+            </div>
+            <span className={`text-sm ${textMuted}`}>v1.0.0</span>
+          </Link>
+        </div>
       </div>
 
       {/* Logout Button */}
       <div className="mx-4 mt-6">
-        <Button 
+        <button 
           onClick={handleLogout}
-          className={`w-full ${isDark ? 'bg-[#2B3139] hover:bg-[#3B4149]' : 'bg-gray-200 hover:bg-gray-300'} ${text} font-medium py-6`}
+          className="w-full py-4 rounded-2xl bg-[#F6465D]/10 text-[#F6465D] font-semibold flex items-center justify-center gap-2"
         >
-          <SignOut size={20} className="mr-2" />
+          <SignOut size={20} />
           Log Out
-        </Button>
+        </button>
       </div>
 
-      {/* Version */}
-      <p className={`text-center text-sm ${textMuted} mt-4`}>
-        CryptoVault v1.0.0
-      </p>
+      {/* Bottom Spacing */}
+      <div className="h-6"></div>
     </div>
   );
 };
