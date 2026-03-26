@@ -300,7 +300,7 @@ const Dashboard = () => {
         </div>
 
         {/* Coin Rows */}
-        <div className="divide-y divide-white/5">
+        <div className="px-2 space-y-2 pb-4">
           {filteredPrices.length === 0 ? (
             <div className="py-12 text-center">
               <TrendUp size={48} className={`mx-auto mb-3 ${textMuted}`} />
@@ -318,7 +318,7 @@ const Dashboard = () => {
                 <Link
                   key={coin.coin_id || index}
                   to={`/trade?symbol=${coin.symbol || 'BTC'}`}
-                  className={`flex items-center px-4 py-3 ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-50'} transition-colors`}
+                  className={`flex items-center px-4 py-3 rounded-xl border-2 ${isDark ? 'border-[#2B3139] hover:border-[#3B4149] hover:bg-[#1E2329]' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'} transition-all`}
                 >
                 {/* Coin Name */}
                 <div className="flex-1 flex items-center gap-3">
