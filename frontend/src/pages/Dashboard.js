@@ -322,13 +322,19 @@ const Dashboard = () => {
                 >
                 {/* Coin Name */}
                 <div className="flex-1 flex items-center gap-3">
-                  <div className="relative">
+                  <div className="w-9 h-9 rounded-full overflow-hidden bg-white/10 flex items-center justify-center flex-shrink-0">
                     {coin.image ? (
-                      <img src={coin.image} alt={coin.symbol} className="w-8 h-8 rounded-full" />
+                      <img 
+                        src={coin.image} 
+                        alt={coin.symbol} 
+                        className="w-8 h-8 object-contain"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = `https://ui-avatars.com/api/?name=${coin.symbol}&background=F0B90B&color=000&size=32&bold=true`;
+                        }}
+                      />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-[#F0B90B] flex items-center justify-center">
-                        <span className="text-black font-bold text-xs">{coin.symbol?.charAt(0)}</span>
-                      </div>
+                      <span className="text-[#F0B90B] font-bold text-sm">{coin.symbol?.charAt(0)}</span>
                     )}
                   </div>
                   <div>
