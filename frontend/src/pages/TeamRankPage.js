@@ -275,53 +275,31 @@ const TeamRankPage = () => {
       <div className="px-4">
         {activeTab === "overview" && (
           <div className={`${cardBg} rounded-xl overflow-hidden`}>
-            {/* Table Header */}
-            <div className={`grid grid-cols-5 gap-2 p-3 text-xs font-medium ${textMuted} border-b ${isDark ? 'border-[#2B3139]' : 'border-gray-200'}`}>
-              <span>Rank</span>
-              <span className="text-center">Required</span>
-              <span className="text-center">Bonus</span>
-              <span className="text-center">Salary</span>
-              <span className="text-right">Reward</span>
-            </div>
-            
-            {/* Rank Rows */}
+            {/* Simple Rank List - No Emojis */}
             {allRanks.map((rank) => {
               const isCurrentRank = rankInfo?.current_rank?.level === rank.level;
-              const isLocked = !rankInfo?.current_rank || rank.level > rankInfo.current_rank.level;
               
               return (
                 <div 
                   key={rank.level}
-                  className={`grid grid-cols-5 gap-2 p-3 items-center text-sm border-b last:border-0 ${isDark ? 'border-[#2B3139]' : 'border-gray-100'} ${
+                  className={`flex items-center justify-between p-4 border-b last:border-0 ${isDark ? 'border-[#2B3139]' : 'border-gray-100'} ${
                     isCurrentRank ? (isDark ? 'bg-[#F0B90B]/10' : 'bg-yellow-50') : ''
-                  } ${isLocked ? 'opacity-50' : ''}`}
+                  }`}
                 >
-                  {/* Rank Name */}
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm">{rank.emoji}</span>
-                    <span className={`${text} text-xs truncate`}>{rank.name}</span>
-                    {isCurrentRank && <CheckCircle size={12} className="text-[#0ECB81] flex-shrink-0" />}
+                  {/* Name */}
+                  <div className="flex items-center gap-2">
+                    <span className={`font-medium ${text}`}>{rank.name}</span>
+                    {isCurrentRank && (
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-[#0ECB81] text-white font-medium">
+                        YOU
+                      </span>
+                    )}
                   </div>
                   
                   {/* Requirements */}
-                  <div className={`text-center text-xs ${textMuted}`}>
+                  <span className={textMuted}>
                     {rank.direct_required}D/{rank.team_required}T
-                  </div>
-                  
-                  {/* Bonus */}
-                  <div className="text-center text-[#F0B90B] font-medium text-xs">
-                    {rank.bonus_percent}%
-                  </div>
-                  
-                  {/* Monthly Salary */}
-                  <div className="text-center text-[#0ECB81] font-medium text-xs">
-                    ${rank.monthly_salary}
-                  </div>
-                  
-                  {/* Level-up Reward */}
-                  <div className="text-right text-xs">
-                    <span className={text}>${rank.levelup_reward}</span>
-                  </div>
+                  </span>
                 </div>
               );
             })}
