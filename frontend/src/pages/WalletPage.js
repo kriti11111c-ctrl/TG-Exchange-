@@ -25,7 +25,8 @@ import {
   Percent,
   Clock,
   Sun,
-  Moon
+  Moon,
+  User
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -106,15 +107,12 @@ const WalletHeader = ({ user, logout, isDark, toggleTheme }) => {
         >
           {isDark ? <Sun size={20} weight="fill" /> : <Moon size={20} weight="fill" />}
         </button>
-        <span className={`text-sm ${textMuted}`}>{user?.name}</span>
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={logout}
-          className={`${textMuted} hover:text-[#F0B90B] hover:bg-transparent p-1`}
-        >
-          <SignOut size={18} />
-        </Button>
+        {/* Profile Link */}
+        <Link to="/profile">
+          <div className="w-8 h-8 rounded-full bg-[#F0B90B] flex items-center justify-center">
+            <User size={18} className="text-black" weight="fill" />
+          </div>
+        </Link>
       </div>
     </div>
   );

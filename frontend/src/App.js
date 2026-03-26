@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import WalletPage from "./pages/WalletPage";
 import TradePage from "./pages/TradePage";
 import TransactionsPage from "./pages/TransactionsPage";
+import ProfilePage from "./pages/ProfilePage";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -205,6 +206,11 @@ function AppRouter() {
       <Route path="/transactions" element={
         <ProtectedRoute>
           <TransactionsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/profile/*" element={
+        <ProtectedRoute>
+          <ProfilePage />
         </ProtectedRoute>
       } />
     </Routes>

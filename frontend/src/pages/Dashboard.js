@@ -22,7 +22,8 @@ import {
   Gift,
   MagnifyingGlass,
   Bell,
-  Headset
+  Headset,
+  User
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -68,7 +69,12 @@ const DashboardNav = ({ isDark, toggleTheme }) => {
             >
               {isDark ? <Sun size={20} weight="fill" /> : <Moon size={20} weight="fill" />}
             </button>
-            <span className={`text-sm ${textMuted}`} data-testid="user-name">{user?.name}</span>
+            {/* Profile Link */}
+            <Link to="/profile" className={`${textMuted} hover:text-[#00E599] transition-colors`}>
+              <div className="w-8 h-8 rounded-full bg-[#F0B90B] flex items-center justify-center">
+                <User size={18} className="text-black" weight="fill" />
+              </div>
+            </Link>
             <Button 
               variant="ghost" 
               size="sm" 
