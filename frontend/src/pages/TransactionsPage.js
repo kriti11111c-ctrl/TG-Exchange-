@@ -139,8 +139,9 @@ const TransactionsPage = () => {
     if (filter === 'trades') return tx.type === 'buy' || tx.type === 'sell';
     if (filter === 'deposits') return tx.type === 'deposit';
     if (filter === 'withdrawals') return tx.type === 'withdraw';
+    if (filter === 'referral_bonus') return tx.type === 'referral_bonus';
     if (filter === 'welcome_bonus') return tx.type === 'welcome_bonus';
-    if (filter === 'salary') return tx.type === 'monthly_salary' || tx.type === 'team_bonus' || tx.type === 'referral_bonus';
+    if (filter === 'salary') return tx.type === 'monthly_salary' || tx.type === 'team_bonus';
     if (filter === 'rank_reward') return tx.type === 'levelup_reward';
     return true;
   });
@@ -176,13 +177,14 @@ const TransactionsPage = () => {
             </div>
           </div>
 
-          {/* Filters - Simple Classic Buttons */}
-          <div className="flex flex-wrap gap-2 mb-6">
+          {/* Filters - Simple Classic Buttons with Equal Size */}
+          <div className="grid grid-cols-4 md:grid-cols-8 gap-2 mb-6">
             {[
               { key: 'all', label: 'All' },
               { key: 'trades', label: 'Trades' },
               { key: 'deposits', label: 'Deposits' },
               { key: 'withdrawals', label: 'Withdrawals' },
+              { key: 'referral_bonus', label: 'Referral Bonus' },
               { key: 'welcome_bonus', label: 'Welcome Bonus' },
               { key: 'salary', label: 'Salary' },
               { key: 'rank_reward', label: 'Rank Reward' }
@@ -192,10 +194,10 @@ const TransactionsPage = () => {
                 variant={filter === f.key ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setFilter(f.key)}
-                className={filter === f.key 
+                className={`w-full text-center ${filter === f.key 
                   ? 'bg-[#00E599] text-black hover:bg-[#00C282] font-medium' 
                   : 'border-white/20 hover:bg-white/10 text-white'
-                }
+                }`}
                 data-testid={`filter-${f.key}`}
               >
                 {f.label}
