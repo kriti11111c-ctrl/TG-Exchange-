@@ -65,6 +65,11 @@ const TransactionsPage = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [bonusSummary, setBonusSummary] = useState({
+    welcomeBonus: 0,
+    salary: 0,
+    rankReward: 0
+  });
 
   useEffect(() => {
     fetchTransactions();
@@ -73,7 +78,22 @@ const TransactionsPage = () => {
   const fetchTransactions = async () => {
     try {
       const response = await axios.get(`${API}/transactions`, { withCredentials: true });
-      setTransactions(response.data);
+      const txList = response.data || [];
+      setTransactions(txList);
+      
+      // Calculate bonus summary
+      let welcomeBonus = 0;
+      let salary = 0;
+      let rankReward = 0;
+      
+      txList.forEach(tx => {
+        if (tx.type === 'welcome_bonus') welcomeBonus += tx.amount || 0;
+        if (tx.type === 'monthly_salary' || tx.type === 'team_bonus') salary += tx.amount || 0;
+        if (tx.type === 'levelup_reward') rankReward += tx.amount || 0;
+        if (tx.type === 'referral_bonus') salary += tx.amount || 0;
+      });
+      
+      setBonusSummary({ welcomeBonus, salary, rankReward });
     } catch (error) {
       console.error("Error fetching transactions:", error);
     } finally {
