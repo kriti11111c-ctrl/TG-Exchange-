@@ -302,24 +302,23 @@ TEAM_RANKS = [
 ]
 
 async def get_team_stats(user_id: str) -> dict:
-    """Get user's team statistics - counts direct referrals with $50+ deposit and Bronze rank members"""
+    """Get user's team statistics - counts users with $50+ CURRENT BALANCE (not deposits)"""
     # Get all direct referrals (level 1)
     direct_referrals = await db.referrals.find({"referrer_id": user_id, "level": 1}, {"_id": 0}).to_list(length=10000)
     
-    # Count valid direct (with min deposit) and Bronze rank members
+    # Count valid direct (with min $50 CURRENT balance) and Bronze rank members
     valid_direct_count = 0
     bronze_members_count = 0
     
     for ref in direct_referrals:
         referred_id = ref["referred_id"]
-        # Check if this user has deposited at least $50
-        total_deposited = await db.transactions.aggregate([
-            {"$match": {"user_id": referred_id, "type": "deposit", "status": "completed"}},
-            {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
-        ]).to_list(length=1)
         
-        deposit_amount = total_deposited[0]["total"] if total_deposited else 0
-        if deposit_amount >= MIN_DEPOSIT_FOR_RANK:
+        # Check CURRENT wallet balance (not deposit history)
+        wallet = await db.wallets.find_one({"user_id": referred_id}, {"_id": 0})
+        current_balance = wallet["balances"].get("usdt", 0) if wallet else 0
+        
+        # Only count if current balance >= $50
+        if current_balance >= MIN_DEPOSIT_FOR_RANK:
             valid_direct_count += 1
             
             # Check if this user has Bronze rank (level 1+)
@@ -329,20 +328,18 @@ async def get_team_stats(user_id: str) -> dict:
                 if referred_rank_level >= 1:
                     bronze_members_count += 1
     
-    # Count total team (all levels) - only those with deposits
+    # Count total team (all levels) - only those with $50+ CURRENT balance
     all_referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=10000)
     valid_team_count = 0
     
     for ref in all_referrals:
         referred_id = ref["referred_id"]
-        # Check deposit
-        total_deposited = await db.transactions.aggregate([
-            {"$match": {"user_id": referred_id, "type": "deposit", "status": "completed"}},
-            {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
-        ]).to_list(length=1)
         
-        deposit_amount = total_deposited[0]["total"] if total_deposited else 0
-        if deposit_amount >= MIN_DEPOSIT_FOR_RANK:
+        # Check CURRENT wallet balance
+        wallet = await db.wallets.find_one({"user_id": referred_id}, {"_id": 0})
+        current_balance = wallet["balances"].get("usdt", 0) if wallet else 0
+        
+        if current_balance >= MIN_DEPOSIT_FOR_RANK:
             valid_team_count += 1
     
     return {
@@ -353,36 +350,49 @@ async def get_team_stats(user_id: str) -> dict:
         "total_team_all": len(all_referrals)
     }
 
-def get_team_rank(direct_referrals: int, total_team: int) -> dict:
-    """Get user's team rank based on direct referrals and team size"""
+def get_team_rank(direct_referrals: int, bronze_members: int, total_team: int) -> dict:
+    """Get user's team rank based on direct referrals, bronze members, and team size"""
     current_rank = None
     next_rank = TEAM_RANKS[0]  # Default next rank is first rank
     
     for i, rank in enumerate(TEAM_RANKS):
         # Check if user qualifies for this rank
-        if direct_referrals >= rank["direct_required"] and total_team >= rank["team_required"]:
+        qualifies = False
+        
+        if rank["type"] == "direct":
+            # Bronze rank - needs direct referrals
+            qualifies = direct_referrals >= rank["direct_required"] and total_team >= rank["team_required"]
+        else:
+            # Silver onwards - needs Bronze rank members
+            qualifies = bronze_members >= rank["bronze_required"] and total_team >= rank["team_required"]
+        
+        if qualifies:
             current_rank = rank
             next_rank = TEAM_RANKS[i + 1] if i + 1 < len(TEAM_RANKS) else None
     
     # Calculate progress
     progress = 0
     if current_rank and next_rank:
-        # Progress based on team size
-        team_range = next_rank["team_required"] - current_rank["team_required"]
-        team_progress = total_team - current_rank["team_required"]
-        progress = min(100, (team_progress / team_range) * 100) if team_range > 0 else 100
-    elif not current_rank and next_rank:
-        # Progress to first rank
-        if next_rank["team_required"] > 0:
-            progress = min(100, (total_team / next_rank["team_required"]) * 100)
+        # Progress based on next rank requirements
+        if next_rank["type"] == "bronze":
+            bronze_range = next_rank["bronze_required"] - (current_rank.get("bronze_required", 0))
+            bronze_progress = bronze_members - (current_rank.get("bronze_required", 0))
+            progress = min(100, (bronze_progress / bronze_range) * 100) if bronze_range > 0 else 100
         else:
-            progress = min(100, (direct_referrals / next_rank["direct_required"]) * 100)
+            team_range = next_rank["team_required"] - current_rank["team_required"]
+            team_progress = total_team - current_rank["team_required"]
+            progress = min(100, (team_progress / team_range) * 100) if team_range > 0 else 100
+    elif not current_rank and next_rank:
+        # Progress to first rank (Bronze)
+        if next_rank["type"] == "direct":
+            progress = min(100, (direct_referrals / next_rank["direct_required"]) * 100) if next_rank["direct_required"] > 0 else 100
     
     return {
         "current_rank": current_rank,
         "next_rank": next_rank,
         "progress": progress,
         "direct_referrals": direct_referrals,
+        "bronze_members": bronze_members,
         "total_team": total_team
     }
 
@@ -1813,36 +1823,61 @@ async def get_rank_leaderboard():
 
 @api_router.get("/team-rank/info")
 async def get_team_rank_info(user: dict = Depends(get_current_user)):
-    """Get user's team rank information"""
+    """Get user's team rank information with demotion support"""
     user_id = user["user_id"]
     
-    # Get team stats
+    # Get team stats (counts users with $50+ CURRENT balance)
     team_stats = await get_team_stats(user_id)
     
-    # Get team rank
-    rank_info = get_team_rank(team_stats["direct_referrals"], team_stats["total_team"])
+    # Get team rank based on current stats
+    rank_info = get_team_rank(
+        team_stats["direct_referrals"], 
+        team_stats["bronze_members"],
+        team_stats["total_team"]
+    )
     
-    # Get user's saved team rank level
+    # Get user's saved data
     user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
     saved_rank_level = user_doc.get("team_rank_level", 0)
+    claimed_rewards = user_doc.get("claimed_rank_rewards", [])  # Track which rewards already claimed
     
-    # Check if user leveled up
+    # Current rank level
     current_level = rank_info["current_rank"]["level"] if rank_info["current_rank"] else 0
-    levelup_reward = 0
     
-    if current_level > saved_rank_level:
-        # User leveled up! Calculate reward
-        for rank in TEAM_RANKS:
-            if rank["level"] > saved_rank_level and rank["level"] <= current_level:
-                levelup_reward += rank["levelup_reward"]
+    levelup_reward = 0
+    demotion_message = None
+    
+    # Check for demotion (current qualifications less than saved rank)
+    if current_level < saved_rank_level:
+        # User got demoted!
+        demotion_message = f"Rank demoted from level {saved_rank_level} to {current_level} due to team members below $50 balance"
         
-        # Update user's rank level
+        # Update saved rank level to current (demoted)
         await db.users.update_one(
             {"user_id": user_id},
             {"$set": {"team_rank_level": current_level}}
         )
+    
+    # Check for level up (only give rewards for NEW levels not claimed before)
+    elif current_level > saved_rank_level:
+        # User leveled up! Calculate reward only for unclaimed levels
+        for rank in TEAM_RANKS:
+            if rank["level"] > saved_rank_level and rank["level"] <= current_level:
+                # Check if this reward was already claimed
+                if rank["level"] not in claimed_rewards:
+                    levelup_reward += rank["levelup_reward"]
+                    claimed_rewards.append(rank["level"])
         
-        # Add levelup reward to wallet if any
+        # Update user's rank level and claimed rewards
+        await db.users.update_one(
+            {"user_id": user_id},
+            {
+                "$set": {"team_rank_level": current_level},
+                "$addToSet": {"claimed_rank_rewards": {"$each": claimed_rewards}}
+            }
+        )
+        
+        # Add levelup reward to wallet (only for first-time claims)
         if levelup_reward > 0:
             await db.wallets.update_one(
                 {"user_id": user_id},
@@ -1856,7 +1891,7 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
                 "type": "levelup_reward",
                 "coin": "usdt",
                 "amount": levelup_reward,
-                "note": f"Team rank level up reward",
+                "note": f"Team rank level up reward (first time only)",
                 "status": "completed",
                 "created_at": datetime.now(timezone.utc).isoformat()
             })
@@ -1872,6 +1907,7 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
     return {
         "user_id": user_id,
         "direct_referrals": team_stats["direct_referrals"],
+        "bronze_members": team_stats["bronze_members"],
         "total_team": team_stats["total_team"],
         "current_rank": rank_info["current_rank"],
         "next_rank": rank_info["next_rank"],
@@ -1880,7 +1916,8 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         "bonus_percent": bonus_percent,
         "bonus_income": bonus_income,
         "monthly_salary": monthly_salary,
-        "levelup_reward_received": levelup_reward if levelup_reward > 0 else None
+        "levelup_reward_received": levelup_reward if levelup_reward > 0 else None,
+        "demotion_message": demotion_message
     }
 
 async def calculate_team_level_income(user_id: str) -> float:

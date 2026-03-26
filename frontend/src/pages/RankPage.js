@@ -126,6 +126,7 @@ const RankPage = () => {
       setRankInfo({
         ...rankRes.data,
         direct_referrals: teamRes.data?.direct_referrals || 0,
+        bronze_members: teamRes.data?.bronze_members || 0,
         total_team: teamRes.data?.total_team || 0
       });
     } catch (error) {
