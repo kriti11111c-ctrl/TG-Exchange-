@@ -170,8 +170,21 @@ const TransactionsPage = () => {
     if (filter === 'trades') return tx.type === 'buy' || tx.type === 'sell';
     if (filter === 'deposits') return tx.type === 'deposit';
     if (filter === 'withdrawals') return tx.type === 'withdraw';
+    // Card-based filters
+    if (filter === 'welcome_bonus') return tx.type === 'welcome_bonus';
+    if (filter === 'salary') return tx.type === 'monthly_salary' || tx.type === 'team_bonus' || tx.type === 'referral_bonus';
+    if (filter === 'rank_reward') return tx.type === 'levelup_reward';
     return true;
   });
+
+  const handleCardClick = (cardType) => {
+    // Toggle filter - if same card clicked again, show all
+    if (filter === cardType) {
+      setFilter('all');
+    } else {
+      setFilter(cardType);
+    }
+  };
 
   if (loading) {
     return (
@@ -207,7 +220,11 @@ const TransactionsPage = () => {
           {/* Summary Cards - 6 Cards in 2 Rows */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
             {/* Row 1: Basic Stats */}
-            <div className="bg-[#12121A] border border-white/10 rounded-xl p-4" data-testid="card-deposits">
+            <div 
+              onClick={() => handleCardClick('deposits')}
+              className={`bg-[#12121A] border rounded-xl p-4 cursor-pointer transition-all hover:scale-[1.02] ${filter === 'deposits' ? 'border-[#00E599] ring-2 ring-[#00E599]/30' : 'border-white/10 hover:border-[#00E599]/50'}`}
+              data-testid="card-deposits"
+            >
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-[#00E599]/20 flex items-center justify-center">
                   <ArrowDown size={18} className="text-[#00E599]" />
@@ -217,7 +234,11 @@ const TransactionsPage = () => {
               <p className="text-xl font-bold text-white font-mono">${summaryStats.totalDeposits.toFixed(2)}</p>
             </div>
 
-            <div className="bg-[#12121A] border border-white/10 rounded-xl p-4" data-testid="card-withdrawals">
+            <div 
+              onClick={() => handleCardClick('withdrawals')}
+              className={`bg-[#12121A] border rounded-xl p-4 cursor-pointer transition-all hover:scale-[1.02] ${filter === 'withdrawals' ? 'border-[#FF3B30] ring-2 ring-[#FF3B30]/30' : 'border-white/10 hover:border-[#FF3B30]/50'}`}
+              data-testid="card-withdrawals"
+            >
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-[#FF3B30]/20 flex items-center justify-center">
                   <ArrowUp size={18} className="text-[#FF3B30]" />
@@ -227,7 +248,11 @@ const TransactionsPage = () => {
               <p className="text-xl font-bold text-white font-mono">${summaryStats.totalWithdrawals.toFixed(2)}</p>
             </div>
 
-            <div className="bg-[#12121A] border border-white/10 rounded-xl p-4" data-testid="card-trades">
+            <div 
+              onClick={() => handleCardClick('trades')}
+              className={`bg-[#12121A] border rounded-xl p-4 cursor-pointer transition-all hover:scale-[1.02] ${filter === 'trades' ? 'border-[#F5A623] ring-2 ring-[#F5A623]/30' : 'border-white/10 hover:border-[#F5A623]/50'}`}
+              data-testid="card-trades"
+            >
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-[#F5A623]/20 flex items-center justify-center">
                   <ArrowsDownUp size={18} className="text-[#F5A623]" />
@@ -238,7 +263,11 @@ const TransactionsPage = () => {
             </div>
 
             {/* Row 2: Bonus Stats */}
-            <div className="bg-gradient-to-br from-[#00E599]/10 to-[#12121A] border border-[#00E599]/30 rounded-xl p-4" data-testid="card-welcome-bonus">
+            <div 
+              onClick={() => handleCardClick('welcome_bonus')}
+              className={`bg-gradient-to-br from-[#00E599]/10 to-[#12121A] border rounded-xl p-4 cursor-pointer transition-all hover:scale-[1.02] ${filter === 'welcome_bonus' ? 'border-[#00E599] ring-2 ring-[#00E599]/30' : 'border-[#00E599]/30 hover:border-[#00E599]/60'}`}
+              data-testid="card-welcome-bonus"
+            >
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-[#00E599]/20 flex items-center justify-center">
                   <span className="text-[#00E599] text-lg">🎁</span>
@@ -248,7 +277,11 @@ const TransactionsPage = () => {
               <p className="text-xl font-bold text-[#00E599] font-mono">${summaryStats.welcomeBonus.toFixed(2)}</p>
             </div>
 
-            <div className="bg-gradient-to-br from-[#F5A623]/10 to-[#12121A] border border-[#F5A623]/30 rounded-xl p-4" data-testid="card-salary">
+            <div 
+              onClick={() => handleCardClick('salary')}
+              className={`bg-gradient-to-br from-[#F5A623]/10 to-[#12121A] border rounded-xl p-4 cursor-pointer transition-all hover:scale-[1.02] ${filter === 'salary' ? 'border-[#F5A623] ring-2 ring-[#F5A623]/30' : 'border-[#F5A623]/30 hover:border-[#F5A623]/60'}`}
+              data-testid="card-salary"
+            >
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-[#F5A623]/20 flex items-center justify-center">
                   <span className="text-[#F5A623] text-lg">💰</span>
@@ -258,7 +291,11 @@ const TransactionsPage = () => {
               <p className="text-xl font-bold text-[#F5A623] font-mono">${summaryStats.salary.toFixed(2)}</p>
             </div>
 
-            <div className="bg-gradient-to-br from-[#9B59B6]/10 to-[#12121A] border border-[#9B59B6]/30 rounded-xl p-4" data-testid="card-rank-reward">
+            <div 
+              onClick={() => handleCardClick('rank_reward')}
+              className={`bg-gradient-to-br from-[#9B59B6]/10 to-[#12121A] border rounded-xl p-4 cursor-pointer transition-all hover:scale-[1.02] ${filter === 'rank_reward' ? 'border-[#9B59B6] ring-2 ring-[#9B59B6]/30' : 'border-[#9B59B6]/30 hover:border-[#9B59B6]/60'}`}
+              data-testid="card-rank-reward"
+            >
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-lg bg-[#9B59B6]/20 flex items-center justify-center">
                   <span className="text-[#9B59B6] text-lg">🏆</span>
