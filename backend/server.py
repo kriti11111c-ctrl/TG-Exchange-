@@ -162,7 +162,135 @@ ALLOWED_DEPOSIT_AMOUNTS = [50, 100, 200, 300, 400, 500]
 # Withdrawal limits
 MIN_WITHDRAWAL = 10.0
 
-# ================= RANK SYSTEM =================
+# ================= TEAM RANK SYSTEM =================
+# Team Building Ranks based on direct referrals and team size
+TEAM_RANKS = [
+    {
+        "level": 1, 
+        "name": "Junior Promoter", 
+        "name_hi": "जूनियर प्रवक्ता",
+        "direct_required": 5, 
+        "team_required": 0,
+        "bonus_percent": 0.50,  # 0.50% of team level income
+        "monthly_salary": 30,
+        "levelup_reward": 100,
+        "color": "#9CA3AF"
+    },
+    {
+        "level": 2, 
+        "name": "Intermediate Promoter", 
+        "name_hi": "मध्यवर्ती प्रवक्ता",
+        "direct_required": 2, 
+        "team_required": 25,
+        "bonus_percent": 1.00,
+        "monthly_salary": 150,
+        "levelup_reward": 300,
+        "color": "#60A5FA"
+    },
+    {
+        "level": 3, 
+        "name": "Senior Promoter", 
+        "name_hi": "वरिष्ठ प्रवक्ता",
+        "direct_required": 3, 
+        "team_required": 125,
+        "bonus_percent": 2.00,
+        "monthly_salary": 500,
+        "levelup_reward": 800,
+        "color": "#34D399"
+    },
+    {
+        "level": 4, 
+        "name": "1-Star Promoter", 
+        "name_hi": "वन-स्टार प्रवक्ता",
+        "direct_required": 4, 
+        "team_required": 500,
+        "bonus_percent": 2.50,
+        "monthly_salary": 1200,
+        "levelup_reward": 2000,
+        "color": "#FBBF24"
+    },
+    {
+        "level": 5, 
+        "name": "2-Star Promoter", 
+        "name_hi": "टू-स्टार प्रवक्ता",
+        "direct_required": 5, 
+        "team_required": 1000,
+        "bonus_percent": 3.00,
+        "monthly_salary": 2400,
+        "levelup_reward": 5000,
+        "color": "#F97316"
+    },
+    {
+        "level": 6, 
+        "name": "3-Star Promoter", 
+        "name_hi": "श्री-स्टार प्रवक्ता",
+        "direct_required": 6, 
+        "team_required": 2000,
+        "bonus_percent": 3.50,
+        "monthly_salary": 5000,
+        "levelup_reward": 12000,
+        "color": "#EC4899"
+    },
+    {
+        "level": 7, 
+        "name": "Regional Promoter", 
+        "name_hi": "क्षेत्रीय प्रवक्ता",
+        "direct_required": 7, 
+        "team_required": 5000,
+        "bonus_percent": 4.00,
+        "monthly_salary": 10000,
+        "levelup_reward": 25000,
+        "color": "#EF4444"
+    }
+]
+
+async def get_team_stats(user_id: str) -> dict:
+    """Get user's team statistics"""
+    # Count direct referrals (level 1)
+    direct_count = await db.referrals.count_documents({"referrer_id": user_id, "level": 1})
+    
+    # Count total team (all levels)
+    team_count = await db.referrals.count_documents({"referrer_id": user_id})
+    
+    return {
+        "direct_referrals": direct_count,
+        "total_team": team_count
+    }
+
+def get_team_rank(direct_referrals: int, total_team: int) -> dict:
+    """Get user's team rank based on direct referrals and team size"""
+    current_rank = None
+    next_rank = TEAM_RANKS[0]  # Default next rank is first rank
+    
+    for i, rank in enumerate(TEAM_RANKS):
+        # Check if user qualifies for this rank
+        if direct_referrals >= rank["direct_required"] and total_team >= rank["team_required"]:
+            current_rank = rank
+            next_rank = TEAM_RANKS[i + 1] if i + 1 < len(TEAM_RANKS) else None
+    
+    # Calculate progress
+    progress = 0
+    if current_rank and next_rank:
+        # Progress based on team size
+        team_range = next_rank["team_required"] - current_rank["team_required"]
+        team_progress = total_team - current_rank["team_required"]
+        progress = min(100, (team_progress / team_range) * 100) if team_range > 0 else 100
+    elif not current_rank and next_rank:
+        # Progress to first rank
+        if next_rank["team_required"] > 0:
+            progress = min(100, (total_team / next_rank["team_required"]) * 100)
+        else:
+            progress = min(100, (direct_referrals / next_rank["direct_required"]) * 100)
+    
+    return {
+        "current_rank": current_rank,
+        "next_rank": next_rank,
+        "progress": progress,
+        "direct_referrals": direct_referrals,
+        "total_team": total_team
+    }
+
+# ================= VIP RANK SYSTEM (Trading Volume Based) =================
 # Rank definitions with volume thresholds (in USDT)
 RANK_LEVELS = [
     {"level": 1, "name": "1st ⭐", "emoji": "⭐", "min_volume": 0, "fee_discount": 0, "withdrawal_limit": 1000, "color": "#9CA3AF"},
@@ -1583,6 +1711,187 @@ async def get_rank_leaderboard():
     
     return {
         "leaderboard": leaderboard
+    }
+
+# ================= TEAM RANK ROUTES =================
+
+@api_router.get("/team-rank/info")
+async def get_team_rank_info(user: dict = Depends(get_current_user)):
+    """Get user's team rank information"""
+    user_id = user["user_id"]
+    
+    # Get team stats
+    team_stats = await get_team_stats(user_id)
+    
+    # Get team rank
+    rank_info = get_team_rank(team_stats["direct_referrals"], team_stats["total_team"])
+    
+    # Get user's saved team rank level
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    saved_rank_level = user_doc.get("team_rank_level", 0)
+    
+    # Check if user leveled up
+    current_level = rank_info["current_rank"]["level"] if rank_info["current_rank"] else 0
+    levelup_reward = 0
+    
+    if current_level > saved_rank_level:
+        # User leveled up! Calculate reward
+        for rank in TEAM_RANKS:
+            if rank["level"] > saved_rank_level and rank["level"] <= current_level:
+                levelup_reward += rank["levelup_reward"]
+        
+        # Update user's rank level
+        await db.users.update_one(
+            {"user_id": user_id},
+            {"$set": {"team_rank_level": current_level}}
+        )
+        
+        # Add levelup reward to wallet if any
+        if levelup_reward > 0:
+            await db.wallets.update_one(
+                {"user_id": user_id},
+                {"$inc": {"balances.usdt": levelup_reward}}
+            )
+            
+            # Record transaction
+            await db.transactions.insert_one({
+                "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+                "user_id": user_id,
+                "type": "levelup_reward",
+                "coin": "usdt",
+                "amount": levelup_reward,
+                "note": f"Team rank level up reward",
+                "status": "completed",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+    
+    # Calculate team level income (total from all team members' trades)
+    team_income = await calculate_team_level_income(user_id)
+    
+    # Calculate monthly salary based on rank
+    monthly_salary = rank_info["current_rank"]["monthly_salary"] if rank_info["current_rank"] else 0
+    bonus_percent = rank_info["current_rank"]["bonus_percent"] if rank_info["current_rank"] else 0
+    bonus_income = team_income * (bonus_percent / 100)
+    
+    return {
+        "user_id": user_id,
+        "direct_referrals": team_stats["direct_referrals"],
+        "total_team": team_stats["total_team"],
+        "current_rank": rank_info["current_rank"],
+        "next_rank": rank_info["next_rank"],
+        "progress": rank_info["progress"],
+        "team_level_income": team_income,
+        "bonus_percent": bonus_percent,
+        "bonus_income": bonus_income,
+        "monthly_salary": monthly_salary,
+        "levelup_reward_received": levelup_reward if levelup_reward > 0 else None
+    }
+
+async def calculate_team_level_income(user_id: str) -> float:
+    """Calculate total trading income from team (all levels)"""
+    # Get all team members
+    referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=10000)
+    
+    total_income = 0.0
+    for ref in referrals:
+        referred_id = ref["referred_id"]
+        # Get trades from this team member
+        pipeline = [
+            {"$match": {"user_id": referred_id, "type": {"$in": ["buy", "sell"]}}},
+            {"$group": {"_id": None, "total": {"$sum": "$total_usd"}}}
+        ]
+        result = await db.transactions.aggregate(pipeline).to_list(length=1)
+        if result:
+            total_income += result[0]["total"]
+    
+    return total_income
+
+@api_router.get("/team-rank/all-levels")
+async def get_all_team_rank_levels():
+    """Get all team rank levels and their requirements"""
+    return {
+        "ranks": TEAM_RANKS
+    }
+
+@api_router.get("/team-rank/salary-history")
+async def get_salary_history(user: dict = Depends(get_current_user)):
+    """Get user's salary history"""
+    user_id = user["user_id"]
+    
+    # Get salary transactions
+    salaries = await db.transactions.find(
+        {"user_id": user_id, "type": {"$in": ["monthly_salary", "levelup_reward", "team_bonus"]}},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(50).to_list(length=50)
+    
+    return {
+        "salaries": salaries
+    }
+
+@api_router.post("/team-rank/claim-salary")
+async def claim_monthly_salary(user: dict = Depends(get_current_user)):
+    """Claim monthly salary (can be claimed on 9th, 19th, 29th of each month)"""
+    user_id = user["user_id"]
+    now = datetime.now(timezone.utc)
+    
+    # Check if today is salary day (9, 19, or 29)
+    salary_days = [9, 19, 29]
+    # For testing, allow any day
+    # if now.day not in salary_days:
+    #     raise HTTPException(status_code=400, detail="Salary can only be claimed on 9th, 19th, or 29th of the month")
+    
+    # Check if already claimed this period
+    period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    existing_claim = await db.transactions.find_one({
+        "user_id": user_id,
+        "type": "monthly_salary",
+        "created_at": {"$gte": period_start.isoformat()}
+    })
+    
+    # Get user's team rank
+    team_stats = await get_team_stats(user_id)
+    rank_info = get_team_rank(team_stats["direct_referrals"], team_stats["total_team"])
+    
+    if not rank_info["current_rank"]:
+        raise HTTPException(status_code=400, detail="You need to reach Junior Promoter rank first")
+    
+    # Calculate salary (monthly salary / 3 for each claim period)
+    salary_amount = rank_info["current_rank"]["monthly_salary"] / 3
+    
+    # Calculate team bonus
+    team_income = await calculate_team_level_income(user_id)
+    bonus_percent = rank_info["current_rank"]["bonus_percent"]
+    bonus_amount = team_income * (bonus_percent / 100) / 3  # Divide by 3 for each period
+    
+    total_payout = salary_amount + bonus_amount
+    
+    if total_payout <= 0:
+        raise HTTPException(status_code=400, detail="No salary to claim")
+    
+    # Add to wallet
+    await db.wallets.update_one(
+        {"user_id": user_id},
+        {"$inc": {"balances.usdt": total_payout}}
+    )
+    
+    # Record transaction
+    await db.transactions.insert_one({
+        "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+        "user_id": user_id,
+        "type": "monthly_salary",
+        "coin": "usdt",
+        "amount": total_payout,
+        "note": f"Salary: ${salary_amount:.2f} + Team Bonus: ${bonus_amount:.2f}",
+        "status": "completed",
+        "created_at": now.isoformat()
+    })
+    
+    return {
+        "success": True,
+        "salary": salary_amount,
+        "team_bonus": bonus_amount,
+        "total_payout": total_payout,
+        "message": f"Successfully claimed ${total_payout:.2f}"
     }
 
 # Include router

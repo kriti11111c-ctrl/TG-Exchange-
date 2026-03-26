@@ -111,9 +111,9 @@ const ProfilePage = () => {
   // Recommend items (merged with shortcuts)
   const recommendItems = [
     { icon: UserPlus, label: "Referral", path: "/referral", color: "#F0B90B" },
+    { icon: UsersThree, label: "Team Building", path: "/team-rank", color: "#F0B90B" },
     { icon: Coins, label: "Earn", path: "/wallet", color: "#F0B90B" },
     { icon: Robot, label: "Trading Bots", path: "/trade", color: "#848E9C" },
-    { icon: UsersThree, label: "P2P", path: "/wallet", color: "#848E9C" },
     { icon: CurrencyBtc, label: "Bitcoin", path: "/trade/bitcoin", color: "#F7931A" },
     { icon: Star, label: "VIP Rank", path: "/rank", color: "#F0B90B" },
     { icon: PlusCircle, label: "Add Funds", path: "/wallet", color: "#F0B90B" },
@@ -236,6 +236,14 @@ const ProfilePage = () => {
             <div className="flex items-center gap-3">
               <Crown size={22} className="text-[#F0B90B]" />
               <span className={text}>VIP Rank</span>
+            </div>
+            <CaretRight size={18} className={textMuted} />
+          </Link>
+          <div className={`h-px ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} mx-4`}></div>
+          <Link to="/team-rank" className={`flex items-center justify-between p-4 ${hoverBg}`}>
+            <div className="flex items-center gap-3">
+              <UsersThree size={22} className="text-[#0ECB81]" />
+              <span className={text}>Team Building</span>
             </div>
             <CaretRight size={18} className={textMuted} />
           </Link>
