@@ -149,6 +149,48 @@ REFERRAL_COMMISSION_RATES = {
     10: 0.001  # 0.1%
 }
 
+# ================= RANK SYSTEM =================
+# Rank definitions with volume thresholds (in USDT)
+RANK_LEVELS = [
+    {"level": 1, "name": "1st ⭐", "emoji": "⭐", "min_volume": 0, "fee_discount": 0, "withdrawal_limit": 1000, "color": "#9CA3AF"},
+    {"level": 2, "name": "2nd ⭐⭐", "emoji": "⭐⭐", "min_volume": 100, "fee_discount": 5, "withdrawal_limit": 5000, "color": "#60A5FA"},
+    {"level": 3, "name": "3rd ⭐⭐⭐", "emoji": "⭐⭐⭐", "min_volume": 1000, "fee_discount": 10, "withdrawal_limit": 10000, "color": "#34D399"},
+    {"level": 4, "name": "4th ⭐⭐⭐⭐", "emoji": "⭐⭐⭐⭐", "min_volume": 10000, "fee_discount": 15, "withdrawal_limit": 25000, "color": "#FBBF24"},
+    {"level": 5, "name": "5th ⭐⭐⭐⭐⭐", "emoji": "⭐⭐⭐⭐⭐", "min_volume": 50000, "fee_discount": 20, "withdrawal_limit": 50000, "color": "#F97316"},
+    {"level": 6, "name": "6th ⭐", "emoji": "🌟", "min_volume": 100000, "fee_discount": 25, "withdrawal_limit": 100000, "color": "#3B82F6"},
+    {"level": 7, "name": "7th ⭐⭐", "emoji": "🌟🌟", "min_volume": 500000, "fee_discount": 30, "withdrawal_limit": 250000, "color": "#8B5CF6"},
+    {"level": 8, "name": "8th ⭐⭐⭐", "emoji": "🌟🌟🌟", "min_volume": 1000000, "fee_discount": 35, "withdrawal_limit": 500000, "color": "#EC4899"},
+    {"level": 9, "name": "9th ⭐⭐⭐⭐", "emoji": "🌟🌟🌟🌟", "min_volume": 5000000, "fee_discount": 40, "withdrawal_limit": 1000000, "color": "#F59E0B"},
+    {"level": 10, "name": "10th ⭐⭐⭐⭐⭐", "emoji": "🌟🌟🌟🌟🌟", "min_volume": 10000000, "fee_discount": 50, "withdrawal_limit": 999999999, "color": "#EF4444"}
+]
+
+def get_user_rank(total_volume: float) -> dict:
+    """Get user rank based on total trading volume"""
+    current_rank = RANK_LEVELS[0]
+    next_rank = RANK_LEVELS[1] if len(RANK_LEVELS) > 1 else None
+    
+    for i, rank in enumerate(RANK_LEVELS):
+        if total_volume >= rank["min_volume"]:
+            current_rank = rank
+            next_rank = RANK_LEVELS[i + 1] if i + 1 < len(RANK_LEVELS) else None
+    
+    # Calculate progress to next rank
+    progress = 100
+    volume_needed = 0
+    if next_rank:
+        volume_range = next_rank["min_volume"] - current_rank["min_volume"]
+        volume_progress = total_volume - current_rank["min_volume"]
+        progress = min(100, (volume_progress / volume_range) * 100) if volume_range > 0 else 100
+        volume_needed = next_rank["min_volume"] - total_volume
+    
+    return {
+        "current_rank": current_rank,
+        "next_rank": next_rank,
+        "progress": progress,
+        "volume_needed": max(0, volume_needed),
+        "total_volume": total_volume
+    }
+
 # ================= AUTH HELPERS =================
 
 def hash_password(password: str) -> str:
@@ -1257,6 +1299,102 @@ async def claim_referral_commission(user: dict = Depends(get_current_user)):
         "success": True,
         "claimed_amount": total_unclaimed,
         "message": f"Successfully claimed ${total_unclaimed:.2f} USDT"
+    }
+
+# ================= RANK ROUTES =================
+
+@api_router.get("/rank/info")
+async def get_rank_info(user: dict = Depends(get_current_user)):
+    """Get user's current rank and progress"""
+    user_id = user["user_id"]
+    
+    # Calculate total trading volume from transactions
+    pipeline = [
+        {"$match": {"user_id": user_id, "type": {"$in": ["buy", "sell"]}}},
+        {"$group": {"_id": None, "total_volume": {"$sum": "$total_usd"}}}
+    ]
+    
+    result = await db.transactions.aggregate(pipeline).to_list(length=1)
+    total_volume = result[0]["total_volume"] if result else 0
+    
+    # Get rank info
+    rank_info = get_user_rank(total_volume)
+    
+    # Get user stats
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    created_at = user_doc.get("created_at", datetime.now(timezone.utc).isoformat())
+    
+    # Calculate days as member
+    try:
+        join_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        days_as_member = (datetime.now(timezone.utc) - join_date).days
+    except:
+        days_as_member = 0
+    
+    # Count total trades
+    trade_count = await db.transactions.count_documents({
+        "user_id": user_id, 
+        "type": {"$in": ["buy", "sell"]}
+    })
+    
+    return {
+        "user_id": user_id,
+        "rank": rank_info["current_rank"],
+        "next_rank": rank_info["next_rank"],
+        "progress": rank_info["progress"],
+        "volume_needed": rank_info["volume_needed"],
+        "total_volume": total_volume,
+        "stats": {
+            "total_trades": trade_count,
+            "days_as_member": days_as_member
+        }
+    }
+
+@api_router.get("/rank/all-levels")
+async def get_all_rank_levels():
+    """Get all rank levels and their benefits"""
+    return {
+        "ranks": RANK_LEVELS
+    }
+
+@api_router.get("/rank/leaderboard")
+async def get_rank_leaderboard():
+    """Get top traders leaderboard"""
+    # Get top 20 traders by volume
+    pipeline = [
+        {"$match": {"type": {"$in": ["buy", "sell"]}}},
+        {"$group": {
+            "_id": "$user_id",
+            "total_volume": {"$sum": "$total_usd"},
+            "trade_count": {"$sum": 1}
+        }},
+        {"$sort": {"total_volume": -1}},
+        {"$limit": 20}
+    ]
+    
+    results = await db.transactions.aggregate(pipeline).to_list(length=20)
+    
+    leaderboard = []
+    for i, item in enumerate(results):
+        user_doc = await db.users.find_one({"user_id": item["_id"]}, {"_id": 0})
+        if user_doc:
+            # Mask email
+            email = user_doc.get("email", "")
+            masked_email = email[:2] + "****" + email[email.index("@"):] if "@" in email else email[:2] + "****"
+            
+            rank_info = get_user_rank(item["total_volume"])
+            
+            leaderboard.append({
+                "position": i + 1,
+                "name": user_doc.get("name", "User"),
+                "email": masked_email,
+                "total_volume": item["total_volume"],
+                "trade_count": item["trade_count"],
+                "rank": rank_info["current_rank"]
+            })
+    
+    return {
+        "leaderboard": leaderboard
     }
 
 # Include router

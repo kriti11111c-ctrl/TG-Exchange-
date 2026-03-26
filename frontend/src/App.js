@@ -14,6 +14,7 @@ import TradePage from "./pages/TradePage";
 import TransactionsPage from "./pages/TransactionsPage";
 import ProfilePage from "./pages/ProfilePage";
 import ReferralPage from "./pages/ReferralPage";
+import RankPage from "./pages/RankPage";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -217,6 +218,11 @@ function AppRouter() {
       <Route path="/referral" element={
         <ProtectedRoute>
           <ReferralPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/rank" element={
+        <ProtectedRoute>
+          <RankPage />
         </ProtectedRoute>
       } />
     </Routes>

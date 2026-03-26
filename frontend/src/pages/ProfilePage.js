@@ -141,17 +141,17 @@ const ProfilePage = () => {
           </div>
         </div>
 
-        {/* VIP Section */}
-        <div className={`flex items-center justify-between mt-4 pt-4 border-t ${border}`}>
+        {/* VIP/Rank Section */}
+        <Link to="/rank" className={`flex items-center justify-between mt-4 pt-4 border-t ${border}`}>
           <div className="flex items-center gap-2">
             <Crown size={20} className="text-[#F0B90B]" weight="fill" />
-            <span className={`font-bold ${text}`}>VIP 0</span>
+            <span className={`font-bold ${text}`}>1st ⭐</span>
           </div>
-          <Link to="/profile/vip" className="flex items-center gap-1 text-[#F0B90B]">
-            <span className="text-sm">View Benefits</span>
+          <div className="flex items-center gap-1 text-[#F0B90B]">
+            <span className="text-sm">View Rank Benefits</span>
             <CaretRight size={14} />
-          </Link>
-        </div>
+          </div>
+        </Link>
       </div>
 
       {/* Referral Banner */}
