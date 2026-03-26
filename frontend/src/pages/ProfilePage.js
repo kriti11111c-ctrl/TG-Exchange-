@@ -108,24 +108,15 @@ const ProfilePage = () => {
   const hoverBg = isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100';
   const iconBg = isDark ? 'bg-[#2B3139]' : 'bg-gray-100';
 
-  // Shortcut items
-  const shortcutItems = [
+  // Recommend items (merged with shortcuts)
+  const recommendItems = [
     { icon: UserPlus, label: "Referral", path: "/referral", color: "#F0B90B" },
     { icon: Coins, label: "Earn", path: "/wallet", color: "#F0B90B" },
     { icon: Robot, label: "Trading Bots", path: "/trade", color: "#848E9C" },
     { icon: UsersThree, label: "P2P", path: "/wallet", color: "#848E9C" },
-    { icon: PencilSimple, label: "Edit", path: "/profile/edit", color: "#848E9C" },
-  ];
-
-  // Recommend items
-  const recommendItems = [
-    { icon: Coins, label: "Simple Earn", path: "/wallet", color: "#F0B90B" },
     { icon: CurrencyBtc, label: "Bitcoin", path: "/trade/bitcoin", color: "#F7931A" },
-    { icon: UserPlus, label: "Referral", path: "/referral", color: "#F0B90B" },
-    { icon: CalendarBlank, label: "Events", path: "/events", color: "#848E9C" },
-    { icon: PlusCircle, label: "Add Funds", path: "/wallet", color: "#F0B90B" },
-    { icon: Broadcast, label: "News", path: "/news", color: "#848E9C" },
     { icon: Star, label: "VIP Rank", path: "/rank", color: "#F0B90B" },
+    { icon: PlusCircle, label: "Add Funds", path: "/wallet", color: "#F0B90B" },
     { icon: ChartLineUp, label: "Markets", path: "/trade", color: "#0ECB81" },
   ];
 
@@ -192,27 +183,6 @@ const ProfilePage = () => {
           </div>
         </div>
       </Link>
-
-      {/* Shortcut Section */}
-      <div className="mx-4 mt-6">
-        <h3 className={`font-semibold mb-3 ${text}`}>Shortcut</h3>
-        <div className={`${cardBg} rounded-2xl p-4`}>
-          <div className="grid grid-cols-5 gap-2">
-            {shortcutItems.map((item, index) => (
-              <Link 
-                key={index} 
-                to={item.path}
-                className="flex flex-col items-center gap-2"
-              >
-                <div className={`w-12 h-12 rounded-full ${iconBg} flex items-center justify-center`}>
-                  <item.icon size={24} style={{ color: item.color }} />
-                </div>
-                <span className={`text-xs ${text} text-center`}>{item.label}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
 
       {/* Recommend Section */}
       <div className="mx-4 mt-6">
