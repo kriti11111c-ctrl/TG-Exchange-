@@ -270,34 +270,31 @@ const ReferralPage = () => {
               
               {/* Expanded Team Members for this level */}
               {selectedLevel === level.level && team.length > 0 && (
-                <div className={`mt-2 ml-4 space-y-2 border-l-2 ${isDark ? 'border-[#2B3139]' : 'border-gray-200'} pl-4`}>
+                <div className={`mt-2 ml-4 space-y-1 border-l-2 ${isDark ? 'border-[#2B3139]' : 'border-gray-200'} pl-3`}>
                   {team.map((member, index) => (
                     <div 
                       key={index} 
-                      className={`p-3 rounded-lg ${isDark ? 'bg-[#181C21]' : 'bg-gray-50'} border ${border}`}
+                      className={`flex items-center justify-between p-2 rounded-lg ${isDark ? 'bg-[#181C21]' : 'bg-gray-50'} border ${border}`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-[#F0B90B] to-[#0ECB81] flex items-center justify-center`}>
-                            <span className="text-white font-bold text-sm">{member.name?.charAt(0)?.toUpperCase() || 'U'}</span>
-                          </div>
-                          <div>
-                            <p className={`font-medium ${text}`}>{member.name}</p>
-                            <p className={`text-xs ${textMuted}`}>{member.email}</p>
-                          </div>
+                      {/* Serial Number + Avatar + Name */}
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className={`text-xs font-bold ${textMuted} w-5`}>{index + 1}.</span>
+                        <div className={`w-7 h-7 rounded-full bg-gradient-to-br from-[#F0B90B] to-[#0ECB81] flex items-center justify-center flex-shrink-0`}>
+                          <span className="text-white font-bold text-xs">{member.name?.charAt(0)?.toUpperCase() || 'U'}</span>
                         </div>
+                        <p className={`font-medium ${text} text-sm truncate`}>{member.name}</p>
                       </div>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
-                        <div className={`p-2 rounded ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
-                          <p className={`text-xs ${textMuted}`}>Fund</p>
-                          <p className="text-[#0ECB81] font-bold">${member.fund?.toFixed(2) || '0.00'}</p>
-                        </div>
-                        <div className={`p-2 rounded ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
-                          <p className={`text-xs ${textMuted}`}>Join Date</p>
-                          <p className={`font-medium ${text} text-sm`}>
-                            {new Date(member.joined_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                          </p>
-                        </div>
+                      
+                      {/* Fund */}
+                      <div className="text-center px-2">
+                        <p className="text-[#0ECB81] font-bold text-sm">${member.fund?.toFixed(0) || '0'}</p>
+                      </div>
+                      
+                      {/* Join Date */}
+                      <div className="text-right">
+                        <p className={`${textMuted} text-xs`}>
+                          {new Date(member.joined_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                        </p>
                       </div>
                     </div>
                   ))}
