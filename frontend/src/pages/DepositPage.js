@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "../App";
+import { useTheme, API } from "../App";
+import axios from "axios";
 import { 
   CaretLeft, 
   Copy, 
@@ -8,34 +9,17 @@ import {
   Warning,
   QrCode,
   Share,
-  CaretDown
+  CaretDown,
+  Wallet,
+  Eye,
+  EyeSlash
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
 import QRCode from "react-qr-code";
 
-// Admin Deposit Addresses
+// Admin Deposit Addresses - Reordered as per user preference
 const DEPOSIT_NETWORKS = [
-  {
-    id: "erc20",
-    name: "Ethereum (ERC20)",
-    shortName: "ETH/ERC20",
-    address: "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
-    icon: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
-    color: "#627EEA",
-    warning: "Only send ETH/ERC20 tokens to this address",
-    coins: ["ETH", "USDT", "USDC", "DAI"]
-  },
-  {
-    id: "bep20",
-    name: "BNB Smart Chain (BEP20)",
-    shortName: "BSC/BEP20",
-    address: "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
-    icon: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
-    color: "#F0B90B",
-    warning: "Only send BSC/BEP20 tokens to this address",
-    coins: ["BNB", "USDT", "BUSD"]
-  },
   {
     id: "trc20",
     name: "TRON (TRC20)",
@@ -47,6 +31,16 @@ const DEPOSIT_NETWORKS = [
     coins: ["TRX", "USDT"]
   },
   {
+    id: "erc20",
+    name: "Ethereum (ERC20)",
+    shortName: "ETH/ERC20",
+    address: "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
+    icon: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
+    color: "#627EEA",
+    warning: "Only send ETH/ERC20 tokens to this address",
+    coins: ["ETH", "USDT", "USDC", "DAI"]
+  },
+  {
     id: "solana",
     name: "Solana",
     shortName: "SOL",
@@ -55,6 +49,16 @@ const DEPOSIT_NETWORKS = [
     color: "#9945FF",
     warning: "Only send Solana tokens to this address",
     coins: ["SOL", "USDT", "USDC"]
+  },
+  {
+    id: "bep20",
+    name: "BNB Smart Chain (BEP20)",
+    shortName: "BSC/BEP20",
+    address: "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
+    icon: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
+    color: "#F0B90B",
+    warning: "Only send BSC/BEP20 tokens to this address",
+    coins: ["BNB", "USDT", "BUSD"]
   },
   {
     id: "polygon",
@@ -74,12 +78,30 @@ const DepositPage = () => {
   const [selectedNetwork, setSelectedNetwork] = useState(DEPOSIT_NETWORKS[0]);
   const [showNetworkSelect, setShowNetworkSelect] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [wallet, setWallet] = useState(null);
+  const [showBalance, setShowBalance] = useState(true);
 
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
   const cardBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
   const text = isDark ? 'text-white' : 'text-gray-900';
   const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
   const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
+
+  // Fetch wallet balance
+  useEffect(() => {
+    const fetchWallet = async () => {
+      try {
+        const response = await axios.get(`${API}/wallet`, { withCredentials: true });
+        setWallet(response.data);
+      } catch (error) {
+        console.error("Error fetching wallet:", error);
+      }
+    };
+    fetchWallet();
+  }, []);
+
+  // Calculate total balance
+  const totalBalance = wallet ? (wallet.balances?.usdt || 0) : 0;
 
   const copyAddress = () => {
     navigator.clipboard.writeText(selectedNetwork.address);
@@ -117,6 +139,25 @@ const DepositPage = () => {
       </div>
 
       <div className="p-4 space-y-4">
+        {/* Balance Card - First */}
+        <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Wallet size={20} className="text-[#F0B90B]" />
+              <span className={`text-sm ${textMuted}`}>Available Balance</span>
+            </div>
+            <button onClick={() => setShowBalance(!showBalance)}>
+              {showBalance ? <Eye size={18} className={textMuted} /> : <EyeSlash size={18} className={textMuted} />}
+            </button>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className={`text-3xl font-bold ${text}`}>
+              {showBalance ? `$${totalBalance.toFixed(2)}` : '****'}
+            </span>
+            <span className="text-[#0ECB81] text-sm">USDT</span>
+          </div>
+        </div>
+
         {/* Network Selector */}
         <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
           <label className={`text-sm ${textMuted} mb-2 block`}>Select Network</label>
