@@ -149,6 +149,19 @@ REFERRAL_COMMISSION_RATES = {
     10: 0.001  # 0.1%
 }
 
+# ================= BONUS & LIMITS CONFIG =================
+WELCOME_BONUS_AMOUNT = 200.0  # $200 welcome bonus
+WELCOME_BONUS_DAYS = 5  # Bonus valid for 5 days
+DIRECT_REFERRAL_BONUS_PERCENT = 0.05  # 5% bonus on direct referral
+
+# Deposit limits
+MIN_DEPOSIT = 50.0
+MAX_DEPOSIT = 500.0
+ALLOWED_DEPOSIT_AMOUNTS = [50, 100, 200, 300, 400, 500]
+
+# Withdrawal limits
+MIN_WITHDRAWAL = 10.0
+
 # ================= RANK SYSTEM =================
 # Rank definitions with volume thresholds (in USDT)
 RANK_LEVELS = [
@@ -261,12 +274,16 @@ async def register(user_data: UserCreate, response: Response):
     referral_code = f"CV{uuid.uuid4().hex[:8].upper()}"  # Generate unique referral code
     now = datetime.now(timezone.utc)
     
+    # Welcome bonus expires after 5 days
+    welcome_bonus_expires = now + timedelta(days=WELCOME_BONUS_DAYS)
+    
     # Find referrer if referral code provided
     referrer_id = None
+    referrer_user = None
     if user_data.referral_code:
-        referrer = await db.users.find_one({"referral_code": user_data.referral_code}, {"_id": 0})
-        if referrer:
-            referrer_id = referrer["user_id"]
+        referrer_user = await db.users.find_one({"referral_code": user_data.referral_code}, {"_id": 0})
+        if referrer_user:
+            referrer_id = referrer_user["user_id"]
     
     user_doc = {
         "user_id": user_id,
@@ -276,6 +293,8 @@ async def register(user_data: UserCreate, response: Response):
         "picture": None,
         "referral_code": referral_code,
         "referred_by": referrer_id,
+        "welcome_bonus": WELCOME_BONUS_AMOUNT,
+        "welcome_bonus_expires_at": welcome_bonus_expires.isoformat(),
         "created_at": now.isoformat()
     }
     
@@ -284,21 +303,56 @@ async def register(user_data: UserCreate, response: Response):
     # If referred by someone, create referral chain (10 levels)
     if referrer_id:
         await create_referral_chain(user_id, referrer_id, now)
+        
+        # Give 5% bonus ONLY to upline (referrer)
+        referral_bonus = WELCOME_BONUS_AMOUNT * DIRECT_REFERRAL_BONUS_PERCENT  # $10 (5% of $200)
+        
+        # Add bonus to referrer's wallet
+        await db.wallets.update_one(
+            {"user_id": referrer_id},
+            {"$inc": {"balances.usdt": referral_bonus}}
+        )
+        
+        # Record bonus transaction for referrer
+        await db.transactions.insert_one({
+            "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+            "user_id": referrer_id,
+            "type": "referral_bonus",
+            "coin": "usdt",
+            "amount": referral_bonus,
+            "note": f"Direct referral bonus from {user_data.name}",
+            "status": "completed",
+            "created_at": now.isoformat()
+        })
     
-    # Create wallet with initial balances
+    # Create wallet with welcome bonus only (no extra bonus for new user)
     wallet_doc = {
         "user_id": user_id,
         "balances": {
             "btc": 0.0,
             "eth": 0.0,
-            "usdt": 1000.0,  # Give 1000 USDT for testing
+            "usdt": WELCOME_BONUS_AMOUNT,  # Only welcome bonus
             "bnb": 0.0,
             "xrp": 0.0,
             "sol": 0.0
         },
+        "welcome_bonus": WELCOME_BONUS_AMOUNT,
+        "welcome_bonus_expires_at": welcome_bonus_expires.isoformat(),
         "updated_at": now.isoformat()
     }
     await db.wallets.insert_one(wallet_doc)
+    
+    # Record welcome bonus transaction
+    await db.transactions.insert_one({
+        "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+        "user_id": user_id,
+        "type": "welcome_bonus",
+        "coin": "usdt",
+        "amount": WELCOME_BONUS_AMOUNT,
+        "note": f"Welcome bonus - valid for {WELCOME_BONUS_DAYS} days",
+        "status": "completed",
+        "created_at": now.isoformat()
+    })
     
     token = create_jwt_token(user_id, user_data.email)
     
@@ -504,8 +558,60 @@ async def logout(response: Response, user: dict = Depends(get_current_user)):
 
 # ================= WALLET ROUTES =================
 
-@api_router.get("/wallet", response_model=WalletResponse)
+async def check_and_expire_welcome_bonus(user_id: str):
+    """Check if welcome bonus has expired and remove it"""
+    wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0})
+    if not wallet:
+        return None
+    
+    welcome_bonus = wallet.get("welcome_bonus", 0)
+    expires_at_str = wallet.get("welcome_bonus_expires_at")
+    
+    if welcome_bonus > 0 and expires_at_str:
+        expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        now = datetime.now(timezone.utc)
+        
+        if now > expires_at:
+            # Welcome bonus expired - remove it from balance
+            current_usdt = wallet["balances"].get("usdt", 0)
+            new_usdt = max(0, current_usdt - welcome_bonus)
+            
+            await db.wallets.update_one(
+                {"user_id": user_id},
+                {
+                    "$set": {
+                        "balances.usdt": new_usdt,
+                        "welcome_bonus": 0,
+                        "welcome_bonus_expired": True,
+                        "updated_at": now.isoformat()
+                    }
+                }
+            )
+            
+            # Record the bonus expiry transaction
+            await db.transactions.insert_one({
+                "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+                "user_id": user_id,
+                "type": "welcome_bonus_expired",
+                "coin": "usdt",
+                "amount": -welcome_bonus,
+                "note": "Welcome bonus expired after 5 days",
+                "status": "completed",
+                "created_at": now.isoformat()
+            })
+            
+            return {"expired": True, "amount": welcome_bonus}
+    
+    return {"expired": False}
+
+@api_router.get("/wallet")
 async def get_wallet(user: dict = Depends(get_current_user)):
+    # Check and expire welcome bonus if needed
+    await check_and_expire_welcome_bonus(user["user_id"])
+    
     wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
@@ -514,11 +620,35 @@ async def get_wallet(user: dict = Depends(get_current_user)):
     if isinstance(updated_at, str):
         updated_at = datetime.fromisoformat(updated_at)
     
-    return WalletResponse(
-        user_id=wallet["user_id"],
-        balances=wallet["balances"],
-        updated_at=updated_at
-    )
+    # Calculate welcome bonus remaining time
+    welcome_bonus_info = None
+    welcome_bonus = wallet.get("welcome_bonus", 0)
+    expires_at_str = wallet.get("welcome_bonus_expires_at")
+    
+    if welcome_bonus > 0 and expires_at_str:
+        expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00'))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        now = datetime.now(timezone.utc)
+        remaining = expires_at - now
+        
+        if remaining.total_seconds() > 0:
+            days_remaining = remaining.days
+            hours_remaining = remaining.seconds // 3600
+            welcome_bonus_info = {
+                "amount": welcome_bonus,
+                "expires_at": expires_at_str,
+                "days_remaining": days_remaining,
+                "hours_remaining": hours_remaining
+            }
+    
+    return {
+        "user_id": wallet["user_id"],
+        "balances": wallet["balances"],
+        "welcome_bonus": welcome_bonus_info,
+        "updated_at": updated_at.isoformat() if updated_at else None
+    }
 
 @api_router.post("/wallet/deposit", response_model=TransactionResponse)
 async def deposit_crypto(deposit: DepositRequest, user: dict = Depends(get_current_user)):
@@ -530,6 +660,15 @@ async def deposit_crypto(deposit: DepositRequest, user: dict = Depends(get_curre
     
     if deposit.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
+    
+    # For USDT deposits, enforce limits
+    if coin == "usdt":
+        if deposit.amount < MIN_DEPOSIT:
+            raise HTTPException(status_code=400, detail=f"Minimum deposit is ${MIN_DEPOSIT}")
+        if deposit.amount > MAX_DEPOSIT:
+            raise HTTPException(status_code=400, detail=f"Maximum deposit is ${MAX_DEPOSIT}")
+        if deposit.amount not in ALLOWED_DEPOSIT_AMOUNTS:
+            raise HTTPException(status_code=400, detail=f"Please select from allowed amounts: {ALLOWED_DEPOSIT_AMOUNTS}")
     
     now = datetime.now(timezone.utc)
     tx_id = f"tx_{uuid.uuid4().hex[:16]}"
@@ -566,6 +705,16 @@ async def deposit_crypto(deposit: DepositRequest, user: dict = Depends(get_curre
         created_at=now
     )
 
+@api_router.get("/wallet/deposit-limits")
+async def get_deposit_limits():
+    """Get deposit limits and allowed amounts"""
+    return {
+        "min_deposit": MIN_DEPOSIT,
+        "max_deposit": MAX_DEPOSIT,
+        "allowed_amounts": ALLOWED_DEPOSIT_AMOUNTS,
+        "currency": "USDT"
+    }
+
 @api_router.post("/wallet/withdraw", response_model=TransactionResponse)
 async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_current_user)):
     coin = withdraw.coin.lower()
@@ -577,10 +726,30 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
     if withdraw.amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
     
-    # Check balance
+    # Minimum withdrawal check for USDT
+    if coin == "usdt" and withdraw.amount < MIN_WITHDRAWAL:
+        raise HTTPException(status_code=400, detail=f"Minimum withdrawal is ${MIN_WITHDRAWAL}")
+    
+    # Check and expire welcome bonus first
+    await check_and_expire_welcome_bonus(user["user_id"])
+    
+    # Get updated wallet
     wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
-    if not wallet or wallet["balances"].get(coin, 0) < withdraw.amount:
-        raise HTTPException(status_code=400, detail="Insufficient balance")
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    
+    # Check balance (excluding welcome bonus for withdrawals)
+    current_balance = wallet["balances"].get(coin, 0)
+    welcome_bonus = wallet.get("welcome_bonus", 0) if coin == "usdt" else 0
+    
+    # User can only withdraw their deposited/traded funds, not welcome bonus
+    withdrawable_balance = current_balance - welcome_bonus
+    
+    if withdrawable_balance < withdraw.amount:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Insufficient withdrawable balance. Available: ${withdrawable_balance:.2f} (Welcome bonus is not withdrawable)"
+        )
     
     now = datetime.now(timezone.utc)
     tx_id = f"tx_{uuid.uuid4().hex[:16]}"
@@ -616,6 +785,25 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
         status="pending",
         created_at=now
     )
+
+@api_router.get("/wallet/withdrawal-limits")
+async def get_withdrawal_limits(user: dict = Depends(get_current_user)):
+    """Get withdrawal limits"""
+    # Check and expire welcome bonus first
+    await check_and_expire_welcome_bonus(user["user_id"])
+    
+    wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    usdt_balance = wallet["balances"].get("usdt", 0) if wallet else 0
+    welcome_bonus = wallet.get("welcome_bonus", 0) if wallet else 0
+    withdrawable = max(0, usdt_balance - welcome_bonus)
+    
+    return {
+        "min_withdrawal": MIN_WITHDRAWAL,
+        "total_balance": usdt_balance,
+        "welcome_bonus": welcome_bonus,
+        "withdrawable_balance": withdrawable,
+        "currency": "USDT"
+    }
 
 # ================= TRADING ROUTES =================
 

@@ -128,6 +128,8 @@ const WalletPage = () => {
   const [showBalance, setShowBalance] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
   const [searchQuery, setSearchQuery] = useState("");
+  const [depositLimits, setDepositLimits] = useState(null);
+  const [withdrawalLimits, setWithdrawalLimits] = useState(null);
   
   // Dialog states
   const [depositOpen, setDepositOpen] = useState(false);
@@ -135,8 +137,9 @@ const WalletPage = () => {
   const [transferOpen, setTransferOpen] = useState(false);
   
   // Form states
-  const [selectedCoin, setSelectedCoin] = useState("btc");
+  const [selectedCoin, setSelectedCoin] = useState("usdt");
   const [amount, setAmount] = useState("");
+  const [selectedDepositAmount, setSelectedDepositAmount] = useState(null);
   const [address, setAddress] = useState("");
   const [txHash, setTxHash] = useState("");
   const [transferTo, setTransferTo] = useState("margin");
@@ -188,12 +191,18 @@ const WalletPage = () => {
 
   const fetchData = async () => {
     try {
-      const [walletRes, pricesRes] = await Promise.all([
+      const [walletRes, pricesRes, depositLimitsRes] = await Promise.all([
         axios.get(`${API}/wallet`, { withCredentials: true }),
-        axios.get(`${API}/market/prices`)
+        axios.get(`${API}/market/prices`),
+        axios.get(`${API}/wallet/deposit-limits`, { withCredentials: true })
       ]);
       setWallet(walletRes.data);
       setPrices(pricesRes.data);
+      setDepositLimits(depositLimitsRes.data);
+      
+      // Fetch withdrawal limits
+      const withdrawLimitsRes = await axios.get(`${API}/wallet/withdrawal-limits`, { withCredentials: true });
+      setWithdrawalLimits(withdrawLimitsRes.data);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -233,15 +242,19 @@ const WalletPage = () => {
   const handleDeposit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
+    
+    const depositAmount = selectedDepositAmount || parseFloat(amount);
+    
     try {
       await axios.post(`${API}/wallet/deposit`, {
         coin: selectedCoin,
-        amount: parseFloat(amount),
+        amount: depositAmount,
         tx_hash: txHash || `tx_${Date.now()}`
       }, { withCredentials: true });
-      toast.success(`Deposited ${amount} ${selectedCoin.toUpperCase()} successfully!`);
+      toast.success(`Deposited $${depositAmount} ${selectedCoin.toUpperCase()} successfully!`);
       setDepositOpen(false);
       setAmount("");
+      setSelectedDepositAmount(null);
       setTxHash("");
       fetchData();
     } catch (error) {
@@ -253,14 +266,29 @@ const WalletPage = () => {
 
   const handleWithdraw = async (e) => {
     e.preventDefault();
+    
+    const withdrawAmount = parseFloat(amount);
+    
+    // Check minimum withdrawal
+    if (withdrawAmount < 10) {
+      toast.error("Minimum withdrawal is $10");
+      return;
+    }
+    
+    // Check withdrawable balance
+    if (withdrawalLimits && withdrawAmount > withdrawalLimits.withdrawable_balance) {
+      toast.error(`Maximum withdrawable: $${withdrawalLimits.withdrawable_balance.toFixed(2)} (Welcome bonus is not withdrawable)`);
+      return;
+    }
+    
     setSubmitting(true);
     try {
       await axios.post(`${API}/wallet/withdraw`, {
         coin: selectedCoin,
-        amount: parseFloat(amount),
+        amount: withdrawAmount,
         address: address
       }, { withCredentials: true });
-      toast.success(`Withdrawal of ${amount} ${selectedCoin.toUpperCase()} initiated!`);
+      toast.success(`Withdrawal of $${withdrawAmount} ${selectedCoin.toUpperCase()} initiated!`);
       setWithdrawOpen(false);
       setAmount("");
       setAddress("");
@@ -326,6 +354,29 @@ const WalletPage = () => {
 
       {/* Total Balance Card */}
       <div className={`px-4 py-6 ${cardBg}`}>
+        {/* Welcome Bonus Banner */}
+        {wallet?.welcome_bonus && (
+          <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-[#F0B90B]/20 to-[#F0B90B]/10 border border-[#F0B90B]/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[#F0B90B] flex items-center justify-center">
+                  <Coins size={18} className="text-black" />
+                </div>
+                <div>
+                  <p className="text-[#F0B90B] font-semibold text-sm">Welcome Bonus</p>
+                  <p className={`text-xs ${textMuted}`}>
+                    {wallet.welcome_bonus.days_remaining}d {wallet.welcome_bonus.hours_remaining}h remaining
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[#F0B90B] font-bold text-lg">${wallet.welcome_bonus.amount}</p>
+                <p className={`text-[10px] ${textMuted}`}>Not withdrawable</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-2 mb-2">
           <span className={`${textMuted} text-sm`}>Total Balance</span>
           <button onClick={() => setShowBalance(!showBalance)}>
@@ -342,6 +393,14 @@ const WalletPage = () => {
             <CaretDown size={14} />
           </div>
         </div>
+        
+        {/* Withdrawable Balance Info */}
+        {withdrawalLimits && wallet?.welcome_bonus && (
+          <div className={`flex items-center gap-2 mb-2 ${textMuted} text-xs`}>
+            <Info size={14} />
+            <span>Withdrawable: ${withdrawalLimits.withdrawable_balance?.toFixed(2) || '0.00'}</span>
+          </div>
+        )}
         
         <div className="flex items-center gap-2">
           <span className={`${textMuted} text-sm`}>Today's PnL</span>
@@ -367,39 +426,55 @@ const WalletPage = () => {
             </DialogTrigger>
             <DialogContent className={`${dialogBg} ${border}`}>
               <DialogHeader>
-                <DialogTitle className={text}>Deposit Crypto</DialogTitle>
+                <DialogTitle className={text}>Deposit USDT</DialogTitle>
+                <DialogDescription className={textMuted}>
+                  Min: $50 | Max: $500
+                </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleDeposit} className="space-y-4 mt-4">
                 <div>
-                  <Label className={textMuted}>Select Coin</Label>
-                  <Select value={selectedCoin} onValueChange={setSelectedCoin}>
-                    <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className={`${dialogBg} ${border}`}>
-                      {supportedCoins.map(coin => (
-                        <SelectItem key={coin.id} value={coin.id} className={text}>
-                          {coin.name} ({coin.symbol})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className={textMuted}>Select Amount</Label>
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {[50, 100, 200, 300, 400, 500].map(amt => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDepositAmount(amt);
+                          setAmount(amt.toString());
+                        }}
+                        className={`py-3 rounded-lg font-semibold transition-all ${
+                          selectedDepositAmount === amt
+                            ? 'bg-[#F0B90B] text-black'
+                            : `${dialogInputBg} ${text} ${border} border`
+                        }`}
+                      >
+                        ${amt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
-                  <Label className={textMuted}>Deposit Address</Label>
+                  <Label className={textMuted}>Deposit Address (USDT TRC20)</Label>
                   <div className="flex items-center gap-2 mt-1">
-                    <Input value={depositAddresses[selectedCoin]} readOnly className={`${dialogInputBg} ${border} ${text} font-mono text-xs`} />
-                    <Button type="button" variant="outline" size="icon" onClick={() => copyToClipboard(depositAddresses[selectedCoin])} className={border}>
+                    <Input value={depositAddresses['usdt']} readOnly className={`${dialogInputBg} ${border} ${text} font-mono text-xs`} />
+                    <Button type="button" variant="outline" size="icon" onClick={() => copyToClipboard(depositAddresses['usdt'])} className={border}>
                       <Copy size={16} />
                     </Button>
                   </div>
                 </div>
-                <div>
-                  <Label className={textMuted}>Amount (Demo)</Label>
-                  <Input type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className={`${dialogInputBg} ${border} ${text} mt-1`} required />
+                <div className={`p-3 rounded-lg ${isDark ? 'bg-[#F0B90B]/10' : 'bg-yellow-50'} border border-[#F0B90B]/30`}>
+                  <p className={`text-xs ${textMuted}`}>
+                    <Info size={14} className="inline mr-1" />
+                    Send exactly the selected amount to the address above. Deposits are processed within 10-30 minutes.
+                  </p>
                 </div>
-                <Button type="submit" disabled={submitting} className="w-full bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black font-semibold">
-                  {submitting ? "Processing..." : "Confirm Deposit"}
+                <Button 
+                  type="submit" 
+                  disabled={submitting || !selectedDepositAmount} 
+                  className="w-full bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black font-semibold"
+                >
+                  {submitting ? "Processing..." : `Deposit $${selectedDepositAmount || 0}`}
                 </Button>
               </form>
             </DialogContent>
@@ -417,36 +492,69 @@ const WalletPage = () => {
             </DialogTrigger>
             <DialogContent className={`${dialogBg} ${border}`}>
               <DialogHeader>
-                <DialogTitle className={text}>Withdraw Crypto</DialogTitle>
+                <DialogTitle className={text}>Withdraw USDT</DialogTitle>
+                <DialogDescription className={textMuted}>
+                  Minimum withdrawal: $10
+                </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleWithdraw} className="space-y-4 mt-4">
-                <div>
-                  <Label className={textMuted}>Select Coin</Label>
-                  <Select value={selectedCoin} onValueChange={setSelectedCoin}>
-                    <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className={`${dialogBg} ${border}`}>
-                      {supportedCoins.map(coin => (
-                        <SelectItem key={coin.id} value={coin.id} className={text}>
-                          {coin.name} ({coin.symbol})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Withdrawable Balance Info */}
+                {withdrawalLimits && (
+                  <div className={`p-3 rounded-lg ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
+                    <div className="flex justify-between text-sm">
+                      <span className={textMuted}>Total Balance:</span>
+                      <span className={text}>${withdrawalLimits.total_balance?.toFixed(2)}</span>
+                    </div>
+                    {withdrawalLimits.welcome_bonus > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className={textMuted}>Welcome Bonus (locked):</span>
+                        <span className="text-[#F0B90B]">-${withdrawalLimits.welcome_bonus?.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm font-semibold mt-1 pt-1 border-t border-[#2B3139]">
+                      <span className={textMuted}>Withdrawable:</span>
+                      <span className="text-[#0ECB81]">${withdrawalLimits.withdrawable_balance?.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <div className="flex justify-between">
-                    <Label className={textMuted}>Amount</Label>
-                    <span className={`text-xs ${textMuted}`}>Available: {wallet?.balances?.[selectedCoin]?.toFixed(6) || '0'}</span>
+                    <Label className={textMuted}>Amount (Min: $10)</Label>
+                    <button 
+                      type="button"
+                      onClick={() => setAmount(withdrawalLimits?.withdrawable_balance?.toString() || '0')}
+                      className="text-xs text-[#F0B90B]"
+                    >
+                      Max
+                    </button>
                   </div>
-                  <Input type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className={`${dialogInputBg} ${border} ${text} mt-1`} required />
+                  <Input 
+                    type="number" 
+                    step="0.01" 
+                    min="10"
+                    max={withdrawalLimits?.withdrawable_balance || 0}
+                    value={amount} 
+                    onChange={(e) => setAmount(e.target.value)} 
+                    placeholder="10.00" 
+                    className={`${dialogInputBg} ${border} ${text} mt-1`} 
+                    required 
+                  />
                 </div>
                 <div>
-                  <Label className={textMuted}>Withdrawal Address</Label>
-                  <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Enter address" className={`${dialogInputBg} ${border} ${text} font-mono mt-1`} required />
+                  <Label className={textMuted}>Withdrawal Address (USDT TRC20)</Label>
+                  <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Enter TRC20 address" className={`${dialogInputBg} ${border} ${text} font-mono mt-1`} required />
                 </div>
-                <Button type="submit" disabled={submitting} className="w-full bg-[#F6465D] hover:bg-[#F6465D]/90 text-white font-semibold">
+                <div className={`p-3 rounded-lg ${isDark ? 'bg-[#F6465D]/10' : 'bg-red-50'} border border-[#F6465D]/30`}>
+                  <p className={`text-xs ${textMuted}`}>
+                    <Info size={14} className="inline mr-1" />
+                    Withdrawals are processed within 24 hours. Make sure the address is correct.
+                  </p>
+                </div>
+                <Button 
+                  type="submit" 
+                  disabled={submitting || parseFloat(amount) < 10 || parseFloat(amount) > (withdrawalLimits?.withdrawable_balance || 0)} 
+                  className="w-full bg-[#F6465D] hover:bg-[#F6465D]/90 text-white font-semibold"
+                >
                   {submitting ? "Processing..." : "Withdraw"}
                 </Button>
               </form>
