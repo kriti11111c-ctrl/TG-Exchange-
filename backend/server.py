@@ -2122,16 +2122,24 @@ async def fetch_okx_prices():
                 tickers = data.get("data", [])
                 
                 # Filter relevant pairs
-                relevant_pairs = ["BTC-USDT", "ETH-USDT", "BNB-USDT", "XRP-USDT", "SOL-USDT", "ADA-USDT", "DOGE-USDT"]
+                relevant_pairs = ["BTC-USDT", "ETH-USDT", "BNB-USDT", "XRP-USDT", "SOL-USDT", "ADA-USDT", "DOGE-USDT", "DOT-USDT"]
                 prices = {}
                 
                 for ticker in tickers:
                     inst_id = ticker.get("instId", "")
                     if inst_id in relevant_pairs:
                         symbol = inst_id.replace("-USDT", "").lower()
+                        last_price = float(ticker.get("last", 0))
+                        open_24h = float(ticker.get("open24h", 0))
+                        
+                        # Calculate 24h change percentage
+                        change_24h = 0
+                        if open_24h > 0:
+                            change_24h = ((last_price - open_24h) / open_24h) * 100
+                        
                         prices[symbol] = {
-                            "price": float(ticker.get("last", 0)),
-                            "change24h": float(ticker.get("changeRate24h", 0)) * 100,
+                            "price": last_price,
+                            "change24h": round(change_24h, 2),
                             "high24h": float(ticker.get("high24h", 0)),
                             "low24h": float(ticker.get("low24h", 0)),
                             "volume24h": float(ticker.get("vol24h", 0))

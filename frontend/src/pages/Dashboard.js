@@ -24,8 +24,7 @@ import {
   MagnifyingGlass,
   Bell,
   Headset,
-  User,
-  Lightning
+  User
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -272,9 +271,9 @@ const Dashboard = () => {
       <main className="pt-20 pb-12 px-4 md:px-6">
         <div className="max-w-7xl mx-auto">
           
-          {/* Search Bar with Live Status */}
-          <div className="mb-4 flex gap-3 items-center">
-            <div className="relative flex-1">
+          {/* Search Bar */}
+          <div className="mb-4">
+            <div className="relative">
               <MagnifyingGlass size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
               <Input
                 value={searchQuery}
@@ -282,12 +281,6 @@ const Dashboard = () => {
                 placeholder="Search coins..."
                 className={`pl-10 ${inputBg} ${border} ${text} h-10`}
               />
-            </div>
-            {/* Live Connection Status */}
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${cardBg} border ${border}`}>
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-[#0ECB81] animate-pulse' : 'bg-red-500'}`}></div>
-              <span className={`text-xs ${textMuted}`}>{isConnected ? 'LIVE' : 'Offline'}</span>
-              {isConnected && <Lightning size={14} className="text-[#F0B90B]" />}
             </div>
           </div>
 
