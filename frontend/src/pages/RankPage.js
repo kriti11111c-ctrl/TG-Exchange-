@@ -270,10 +270,10 @@ const RankPage = () => {
                             : 'linear-gradient(135deg, rgba(240, 185, 11, 0.2) 0%, rgba(255, 250, 230, 1) 100%)')
                         : (isDark ? '#1E2329' : 'white'),
                       border: isCurrentRank 
-                        ? '2px solid #F0B90B'
-                        : `1px solid ${isDark ? '#2B3139' : '#E5E7EB'}`,
+                        ? '3px solid #F0B90B'
+                        : `2px solid ${isDark ? '#3B4149' : '#D1D5DB'}`,
                       boxShadow: isCurrentRank 
-                        ? '0 0 20px rgba(240, 185, 11, 0.3), inset 0 0 20px rgba(240, 185, 11, 0.05)'
+                        ? '0 0 20px rgba(240, 185, 11, 0.4), inset 0 0 20px rgba(240, 185, 11, 0.05)'
                         : 'none',
                       opacity: isLocked ? 0.5 : 1
                     }}
