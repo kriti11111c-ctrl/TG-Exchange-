@@ -178,23 +178,23 @@ const TransactionsPage = () => {
           </div>
 
           {/* Filters - Simple Classic Buttons with Equal Size */}
-          <div className="grid grid-cols-4 md:grid-cols-8 gap-2 mb-6">
+          <div className="grid grid-cols-4 gap-2 mb-6">
             {[
               { key: 'all', label: 'All' },
               { key: 'trades', label: 'Trades' },
               { key: 'deposits', label: 'Deposits' },
-              { key: 'withdrawals', label: 'Withdrawals' },
-              { key: 'referral_bonus', label: 'Referral Bonus' },
-              { key: 'welcome_bonus', label: 'Welcome Bonus' },
+              { key: 'withdrawals', label: 'Withdraw' },
+              { key: 'referral_bonus', label: 'Referral' },
+              { key: 'welcome_bonus', label: 'Welcome' },
               { key: 'salary', label: 'Salary' },
-              { key: 'rank_reward', label: 'Rank Reward' }
+              { key: 'rank_reward', label: 'Rank' }
             ].map(f => (
               <Button
                 key={f.key}
                 variant={filter === f.key ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setFilter(f.key)}
-                className={`w-full text-center ${filter === f.key 
+                className={`w-full text-center text-xs px-1 truncate ${filter === f.key 
                   ? 'bg-[#00E599] text-black hover:bg-[#00C282] font-medium' 
                   : 'border-white/20 hover:bg-white/10 text-white'
                 }`}
