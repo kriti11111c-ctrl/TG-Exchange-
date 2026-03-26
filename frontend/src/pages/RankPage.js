@@ -296,46 +296,127 @@ const RankPage = () => {
                     </div>
                   </div>
 
-                  {/* Expanded Details */}
+                  {/* Expanded Details - Classic Card */}
                   {isSelected && (
-                    <div className={`${cardBg} rounded-b-xl border-t ${isDark ? 'border-[#2B3139]' : 'border-gray-200'} p-4`}>
-                      {/* Progress Bar */}
-                      <div className="mb-4">
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className={textMuted}>Progress</span>
-                          <span className="text-[#F0B90B] font-medium">{progress.toFixed(0)}%</span>
+                    <div 
+                      className="rounded-b-xl overflow-hidden"
+                      style={{
+                        background: isDark 
+                          ? 'linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%)'
+                          : 'linear-gradient(145deg, #fefbf3 0%, #f8f4e8 50%, #fefbf3 100%)',
+                        border: '2px solid',
+                        borderTop: 'none',
+                        borderColor: rankColors[rank.level] + '50'
+                      }}
+                    >
+                      {/* Decorative Header */}
+                      <div 
+                        className="h-1"
+                        style={{ background: `linear-gradient(90deg, transparent, ${rankColors[rank.level]}, transparent)` }}
+                      />
+                      
+                      <div className="p-4">
+                        {/* Progress Bars Section */}
+                        <div className="space-y-4 mb-5">
+                          {/* Direct Progress */}
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-[#F0B90B]/20 flex items-center justify-center">
+                                  <span className="text-[#F0B90B] text-xs font-bold">D</span>
+                                </div>
+                                <span className={`text-sm ${text}`}>Direct Referrals</span>
+                              </div>
+                              <span className={`text-sm font-medium`} style={{ color: rankColors[rank.level] }}>
+                                {rankInfo?.direct_referrals || 0}/{requirements?.direct}
+                              </span>
+                            </div>
+                            <div className={`h-3 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} overflow-hidden`}>
+                              <div 
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{ 
+                                  width: `${Math.min(100, ((rankInfo?.direct_referrals || 0) / requirements?.direct) * 100)}%`,
+                                  background: `linear-gradient(90deg, ${rankColors[rank.level]}, ${rankColors[rank.level]}90)`
+                                }}
+                              />
+                            </div>
+                            <p className={`text-xs mt-1 ${textMuted}`}>
+                              {Math.max(0, requirements?.direct - (rankInfo?.direct_referrals || 0))} more needed
+                            </p>
+                          </div>
+
+                          {/* Team Progress */}
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-[#0ECB81]/20 flex items-center justify-center">
+                                  <span className="text-[#0ECB81] text-xs font-bold">T</span>
+                                </div>
+                                <span className={`text-sm ${text}`}>Team Members</span>
+                              </div>
+                              <span className="text-sm font-medium text-[#0ECB81]">
+                                {rankInfo?.total_team || 0}/{requirements?.team}
+                              </span>
+                            </div>
+                            <div className={`h-3 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} overflow-hidden`}>
+                              <div 
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{ 
+                                  width: `${requirements?.team > 0 ? Math.min(100, ((rankInfo?.total_team || 0) / requirements?.team) * 100) : 100}%`,
+                                  background: 'linear-gradient(90deg, #0ECB81, #0ECB8190)'
+                                }}
+                              />
+                            </div>
+                            <p className={`text-xs mt-1 ${textMuted}`}>
+                              {requirements?.team > 0 ? `${Math.max(0, requirements?.team - (rankInfo?.total_team || 0))} more needed` : 'No team required'}
+                            </p>
+                          </div>
                         </div>
-                        <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+
+                        {/* Divider */}
+                        <div className="flex items-center gap-3 my-4">
+                          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${rankColors[rank.level]}50, transparent)` }}></div>
+                          <span style={{ color: rankColors[rank.level] }} className="text-xs">◆</span>
+                          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${rankColors[rank.level]}50, transparent)` }}></div>
+                        </div>
+
+                        {/* Benefits Grid */}
+                        <div className="grid grid-cols-3 gap-3">
                           <div 
-                            className="h-full rounded-full transition-all"
+                            className="text-center p-3 rounded-xl"
                             style={{ 
-                              width: `${progress}%`,
-                              backgroundColor: rankColors[rank.level]
+                              background: isDark ? 'rgba(240, 185, 11, 0.1)' : 'rgba(240, 185, 11, 0.15)',
+                              border: '1px solid rgba(240, 185, 11, 0.2)'
                             }}
-                          />
+                          >
+                            <p className="text-[#F0B90B] text-xl font-bold">{benefits?.bonus}%</p>
+                            <p className={`text-[10px] ${textMuted} mt-1`}>Bonus</p>
+                          </div>
+                          <div 
+                            className="text-center p-3 rounded-xl"
+                            style={{ 
+                              background: isDark ? 'rgba(14, 203, 129, 0.1)' : 'rgba(14, 203, 129, 0.15)',
+                              border: '1px solid rgba(14, 203, 129, 0.2)'
+                            }}
+                          >
+                            <p className="text-[#0ECB81] text-xl font-bold">${benefits?.salary >= 1000 ? (benefits?.salary/1000) + 'K' : benefits?.salary}</p>
+                            <p className={`text-[10px] ${textMuted} mt-1`}>Monthly</p>
+                          </div>
+                          <div 
+                            className="text-center p-3 rounded-xl"
+                            style={{ 
+                              background: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.15)',
+                              border: '1px solid rgba(59, 130, 246, 0.2)'
+                            }}
+                          >
+                            <p className="text-[#3B82F6] text-xl font-bold">${benefits?.reward >= 1000 ? (benefits?.reward/1000) + 'K' : benefits?.reward}</p>
+                            <p className={`text-[10px] ${textMuted} mt-1`}>Reward</p>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Benefits Table */}
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span className={textMuted}>Bonus %</span>
-                          <span className={`font-bold ${text}`}>{benefits?.bonus}%</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className={textMuted}>Monthly Salary</span>
-                          <span className="font-bold text-[#0ECB81]">${benefits?.salary}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className={textMuted}>Level-up Reward</span>
-                          <span className="font-bold text-[#F0B90B]">${benefits?.reward}</span>
-                        </div>
-                      </div>
-
-                      {/* Requirements Detail */}
-                      <div className={`mt-4 pt-3 border-t ${isDark ? 'border-[#2B3139]' : 'border-gray-200'}`}>
-                        <p className={`text-xs ${textMuted}`}>
-                          Required: {requirements?.direct} direct referrals + {requirements?.team} team members (min $50 deposit each)
+                        {/* Footer Note */}
+                        <p className={`text-[10px] ${textMuted} text-center mt-4`}>
+                          * Min $50 deposit required per referral
                         </p>
                       </div>
                     </div>
