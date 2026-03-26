@@ -2142,7 +2142,7 @@ async def fetch_okx_prices():
         logger.error(f"Error fetching OKX prices: {e}")
     return None
 
-@app.websocket("/ws/prices")
+@app.websocket("/api/ws/prices")
 async def websocket_prices(websocket: WebSocket):
     """WebSocket endpoint for real-time price updates"""
     await manager.connect(websocket)

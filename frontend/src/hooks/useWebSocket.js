@@ -13,10 +13,11 @@ const useWebSocket = (enabled = true) => {
     if (!enabled) return;
     
     try {
-      // Get WebSocket URL from environment
+      // Get WebSocket URL from environment - use /api prefix for proper routing
       const backendUrl = process.env.REACT_APP_BACKEND_URL || '';
-      const wsUrl = backendUrl.replace('https://', 'wss://').replace('http://', 'ws://') + '/ws/prices';
+      const wsUrl = backendUrl.replace('https://', 'wss://').replace('http://', 'ws://') + '/api/ws/prices';
       
+      console.log('Connecting to WebSocket:', wsUrl);
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
