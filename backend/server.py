@@ -163,17 +163,20 @@ ALLOWED_DEPOSIT_AMOUNTS = [50, 100, 200, 300, 400, 500]
 MIN_WITHDRAWAL = 10.0
 
 # ================= TEAM RANK SYSTEM =================
-# Team Building Ranks based on direct referrals (with min $50 deposit) and team size
-# Minimum requirement: 6 direct members with $50+ deposit for first rank
-MIN_DEPOSIT_FOR_RANK = 50.0  # Minimum deposit required to count as valid referral
+# Team Building Ranks based on direct referrals and Bronze rank members
+# Bronze: 6 Direct with $50+ deposit
+# Silver onwards: X Bronze rank users + Y total team
+MIN_DEPOSIT_FOR_RANK = 50.0
 
 TEAM_RANKS = [
     {
         "level": 1, 
         "name": "Bronze", 
         "emoji": "🥉",
-        "direct_required": 6, 
+        "direct_required": 6,
+        "bronze_required": 0,
         "team_required": 0,
+        "type": "direct",
         "bonus_percent": 0.50,
         "monthly_salary": 30,
         "levelup_reward": 50,
@@ -183,8 +186,10 @@ TEAM_RANKS = [
         "level": 2, 
         "name": "Silver", 
         "emoji": "🥈",
-        "direct_required": 10, 
+        "direct_required": 0,
+        "bronze_required": 2,
         "team_required": 30,
+        "type": "bronze",
         "bonus_percent": 1.00,
         "monthly_salary": 100,
         "levelup_reward": 150,
@@ -194,8 +199,10 @@ TEAM_RANKS = [
         "level": 3, 
         "name": "Gold", 
         "emoji": "🥇",
-        "direct_required": 15, 
+        "direct_required": 0,
+        "bronze_required": 3,
         "team_required": 75,
+        "type": "bronze",
         "bonus_percent": 1.50,
         "monthly_salary": 250,
         "levelup_reward": 400,
@@ -205,8 +212,10 @@ TEAM_RANKS = [
         "level": 4, 
         "name": "Platinum", 
         "emoji": "💎",
-        "direct_required": 20, 
+        "direct_required": 0,
+        "bronze_required": 4,
         "team_required": 150,
+        "type": "bronze",
         "bonus_percent": 2.00,
         "monthly_salary": 500,
         "levelup_reward": 800,
@@ -216,8 +225,10 @@ TEAM_RANKS = [
         "level": 5, 
         "name": "Diamond", 
         "emoji": "💠",
-        "direct_required": 30, 
+        "direct_required": 0,
+        "bronze_required": 5,
         "team_required": 300,
+        "type": "bronze",
         "bonus_percent": 2.50,
         "monthly_salary": 1000,
         "levelup_reward": 1500,
@@ -227,8 +238,10 @@ TEAM_RANKS = [
         "level": 6, 
         "name": "Master", 
         "emoji": "⭐",
-        "direct_required": 40, 
+        "direct_required": 0,
+        "bronze_required": 6,
         "team_required": 600,
+        "type": "bronze",
         "bonus_percent": 3.00,
         "monthly_salary": 2000,
         "levelup_reward": 3000,
@@ -238,8 +251,10 @@ TEAM_RANKS = [
         "level": 7, 
         "name": "Grandmaster", 
         "emoji": "🌟",
-        "direct_required": 50, 
+        "direct_required": 0,
+        "bronze_required": 7,
         "team_required": 1000,
+        "type": "bronze",
         "bonus_percent": 3.50,
         "monthly_salary": 4000,
         "levelup_reward": 6000,
@@ -249,8 +264,10 @@ TEAM_RANKS = [
         "level": 8, 
         "name": "Champion", 
         "emoji": "🏆",
-        "direct_required": 75, 
+        "direct_required": 0,
+        "bronze_required": 8,
         "team_required": 2000,
+        "type": "bronze",
         "bonus_percent": 4.00,
         "monthly_salary": 7000,
         "levelup_reward": 10000,
@@ -260,8 +277,10 @@ TEAM_RANKS = [
         "level": 9, 
         "name": "Legend", 
         "emoji": "👑",
-        "direct_required": 100, 
+        "direct_required": 0,
+        "bronze_required": 9,
         "team_required": 4000,
+        "type": "bronze",
         "bonus_percent": 4.50,
         "monthly_salary": 12000,
         "levelup_reward": 18000,
@@ -271,8 +290,10 @@ TEAM_RANKS = [
         "level": 10, 
         "name": "Immortal", 
         "emoji": "🔱",
-        "direct_required": 150, 
+        "direct_required": 0,
+        "bronze_required": 10,
         "team_required": 8000,
+        "type": "bronze",
         "bonus_percent": 5.00,
         "monthly_salary": 20000,
         "levelup_reward": 30000,
@@ -281,12 +302,14 @@ TEAM_RANKS = [
 ]
 
 async def get_team_stats(user_id: str) -> dict:
-    """Get user's team statistics - only counts referrals with $50+ deposit"""
+    """Get user's team statistics - counts direct referrals with $50+ deposit and Bronze rank members"""
     # Get all direct referrals (level 1)
     direct_referrals = await db.referrals.find({"referrer_id": user_id, "level": 1}, {"_id": 0}).to_list(length=10000)
     
-    # Count only those with minimum deposit
+    # Count valid direct (with min deposit) and Bronze rank members
     valid_direct_count = 0
+    bronze_members_count = 0
+    
     for ref in direct_referrals:
         referred_id = ref["referred_id"]
         # Check if this user has deposited at least $50
@@ -298,6 +321,13 @@ async def get_team_stats(user_id: str) -> dict:
         deposit_amount = total_deposited[0]["total"] if total_deposited else 0
         if deposit_amount >= MIN_DEPOSIT_FOR_RANK:
             valid_direct_count += 1
+            
+            # Check if this user has Bronze rank (level 1+)
+            referred_user = await db.users.find_one({"user_id": referred_id}, {"_id": 0})
+            if referred_user:
+                referred_rank_level = referred_user.get("team_rank_level", 0)
+                if referred_rank_level >= 1:
+                    bronze_members_count += 1
     
     # Count total team (all levels) - only those with deposits
     all_referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=10000)
@@ -317,6 +347,7 @@ async def get_team_stats(user_id: str) -> dict:
     
     return {
         "direct_referrals": valid_direct_count,
+        "bronze_members": bronze_members_count,
         "total_team": valid_team_count,
         "total_direct_all": len(direct_referrals),
         "total_team_all": len(all_referrals)

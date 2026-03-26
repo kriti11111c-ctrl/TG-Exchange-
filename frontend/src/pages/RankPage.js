@@ -55,18 +55,30 @@ const RankPage = () => {
     10: "Immortal"
   };
 
-  // Rank requirements (Direct/Team)
+  // Rank requirements (Direct or Bronze users / Team)
   const rankRequirements = {
-    1: { direct: 6, team: 0 },
-    2: { direct: 10, team: 30 },
-    3: { direct: 15, team: 75 },
-    4: { direct: 20, team: 150 },
-    5: { direct: 30, team: 300 },
-    6: { direct: 40, team: 600 },
-    7: { direct: 50, team: 1000 },
-    8: { direct: 75, team: 2000 },
-    9: { direct: 100, team: 4000 },
-    10: { direct: 150, team: 8000 }
+    1: { direct: 6, team: 0, type: 'direct' },        // 6 Direct
+    2: { bronze: 2, team: 30, type: 'bronze' },       // 2 Bronze / 30T
+    3: { bronze: 3, team: 75, type: 'bronze' },       // 3 Bronze / 75T
+    4: { bronze: 4, team: 150, type: 'bronze' },      // 4 Bronze / 150T
+    5: { bronze: 5, team: 300, type: 'bronze' },      // 5 Bronze / 300T
+    6: { bronze: 6, team: 600, type: 'bronze' },      // 6 Bronze / 600T
+    7: { bronze: 7, team: 1000, type: 'bronze' },     // 7 Bronze / 1000T
+    8: { bronze: 8, team: 2000, type: 'bronze' },     // 8 Bronze / 2000T
+    9: { bronze: 9, team: 4000, type: 'bronze' },     // 9 Bronze / 4000T
+    10: { bronze: 10, team: 8000, type: 'bronze' }    // 10 Bronze / 8000T
+  };
+
+  // Format requirement text
+  const formatRequirement = (level) => {
+    const req = rankRequirements[level];
+    if (!req) return '0D/0T';
+    
+    if (req.type === 'direct') {
+      return `${req.direct}D/${req.team}T`;
+    } else {
+      return `${req.bronze} Bronze/${req.team}T`;
+    }
   };
 
   // Rank benefits (Bonus %, Monthly Salary, Level-up Reward)
@@ -312,7 +324,7 @@ const RankPage = () => {
                     {/* Requirements */}
                     <div className="text-right flex-shrink-0">
                       <p className={`font-medium ${isCurrentRank ? 'text-[#F0B90B]' : textMuted}`}>
-                        {requirements?.direct || 0}D/{requirements?.team || 0}T
+                        {formatRequirement(rank.level)}
                       </p>
                     </div>
                   </div>
@@ -339,30 +351,41 @@ const RankPage = () => {
                       <div className="p-4">
                         {/* Progress Bars Section */}
                         <div className="space-y-4 mb-5">
-                          {/* Direct Progress */}
+                          {/* Direct/Bronze Progress */}
                           <div>
                             <div className="flex justify-between items-center mb-2">
                               <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 rounded-full bg-[#F0B90B]/20 flex items-center justify-center">
-                                  <span className="text-[#F0B90B] text-xs font-bold">D</span>
+                                  <span className="text-[#F0B90B] text-xs font-bold">{requirements?.type === 'direct' ? 'D' : 'B'}</span>
                                 </div>
-                                <span className={`text-sm ${text}`}>Direct Referrals</span>
+                                <span className={`text-sm ${text}`}>
+                                  {requirements?.type === 'direct' ? 'Direct Referrals' : 'Bronze Members'}
+                                </span>
                               </div>
                               <span className={`text-sm font-medium`} style={{ color: rankColors[rank.level] }}>
-                                {rankInfo?.direct_referrals || 0}/{requirements?.direct}
+                                {requirements?.type === 'direct' 
+                                  ? `${rankInfo?.direct_referrals || 0}/${requirements?.direct}`
+                                  : `${rankInfo?.bronze_members || 0}/${requirements?.bronze}`
+                                }
                               </span>
                             </div>
                             <div className={`h-3 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} overflow-hidden`}>
                               <div 
                                 className="h-full rounded-full transition-all duration-500"
                                 style={{ 
-                                  width: `${Math.min(100, ((rankInfo?.direct_referrals || 0) / requirements?.direct) * 100)}%`,
+                                  width: `${Math.min(100, requirements?.type === 'direct' 
+                                    ? ((rankInfo?.direct_referrals || 0) / requirements?.direct) * 100
+                                    : ((rankInfo?.bronze_members || 0) / requirements?.bronze) * 100
+                                  )}%`,
                                   background: `linear-gradient(90deg, ${rankColors[rank.level]}, ${rankColors[rank.level]}90)`
                                 }}
                               />
                             </div>
                             <p className={`text-xs mt-1 ${textMuted}`}>
-                              {Math.max(0, requirements?.direct - (rankInfo?.direct_referrals || 0))} more needed
+                              {requirements?.type === 'direct' 
+                                ? `${Math.max(0, requirements?.direct - (rankInfo?.direct_referrals || 0))} more needed`
+                                : `${Math.max(0, requirements?.bronze - (rankInfo?.bronze_members || 0))} more Bronze needed`
+                              }
                             </p>
                           </div>
 
@@ -437,7 +460,10 @@ const RankPage = () => {
 
                         {/* Footer Note */}
                         <p className={`text-[10px] ${textMuted} text-center mt-4`}>
-                          * Min $50 deposit required per referral
+                          {requirements?.type === 'direct' 
+                            ? '* Min $50 deposit required per referral'
+                            : '* Bronze rank members count towards requirement'
+                          }
                         </p>
                       </div>
                     </div>
