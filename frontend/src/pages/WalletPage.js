@@ -414,71 +414,13 @@ const WalletPage = () => {
       {/* Action Buttons - Deposit, Withdraw, Transfer, History */}
       <div className={`px-4 pb-6 ${cardBg}`}>
         <div className="flex justify-around">
-          {/* Deposit */}
-          <Dialog open={depositOpen} onOpenChange={setDepositOpen}>
-            <DialogTrigger asChild>
-              <button className="flex flex-col items-center gap-2">
-                <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center ${actionBtnHover} transition-colors`}>
-                  <ArrowDown size={24} className={text} />
-                </div>
-                <span className={`${text} text-sm`}>Deposit</span>
-              </button>
-            </DialogTrigger>
-            <DialogContent className={`${dialogBg} ${border}`}>
-              <DialogHeader>
-                <DialogTitle className={text}>Deposit USDT</DialogTitle>
-                <DialogDescription className={textMuted}>
-                  Min: $50 | Max: $500
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleDeposit} className="space-y-4 mt-4">
-                <div>
-                  <Label className={textMuted}>Select Amount</Label>
-                  <div className="grid grid-cols-3 gap-2 mt-2">
-                    {[50, 100, 200, 300, 400, 500].map(amt => (
-                      <button
-                        key={amt}
-                        type="button"
-                        onClick={() => {
-                          setSelectedDepositAmount(amt);
-                          setAmount(amt.toString());
-                        }}
-                        className={`py-3 rounded-lg font-semibold transition-all ${
-                          selectedDepositAmount === amt
-                            ? 'bg-[#F0B90B] text-black'
-                            : `${dialogInputBg} ${text} ${border} border`
-                        }`}
-                      >
-                        ${amt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <Label className={textMuted}>Deposit Address (USDT TRC20)</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Input value={depositAddresses['usdt']} readOnly className={`${dialogInputBg} ${border} ${text} font-mono text-xs`} />
-                    <Button type="button" variant="outline" size="icon" onClick={() => copyToClipboard(depositAddresses['usdt'])} className={border}>
-                      <Copy size={16} />
-                    </Button>
-                  </div>
-                </div>
-                <div className={`p-3 rounded-lg ${isDark ? 'bg-[#F0B90B]/10' : 'bg-yellow-50'} border border-[#F0B90B]/30`}>
-                  <p className={`text-xs ${textMuted}`}>
-                    <Info size={14} className="inline mr-1" />
-                    Send exactly the selected amount to the address above. Deposits are processed within 10-30 minutes.
-                  </p>
-                </div>
-                <Button 
-                  type="submit" 
-                  disabled={submitting || !selectedDepositAmount} 
-                  className="w-full bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black font-semibold"
-                >
-                  {submitting ? "Processing..." : `Deposit $${selectedDepositAmount || 0}`}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+          {/* Deposit - Link to DepositPage */}
+          <Link to="/deposit" className="flex flex-col items-center gap-2">
+            <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center ${actionBtnHover} transition-colors`}>
+              <ArrowDown size={24} className={text} />
+            </div>
+            <span className={`${text} text-sm`}>Deposit</span>
+          </Link>
 
           {/* Withdraw */}
           <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>

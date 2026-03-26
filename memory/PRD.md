@@ -36,6 +36,22 @@
 ## What's Been Implemented
 
 ### March 27, 2026
+- ✅ **Admin Wallet Integration** - Deposit with admin addresses
+  - DepositPage created at `/deposit`
+  - Network selector: ETH/ERC20, BSC/BEP20, TRC20, Solana, Polygon
+  - QR Code generation for each address
+  - Copy and Share functionality
+  - Admin deposit addresses configured
+  - Warning messages for each network
+
+- ✅ **Binance-Style Dashboard** - Complete redesign
+  - Est. Total Value with eye toggle
+  - Quick Actions: Referral, Earn, Trading Bots, VIP Rank, More
+  - Market tabs: Favorites, Hot
+  - Coin list with proper logos and borders
+  - 20+ coins with real-time prices
+  - Bottom navigation bar
+
 - ✅ **WebSocket Real-Time Prices** - Live price updates without page refresh
   - WebSocket connection at `/ws/prices`
   - Automatic reconnection with exponential backoff

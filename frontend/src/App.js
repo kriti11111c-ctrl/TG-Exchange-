@@ -17,6 +17,7 @@ import ReferralPage from "./pages/ReferralPage";
 import RankPage from "./pages/RankPage";
 import TeamRankPage from "./pages/TeamRankPage";
 import SecurityPage from "./pages/SecurityPage";
+import DepositPage from "./pages/DepositPage";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -235,6 +236,11 @@ function AppRouter() {
       <Route path="/team-rank" element={
         <ProtectedRoute>
           <TeamRankPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/deposit" element={
+        <ProtectedRoute>
+          <DepositPage />
         </ProtectedRoute>
       } />
     </Routes>
