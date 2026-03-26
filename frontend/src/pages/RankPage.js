@@ -262,14 +262,29 @@ const RankPage = () => {
                   {/* Rank Card - Clickable */}
                   <div 
                     onClick={() => setSelectedRank(isSelected ? null : rank.level)}
-                    className={`${cardBg} rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-all ${
-                      isCurrentRank ? 'ring-2 ring-[#F0B90B]' : ''
-                    } ${isLocked ? 'opacity-50' : ''} ${isSelected ? 'rounded-b-none' : ''}`}
+                    className={`rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-all ${isSelected ? 'rounded-b-none' : ''}`}
+                    style={{
+                      background: isCurrentRank 
+                        ? (isDark 
+                            ? 'linear-gradient(135deg, rgba(240, 185, 11, 0.15) 0%, rgba(240, 185, 11, 0.05) 100%)'
+                            : 'linear-gradient(135deg, rgba(240, 185, 11, 0.2) 0%, rgba(255, 250, 230, 1) 100%)')
+                        : (isDark ? '#1E2329' : 'white'),
+                      border: isCurrentRank 
+                        ? '2px solid #F0B90B'
+                        : `1px solid ${isDark ? '#2B3139' : '#E5E7EB'}`,
+                      boxShadow: isCurrentRank 
+                        ? '0 0 20px rgba(240, 185, 11, 0.3), inset 0 0 20px rgba(240, 185, 11, 0.05)'
+                        : 'none',
+                      opacity: isLocked ? 0.5 : 1
+                    }}
                   >
                     {/* Circular Badge */}
                     <div 
                       className="w-14 h-14 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: rankColors[rank.level] }}
+                      style={{ 
+                        backgroundColor: rankColors[rank.level],
+                        boxShadow: isCurrentRank ? `0 0 15px ${rankColors[rank.level]}80` : 'none'
+                      }}
                     >
                       <span className="text-white font-bold text-xl">{rank.level}</span>
                     </div>
@@ -281,7 +296,13 @@ const RankPage = () => {
                           {rankNames[rank.level]}
                         </span>
                         {isCurrentRank && (
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-[#0ECB81] text-white font-medium">
+                          <span 
+                            className="text-[10px] px-2 py-0.5 rounded font-bold"
+                            style={{
+                              background: 'linear-gradient(135deg, #F0B90B, #FFD700)',
+                              color: '#000'
+                            }}
+                          >
                             YOU
                           </span>
                         )}
@@ -290,7 +311,7 @@ const RankPage = () => {
 
                     {/* Requirements */}
                     <div className="text-right flex-shrink-0">
-                      <p className={`font-medium ${textMuted}`}>
+                      <p className={`font-medium ${isCurrentRank ? 'text-[#F0B90B]' : textMuted}`}>
                         {requirements?.direct || 0}D/{requirements?.team || 0}T
                       </p>
                     </div>
