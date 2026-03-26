@@ -240,69 +240,80 @@ const ReferralPage = () => {
         
         <div className="space-y-2">
           {stats?.level_stats?.map((level) => (
-            <div 
-              key={level.level}
-              onClick={() => setSelectedLevel(selectedLevel === level.level ? 0 : level.level)}
-              className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
-                selectedLevel === level.level ? (isDark ? 'bg-[#2B3139]' : 'bg-gray-100') : hoverBg
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full ${getLevelColor(level.level)} flex items-center justify-center`}>
-                  <span className="text-white font-bold text-sm">{level.level}</span>
+            <div key={level.level}>
+              <div 
+                onClick={() => setSelectedLevel(selectedLevel === level.level ? 0 : level.level)}
+                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
+                  selectedLevel === level.level ? (isDark ? 'bg-[#2B3139]' : 'bg-gray-100') : hoverBg
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full ${getLevelColor(level.level)} flex items-center justify-center`}>
+                    <span className="text-white font-bold text-sm">{level.level}</span>
+                  </div>
+                  <div>
+                    <p className={text}>Level {level.level}</p>
+                    <p className={`text-xs ${textMuted}`}>{level.commission_rate}% Commission</p>
+                  </div>
                 </div>
-                <div>
-                  <p className={text}>Level {level.level}</p>
-                  <p className={`text-xs ${textMuted}`}>{level.commission_rate}% Commission</p>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className={text}>{level.count} members</p>
+                    <p className={`text-xs text-[#0ECB81]`}>${level.earnings.toFixed(2)}</p>
+                  </div>
+                  <CaretRight 
+                    size={16} 
+                    className={`${textMuted} transition-transform ${selectedLevel === level.level ? 'rotate-90' : ''}`} 
+                  />
                 </div>
               </div>
-              <div className="text-right">
-                <p className={text}>{level.count} members</p>
-                <p className={`text-xs text-[#0ECB81]`}>${level.earnings.toFixed(2)}</p>
-              </div>
+              
+              {/* Expanded Team Members for this level */}
+              {selectedLevel === level.level && team.length > 0 && (
+                <div className={`mt-2 ml-4 space-y-2 border-l-2 ${isDark ? 'border-[#2B3139]' : 'border-gray-200'} pl-4`}>
+                  {team.map((member, index) => (
+                    <div 
+                      key={index} 
+                      className={`p-3 rounded-lg ${isDark ? 'bg-[#181C21]' : 'bg-gray-50'} border ${border}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-[#F0B90B] to-[#0ECB81] flex items-center justify-center`}>
+                            <span className="text-white font-bold text-sm">{member.name?.charAt(0)?.toUpperCase() || 'U'}</span>
+                          </div>
+                          <div>
+                            <p className={`font-medium ${text}`}>{member.name}</p>
+                            <p className={`text-xs ${textMuted}`}>{member.email}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <div className={`p-2 rounded ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
+                          <p className={`text-xs ${textMuted}`}>Fund</p>
+                          <p className="text-[#0ECB81] font-bold">${member.fund?.toFixed(2) || '0.00'}</p>
+                        </div>
+                        <div className={`p-2 rounded ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
+                          <p className={`text-xs ${textMuted}`}>Join Date</p>
+                          <p className={`font-medium ${text} text-sm`}>
+                            {new Date(member.joined_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* No members message */}
+              {selectedLevel === level.level && team.length === 0 && (
+                <div className={`mt-2 ml-4 p-4 rounded-lg ${isDark ? 'bg-[#181C21]' : 'bg-gray-50'} border ${border} text-center`}>
+                  <Users size={32} className={`mx-auto mb-2 ${textMuted}`} />
+                  <p className={textMuted}>No members in Level {level.level}</p>
+                </div>
+              )}
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Team Members */}
-      <div className={`${cardBg} mx-4 mt-4 rounded-xl p-4`}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className={`font-bold ${text}`}>
-            {selectedLevel > 0 ? `Level ${selectedLevel} Team` : 'All Team Members'}
-          </h3>
-          <span className={textMuted}>{team.length} members</span>
-        </div>
-        
-        {team.length > 0 ? (
-          <div className="space-y-3">
-            {team.map((member, index) => (
-              <div key={index} className={`flex items-center justify-between p-3 rounded-lg ${hoverBg}`}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full ${getLevelColor(member.level)} flex items-center justify-center`}>
-                    <span className="text-white font-bold text-sm">L{member.level}</span>
-                  </div>
-                  <div>
-                    <p className={text}>{member.name}</p>
-                    <p className={`text-xs ${textMuted}`}>{member.email}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-[#0ECB81] text-sm">${member.earnings_from.toFixed(2)}</p>
-                  <p className={`text-xs ${textMuted}`}>
-                    {new Date(member.joined_at).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className={`text-center py-8 ${textMuted}`}>
-            <Users size={48} className="mx-auto mb-3 opacity-50" />
-            <p>No team members yet</p>
-            <p className="text-sm mt-1">Share your referral link to start earning!</p>
-          </div>
-        )}
       </div>
 
       {/* How It Works */}
