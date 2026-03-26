@@ -8,7 +8,6 @@ import {
   ChartLineUp, 
   Wallet, 
   ArrowsLeftRight, 
-  ClockCounterClockwise,
   TrendUp,
   TrendDown,
   CaretDown,
@@ -16,8 +15,6 @@ import {
   Moon,
   Star,
   Fire,
-  Rocket,
-  MagnifyingGlass,
   User,
   Users,
   CurrencyCircleDollar,
@@ -27,9 +24,7 @@ import {
   Plus,
   Eye,
   EyeSlash,
-  CaretRight,
-  ChartBar,
-  Coin
+  CaretRight
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 
@@ -105,15 +100,10 @@ const Dashboard = () => {
     { icon: DotsThree, label: "More", path: "/profile", color: "text-[#848E9C]" }
   ];
 
-  // Market tabs
+  // Market tabs - Only Favorites and Hot
   const marketTabs = [
     { id: "favorites", label: "Favorites", icon: Star },
-    { id: "hot", label: "Hot", icon: Fire },
-    { id: "new", label: "New", icon: Rocket },
-    { id: "gainers", label: "Gainers", icon: TrendUp },
-    { id: "losers", label: "Losers", icon: TrendDown },
-    { id: "volume", label: "24h Vol", icon: ChartBar },
-    { id: "marketcap", label: "Market Cap", icon: Coin }
+    { id: "hot", label: "Hot", icon: Fire }
   ];
 
   // Format volume
@@ -134,36 +124,13 @@ const Dashboard = () => {
         filtered = filtered.filter(c => ["bitcoin", "ethereum", "binancecoin", "solana", "ripple"].includes(c.coin_id));
         break;
       case "hot":
-        // Most volatile - sorted by absolute price change
-        filtered = filtered.sort((a, b) => Math.abs(b.price_change_percentage_24h || 0) - Math.abs(a.price_change_percentage_24h || 0));
-        break;
-      case "new":
-        // Newer/trending coins
-        filtered = filtered.filter(c => ["sui", "aptos", "near", "pepe", "shiba-inu", "polygon"].includes(c.coin_id));
-        break;
-      case "gainers":
-        // Only positive % change, sorted highest first
-        filtered = filtered.filter(c => (c.price_change_percentage_24h || 0) > 0)
-                          .sort((a, b) => (b.price_change_percentage_24h || 0) - (a.price_change_percentage_24h || 0));
-        break;
-      case "losers":
-        // Only negative % change, sorted lowest first
-        filtered = filtered.filter(c => (c.price_change_percentage_24h || 0) < 0)
-                          .sort((a, b) => (a.price_change_percentage_24h || 0) - (b.price_change_percentage_24h || 0));
-        break;
-      case "volume":
-        // Sorted by 24h volume
-        filtered = filtered.sort((a, b) => (b.volume_24h || b.total_volume || 0) - (a.volume_24h || a.total_volume || 0));
-        break;
-      case "marketcap":
-        // Sorted by market cap
-        filtered = filtered.sort((a, b) => (b.market_cap || 0) - (a.market_cap || 0));
-        break;
       default:
+        // Show ALL coins sorted by volatility (most active first)
+        filtered = filtered.sort((a, b) => Math.abs(b.price_change_percentage_24h || 0) - Math.abs(a.price_change_percentage_24h || 0));
         break;
     }
     
-    return filtered.slice(0, 12);
+    return filtered;
   };
 
   // Calculate portfolio value
