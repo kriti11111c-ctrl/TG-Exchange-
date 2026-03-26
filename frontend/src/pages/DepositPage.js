@@ -18,8 +18,18 @@ import { Button } from "../components/ui/button";
 import { toast } from "sonner";
 import QRCode from "react-qr-code";
 
-// Admin Deposit Addresses - Reordered as per user preference
+// Admin Deposit Addresses - BSC first as default
 const DEPOSIT_NETWORKS = [
+  {
+    id: "bep20",
+    name: "BNB Smart Chain (BEP20)",
+    shortName: "BSC/BEP20",
+    address: "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
+    icon: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
+    color: "#F0B90B",
+    warning: "Only send BSC/BEP20 tokens to this address",
+    coins: ["BNB", "USDT", "BUSD"]
+  },
   {
     id: "trc20",
     name: "TRON (TRC20)",
@@ -49,16 +59,6 @@ const DEPOSIT_NETWORKS = [
     color: "#9945FF",
     warning: "Only send Solana tokens to this address",
     coins: ["SOL", "USDT", "USDC"]
-  },
-  {
-    id: "bep20",
-    name: "BNB Smart Chain (BEP20)",
-    shortName: "BSC/BEP20",
-    address: "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
-    icon: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
-    color: "#F0B90B",
-    warning: "Only send BSC/BEP20 tokens to this address",
-    coins: ["BNB", "USDT", "BUSD"]
   },
   {
     id: "polygon",
