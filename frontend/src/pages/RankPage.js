@@ -157,12 +157,6 @@ const RankPage = () => {
                 {rankRequirements[rankInfo?.rank?.level || 1]?.direct || 0}D/{rankRequirements[rankInfo?.rank?.level || 1]?.team || 0}T
               </p>
             </div>
-            
-            {/* Fee Discount */}
-            <div className="text-right">
-              <p className="text-[#0ECB81] text-2xl font-bold">{rankInfo?.rank?.fee_discount || 0}% off</p>
-              <p className={`text-xs ${textMuted}`}>{formatVolume(rankInfo?.rank?.withdrawal_limit || 1000)}/day</p>
-            </div>
           </div>
 
           {/* Progress to next */}
@@ -182,31 +176,10 @@ const RankPage = () => {
                 />
               </div>
               <p className={`text-xs mt-1.5 ${textMuted}`}>
-                Trade {formatVolume(rankInfo?.volume_needed)} more to upgrade
+                Need: {rankRequirements[rankInfo?.next_rank?.level]?.direct || 0} direct + {rankRequirements[rankInfo?.next_rank?.level]?.team || 0} team (min $50 deposit)
               </p>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Stats Row */}
-      <div className="px-4">
-        <div className={`${cardBg} rounded-2xl p-4 grid grid-cols-3 gap-2`}>
-          <div className="text-center">
-            <ChartLineUp size={20} className="mx-auto text-[#0ECB81] mb-1" />
-            <p className={`text-sm font-bold ${text}`}>{formatVolume(rankInfo?.total_volume || 0)}</p>
-            <p className={`text-[10px] ${textMuted}`}>Total Volume</p>
-          </div>
-          <div className={`text-center border-x ${isDark ? 'border-[#2B3139]' : 'border-gray-200'}`}>
-            <Fire size={20} className="mx-auto text-[#F0B90B] mb-1" />
-            <p className={`text-sm font-bold ${text}`}>{rankInfo?.stats?.total_trades || 0}</p>
-            <p className={`text-[10px] ${textMuted}`}>Total Trades</p>
-          </div>
-          <div className="text-center">
-            <Lightning size={20} className="mx-auto text-[#3498DB] mb-1" />
-            <p className={`text-sm font-bold text-[#0ECB81]`}>{rankInfo?.rank?.fee_discount || 0}%</p>
-            <p className={`text-[10px] ${textMuted}`}>Fee Discount</p>
-          </div>
         </div>
       </div>
 
@@ -269,15 +242,13 @@ const RankPage = () => {
                         </span>
                       )}
                     </div>
-                    <p className={`text-sm ${textMuted}`}>
-                      {rankRequirements[rank.level]?.direct || 0}D/{rankRequirements[rank.level]?.team || 0}T
-                    </p>
                   </div>
 
-                  {/* Benefits */}
+                  {/* Requirements */}
                   <div className="text-right flex-shrink-0">
-                    <p className="text-[#0ECB81] font-bold text-lg">{rank.fee_discount}% off</p>
-                    <p className={`text-xs ${textMuted}`}>{formatVolume(rank.withdrawal_limit)}/day</p>
+                    <p className={`font-medium ${textMuted}`}>
+                      {rankRequirements[rank.level]?.direct || 0}D/{rankRequirements[rank.level]?.team || 0}T
+                    </p>
                   </div>
                 </div>
               );
