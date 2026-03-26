@@ -1215,16 +1215,16 @@ async def fetch_coingecko_prices():
         if age < price_cache["ttl"]:
             return price_cache["data"]
     
-    # Fetch from API with timeout
+    # Fetch from API with timeout - Get more coins for better filtering
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
             response = await client.get(
                 f"{COINGECKO_API_URL}/coins/markets",
                 params={
                     "vs_currency": "usd",
-                    "ids": "bitcoin,ethereum,binancecoin,ripple,solana,cardano,dogecoin,polkadot",
+                    "ids": "bitcoin,ethereum,binancecoin,ripple,solana,cardano,dogecoin,polkadot,avalanche-2,chainlink,polygon,shiba-inu,tron,litecoin,uniswap,stellar,near,pepe,sui,aptos",
                     "order": "market_cap_desc",
-                    "per_page": 10,
+                    "per_page": 25,
                     "page": 1,
                     "sparkline": "false",
                     "price_change_percentage": "24h"
@@ -1246,14 +1246,26 @@ async def fetch_coingecko_prices():
 def get_fallback_prices():
     """Return fallback prices when API fails"""
     return [
-        {"id": "bitcoin", "symbol": "btc", "name": "Bitcoin", "current_price": 69500, "price_change_24h": -850, "price_change_percentage_24h": -1.21, "market_cap": 1390000000000, "total_volume": 38000000000, "image": "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png"},
-        {"id": "ethereum", "symbol": "eth", "name": "Ethereum", "current_price": 2100, "price_change_24h": -25, "price_change_percentage_24h": -1.18, "market_cap": 253000000000, "total_volume": 17000000000, "image": "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png"},
-        {"id": "binancecoin", "symbol": "bnb", "name": "BNB", "current_price": 625, "price_change_24h": -10, "price_change_percentage_24h": -1.57, "market_cap": 85000000000, "total_volume": 1100000000, "image": "https://coin-images.coingecko.com/coins/images/825/large/bnb-icon2_2x.png"},
-        {"id": "ripple", "symbol": "xrp", "name": "XRP", "current_price": 1.38, "price_change_24h": -0.05, "price_change_percentage_24h": -3.5, "market_cap": 85000000000, "total_volume": 2200000000, "image": "https://coin-images.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png"},
-        {"id": "solana", "symbol": "sol", "name": "Solana", "current_price": 88, "price_change_24h": -1.2, "price_change_percentage_24h": -1.34, "market_cap": 50000000000, "total_volume": 4000000000, "image": "https://coin-images.coingecko.com/coins/images/4128/large/solana.png"},
-        {"id": "cardano", "symbol": "ada", "name": "Cardano", "current_price": 0.26, "price_change_24h": -0.002, "price_change_percentage_24h": -0.76, "market_cap": 9500000000, "total_volume": 420000000, "image": "https://coin-images.coingecko.com/coins/images/975/large/cardano.png"},
-        {"id": "dogecoin", "symbol": "doge", "name": "Dogecoin", "current_price": 0.092, "price_change_24h": -0.001, "price_change_percentage_24h": -1.07, "market_cap": 14000000000, "total_volume": 1100000000, "image": "https://coin-images.coingecko.com/coins/images/5/large/dogecoin.png"},
-        {"id": "polkadot", "symbol": "dot", "name": "Polkadot", "current_price": 1.37, "price_change_24h": -0.05, "price_change_percentage_24h": -3.52, "market_cap": 2300000000, "total_volume": 190000000, "image": "https://coin-images.coingecko.com/coins/images/12171/large/polkadot.jpg"},
+        {"id": "bitcoin", "symbol": "btc", "name": "Bitcoin", "current_price": 69500, "price_change_24h": -850, "price_change_percentage_24h": -2.91, "market_cap": 1390000000000, "total_volume": 38000000000, "image": "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png"},
+        {"id": "ethereum", "symbol": "eth", "name": "Ethereum", "current_price": 2070, "price_change_24h": -95, "price_change_percentage_24h": -4.33, "market_cap": 253000000000, "total_volume": 17000000000, "image": "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png"},
+        {"id": "binancecoin", "symbol": "bnb", "name": "BNB", "current_price": 631, "price_change_24h": -16, "price_change_percentage_24h": -2.51, "market_cap": 85000000000, "total_volume": 1100000000, "image": "https://coin-images.coingecko.com/coins/images/825/large/bnb-icon2_2x.png"},
+        {"id": "ripple", "symbol": "xrp", "name": "XRP", "current_price": 1.37, "price_change_24h": -0.05, "price_change_percentage_24h": -3.28, "market_cap": 85000000000, "total_volume": 2200000000, "image": "https://coin-images.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png"},
+        {"id": "solana", "symbol": "sol", "name": "Solana", "current_price": 87, "price_change_24h": -4.5, "price_change_percentage_24h": -4.86, "market_cap": 50000000000, "total_volume": 4000000000, "image": "https://coin-images.coingecko.com/coins/images/4128/large/solana.png"},
+        {"id": "cardano", "symbol": "ada", "name": "Cardano", "current_price": 0.26, "price_change_24h": -0.013, "price_change_percentage_24h": -4.68, "market_cap": 9500000000, "total_volume": 420000000, "image": "https://coin-images.coingecko.com/coins/images/975/large/cardano.png"},
+        {"id": "dogecoin", "symbol": "doge", "name": "Dogecoin", "current_price": 0.092, "price_change_24h": -0.003, "price_change_percentage_24h": -3.81, "market_cap": 14000000000, "total_volume": 1100000000, "image": "https://coin-images.coingecko.com/coins/images/5/large/dogecoin.png"},
+        {"id": "polkadot", "symbol": "dot", "name": "Polkadot", "current_price": 1.33, "price_change_24h": -0.03, "price_change_percentage_24h": -2.04, "market_cap": 2300000000, "total_volume": 190000000, "image": "https://coin-images.coingecko.com/coins/images/12171/large/polkadot.jpg"},
+        {"id": "avalanche-2", "symbol": "avax", "name": "Avalanche", "current_price": 9.85, "price_change_24h": 0.25, "price_change_percentage_24h": 2.61, "market_cap": 4100000000, "total_volume": 150000000, "image": "https://coin-images.coingecko.com/coins/images/12559/large/Avalanche_Circle_RedWhite_Trans.png"},
+        {"id": "chainlink", "symbol": "link", "name": "Chainlink", "current_price": 13.5, "price_change_24h": 0.45, "price_change_percentage_24h": 3.45, "market_cap": 8500000000, "total_volume": 350000000, "image": "https://coin-images.coingecko.com/coins/images/877/large/chainlink-new-logo.png"},
+        {"id": "polygon", "symbol": "matic", "name": "Polygon", "current_price": 0.22, "price_change_24h": -0.005, "price_change_percentage_24h": -2.22, "market_cap": 2200000000, "total_volume": 180000000, "image": "https://coin-images.coingecko.com/coins/images/4713/large/polygon.png"},
+        {"id": "shiba-inu", "symbol": "shib", "name": "Shiba Inu", "current_price": 0.0000085, "price_change_24h": 0.0000003, "price_change_percentage_24h": 3.66, "market_cap": 5000000000, "total_volume": 220000000, "image": "https://coin-images.coingecko.com/coins/images/11939/large/shiba.png"},
+        {"id": "tron", "symbol": "trx", "name": "TRON", "current_price": 0.124, "price_change_24h": 0.002, "price_change_percentage_24h": 1.64, "market_cap": 10800000000, "total_volume": 320000000, "image": "https://coin-images.coingecko.com/coins/images/1094/large/tron-logo.png"},
+        {"id": "litecoin", "symbol": "ltc", "name": "Litecoin", "current_price": 68.5, "price_change_24h": -1.5, "price_change_percentage_24h": -2.14, "market_cap": 5200000000, "total_volume": 280000000, "image": "https://coin-images.coingecko.com/coins/images/2/large/litecoin.png"},
+        {"id": "uniswap", "symbol": "uni", "name": "Uniswap", "current_price": 6.15, "price_change_24h": 0.18, "price_change_percentage_24h": 3.01, "market_cap": 3700000000, "total_volume": 95000000, "image": "https://coin-images.coingecko.com/coins/images/12504/large/uni.jpg"},
+        {"id": "stellar", "symbol": "xlm", "name": "Stellar", "current_price": 0.092, "price_change_24h": -0.002, "price_change_percentage_24h": -2.13, "market_cap": 2800000000, "total_volume": 85000000, "image": "https://coin-images.coingecko.com/coins/images/100/large/Stellar_symbol_black_RGB.png"},
+        {"id": "near", "symbol": "near", "name": "NEAR Protocol", "current_price": 2.45, "price_change_24h": 0.12, "price_change_percentage_24h": 5.15, "market_cap": 2900000000, "total_volume": 180000000, "image": "https://coin-images.coingecko.com/coins/images/10365/large/near.jpg"},
+        {"id": "pepe", "symbol": "pepe", "name": "Pepe", "current_price": 0.0000068, "price_change_24h": 0.0000005, "price_change_percentage_24h": 7.94, "market_cap": 2800000000, "total_volume": 650000000, "image": "https://coin-images.coingecko.com/coins/images/29850/large/pepe-token.jpeg"},
+        {"id": "sui", "symbol": "sui", "name": "Sui", "current_price": 1.85, "price_change_24h": 0.15, "price_change_percentage_24h": 8.82, "market_cap": 6200000000, "total_volume": 520000000, "image": "https://coin-images.coingecko.com/coins/images/26375/large/sui_asset.jpeg"},
+        {"id": "aptos", "symbol": "apt", "name": "Aptos", "current_price": 5.25, "price_change_24h": -0.15, "price_change_percentage_24h": -2.78, "market_cap": 2800000000, "total_volume": 120000000, "image": "https://coin-images.coingecko.com/coins/images/26455/large/aptos_round.png"},
     ]
 
 @api_router.get("/market/prices", response_model=List[CryptoPrice])

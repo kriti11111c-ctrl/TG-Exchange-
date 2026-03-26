@@ -130,30 +130,40 @@ const Dashboard = () => {
     
     switch (activeTab) {
       case "favorites":
-        filtered = filtered.filter(c => ["bitcoin", "ethereum", "binancecoin"].includes(c.coin_id));
+        // Show top 5 by market cap
+        filtered = filtered.filter(c => ["bitcoin", "ethereum", "binancecoin", "solana", "ripple"].includes(c.coin_id));
         break;
       case "hot":
+        // Most volatile - sorted by absolute price change
         filtered = filtered.sort((a, b) => Math.abs(b.price_change_percentage_24h || 0) - Math.abs(a.price_change_percentage_24h || 0));
         break;
+      case "new":
+        // Newer/trending coins
+        filtered = filtered.filter(c => ["sui", "aptos", "near", "pepe", "shiba-inu", "polygon"].includes(c.coin_id));
+        break;
       case "gainers":
+        // Only positive % change, sorted highest first
         filtered = filtered.filter(c => (c.price_change_percentage_24h || 0) > 0)
                           .sort((a, b) => (b.price_change_percentage_24h || 0) - (a.price_change_percentage_24h || 0));
         break;
       case "losers":
+        // Only negative % change, sorted lowest first
         filtered = filtered.filter(c => (c.price_change_percentage_24h || 0) < 0)
                           .sort((a, b) => (a.price_change_percentage_24h || 0) - (b.price_change_percentage_24h || 0));
         break;
       case "volume":
-        filtered = filtered.sort((a, b) => (b.total_volume || 0) - (a.total_volume || 0));
+        // Sorted by 24h volume
+        filtered = filtered.sort((a, b) => (b.volume_24h || b.total_volume || 0) - (a.volume_24h || a.total_volume || 0));
         break;
       case "marketcap":
+        // Sorted by market cap
         filtered = filtered.sort((a, b) => (b.market_cap || 0) - (a.market_cap || 0));
         break;
       default:
         break;
     }
     
-    return filtered.slice(0, 15);
+    return filtered.slice(0, 12);
   };
 
   // Calculate portfolio value
@@ -323,16 +333,25 @@ const Dashboard = () => {
 
         {/* Coin Rows */}
         <div className="divide-y divide-white/5">
-          {filteredPrices.map((coin, index) => {
-            const change = coin.price_change_percentage_24h || 0;
-            const isPositive = change >= 0;
-            
-            return (
-              <Link
-                key={coin.coin_id || index}
-                to={`/trade?symbol=${coin.symbol || 'BTC'}`}
-                className={`flex items-center px-4 py-3 ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-50'} transition-colors`}
-              >
+          {filteredPrices.length === 0 ? (
+            <div className="py-12 text-center">
+              <TrendUp size={48} className={`mx-auto mb-3 ${textMuted}`} />
+              <p className={`font-medium ${text}`}>No coins in this category</p>
+              <p className={`text-sm ${textMuted}`}>
+                {activeTab === 'gainers' ? 'Market is down, no gainers right now' : 'Check back later'}
+              </p>
+            </div>
+          ) : (
+            filteredPrices.map((coin, index) => {
+              const change = coin.price_change_percentage_24h || 0;
+              const isPositive = change >= 0;
+              
+              return (
+                <Link
+                  key={coin.coin_id || index}
+                  to={`/trade?symbol=${coin.symbol || 'BTC'}`}
+                  className={`flex items-center px-4 py-3 ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-50'} transition-colors`}
+                >
                 {/* Coin Name */}
                 <div className="flex-1 flex items-center gap-3">
                   <div className="relative">
@@ -375,7 +394,8 @@ const Dashboard = () => {
                 </div>
               </Link>
             );
-          })}
+          })
+          )}
         </div>
       </div>
 
