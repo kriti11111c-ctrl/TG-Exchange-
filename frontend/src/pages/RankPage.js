@@ -97,6 +97,23 @@ const RankPage = () => {
     return gradients[level] || gradients[1];
   };
 
+  // Get gradient colors as CSS string for seal
+  const getRankGradientColors = (level) => {
+    const colors = {
+      1: "#94a3b8, #64748b",
+      2: "#60a5fa, #2563eb",
+      3: "#34d399, #059669",
+      4: "#facc15, #f59e0b",
+      5: "#fb923c, #ea580c",
+      6: "#a78bfa, #9333ea",
+      7: "#f472b6, #e11d48",
+      8: "#f87171, #dc2626",
+      9: "#fcd34d, #eab308",
+      10: "#fde047, #f59e0b, #ea580c"
+    };
+    return colors[level] || colors[1];
+  };
+
   // Simple rank display names
   const getRankDisplayName = (level) => {
     const names = {
@@ -135,38 +152,119 @@ const RankPage = () => {
         </button>
       </div>
 
-      {/* Hero Section - Current Rank */}
-      <div className="relative overflow-hidden">
-        <div className={`absolute inset-0 bg-gradient-to-br ${getRankGradient(rankInfo?.rank?.level || 1)} opacity-20`}></div>
-        <div className="relative px-4 py-6">
-          {/* Current Rank Badge */}
-          <div className="flex flex-col items-center">
-            <div className={`w-24 h-24 rounded-full bg-gradient-to-br ${getRankGradient(rankInfo?.rank?.level || 1)} flex items-center justify-center shadow-lg shadow-black/20`}>
-              <div className="w-20 h-20 rounded-full bg-black/20 backdrop-blur flex items-center justify-center">
-                <span className="text-white text-4xl font-bold">{rankInfo?.rank?.level || 1}</span>
-              </div>
-            </div>
+      {/* Hero Section - Certificate Style Card */}
+      <div className="px-4 py-5">
+        <div 
+          className="relative rounded-2xl overflow-hidden"
+          style={{
+            background: isDark 
+              ? 'linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%)'
+              : 'linear-gradient(145deg, #fefbf3 0%, #f8f4e8 50%, #fefbf3 100%)',
+            border: '3px solid',
+            borderImage: 'linear-gradient(135deg, #d4af37, #f4e4ba, #d4af37, #c5a028) 1'
+          }}
+        >
+          {/* Decorative Corner Elements */}
+          <div className="absolute top-2 left-2 w-8 h-8 border-l-2 border-t-2 border-[#d4af37] rounded-tl-lg opacity-60"></div>
+          <div className="absolute top-2 right-2 w-8 h-8 border-r-2 border-t-2 border-[#d4af37] rounded-tr-lg opacity-60"></div>
+          <div className="absolute bottom-2 left-2 w-8 h-8 border-l-2 border-b-2 border-[#d4af37] rounded-bl-lg opacity-60"></div>
+          <div className="absolute bottom-2 right-2 w-8 h-8 border-r-2 border-b-2 border-[#d4af37] rounded-br-lg opacity-60"></div>
+
+          {/* Inner Border */}
+          <div className="absolute inset-3 border border-[#d4af37]/30 rounded-xl pointer-events-none"></div>
+
+          {/* Content */}
+          <div className="relative px-6 py-6 text-center">
+            {/* Header */}
+            <p className={`text-[10px] tracking-[0.3em] uppercase ${isDark ? 'text-[#d4af37]' : 'text-[#8b7355]'} font-medium`}>
+              Certificate of Achievement
+            </p>
             
-            <h2 className={`mt-4 text-2xl font-bold ${text}`}>
+            {/* Seal/Badge */}
+            <div className="relative mx-auto my-4 w-28 h-28">
+              {/* Outer ring */}
+              <div 
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: 'linear-gradient(135deg, #d4af37 0%, #f4e4ba 25%, #d4af37 50%, #c5a028 75%, #d4af37 100%)',
+                  padding: '3px'
+                }}
+              >
+                <div className={`w-full h-full rounded-full ${isDark ? 'bg-[#1a1a2e]' : 'bg-[#fefbf3]'} flex items-center justify-center`}>
+                  {/* Inner seal */}
+                  <div 
+                    className="w-20 h-20 rounded-full flex flex-col items-center justify-center"
+                    style={{
+                      background: `linear-gradient(135deg, ${getRankGradientColors(rankInfo?.rank?.level || 1)})`
+                    }}
+                  >
+                    <span className="text-white text-3xl font-bold drop-shadow-lg">{rankInfo?.rank?.level || 1}</span>
+                    <span className="text-white/80 text-[8px] uppercase tracking-wider">Level</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Star decorations around seal */}
+              <div className="absolute -top-1 left-1/2 -translate-x-1/2 text-[#d4af37] text-lg">★</div>
+              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[#d4af37] text-lg">★</div>
+              <div className="absolute top-1/2 -left-1 -translate-y-1/2 text-[#d4af37] text-sm">★</div>
+              <div className="absolute top-1/2 -right-1 -translate-y-1/2 text-[#d4af37] text-sm">★</div>
+            </div>
+
+            {/* Rank Name */}
+            <h2 
+              className="text-3xl font-bold tracking-wide"
+              style={{
+                background: 'linear-gradient(135deg, #d4af37, #f4e4ba, #d4af37)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                textShadow: isDark ? '0 2px 10px rgba(212, 175, 55, 0.3)' : 'none'
+              }}
+            >
               {getRankDisplayName(rankInfo?.rank?.level || 1)}
             </h2>
-            <p className={`text-sm ${textMuted}`}>Level {rankInfo?.rank?.level || 1} VIP</p>
+            <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-1`}>
+              VIP Member • Level {rankInfo?.rank?.level || 1}
+            </p>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 my-4">
+              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent"></div>
+              <span className="text-[#d4af37] text-xs">◆</span>
+              <div className="flex-1 h-px bg-gradient-to-r from-transparent via-[#d4af37]/50 to-transparent"></div>
+            </div>
+
+            {/* Benefits */}
+            <div className="flex justify-center gap-6">
+              <div className="text-center">
+                <p className="text-[#0ECB81] font-bold text-lg">{rankInfo?.rank?.fee_discount || 0}%</p>
+                <p className={`text-[10px] ${textMuted}`}>Fee Discount</p>
+              </div>
+              <div className={`w-px ${isDark ? 'bg-gray-700' : 'bg-gray-300'}`}></div>
+              <div className="text-center">
+                <p className={`font-bold text-lg ${text}`}>{formatVolume(rankInfo?.rank?.withdrawal_limit || 1000)}</p>
+                <p className={`text-[10px] ${textMuted}`}>Daily Limit</p>
+              </div>
+            </div>
 
             {/* Progress to next */}
             {rankInfo?.next_rank && (
-              <div className="w-full max-w-xs mt-5">
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className={textMuted}>Next: {getRankDisplayName(rankInfo?.next_rank?.level)}</span>
-                  <span className="text-[#F0B90B] font-medium">{rankInfo?.progress?.toFixed(0)}%</span>
+              <div className="mt-5 pt-4 border-t border-[#d4af37]/20">
+                <div className="flex justify-between text-xs mb-2">
+                  <span className={textMuted}>Progress to {getRankDisplayName(rankInfo?.next_rank?.level)}</span>
+                  <span className="text-[#d4af37] font-semibold">{rankInfo?.progress?.toFixed(0)}%</span>
                 </div>
                 <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} overflow-hidden`}>
                   <div 
-                    className={`h-full rounded-full bg-gradient-to-r ${getRankGradient(rankInfo?.next_rank?.level)} transition-all duration-700`}
-                    style={{ width: `${rankInfo?.progress || 0}%` }}
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: `${rankInfo?.progress || 0}%`,
+                      background: 'linear-gradient(90deg, #d4af37, #f4e4ba)'
+                    }}
                   />
                 </div>
-                <p className={`text-xs mt-1.5 text-center ${textMuted}`}>
-                  Trade {formatVolume(rankInfo?.volume_needed)} more
+                <p className={`text-[10px] mt-1.5 ${textMuted}`}>
+                  Trade {formatVolume(rankInfo?.volume_needed)} more to upgrade
                 </p>
               </div>
             )}
@@ -175,22 +273,22 @@ const RankPage = () => {
       </div>
 
       {/* Stats Row */}
-      <div className="px-4 -mt-2">
+      <div className="px-4 mt-2">
         <div className={`${cardBg} rounded-2xl p-4 grid grid-cols-3 gap-2 shadow-sm`}>
           <div className="text-center">
             <ChartLineUp size={20} className="mx-auto text-[#0ECB81] mb-1" />
             <p className={`text-sm font-bold ${text}`}>{formatVolume(rankInfo?.total_volume || 0)}</p>
-            <p className={`text-[10px] ${textMuted}`}>Volume</p>
+            <p className={`text-[10px] ${textMuted}`}>Total Volume</p>
           </div>
-          <div className="text-center border-x border-[#2B3139]/50">
+          <div className={`text-center border-x ${isDark ? 'border-[#2B3139]' : 'border-gray-200'}`}>
             <Fire size={20} className="mx-auto text-[#F0B90B] mb-1" />
             <p className={`text-sm font-bold ${text}`}>{rankInfo?.stats?.total_trades || 0}</p>
             <p className={`text-[10px] ${textMuted}`}>Trades</p>
           </div>
           <div className="text-center">
             <Lightning size={20} className="mx-auto text-[#3498DB] mb-1" />
-            <p className={`text-sm font-bold text-[#0ECB81]`}>{rankInfo?.rank?.fee_discount || 0}%</p>
-            <p className={`text-[10px] ${textMuted}`}>Fee Off</p>
+            <p className={`text-sm font-bold ${text}`}>{rankInfo?.stats?.days_as_member || 0}</p>
+            <p className={`text-[10px] ${textMuted}`}>Days Active</p>
           </div>
         </div>
       </div>
