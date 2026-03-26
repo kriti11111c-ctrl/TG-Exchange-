@@ -24,7 +24,8 @@ import {
   Plus,
   Eye,
   EyeSlash,
-  CaretRight
+  CaretRight,
+  Trophy
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 
@@ -96,7 +97,7 @@ const Dashboard = () => {
     { icon: Users, label: "Referral", path: "/referral", color: "text-[#F0B90B]" },
     { icon: CurrencyCircleDollar, label: "Earn", path: "/wallet", color: "text-[#0ECB81]" },
     { icon: Robot, label: "Trading Bots", path: "/trade", color: "text-[#3498DB]" },
-    { icon: Swap, label: "P2P", path: "/trade", color: "text-[#9B59B6]" },
+    { icon: Trophy, label: "VIP Rank", path: "/rank", color: "text-[#9B59B6]" },
     { icon: DotsThree, label: "More", path: "/profile", color: "text-[#848E9C]" }
   ];
 
