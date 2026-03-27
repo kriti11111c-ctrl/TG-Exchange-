@@ -14,7 +14,9 @@ const RegisterPage = () => {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [referralCode, setReferralCode] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
@@ -34,6 +36,12 @@ const RegisterPage = () => {
     // Validate referral code is required
     if (!referralCode.trim()) {
       toast.error("Referral Code is required to sign up");
+      return;
+    }
+
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
       return;
     }
 
@@ -153,6 +161,37 @@ const RegisterPage = () => {
             </div>
           </div>
 
+          {/* Confirm Password Input */}
+          <div>
+            <p className="text-gray-400 text-sm mb-2">Confirm password</p>
+            <div className="relative">
+              <Input
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+                className={`w-full py-4 px-4 pr-12 bg-transparent border-0 border-b rounded-none text-white placeholder-gray-500 focus:ring-0 ${
+                  confirmPassword && password !== confirmPassword 
+                    ? "border-red-500 focus:border-red-500" 
+                    : "border-gray-700 focus:border-[#F0B90B]"
+                }`}
+                required
+                minLength={6}
+                data-testid="register-confirm-password-input"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+              >
+                {showConfirmPassword ? <EyeSlash size={22} /> : <Eye size={22} />}
+              </button>
+            </div>
+            {confirmPassword && password !== confirmPassword && (
+              <p className="text-red-400 text-xs mt-1">Passwords do not match</p>
+            )}
+          </div>
+
           {/* Referral Code - REQUIRED */}
           <div>
             <p className="text-gray-400 text-sm mb-2">
@@ -175,9 +214,9 @@ const RegisterPage = () => {
           {/* Sign Up Button */}
           <Button
             type="submit"
-            disabled={loading || !referralCode.trim()}
+            disabled={loading || !referralCode.trim() || !password || password !== confirmPassword}
             className={`w-full py-6 font-semibold text-lg transition-all ${
-              referralCode.trim()
+              referralCode.trim() && password && password === confirmPassword
                 ? "bg-[#F0B90B] hover:bg-[#E5AF0A] text-black"
                 : "bg-gray-700 text-gray-400 cursor-not-allowed"
             }`}
