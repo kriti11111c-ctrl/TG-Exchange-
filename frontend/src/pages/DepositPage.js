@@ -78,8 +78,10 @@ const DepositPage = () => {
   const [selectedNetwork, setSelectedNetwork] = useState(DEPOSIT_NETWORKS[0]);
   const [showNetworkSelect, setShowNetworkSelect] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedMemo, setCopiedMemo] = useState(false);
   const [wallet, setWallet] = useState(null);
   const [showBalance, setShowBalance] = useState(true);
+  const [depositId, setDepositId] = useState("");
   
   // Deposit request form states
   const [showDepositForm, setShowDepositForm] = useState(false);
@@ -94,16 +96,18 @@ const DepositPage = () => {
   const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
   const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
 
-  // Fetch wallet balance and deposit requests
+  // Fetch wallet balance, deposit requests, and user's deposit ID
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [walletRes, requestsRes] = await Promise.all([
+        const [walletRes, requestsRes, depositAddrRes] = await Promise.all([
           axios.get(`${API}/wallet`, { withCredentials: true }),
-          axios.get(`${API}/user/deposit-requests`, { withCredentials: true })
+          axios.get(`${API}/user/deposit-requests`, { withCredentials: true }),
+          axios.get(`${API}/user/deposit-address`, { withCredentials: true })
         ]);
         setWallet(walletRes.data);
         setDepositRequests(requestsRes.data.requests || []);
+        setDepositId(depositAddrRes.data.deposit_id || "");
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -121,12 +125,19 @@ const DepositPage = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const copyDepositId = () => {
+    navigator.clipboard.writeText(depositId);
+    setCopiedMemo(true);
+    toast.success("Deposit ID copied!");
+    setTimeout(() => setCopiedMemo(false), 2000);
+  };
+
   const shareAddress = async () => {
     if (navigator.share) {
       try {
         await navigator.share({
           title: `${selectedNetwork.shortName} Deposit Address`,
-          text: selectedNetwork.address
+          text: `Address: ${selectedNetwork.address}\nDeposit ID (Memo): ${depositId}`
         });
       } catch (err) {
         copyAddress();
@@ -151,17 +162,21 @@ const DepositPage = () => {
 
     setSubmitting(true);
     try {
-      await axios.post(`${API}/user/deposit-request`, {
+      const response = await axios.post(`${API}/user/deposit-request`, {
         network: selectedNetwork.id,
         coin: "USDT",
         amount: parseFloat(depositAmount),
         tx_hash: txHash.trim()
       }, { withCredentials: true });
 
-      toast.success("Deposit request submitted! Admin will verify and credit your account.");
+      toast.success(`${depositAmount} USDT credited to your wallet!`);
       setShowDepositForm(false);
       setDepositAmount("");
       setTxHash("");
+      
+      // Refresh wallet balance
+      const walletRes = await axios.get(`${API}/wallet`, { withCredentials: true });
+      setWallet(walletRes.data);
       
       // Refresh requests
       const res = await axios.get(`${API}/user/deposit-requests`, { withCredentials: true });
@@ -303,6 +318,29 @@ const DepositPage = () => {
             </p>
           </div>
 
+          {/* User's Unique Deposit ID */}
+          {depositId && (
+            <div className="mb-4 p-3 rounded-lg bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-yellow-400 mb-1 font-medium">Your Deposit ID (MEMO)</p>
+                  <p className="font-mono text-lg font-bold text-yellow-400">{depositId}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={copyDepositId}
+                  className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
+                  size="sm"
+                >
+                  {copiedMemo ? <CheckCircle size={16} /> : <Copy size={16} />}
+                </Button>
+              </div>
+              <p className="text-xs text-yellow-500/80 mt-2">
+                Include this ID in transaction memo/note
+              </p>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="grid grid-cols-3 gap-3">
             <Button
@@ -348,15 +386,19 @@ const DepositPage = () => {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[#F0B90B] font-bold">2.</span>
-              <span>Send {selectedNetwork.coins.join("/")} from your wallet</span>
+              <span className="text-yellow-400 font-medium">Copy your Deposit ID: {depositId}</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[#F0B90B] font-bold">3.</span>
-              <span>Wait for network confirmation (10-30 mins)</span>
+              <span>Send {selectedNetwork.coins.join("/")} and include Deposit ID in memo/note</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[#F0B90B] font-bold">4.</span>
-              <span>Your balance will be credited automatically</span>
+              <span>Submit TX Hash below after sending</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-[#F0B90B] font-bold">5.</span>
+              <span>Your balance will be credited instantly!</span>
             </li>
           </ul>
         </div>

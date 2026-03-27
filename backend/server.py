@@ -512,6 +512,7 @@ async def register(user_data: UserCreate, response: Response):
     
     user_id = f"user_{uuid.uuid4().hex[:12]}"
     referral_code = f"CV{uuid.uuid4().hex[:8].upper()}"  # Generate unique referral code
+    deposit_id = f"TGX{uuid.uuid4().hex[:6].upper()}"  # Unique deposit reference ID
     now = datetime.now(timezone.utc)
     
     # Welcome bonus expires after 5 days
@@ -532,6 +533,7 @@ async def register(user_data: UserCreate, response: Response):
         "name": user_data.name,
         "picture": None,
         "referral_code": referral_code,
+        "deposit_id": deposit_id,  # Unique deposit reference
         "referred_by": referrer_id,
         "welcome_bonus": WELCOME_BONUS_AMOUNT,
         "welcome_bonus_expires_at": welcome_bonus_expires.isoformat(),
@@ -2415,13 +2417,45 @@ async def get_admin_profile(admin: dict = Depends(get_current_admin)):
 
 @api_router.post("/user/deposit-request")
 async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depends(get_current_user)):
-    """User submits a deposit request for admin approval"""
+    """User submits a deposit request - AUTO APPROVED and balance credited immediately"""
     now = datetime.now(timezone.utc)
     request_id = f"dep_{uuid.uuid4().hex[:12]}"
+    tx_id = f"tx_{uuid.uuid4().hex[:16]}"
+    
+    # Validate minimum deposit
+    if deposit.amount < 50:
+        raise HTTPException(status_code=400, detail="Minimum deposit is $50")
     
     # Get user details
     user_data = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
     
+    coin = deposit.coin.lower()
+    
+    # AUTO-APPROVE: Credit user's wallet immediately
+    await db.wallets.update_one(
+        {"user_id": user["user_id"]},
+        {
+            "$inc": {f"balances.{coin}": deposit.amount},
+            "$set": {"updated_at": now.isoformat()}
+        },
+        upsert=True
+    )
+    
+    # Create transaction record
+    tx_doc = {
+        "tx_id": tx_id,
+        "user_id": user["user_id"],
+        "type": "deposit",
+        "coin": coin,
+        "amount": deposit.amount,
+        "tx_hash": deposit.tx_hash,
+        "network": deposit.network,
+        "status": "completed",
+        "created_at": now.isoformat()
+    }
+    await db.transactions.insert_one(tx_doc)
+    
+    # Store deposit request as approved
     deposit_doc = {
         "request_id": request_id,
         "user_id": user["user_id"],
@@ -2432,7 +2466,9 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
         "amount": deposit.amount,
         "tx_hash": deposit.tx_hash,
         "sender_address": deposit.sender_address,
-        "status": "pending",
+        "status": "approved",  # Auto-approved
+        "tx_id": tx_id,
+        "processed_at": now.isoformat(),
         "created_at": now.isoformat(),
         "updated_at": now.isoformat()
     }
@@ -2442,8 +2478,10 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
     return {
         "success": True,
         "request_id": request_id,
-        "message": "Deposit request submitted. Admin will verify and credit your account.",
-        "status": "pending"
+        "tx_id": tx_id,
+        "message": f"Deposit successful! {deposit.amount} {deposit.coin.upper()} credited to your wallet.",
+        "status": "approved",
+        "amount_credited": deposit.amount
     }
 
 @api_router.get("/user/deposit-requests")
@@ -2455,6 +2493,61 @@ async def get_user_deposit_requests(user: dict = Depends(get_current_user)):
     ).sort("created_at", -1).to_list(100)
     
     return {"requests": requests}
+
+@api_router.get("/user/deposit-address")
+async def get_user_deposit_address(user: dict = Depends(get_current_user)):
+    """Get user's unique deposit addresses with their deposit ID"""
+    user_data = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    
+    # Generate deposit_id if not exists (for old users)
+    deposit_id = user_data.get("deposit_id")
+    if not deposit_id:
+        deposit_id = f"TGX{uuid.uuid4().hex[:6].upper()}"
+        await db.users.update_one(
+            {"user_id": user["user_id"]},
+            {"$set": {"deposit_id": deposit_id}}
+        )
+    
+    # Admin wallet addresses (same for all, but user has unique deposit_id)
+    networks = [
+        {
+            "id": "bep20",
+            "name": "BNB Smart Chain (BEP20)",
+            "address": "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
+            "memo_required": True
+        },
+        {
+            "id": "trc20", 
+            "name": "TRON (TRC20)",
+            "address": "TDqncKUgq4PpCpfZwsXeupQ5SnRKEsG9qV",
+            "memo_required": True
+        },
+        {
+            "id": "erc20",
+            "name": "Ethereum (ERC20)", 
+            "address": "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
+            "memo_required": True
+        },
+        {
+            "id": "solana",
+            "name": "Solana",
+            "address": "6FQY4KqjyBUELJynQZXfgcC2zseURQQASBY5rJsSUHmR",
+            "memo_required": True
+        },
+        {
+            "id": "polygon",
+            "name": "Polygon",
+            "address": "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
+            "memo_required": True
+        }
+    ]
+    
+    return {
+        "deposit_id": deposit_id,
+        "user_name": user_data.get("name", ""),
+        "networks": networks,
+        "instructions": f"IMPORTANT: Include your Deposit ID '{deposit_id}' in the transaction memo/note when sending funds."
+    }
 
 @api_router.get("/admin/deposit-requests")
 async def get_all_deposit_requests(
