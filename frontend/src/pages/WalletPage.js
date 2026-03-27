@@ -510,9 +510,9 @@ const WalletPage = () => {
       <div className={`h-2 ${dividerBg}`} />
 
       {/* Crypto Assets Section */}
-      <div className={`px-4 py-4 ${cardBg}`}>
+      <div className={`px-4 py-4`}>
         <div className="flex items-center justify-between mb-4">
-          <span className={`${text} font-medium text-lg`}>Crypto</span>
+          <span className={`${text} font-medium text-lg`}>My Assets</span>
           <MagnifyingGlass size={20} className={textMuted} />
         </div>
         
@@ -527,27 +527,20 @@ const WalletPage = () => {
           />
         </div>
         
-        {/* Column Headers */}
-        <div className="flex items-center justify-between px-2 mb-2">
-          <span className={`${textMuted} text-xs`}>Assets</span>
-          <span className={`${textMuted} text-xs`}>Amount</span>
-        </div>
-        
-        {/* Crypto List */}
-        <div className="space-y-1">
-          {filteredCoins.map(coin => {
+        {/* Simple Crypto List - Like Markets */}
+        <div className={`${cardBg} rounded-xl border ${border} overflow-hidden`}>
+          {filteredCoins.map((coin, index) => {
             const balance = wallet?.balances?.[coin.id] || 0;
             const value = getCoinValue(coin.id, balance);
-            const price = getCoinPrice(coin.id);
             
             return (
               <div 
                 key={coin.id}
-                className={`flex items-center justify-between p-3 rounded-lg ${hoverBg} transition-colors cursor-pointer`}
+                className={`flex items-center justify-between p-4 ${index !== filteredCoins.length - 1 ? `border-b ${border}` : ''} cursor-pointer hover:bg-[#F0B90B]/5 transition-colors`}
                 onClick={() => navigate(`/trade?coin=${coin.id}`)}
               >
+                {/* Left: Logo + Name */}
                 <div className="flex items-center gap-3">
-                  {/* Coin Logo */}
                   <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center bg-white/10">
                     <img 
                       src={coin.logo} 
@@ -555,32 +548,33 @@ const WalletPage = () => {
                       className="w-8 h-8 object-contain"
                       onError={(e) => {
                         e.target.style.display = 'none';
-                        e.target.parentElement.innerHTML = `<span class="text-white font-bold text-sm" style="background-color: ${coin.color}; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">${coin.symbol.charAt(0)}</span>`;
+                        e.target.parentElement.innerHTML = `<span class="text-white font-bold">${coin.symbol.charAt(0)}</span>`;
                       }}
                     />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className={`${text} font-medium`}>{coin.symbol}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#0ECB81]/20 text-[#0ECB81]">
-                        APY ↑ {coin.apy}%
-                      </span>
-                    </div>
-                    <span className={`${textMuted} text-sm`}>{coin.name}</span>
+                    <span className={`${text} font-semibold`}>{coin.symbol}</span>
+                    <p className={`${textMuted} text-xs`}>{coin.name}</p>
                   </div>
                 </div>
-                <div className="text-right flex items-center gap-2">
-                  <div>
-                    <p className={`${text} font-mono`}>{showBalance ? balance.toFixed(balance < 1 ? 8 : 4) : '****'}</p>
-                    <p className={`${textMuted} text-sm`}>≈ ${showBalance ? value.toFixed(2) : '****'}</p>
-                  </div>
-                  <CaretRight size={16} className={textMuted} />
+                
+                {/* Right: Quantity */}
+                <div className="text-right">
+                  <p className={`${text} font-mono font-semibold`}>
+                    {showBalance ? balance.toFixed(balance < 1 ? 4 : 2) : '****'} {coin.symbol}
+                  </p>
+                  <p className={`${textMuted} text-xs`}>
+                    ≈ ${showBalance ? value.toFixed(2) : '****'}
+                  </p>
                 </div>
               </div>
             );
           })}
         </div>
       </div>
+      
+      {/* Bottom Spacing */}
+      <div className="h-20"></div>
 
       <BottomNav />
     </div>
