@@ -1001,13 +1001,17 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
     
-    # Check balance - ALL FUNDS WITHDRAWABLE (no locking)
+    # Check balance - Welcome bonus is LOCKED until expired
     current_balance = wallet["balances"].get(coin, 0)
+    welcome_bonus = wallet.get("welcome_bonus", 0) if coin == "usdt" else 0
     
-    if current_balance < withdraw.amount:
+    # Withdrawable = Total - Welcome Bonus (locked)
+    withdrawable_balance = current_balance - welcome_bonus
+    
+    if withdrawable_balance < withdraw.amount:
         raise HTTPException(
             status_code=400, 
-            detail=f"Insufficient balance. Available: ${current_balance:.2f}"
+            detail=f"Insufficient balance. Withdrawable: ${withdrawable_balance:.2f} (Welcome bonus ${welcome_bonus:.2f} is locked for 5 days)"
         )
     
     now = datetime.now(timezone.utc)
@@ -1047,15 +1051,22 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
 
 @api_router.get("/wallet/withdrawal-limits")
 async def get_withdrawal_limits(user: dict = Depends(get_current_user)):
-    """Get withdrawal limits - ALL FUNDS WITHDRAWABLE"""
+    """Get withdrawal limits - Welcome bonus locked for 5 days, then auto-deducted"""
+    # First check and expire welcome bonus if 5 days passed
+    await check_and_expire_welcome_bonus(user["user_id"])
+    
     wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
     usdt_balance = wallet["balances"].get("usdt", 0) if wallet else 0
+    welcome_bonus = wallet.get("welcome_bonus", 0) if wallet else 0
+    
+    # Withdrawable = Total balance - Welcome bonus (if still locked)
+    withdrawable = max(0, usdt_balance - welcome_bonus)
     
     return {
         "min_withdrawal": MIN_WITHDRAWAL,
         "total_balance": usdt_balance,
-        "welcome_bonus": 0,  # No locked funds
-        "withdrawable_balance": usdt_balance,  # Full balance withdrawable
+        "welcome_bonus": welcome_bonus,  # Locked amount
+        "withdrawable_balance": withdrawable,  # Can withdraw this
         "currency": "USDT"
     }
 
@@ -3041,12 +3052,28 @@ async def create_withdrawal_request(withdrawal: WithdrawalRequestModel, user: di
     if not wallet:
         raise HTTPException(status_code=400, detail="Wallet not found")
     
+    # First check and expire welcome bonus if 5 days passed
+    await check_and_expire_welcome_bonus(user["user_id"])
+    
+    # Refresh wallet after potential bonus expiry
+    wallet = await db.wallets.find_one({"user_id": user["user_id"]})
+    
     coin = withdrawal.coin.lower()
     current_balance = wallet.get("balances", {}).get(coin, 0)
+    welcome_bonus = wallet.get("welcome_bonus", 0) if coin == "usdt" else 0
     
-    # Check if user has enough balance
-    if current_balance < withdrawal.amount:
-        raise HTTPException(status_code=400, detail=f"Insufficient balance. Available: {current_balance} {coin.upper()}")
+    # Withdrawable = Total - Welcome Bonus (locked for 5 days)
+    withdrawable_balance = current_balance - welcome_bonus
+    
+    # Check if user has enough WITHDRAWABLE balance
+    if withdrawable_balance < withdrawal.amount:
+        if welcome_bonus > 0:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Insufficient balance. Withdrawable: ${withdrawable_balance:.2f} (Welcome bonus ${welcome_bonus:.2f} is locked for 5 days)"
+            )
+        else:
+            raise HTTPException(status_code=400, detail=f"Insufficient balance. Available: {current_balance} {coin.upper()}")
     
     # Calculate 10% fee
     fee_percent = 10
