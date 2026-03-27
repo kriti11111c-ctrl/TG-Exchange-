@@ -18,7 +18,7 @@ const BottomNav = () => {
 
   const navItems = [
     { path: "/dashboard", icon: House, label: "Home" },
-    { path: "/trade", icon: ChartLineUp, label: "Markets" },
+    { path: "/markets", icon: ChartLineUp, label: "Markets" },
     { path: "/trade", icon: ArrowsLeftRight, label: "Trade", isCenter: true },
     { path: "/futures", icon: ChartBar, label: "Futures" },
     { path: "/wallet", icon: Wallet, label: "Assets" }
@@ -26,6 +26,7 @@ const BottomNav = () => {
 
   const isActive = (path) => {
     if (path === "/dashboard" && location.pathname === "/dashboard") return true;
+    if (path === "/markets" && location.pathname === "/markets") return true;
     if (path === "/futures" && location.pathname === "/futures") return true;
     if (path === "/wallet" && location.pathname === "/wallet") return true;
     if (path === "/trade" && location.pathname === "/trade") return true;

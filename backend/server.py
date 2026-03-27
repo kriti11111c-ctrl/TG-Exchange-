@@ -1227,16 +1227,16 @@ async def fetch_coingecko_prices():
         if age < price_cache["ttl"]:
             return price_cache["data"]
     
-    # Fetch from API with timeout - Get more coins for better filtering
+    # Fetch from API with timeout - Get 50+ coins for Markets page
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
             response = await client.get(
                 f"{COINGECKO_API_URL}/coins/markets",
                 params={
                     "vs_currency": "usd",
-                    "ids": "bitcoin,ethereum,binancecoin,ripple,solana,cardano,dogecoin,polkadot,avalanche-2,chainlink,polygon,shiba-inu,tron,litecoin,uniswap,stellar,near,pepe,sui,aptos",
+                    "ids": "bitcoin,ethereum,binancecoin,ripple,solana,cardano,dogecoin,polkadot,avalanche-2,chainlink,polygon,shiba-inu,tron,litecoin,uniswap,stellar,near,pepe,sui,aptos,cosmos,monero,ethereum-classic,hedera,filecoin,lido-dao,immutable-x,internet-computer,render-token,arbitrum,optimism,injective-protocol,the-graph,aave,maker,fantom,theta-token,algorand,flow,kucoin-token,gala,eos,neo,iota,vechain,zilliqa,1inch,sushi,compound,yearn-finance",
                     "order": "market_cap_desc",
-                    "per_page": 25,
+                    "per_page": 50,
                     "page": 1,
                     "sparkline": "false",
                     "price_change_percentage": "24h"
@@ -1256,7 +1256,7 @@ async def fetch_coingecko_prices():
             return None
 
 def get_fallback_prices():
-    """Return fallback prices when API fails"""
+    """Return fallback prices when API fails - 50 coins"""
     return [
         {"id": "bitcoin", "symbol": "btc", "name": "Bitcoin", "current_price": 69500, "price_change_24h": -850, "price_change_percentage_24h": -2.91, "market_cap": 1390000000000, "total_volume": 38000000000, "image": "https://assets.coingecko.com/coins/images/1/small/bitcoin.png"},
         {"id": "ethereum", "symbol": "eth", "name": "Ethereum", "current_price": 2070, "price_change_24h": -95, "price_change_percentage_24h": -4.33, "market_cap": 253000000000, "total_volume": 17000000000, "image": "https://assets.coingecko.com/coins/images/279/small/ethereum.png"},
@@ -1278,6 +1278,36 @@ def get_fallback_prices():
         {"id": "pepe", "symbol": "pepe", "name": "Pepe", "current_price": 0.0000068, "price_change_24h": 0.0000005, "price_change_percentage_24h": 7.94, "market_cap": 2800000000, "total_volume": 650000000, "image": "https://assets.coingecko.com/coins/images/29850/small/pepe-token.jpeg"},
         {"id": "sui", "symbol": "sui", "name": "Sui", "current_price": 1.85, "price_change_24h": 0.15, "price_change_percentage_24h": 8.82, "market_cap": 6200000000, "total_volume": 520000000, "image": "https://assets.coingecko.com/coins/images/26375/small/sui_asset.jpeg"},
         {"id": "aptos", "symbol": "apt", "name": "Aptos", "current_price": 5.25, "price_change_24h": -0.15, "price_change_percentage_24h": -2.78, "market_cap": 2800000000, "total_volume": 120000000, "image": "https://assets.coingecko.com/coins/images/26455/small/aptos_round.png"},
+        {"id": "cosmos", "symbol": "atom", "name": "Cosmos", "current_price": 4.12, "price_change_24h": -0.08, "price_change_percentage_24h": -1.90, "market_cap": 1600000000, "total_volume": 95000000, "image": "https://assets.coingecko.com/coins/images/1481/small/cosmos_hub.png"},
+        {"id": "monero", "symbol": "xmr", "name": "Monero", "current_price": 185, "price_change_24h": 3.5, "price_change_percentage_24h": 1.93, "market_cap": 3400000000, "total_volume": 75000000, "image": "https://assets.coingecko.com/coins/images/69/small/monero_logo.png"},
+        {"id": "ethereum-classic", "symbol": "etc", "name": "Ethereum Classic", "current_price": 15.8, "price_change_24h": -0.4, "price_change_percentage_24h": -2.47, "market_cap": 2300000000, "total_volume": 85000000, "image": "https://assets.coingecko.com/coins/images/453/small/ethereum-classic-logo.png"},
+        {"id": "hedera", "symbol": "hbar", "name": "Hedera", "current_price": 0.048, "price_change_24h": -0.001, "price_change_percentage_24h": -2.04, "market_cap": 1800000000, "total_volume": 45000000, "image": "https://assets.coingecko.com/coins/images/3688/small/hbar.png"},
+        {"id": "filecoin", "symbol": "fil", "name": "Filecoin", "current_price": 2.85, "price_change_24h": 0.05, "price_change_percentage_24h": 1.79, "market_cap": 1700000000, "total_volume": 65000000, "image": "https://assets.coingecko.com/coins/images/12817/small/filecoin.png"},
+        {"id": "arbitrum", "symbol": "arb", "name": "Arbitrum", "current_price": 0.38, "price_change_24h": -0.01, "price_change_percentage_24h": -2.56, "market_cap": 1500000000, "total_volume": 120000000, "image": "https://assets.coingecko.com/coins/images/16547/small/photo_2023-03-29_21.47.00.jpeg"},
+        {"id": "optimism", "symbol": "op", "name": "Optimism", "current_price": 0.95, "price_change_24h": -0.02, "price_change_percentage_24h": -2.06, "market_cap": 1100000000, "total_volume": 85000000, "image": "https://assets.coingecko.com/coins/images/25244/small/Optimism.png"},
+        {"id": "injective-protocol", "symbol": "inj", "name": "Injective", "current_price": 12.5, "price_change_24h": 0.35, "price_change_percentage_24h": 2.88, "market_cap": 1200000000, "total_volume": 55000000, "image": "https://assets.coingecko.com/coins/images/12882/small/Secondary_Symbol.png"},
+        {"id": "the-graph", "symbol": "grt", "name": "The Graph", "current_price": 0.11, "price_change_24h": 0.003, "price_change_percentage_24h": 2.80, "market_cap": 1050000000, "total_volume": 35000000, "image": "https://assets.coingecko.com/coins/images/13397/small/Graph_Token.png"},
+        {"id": "aave", "symbol": "aave", "name": "Aave", "current_price": 165, "price_change_24h": 4.5, "price_change_percentage_24h": 2.80, "market_cap": 2500000000, "total_volume": 120000000, "image": "https://assets.coingecko.com/coins/images/12645/small/AAVE.png"},
+        {"id": "maker", "symbol": "mkr", "name": "Maker", "current_price": 1350, "price_change_24h": -25, "price_change_percentage_24h": -1.82, "market_cap": 1250000000, "total_volume": 45000000, "image": "https://assets.coingecko.com/coins/images/1364/small/Mark_Maker.png"},
+        {"id": "fantom", "symbol": "ftm", "name": "Fantom", "current_price": 0.32, "price_change_24h": 0.008, "price_change_percentage_24h": 2.56, "market_cap": 900000000, "total_volume": 55000000, "image": "https://assets.coingecko.com/coins/images/4001/small/Fantom_round.png"},
+        {"id": "theta-token", "symbol": "theta", "name": "Theta Network", "current_price": 0.85, "price_change_24h": -0.02, "price_change_percentage_24h": -2.30, "market_cap": 850000000, "total_volume": 25000000, "image": "https://assets.coingecko.com/coins/images/2538/small/theta-token-logo.png"},
+        {"id": "algorand", "symbol": "algo", "name": "Algorand", "current_price": 0.12, "price_change_24h": -0.003, "price_change_percentage_24h": -2.44, "market_cap": 980000000, "total_volume": 35000000, "image": "https://assets.coingecko.com/coins/images/4380/small/download.png"},
+        {"id": "flow", "symbol": "flow", "name": "Flow", "current_price": 0.42, "price_change_24h": -0.01, "price_change_percentage_24h": -2.33, "market_cap": 650000000, "total_volume": 25000000, "image": "https://assets.coingecko.com/coins/images/13446/small/5f6294c0c7a8cda55cb1c936_Flow_Wordmark.png"},
+        {"id": "gala", "symbol": "gala", "name": "Gala", "current_price": 0.018, "price_change_24h": 0.0005, "price_change_percentage_24h": 2.86, "market_cap": 700000000, "total_volume": 85000000, "image": "https://assets.coingecko.com/coins/images/12493/small/GALA-COINGECKO.png"},
+        {"id": "eos", "symbol": "eos", "name": "EOS", "current_price": 0.52, "price_change_24h": -0.01, "price_change_percentage_24h": -1.89, "market_cap": 800000000, "total_volume": 65000000, "image": "https://assets.coingecko.com/coins/images/738/small/eos-eos-logo.png"},
+        {"id": "neo", "symbol": "neo", "name": "Neo", "current_price": 7.8, "price_change_24h": 0.15, "price_change_percentage_24h": 1.96, "market_cap": 550000000, "total_volume": 25000000, "image": "https://assets.coingecko.com/coins/images/480/small/NEO_512_512.png"},
+        {"id": "iota", "symbol": "iota", "name": "IOTA", "current_price": 0.12, "price_change_24h": -0.002, "price_change_percentage_24h": -1.64, "market_cap": 420000000, "total_volume": 15000000, "image": "https://assets.coingecko.com/coins/images/692/small/IOTA_Swirl.png"},
+        {"id": "vechain", "symbol": "vet", "name": "VeChain", "current_price": 0.022, "price_change_24h": -0.0005, "price_change_percentage_24h": -2.22, "market_cap": 1600000000, "total_volume": 35000000, "image": "https://assets.coingecko.com/coins/images/1167/small/VeChain-Logo-768x725.png"},
+        {"id": "zilliqa", "symbol": "zil", "name": "Zilliqa", "current_price": 0.012, "price_change_24h": 0.0003, "price_change_percentage_24h": 2.56, "market_cap": 230000000, "total_volume": 15000000, "image": "https://assets.coingecko.com/coins/images/2687/small/Zilliqa-logo.png"},
+        {"id": "1inch", "symbol": "1inch", "name": "1inch", "current_price": 0.25, "price_change_24h": 0.005, "price_change_percentage_24h": 2.04, "market_cap": 320000000, "total_volume": 18000000, "image": "https://assets.coingecko.com/coins/images/13469/small/1inch-token.png"},
+        {"id": "sushi", "symbol": "sushi", "name": "Sushi", "current_price": 0.58, "price_change_24h": 0.015, "price_change_percentage_24h": 2.65, "market_cap": 150000000, "total_volume": 12000000, "image": "https://assets.coingecko.com/coins/images/12271/small/512x512_Logo_no_chop.png"},
+        {"id": "compound", "symbol": "comp", "name": "Compound", "current_price": 42, "price_change_24h": 1.2, "price_change_percentage_24h": 2.94, "market_cap": 380000000, "total_volume": 25000000, "image": "https://assets.coingecko.com/coins/images/10775/small/COMP.png"},
+        {"id": "yearn-finance", "symbol": "yfi", "name": "yearn.finance", "current_price": 5200, "price_change_24h": -85, "price_change_percentage_24h": -1.61, "market_cap": 180000000, "total_volume": 15000000, "image": "https://assets.coingecko.com/coins/images/11849/small/yearn.jpg"},
+        {"id": "render-token", "symbol": "rndr", "name": "Render", "current_price": 4.15, "price_change_24h": 0.12, "price_change_percentage_24h": 2.98, "market_cap": 2100000000, "total_volume": 95000000, "image": "https://assets.coingecko.com/coins/images/11636/small/rndr.png"},
+        {"id": "immutable-x", "symbol": "imx", "name": "Immutable", "current_price": 0.85, "price_change_24h": 0.02, "price_change_percentage_24h": 2.41, "market_cap": 1400000000, "total_volume": 35000000, "image": "https://assets.coingecko.com/coins/images/17233/small/immutableX-symbol-BLK-RGB.png"},
+        {"id": "lido-dao", "symbol": "ldo", "name": "Lido DAO", "current_price": 1.05, "price_change_24h": 0.03, "price_change_percentage_24h": 2.94, "market_cap": 950000000, "total_volume": 45000000, "image": "https://assets.coingecko.com/coins/images/13573/small/Lido_DAO.png"},
+        {"id": "internet-computer", "symbol": "icp", "name": "Internet Computer", "current_price": 5.85, "price_change_24h": -0.12, "price_change_percentage_24h": -2.01, "market_cap": 2700000000, "total_volume": 55000000, "image": "https://assets.coingecko.com/coins/images/14495/small/Internet_Computer_logo.png"},
+        {"id": "ton", "symbol": "ton", "name": "Toncoin", "current_price": 2.95, "price_change_24h": 0.08, "price_change_percentage_24h": 2.79, "market_cap": 7500000000, "total_volume": 180000000, "image": "https://assets.coingecko.com/coins/images/17980/small/ton_symbol.png"},
     ]
 
 @api_router.get("/market/prices", response_model=List[CryptoPrice])
