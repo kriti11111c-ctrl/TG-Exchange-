@@ -74,7 +74,8 @@ const RegisterPage = () => {
     // Store referral code for after Google auth
     localStorage.setItem("pending_referral_code", referralCode);
     const redirectUrl = window.location.origin + '/dashboard';
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
+    const appName = encodeURIComponent('TG Exchange');
+    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}&app_name=${appName}`;
   };
 
   // Theme colors
