@@ -184,7 +184,7 @@ const Dashboard = () => {
           <div className="flex items-center gap-2">
             <Vault size={28} weight="duotone" className="text-[#00E599]" />
             <span className={`font-bold text-lg ${text}`} style={{ fontFamily: 'Unbounded' }}>
-              TG Xchange
+              TG Exchange
             </span>
           </div>
           <div className="flex items-center gap-3">

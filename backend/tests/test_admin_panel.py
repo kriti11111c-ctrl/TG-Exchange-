@@ -1,5 +1,5 @@
 """
-Admin Panel API Tests for TG Xchange
+Admin Panel API Tests for TG Exchange
 Tests: Admin Login, Dashboard Stats, Deposit Requests, Users Management
 """
 import pytest

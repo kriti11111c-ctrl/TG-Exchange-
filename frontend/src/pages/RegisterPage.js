@@ -103,7 +103,7 @@ const RegisterPage = () => {
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className={`text-2xl font-bold ${text} mb-2`}>TG Xchange Registration</h1>
+          <h1 className={`text-2xl font-bold ${text} mb-2`}>TG Exchange Registration</h1>
           <div className="h-1 w-32 bg-gradient-to-r from-[#F0B90B] to-[#F0B90B]/50 rounded"></div>
         </div>
 
@@ -295,7 +295,7 @@ const RegisterPage = () => {
         <p className={`mt-8 text-center ${textSubtle} text-xs`}>
           By clicking the button, you agree to{" "}
           <Link to="#" className={`${text} hover:text-[#F0B90B]`}>
-            TG Xchange Service Agreement
+            TG Exchange Service Agreement
           </Link>
         </p>
       </div>

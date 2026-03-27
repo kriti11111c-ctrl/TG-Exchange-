@@ -1,5 +1,5 @@
 """
-Comprehensive A-Z Testing for TG Xchange Cryptocurrency Exchange
+Comprehensive A-Z Testing for TG Exchange Cryptocurrency Exchange
 Tests: Authentication, Wallet, Trading, Markets, Referral, Rank, Deposit, Withdraw, 2FA
 """
 import pytest

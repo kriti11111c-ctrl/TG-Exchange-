@@ -45,7 +45,7 @@ const AdminLoginPage = () => {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white" style={{ fontFamily: 'Unbounded' }}>
-              TG Xchange
+              TG Exchange
             </h1>
             <p className="text-xs text-red-400 font-medium">ADMIN PANEL</p>
           </div>

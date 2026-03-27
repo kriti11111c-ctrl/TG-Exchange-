@@ -23,7 +23,7 @@ const LandingPage = () => {
           <Link to="/" className="flex items-center gap-3" data-testid="nav-logo">
             <Vault size={32} weight="duotone" className="text-[#00E599]" />
             <span className="font-bold text-xl tracking-tight" style={{ fontFamily: 'Unbounded' }}>
-              TG Xchange
+              TG Exchange
             </span>
           </Link>
           
@@ -160,7 +160,7 @@ const LandingPage = () => {
               style={{ fontFamily: 'Unbounded' }}
               data-testid="features-title"
             >
-              Why Choose TG Xchange?
+              Why Choose TG Exchange?
             </h2>
             <p className="text-[#8F8F9D] max-w-2xl mx-auto">
               Built for serious traders who demand institutional-grade security and lightning-fast execution.
@@ -246,7 +246,7 @@ const LandingPage = () => {
             Ready to Start Trading?
           </h2>
           <p className="text-lg text-[#8F8F9D] mb-8">
-            Join thousands of traders who trust TG Xchange for their crypto investments.
+            Join thousands of traders who trust TG Exchange for their crypto investments.
           </p>
           <Link to="/register" data-testid="cta-button">
             <button className="btn-primary text-lg px-8 py-4 flex items-center gap-3 mx-auto">
@@ -263,11 +263,11 @@ const LandingPage = () => {
             <div className="flex items-center gap-3">
               <Vault size={24} weight="duotone" className="text-[#00E599]" />
               <span className="font-bold tracking-tight" style={{ fontFamily: 'Unbounded' }}>
-                TG Xchange
+                TG Exchange
               </span>
             </div>
             <p className="text-sm text-[#8F8F9D]" data-testid="footer-copyright">
-              © 2025 TG Xchange Exchange. All rights reserved.
+              © 2025 TG Exchange Exchange. All rights reserved.
             </p>
           </div>
         </div>

@@ -115,7 +115,7 @@ const AdminDashboard = () => {
               <ShieldCheck size={24} weight="bold" className="text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">TG Xchange Admin</h1>
+              <h1 className="text-lg font-bold text-white">TG Exchange Admin</h1>
               <p className="text-xs text-gray-400">{adminData.email}</p>
             </div>
           </div>
