@@ -59,7 +59,7 @@ const generateHistoricalCandles = (currentPrice, numCandles = 50, volatilityPerc
 
 const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, height = 200 }) => {
   const [candles, setCandles] = useState([]);
-  const [timeframe, setTimeframe] = useState("15m");
+  const [timeframe, setTimeframe] = useState("1m");
   const [loading, setLoading] = useState(true);
   const [initialPrice, setInitialPrice] = useState(null);
   
@@ -96,7 +96,8 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
   const handleTimeframeChange = (tf) => {
     setTimeframe(tf);
     if (currentPrice > 0) {
-      const volatility = tf === "1D" ? 5 : tf === "4H" ? 3 : tf === "1H" ? 2.5 : 2;
+      // Different volatility for different timeframes
+      const volatility = tf === "30m" ? 3 : tf === "15m" ? 2.5 : tf === "1m" ? 2 : 1.5;
       const newCandles = generateHistoricalCandles(currentPrice, 50, volatility);
       setCandles(newCandles);
     }
@@ -108,7 +109,7 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     setLoading(true);
   }, [symbol]);
 
-  const timeframes = ["1m", "5m", "15m", "1H", "4H", "1D"];
+  const timeframes = ["15s", "30s", "1m", "15m", "30m"];
   
   // Calculate chart dimensions
   const chartHeight = height - 40;
