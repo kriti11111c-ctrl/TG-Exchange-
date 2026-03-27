@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useTheme } from "../App";
 import { CaretLeft, Shield } from "@phosphor-icons/react";
 import TwoFactorSettings from "../components/TwoFactorSettings";
+import BottomNav from "../components/BottomNav";
 
 const SecurityPage = () => {
   const { isDark } = useTheme();
@@ -62,6 +63,9 @@ const SecurityPage = () => {
           </ul>
         </div>
       </div>
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   );
 };

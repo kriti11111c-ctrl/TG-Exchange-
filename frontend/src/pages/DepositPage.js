@@ -12,6 +12,7 @@ import {
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
+import BottomNav from "../components/BottomNav";
 
 // Network configurations with admin wallet addresses
 const NETWORKS = [
@@ -320,6 +321,9 @@ const DepositPage = () => {
           </>
         )}
       </div>
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   );
 };

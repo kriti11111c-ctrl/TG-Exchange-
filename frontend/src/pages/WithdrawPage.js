@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme, API } from "../App";
 import axios from "axios";
+import BottomNav from "../components/BottomNav";
 import { 
   ArrowLeft, 
   Wallet,
@@ -278,6 +279,9 @@ const WithdrawPage = () => {
           </div>
         )}
       </div>
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   );
 };

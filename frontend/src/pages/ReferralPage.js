@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth, API, useTheme } from "../App";
 import axios from "axios";
 import { toast } from "sonner";
+import BottomNav from "../components/BottomNav";
 import { 
   CaretLeft,
   CaretRight,
@@ -399,6 +400,9 @@ const ReferralPage = () => {
           </table>
         </div>
       </div>
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth, API } from "../App";
 import axios from "axios";
+import BottomNav from "../components/BottomNav";
 import { 
   Vault, 
   ChartLineUp, 
@@ -284,6 +285,9 @@ const TransactionsPage = () => {
           </div>
         </div>
       </main>
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   );
 };

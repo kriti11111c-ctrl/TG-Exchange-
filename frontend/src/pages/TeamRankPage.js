@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth, API, useTheme } from "../App";
 import axios from "axios";
 import { toast } from "sonner";
+import BottomNav from "../components/BottomNav";
 import { 
   CaretLeft,
   Trophy,
@@ -388,6 +389,9 @@ const TeamRankPage = () => {
           </div>
         </div>
       </div>
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   );
 };

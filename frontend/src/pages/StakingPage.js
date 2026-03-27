@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../App";
 import { ArrowLeft, Vault, Clock } from "@phosphor-icons/react";
+import BottomNav from "../components/BottomNav";
 
 const StakingPage = () => {
   const { isDark } = useTheme();
@@ -70,6 +71,9 @@ const StakingPage = () => {
           </div>
         </div>
       </div>
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   );
 };

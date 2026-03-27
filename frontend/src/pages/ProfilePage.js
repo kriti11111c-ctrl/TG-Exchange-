@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth, useTheme, API } from "../App";
 import { toast } from "sonner";
 import axios from "axios";
+import BottomNav from "../components/BottomNav";
 import { 
   CaretLeft,
   CaretRight,
@@ -292,7 +293,10 @@ const ProfilePage = () => {
       </div>
 
       {/* Bottom Spacing */}
-      <div className="h-6"></div>
+      <div className="h-20"></div>
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   );
 };

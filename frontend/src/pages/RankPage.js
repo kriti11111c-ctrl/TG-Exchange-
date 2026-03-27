@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, API, useTheme } from "../App";
 import axios from "axios";
+import BottomNav from "../components/BottomNav";
 import { 
   CaretLeft,
   Info,
@@ -511,6 +512,9 @@ const RankPage = () => {
           </div>
         )}
       </div>
+      
+      {/* Bottom Navigation */}
+      <BottomNav />
     </div>
   );
 };
