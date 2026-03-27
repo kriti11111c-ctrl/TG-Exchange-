@@ -154,11 +154,6 @@ const DepositPage = () => {
       toast.error("Minimum deposit is $50");
       return;
     }
-    
-    if (!txHash.trim()) {
-      toast.error("Please enter transaction hash");
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -166,7 +161,7 @@ const DepositPage = () => {
         network: selectedNetwork.id,
         coin: "USDT",
         amount: parseFloat(depositAmount),
-        tx_hash: txHash.trim()
+        tx_hash: txHash.trim() || `auto_${Date.now()}`  // Auto-generate if not provided
       }, { withCredentials: true });
 
       toast.success(`${depositAmount} USDT credited to your wallet!`);
@@ -182,7 +177,7 @@ const DepositPage = () => {
       const res = await axios.get(`${API}/user/deposit-requests`, { withCredentials: true });
       setDepositRequests(res.data.requests || []);
     } catch (error) {
-      toast.error(error.response?.data?.detail || "Failed to submit request");
+      toast.error(error.response?.data?.detail || "Failed to credit deposit");
     } finally {
       setSubmitting(false);
     }
@@ -318,29 +313,6 @@ const DepositPage = () => {
             </p>
           </div>
 
-          {/* User's Unique Deposit ID */}
-          {depositId && (
-            <div className="mb-4 p-3 rounded-lg bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-yellow-400 mb-1 font-medium">Your Deposit ID (MEMO)</p>
-                  <p className="font-mono text-lg font-bold text-yellow-400">{depositId}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={copyDepositId}
-                  className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
-                  size="sm"
-                >
-                  {copiedMemo ? <CheckCircle size={16} /> : <Copy size={16} />}
-                </Button>
-              </div>
-              <p className="text-xs text-yellow-500/80 mt-2">
-                Include this ID in transaction memo/note
-              </p>
-            </div>
-          )}
-
           {/* Action Buttons */}
           <div className="grid grid-cols-3 gap-3">
             <Button
@@ -382,23 +354,19 @@ const DepositPage = () => {
           <ul className={`space-y-2 text-sm ${textMuted}`}>
             <li className="flex items-start gap-2">
               <span className="text-[#F0B90B] font-bold">1.</span>
-              <span>Copy the deposit address or scan QR code</span>
+              <span>Copy the deposit address above</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[#F0B90B] font-bold">2.</span>
-              <span className="text-yellow-400 font-medium">Copy your Deposit ID: {depositId}</span>
+              <span>Send USDT to this address from your wallet</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[#F0B90B] font-bold">3.</span>
-              <span>Send {selectedNetwork.coins.join("/")} and include Deposit ID in memo/note</span>
+              <span>Click button below and enter amount</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-[#F0B90B] font-bold">4.</span>
-              <span>Submit TX Hash below after sending</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-[#F0B90B] font-bold">5.</span>
-              <span>Your balance will be credited instantly!</span>
+              <span className="text-[#0ECB81] font-bold">4.</span>
+              <span className="text-[#0ECB81] font-medium">Balance credited instantly!</span>
             </li>
           </ul>
         </div>
@@ -421,14 +389,14 @@ const DepositPage = () => {
           className="w-full py-6 bg-[#F0B90B] hover:bg-[#E5AF0A] text-black font-bold text-lg"
           data-testid="submit-deposit-btn"
         >
-          I Have Deposited - Submit Request
+          I Have Deposited - Credit My Wallet
         </Button>
 
-        {/* Deposit Form Modal */}
+        {/* Deposit Form Modal - SIMPLE */}
         {showDepositForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
             <div className={`${cardBg} rounded-2xl p-6 w-full max-w-md border ${border}`}>
-              <h3 className={`text-xl font-bold mb-4 ${text}`}>Submit Deposit Request</h3>
+              <h3 className={`text-xl font-bold mb-4 ${text}`}>Credit Deposit</h3>
               
               <form onSubmit={handleSubmitDeposit} className="space-y-4">
                 <div>
@@ -447,29 +415,14 @@ const DepositPage = () => {
                     type="number"
                     value={depositAmount}
                     onChange={(e) => setDepositAmount(e.target.value)}
-                    placeholder="Enter amount (min $50)"
-                    className={`w-full p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11] text-white' : 'bg-gray-50 text-gray-900'}`}
+                    placeholder="Enter deposited amount"
+                    className={`w-full p-4 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11] text-white' : 'bg-gray-50 text-gray-900'} text-xl font-bold`}
                     min="50"
                     step="0.01"
                     required
                     data-testid="deposit-amount-input"
                   />
-                </div>
-
-                <div>
-                  <label className={`text-sm ${textMuted} mb-2 block`}>Transaction Hash</label>
-                  <input
-                    type="text"
-                    value={txHash}
-                    onChange={(e) => setTxHash(e.target.value)}
-                    placeholder="Paste your transaction hash"
-                    className={`w-full p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11] text-white' : 'bg-gray-50 text-gray-900'} font-mono text-sm`}
-                    required
-                    data-testid="tx-hash-input"
-                  />
-                  <p className={`text-xs ${textMuted} mt-1`}>
-                    Copy the transaction hash from your wallet after sending
-                  </p>
+                  <p className={`text-xs ${textMuted} mt-1`}>Minimum: $50</p>
                 </div>
 
                 <div className="flex gap-3 pt-2">
