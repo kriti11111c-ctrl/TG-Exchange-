@@ -261,11 +261,22 @@ const MarketsPage = () => {
               >
                 {/* Pair & Volume */}
                 <div className="col-span-4">
-                  <div className="flex items-center gap-1">
-                    <span className={`font-semibold ${text}`}>{coin.symbol?.toUpperCase()}</span>
-                    <span className="text-[10px] px-1 py-0.5 rounded bg-[#F0B90B]/20 text-[#F0B90B]">3x</span>
+                  <div className="flex items-center gap-2">
+                    {coin.image ? (
+                      <img src={coin.image} alt={coin.symbol} className="w-6 h-6 rounded-full" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-[#F0B90B] flex items-center justify-center">
+                        <span className="text-black text-xs font-bold">{coin.symbol?.charAt(0).toUpperCase()}</span>
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center gap-1">
+                        <span className={`font-semibold ${text}`}>{coin.symbol?.toUpperCase()}</span>
+                        <span className="text-[10px] px-1 py-0.5 rounded bg-[#F0B90B]/20 text-[#F0B90B]">3x</span>
+                      </div>
+                      <span className={`text-xs ${textMuted}`}>{formatVolume(coin.total_volume)}M</span>
+                    </div>
                   </div>
-                  <span className={`text-xs ${textMuted}`}>{formatVolume(coin.total_volume)}M</span>
                 </div>
 
                 {/* Price */}

@@ -1786,6 +1786,9 @@ const TradePage = () => {
           isDark={isDark} 
         />
         
+        {/* Bottom Spacing for Navigation */}
+        <div className="h-20"></div>
+        
         {/* Bottom Navigation */}
         <BottomNav />
       </main>
