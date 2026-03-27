@@ -189,6 +189,19 @@ const AdminDashboard = () => {
           </Link>
 
           <Link 
+            to="/admin/withdrawals" 
+            className="bg-[#111] border border-[#222] rounded-xl p-4 flex items-center justify-between hover:border-red-500/50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+                <Wallet size={20} className="text-red-400" />
+              </div>
+              <span className="text-white font-medium">Withdrawals</span>
+            </div>
+            <CaretRight size={20} className="text-gray-500" />
+          </Link>
+
+          <Link 
             to="/admin/users" 
             className="bg-[#111] border border-[#222] rounded-xl p-4 flex items-center justify-between hover:border-blue-500/50 transition-colors"
           >

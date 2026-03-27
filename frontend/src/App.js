@@ -24,6 +24,8 @@ import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminDepositsPage from "./pages/AdminDepositsPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
+import AdminWithdrawalsPage from "./pages/AdminWithdrawalsPage";
+import WithdrawPage from "./pages/WithdrawPage";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -249,11 +251,17 @@ function AppRouter() {
           <DepositPage />
         </ProtectedRoute>
       } />
+      <Route path="/withdraw" element={
+        <ProtectedRoute>
+          <WithdrawPage />
+        </ProtectedRoute>
+      } />
       
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminLoginPage />} />
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route path="/admin/deposits" element={<AdminDepositsPage />} />
+      <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
       <Route path="/admin/users" element={<AdminUsersPage />} />
     </Routes>
   );

@@ -422,86 +422,13 @@ const WalletPage = () => {
             <span className={`${text} text-sm`}>Deposit</span>
           </Link>
 
-          {/* Withdraw */}
-          <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
-            <DialogTrigger asChild>
-              <button className="flex flex-col items-center gap-2">
-                <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center ${actionBtnHover} transition-colors`}>
-                  <ArrowUp size={24} className={text} />
-                </div>
-                <span className={`${text} text-sm`}>Withdraw</span>
-              </button>
-            </DialogTrigger>
-            <DialogContent className={`${dialogBg} ${border}`}>
-              <DialogHeader>
-                <DialogTitle className={text}>Withdraw USDT</DialogTitle>
-                <DialogDescription className={textMuted}>
-                  Minimum withdrawal: $10
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleWithdraw} className="space-y-4 mt-4">
-                {/* Withdrawable Balance Info */}
-                {withdrawalLimits && (
-                  <div className={`p-3 rounded-lg ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
-                    <div className="flex justify-between text-sm">
-                      <span className={textMuted}>Total Balance:</span>
-                      <span className={text}>${withdrawalLimits.total_balance?.toFixed(2)}</span>
-                    </div>
-                    {withdrawalLimits.welcome_bonus > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className={textMuted}>Welcome Bonus (locked):</span>
-                        <span className="text-[#F0B90B]">-${withdrawalLimits.welcome_bonus?.toFixed(2)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-sm font-semibold mt-1 pt-1 border-t border-[#2B3139]">
-                      <span className={textMuted}>Withdrawable:</span>
-                      <span className="text-[#0ECB81]">${withdrawalLimits.withdrawable_balance?.toFixed(2)}</span>
-                    </div>
-                  </div>
-                )}
-                <div>
-                  <div className="flex justify-between">
-                    <Label className={textMuted}>Amount (Min: $10)</Label>
-                    <button 
-                      type="button"
-                      onClick={() => setAmount(withdrawalLimits?.withdrawable_balance?.toString() || '0')}
-                      className="text-xs text-[#F0B90B]"
-                    >
-                      Max
-                    </button>
-                  </div>
-                  <Input 
-                    type="number" 
-                    step="0.01" 
-                    min="10"
-                    max={withdrawalLimits?.withdrawable_balance || 0}
-                    value={amount} 
-                    onChange={(e) => setAmount(e.target.value)} 
-                    placeholder="10.00" 
-                    className={`${dialogInputBg} ${border} ${text} mt-1`} 
-                    required 
-                  />
-                </div>
-                <div>
-                  <Label className={textMuted}>Withdrawal Address (USDT TRC20)</Label>
-                  <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Enter TRC20 address" className={`${dialogInputBg} ${border} ${text} font-mono mt-1`} required />
-                </div>
-                <div className={`p-3 rounded-lg ${isDark ? 'bg-[#F6465D]/10' : 'bg-red-50'} border border-[#F6465D]/30`}>
-                  <p className={`text-xs ${textMuted}`}>
-                    <Info size={14} className="inline mr-1" />
-                    Withdrawals are processed within 24 hours. Make sure the address is correct.
-                  </p>
-                </div>
-                <Button 
-                  type="submit" 
-                  disabled={submitting || parseFloat(amount) < 10 || parseFloat(amount) > (withdrawalLimits?.withdrawable_balance || 0)} 
-                  className="w-full bg-[#F6465D] hover:bg-[#F6465D]/90 text-white font-semibold"
-                >
-                  {submitting ? "Processing..." : "Withdraw"}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+          {/* Withdraw - Link to WithdrawPage */}
+          <Link to="/withdraw" className="flex flex-col items-center gap-2">
+            <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center ${actionBtnHover} transition-colors`}>
+              <ArrowUp size={24} className={text} />
+            </div>
+            <span className={`${text} text-sm`}>Withdraw</span>
+          </Link>
 
           {/* Transfer */}
           <Dialog open={transferOpen} onOpenChange={setTransferOpen}>

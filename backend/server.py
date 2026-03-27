@@ -2348,6 +2348,18 @@ class DepositApproval(BaseModel):
     action: str  # "approve" or "reject"
     admin_note: Optional[str] = None
 
+class WithdrawalRequestModel(BaseModel):
+    network: str
+    coin: str
+    amount: float
+    wallet_address: str  # User's external wallet address
+
+class WithdrawalApproval(BaseModel):
+    request_id: str
+    action: str  # "approve" or "reject"
+    tx_hash: Optional[str] = None  # Admin enters TX hash after sending
+    admin_note: Optional[str] = None
+
 # Create admin user on startup
 async def ensure_admin_exists():
     """Create admin user if not exists"""
@@ -3016,6 +3028,198 @@ async def get_admin_stats(admin: dict = Depends(get_current_admin)):
         "today_deposits": today_deposits,
         "today_signups": today_signups
     }
+
+# ================= WITHDRAWAL SYSTEM =================
+
+@api_router.post("/user/withdraw-request")
+async def create_withdrawal_request(withdrawal: WithdrawalRequestModel, user: dict = Depends(get_current_user)):
+    """User submits a withdrawal request"""
+    now = datetime.now(timezone.utc)
+    request_id = f"wd_{uuid.uuid4().hex[:12]}"
+    
+    # Validate minimum withdrawal
+    if withdrawal.amount < 10:
+        raise HTTPException(status_code=400, detail="Minimum withdrawal is $10")
+    
+    # Validate wallet address
+    if not withdrawal.wallet_address or len(withdrawal.wallet_address) < 20:
+        raise HTTPException(status_code=400, detail="Valid wallet address required")
+    
+    # Get user's wallet
+    wallet = await db.wallets.find_one({"user_id": user["user_id"]})
+    if not wallet:
+        raise HTTPException(status_code=400, detail="Wallet not found")
+    
+    coin = withdrawal.coin.lower()
+    current_balance = wallet.get("balances", {}).get(coin, 0)
+    
+    # Check if user has enough balance
+    if current_balance < withdrawal.amount:
+        raise HTTPException(status_code=400, detail=f"Insufficient balance. Available: {current_balance} {coin.upper()}")
+    
+    # Get user details
+    user_data = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    
+    # Create withdrawal request (pending)
+    withdrawal_doc = {
+        "request_id": request_id,
+        "user_id": user["user_id"],
+        "user_email": user_data.get("email", ""),
+        "user_name": user_data.get("name", ""),
+        "network": withdrawal.network,
+        "coin": withdrawal.coin.upper(),
+        "amount": withdrawal.amount,
+        "wallet_address": withdrawal.wallet_address,
+        "status": "pending",
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat()
+    }
+    
+    await db.withdrawal_requests.insert_one(withdrawal_doc)
+    
+    return {
+        "success": True,
+        "request_id": request_id,
+        "message": "Withdrawal request submitted. Admin will process it shortly.",
+        "status": "pending"
+    }
+
+@api_router.get("/user/withdraw-requests")
+async def get_user_withdrawal_requests(user: dict = Depends(get_current_user)):
+    """Get user's withdrawal requests"""
+    requests = await db.withdrawal_requests.find(
+        {"user_id": user["user_id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return {"requests": requests}
+
+@api_router.get("/admin/withdrawal-requests")
+async def get_all_withdrawal_requests(
+    status: Optional[str] = None,
+    admin: dict = Depends(get_current_admin)
+):
+    """Admin: Get all withdrawal requests"""
+    query = {}
+    if status:
+        query["status"] = status
+    
+    requests = await db.withdrawal_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    
+    # Get stats
+    total = await db.withdrawal_requests.count_documents({})
+    pending = await db.withdrawal_requests.count_documents({"status": "pending"})
+    approved = await db.withdrawal_requests.count_documents({"status": "approved"})
+    rejected = await db.withdrawal_requests.count_documents({"status": "rejected"})
+    
+    return {
+        "requests": requests,
+        "stats": {
+            "total": total,
+            "pending": pending,
+            "approved": approved,
+            "rejected": rejected
+        }
+    }
+
+@api_router.post("/admin/withdrawal-requests/action")
+async def process_withdrawal_request(approval: WithdrawalApproval, admin: dict = Depends(get_current_admin)):
+    """Admin: Approve or reject a withdrawal request"""
+    request = await db.withdrawal_requests.find_one({"request_id": approval.request_id})
+    if not request:
+        raise HTTPException(status_code=404, detail="Withdrawal request not found")
+    
+    if request["status"] != "pending":
+        raise HTTPException(status_code=400, detail=f"Request already {request['status']}")
+    
+    now = datetime.now(timezone.utc)
+    
+    if approval.action == "approve":
+        # TX hash is required for approval
+        if not approval.tx_hash or len(approval.tx_hash) < 10:
+            raise HTTPException(status_code=400, detail="Transaction hash required for approval")
+        
+        # Deduct from user's wallet
+        coin = request["coin"].lower()
+        amount = request["amount"]
+        user_id = request["user_id"]
+        
+        # Check balance again
+        wallet = await db.wallets.find_one({"user_id": user_id})
+        current_balance = wallet.get("balances", {}).get(coin, 0) if wallet else 0
+        
+        if current_balance < amount:
+            raise HTTPException(status_code=400, detail=f"User has insufficient balance: {current_balance}")
+        
+        # Deduct from wallet
+        await db.wallets.update_one(
+            {"user_id": user_id},
+            {
+                "$inc": {f"balances.{coin}": -amount},
+                "$set": {"updated_at": now.isoformat()}
+            }
+        )
+        
+        # Create transaction record
+        tx_id = f"tx_{uuid.uuid4().hex[:16]}"
+        tx_doc = {
+            "tx_id": tx_id,
+            "user_id": user_id,
+            "type": "withdrawal",
+            "coin": coin,
+            "amount": -amount,
+            "tx_hash": approval.tx_hash,
+            "network": request["network"],
+            "wallet_address": request["wallet_address"],
+            "status": "completed",
+            "processed_by": admin["admin_id"],
+            "created_at": now.isoformat()
+        }
+        await db.transactions.insert_one(tx_doc)
+        
+        # Update withdrawal request
+        await db.withdrawal_requests.update_one(
+            {"request_id": approval.request_id},
+            {
+                "$set": {
+                    "status": "approved",
+                    "tx_hash": approval.tx_hash,
+                    "processed_by": admin["admin_id"],
+                    "processed_at": now.isoformat(),
+                    "admin_note": approval.admin_note,
+                    "tx_id": tx_id,
+                    "updated_at": now.isoformat()
+                }
+            }
+        )
+        
+        return {
+            "success": True,
+            "message": f"Withdrawal approved. {amount} {coin.upper()} deducted from user.",
+            "tx_id": tx_id
+        }
+    
+    elif approval.action == "reject":
+        await db.withdrawal_requests.update_one(
+            {"request_id": approval.request_id},
+            {
+                "$set": {
+                    "status": "rejected",
+                    "processed_by": admin["admin_id"],
+                    "processed_at": now.isoformat(),
+                    "admin_note": approval.admin_note,
+                    "updated_at": now.isoformat()
+                }
+            }
+        )
+        
+        return {
+            "success": True,
+            "message": "Withdrawal request rejected."
+        }
+    
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action. Use 'approve' or 'reject'")
 
 # Include router
 app.include_router(api_router)
