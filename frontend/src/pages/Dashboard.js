@@ -94,7 +94,7 @@ const Dashboard = () => {
 
   // Quick action items
   const quickActions = [
-    { icon: Vault, label: "Staking", path: "/wallet", color: "text-[#0ECB81]" },
+    { icon: Vault, label: "Staking", path: "/staking", color: "text-[#0ECB81]" },
     { icon: Trophy, label: "VIP Rank", path: "/rank", color: "text-[#9B59B6]" },
     { icon: Users, label: "Referral", path: "/referral", color: "text-[#F0B90B]" },
     { icon: Robot, label: "Trading Bots", path: "/trade", color: "text-[#3498DB]" },

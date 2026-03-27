@@ -26,6 +26,7 @@ import AdminDepositsPage from "./pages/AdminDepositsPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminWithdrawalsPage from "./pages/AdminWithdrawalsPage";
 import WithdrawPage from "./pages/WithdrawPage";
+import StakingPage from "./pages/StakingPage";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -254,6 +255,11 @@ function AppRouter() {
       <Route path="/withdraw" element={
         <ProtectedRoute>
           <WithdrawPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/staking" element={
+        <ProtectedRoute>
+          <StakingPage />
         </ProtectedRoute>
       } />
       
