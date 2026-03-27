@@ -4,6 +4,9 @@ import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate, Link 
 import axios from "axios";
 import { Toaster, toast } from "sonner";
 
+// Components
+import LoadingPage from "./components/LoadingPage";
+
 // Pages
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
@@ -301,6 +304,24 @@ function App() {
 
 function AppContent() {
   const { isDark } = useTheme();
+  const [showLoading, setShowLoading] = useState(true);
+  
+  // Show loading page on first visit
+  useEffect(() => {
+    const hasVisited = sessionStorage.getItem('tg_visited');
+    if (hasVisited) {
+      setShowLoading(false);
+    }
+  }, []);
+
+  const handleLoadingComplete = () => {
+    sessionStorage.setItem('tg_visited', 'true');
+    setShowLoading(false);
+  };
+
+  if (showLoading) {
+    return <LoadingPage onComplete={handleLoadingComplete} />;
+  }
   
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-[#0B0E11]' : 'bg-[#FAFAFA]'}`}>
