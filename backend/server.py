@@ -1001,17 +1001,13 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
     
-    # Check balance (excluding welcome bonus for withdrawals)
+    # Check balance - ALL FUNDS WITHDRAWABLE (no locking)
     current_balance = wallet["balances"].get(coin, 0)
-    welcome_bonus = wallet.get("welcome_bonus", 0) if coin == "usdt" else 0
     
-    # User can only withdraw their deposited/traded funds, not welcome bonus
-    withdrawable_balance = current_balance - welcome_bonus
-    
-    if withdrawable_balance < withdraw.amount:
+    if current_balance < withdraw.amount:
         raise HTTPException(
             status_code=400, 
-            detail=f"Insufficient withdrawable balance. Available: ${withdrawable_balance:.2f} (Welcome bonus is not withdrawable)"
+            detail=f"Insufficient balance. Available: ${current_balance:.2f}"
         )
     
     now = datetime.now(timezone.utc)
@@ -1051,20 +1047,15 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
 
 @api_router.get("/wallet/withdrawal-limits")
 async def get_withdrawal_limits(user: dict = Depends(get_current_user)):
-    """Get withdrawal limits"""
-    # Check and expire welcome bonus first
-    await check_and_expire_welcome_bonus(user["user_id"])
-    
+    """Get withdrawal limits - ALL FUNDS WITHDRAWABLE"""
     wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
     usdt_balance = wallet["balances"].get("usdt", 0) if wallet else 0
-    welcome_bonus = wallet.get("welcome_bonus", 0) if wallet else 0
-    withdrawable = max(0, usdt_balance - welcome_bonus)
     
     return {
         "min_withdrawal": MIN_WITHDRAWAL,
         "total_balance": usdt_balance,
-        "welcome_bonus": welcome_bonus,
-        "withdrawable_balance": withdrawable,
+        "welcome_bonus": 0,  # No locked funds
+        "withdrawable_balance": usdt_balance,  # Full balance withdrawable
         "currency": "USDT"
     }
 
