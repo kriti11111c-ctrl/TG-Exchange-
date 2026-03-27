@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useTheme, API } from "../App";
 import axios from "axios";
 import { toast } from "sonner";
@@ -311,12 +311,13 @@ const FuturesPage = () => {
             ))}
           </div>
           
-          <button 
+          <Link 
+            to="/trade-history"
             className={`p-2 rounded-lg ${textMuted} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'}`}
             title="History"
           >
             <ClockCounterClockwise size={20} />
-          </button>
+          </Link>
         </div>
       </div>
 
