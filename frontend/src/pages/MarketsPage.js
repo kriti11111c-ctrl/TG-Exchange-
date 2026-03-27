@@ -263,10 +263,18 @@ const MarketsPage = () => {
                 <div className="col-span-4">
                   <div className="flex items-center gap-2">
                     {coin.image ? (
-                      <img src={coin.image} alt={coin.symbol} className="w-6 h-6 rounded-full" />
+                      <img 
+                        src={coin.image} 
+                        alt={coin.symbol} 
+                        className="w-8 h-8 rounded-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.parentElement.innerHTML = `<div class="w-8 h-8 rounded-full bg-[#F0B90B] flex items-center justify-center"><span class="text-black font-bold">${coin.symbol?.charAt(0).toUpperCase()}</span></div>`;
+                        }}
+                      />
                     ) : (
-                      <div className="w-6 h-6 rounded-full bg-[#F0B90B] flex items-center justify-center">
-                        <span className="text-black text-xs font-bold">{coin.symbol?.charAt(0).toUpperCase()}</span>
+                      <div className="w-8 h-8 rounded-full bg-[#F0B90B] flex items-center justify-center">
+                        <span className="text-black font-bold">{coin.symbol?.charAt(0).toUpperCase()}</span>
                       </div>
                     )}
                     <div>

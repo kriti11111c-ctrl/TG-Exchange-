@@ -21,7 +21,7 @@ const NETWORKS = [
     name: "BNB Smart Chain (BEP20)", 
     shortName: "BSC",
     address: "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
-    icon: "https://cryptologos.cc/logos/bnb-bnb-logo.png",
+    icon: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
     color: "#F0B90B"
   },
   { 
@@ -29,7 +29,7 @@ const NETWORKS = [
     name: "TRON (TRC20)", 
     shortName: "TRC20",
     address: "TDqncKUgq4PpCpfZwsXeupQ5SnRKEsG9qV",
-    icon: "https://cryptologos.cc/logos/tron-trx-logo.png",
+    icon: "https://assets.coingecko.com/coins/images/1094/small/tron-logo.png",
     color: "#FF0013"
   },
   { 
@@ -37,7 +37,7 @@ const NETWORKS = [
     name: "Ethereum (ERC20)", 
     shortName: "ERC20",
     address: "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
-    icon: "https://cryptologos.cc/logos/ethereum-eth-logo.png",
+    icon: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
     color: "#627EEA"
   },
   { 
@@ -45,7 +45,7 @@ const NETWORKS = [
     name: "Solana", 
     shortName: "SOL",
     address: "6FQY4KqjyBUELJynQZXfgcC2zseURQQASBY5rJsSUHmR",
-    icon: "https://cryptologos.cc/logos/solana-sol-logo.png",
+    icon: "https://assets.coingecko.com/coins/images/4128/small/solana.png",
     color: "#00FFA3"
   },
   { 
@@ -53,7 +53,7 @@ const NETWORKS = [
     name: "Polygon", 
     shortName: "MATIC",
     address: "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
-    icon: "https://cryptologos.cc/logos/polygon-matic-logo.png",
+    icon: "https://assets.coingecko.com/coins/images/4713/small/polygon.png",
     color: "#8247E5"
   }
 ];
