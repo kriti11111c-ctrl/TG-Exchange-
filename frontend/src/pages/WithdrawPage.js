@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "../context/ThemeContext";
-import { API } from "../App";
+import { useTheme, API } from "../App";
 import axios from "axios";
 import { 
   ArrowLeft, 

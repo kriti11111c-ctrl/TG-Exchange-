@@ -510,10 +510,19 @@ async def get_current_user(request: Request) -> dict:
 
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(user_data: UserCreate, response: Response):
+    # REFERRAL CODE IS REQUIRED
+    if not user_data.referral_code or not user_data.referral_code.strip():
+        raise HTTPException(status_code=400, detail="Referral code is required to register")
+    
     # Check if user exists
     existing = await db.users.find_one({"email": user_data.email}, {"_id": 0})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Validate referral code exists
+    referrer_user = await db.users.find_one({"referral_code": user_data.referral_code.strip().upper()}, {"_id": 0})
+    if not referrer_user:
+        raise HTTPException(status_code=400, detail="Invalid referral code. Please enter a valid referral code.")
     
     user_id = f"user_{uuid.uuid4().hex[:12]}"
     referral_code = f"CV{uuid.uuid4().hex[:8].upper()}"  # Generate unique referral code
@@ -523,13 +532,8 @@ async def register(user_data: UserCreate, response: Response):
     # Welcome bonus expires after 5 days
     welcome_bonus_expires = now + timedelta(days=WELCOME_BONUS_DAYS)
     
-    # Find referrer if referral code provided
-    referrer_id = None
-    referrer_user = None
-    if user_data.referral_code:
-        referrer_user = await db.users.find_one({"referral_code": user_data.referral_code}, {"_id": 0})
-        if referrer_user:
-            referrer_id = referrer_user["user_id"]
+    # Referrer is already validated above
+    referrer_id = referrer_user["user_id"]
     
     user_doc = {
         "user_id": user_id,
@@ -547,30 +551,29 @@ async def register(user_data: UserCreate, response: Response):
     
     await db.users.insert_one(user_doc)
     
-    # If referred by someone, create referral chain (10 levels)
-    if referrer_id:
-        await create_referral_chain(user_id, referrer_id, now)
-        
-        # Give 5% bonus ONLY to upline (referrer)
-        referral_bonus = WELCOME_BONUS_AMOUNT * DIRECT_REFERRAL_BONUS_PERCENT  # $10 (5% of $200)
-        
-        # Add bonus to referrer's wallet
-        await db.wallets.update_one(
-            {"user_id": referrer_id},
-            {"$inc": {"balances.usdt": referral_bonus}}
-        )
-        
-        # Record bonus transaction for referrer
-        await db.transactions.insert_one({
-            "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
-            "user_id": referrer_id,
-            "type": "referral_bonus",
-            "coin": "usdt",
-            "amount": referral_bonus,
-            "note": f"Direct referral bonus from {user_data.name}",
-            "status": "completed",
-            "created_at": now.isoformat()
-        })
+    # Create referral chain (10 levels) - referrer is always present now
+    await create_referral_chain(user_id, referrer_id, now)
+    
+    # Give 5% bonus ONLY to upline (referrer)
+    referral_bonus = WELCOME_BONUS_AMOUNT * DIRECT_REFERRAL_BONUS_PERCENT  # $10 (5% of $200)
+    
+    # Add bonus to referrer's wallet
+    await db.wallets.update_one(
+        {"user_id": referrer_id},
+        {"$inc": {"balances.usdt": referral_bonus}}
+    )
+    
+    # Record bonus transaction for referrer
+    await db.transactions.insert_one({
+        "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+        "user_id": referrer_id,
+        "type": "referral_bonus",
+        "coin": "usdt",
+        "amount": referral_bonus,
+        "note": f"Direct referral bonus from {user_data.name}",
+        "status": "completed",
+        "created_at": now.isoformat()
+    })
     
     # Create wallet with welcome bonus only (no extra bonus for new user)
     wallet_doc = {
