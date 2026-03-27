@@ -177,11 +177,16 @@ const DepositPage = () => {
           <p className={`text-sm ${textMuted} mb-2`}>Select Network</p>
           <button
             onClick={() => setShowNetworkSelect(!showNetworkSelect)}
-            className={`w-full flex items-center justify-between p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}
+            className={`w-full flex items-center justify-between p-3 rounded-lg border-2 ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}
           >
             <div className="flex items-center gap-3">
-              <img src={selectedNetwork.icon} alt="" className="w-6 h-6 rounded-full" />
-              <span className={text}>{selectedNetwork.name}</span>
+              <div 
+                className="w-8 h-8 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: `${selectedNetwork.color}20` }}
+              >
+                <img src={selectedNetwork.icon} alt={selectedNetwork.name} className="w-5 h-5" />
+              </div>
+              <span className={`font-medium ${text}`}>{selectedNetwork.name}</span>
             </div>
             <CaretDown size={20} className={textMuted} />
           </button>
@@ -195,10 +200,15 @@ const DepositPage = () => {
                     setSelectedNetwork(network);
                     setShowNetworkSelect(false);
                   }}
-                  className={`w-full flex items-center gap-3 p-3 ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'} ${selectedNetwork.id === network.id ? (isDark ? 'bg-[#2B3139]' : 'bg-gray-100') : ''}`}
+                  className={`w-full flex items-center gap-3 p-4 border-b last:border-b-0 ${border} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'} ${selectedNetwork.id === network.id ? (isDark ? 'bg-[#2B3139]' : 'bg-gray-100') : ''}`}
                 >
-                  <img src={network.icon} alt="" className="w-6 h-6 rounded-full" />
-                  <span className={text}>{network.name}</span>
+                  <div 
+                    className="w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: `${network.color}20` }}
+                  >
+                    <img src={network.icon} alt={network.name} className="w-5 h-5" />
+                  </div>
+                  <span className={`font-medium ${text}`}>{network.name}</span>
                 </button>
               ))}
             </div>

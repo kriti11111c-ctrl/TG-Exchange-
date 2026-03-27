@@ -16,11 +16,11 @@ import { Button } from "../components/ui/button";
 import { toast } from "sonner";
 
 const NETWORKS = [
-  { id: "bep20", name: "BNB Smart Chain", shortName: "BSC (BEP20)", icon: "https://cryptologos.cc/logos/bnb-bnb-logo.png" },
-  { id: "trc20", name: "Tron Network", shortName: "TRC20", icon: "https://cryptologos.cc/logos/tron-trx-logo.png" },
-  { id: "erc20", name: "Ethereum", shortName: "ERC20", icon: "https://cryptologos.cc/logos/ethereum-eth-logo.png" },
-  { id: "solana", name: "Solana", shortName: "SOL", icon: "https://cryptologos.cc/logos/solana-sol-logo.png" },
-  { id: "polygon", name: "Polygon", shortName: "MATIC", icon: "https://cryptologos.cc/logos/polygon-matic-logo.png" }
+  { id: "bep20", name: "BNB Smart Chain", shortName: "BSC (BEP20)", icon: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png", color: "#F0B90B" },
+  { id: "trc20", name: "Tron Network", shortName: "TRC20", icon: "https://assets.coingecko.com/coins/images/1094/small/tron-logo.png", color: "#FF0013" },
+  { id: "erc20", name: "Ethereum", shortName: "ERC20", icon: "https://assets.coingecko.com/coins/images/279/small/ethereum.png", color: "#627EEA" },
+  { id: "solana", name: "Solana", shortName: "SOL", icon: "https://assets.coingecko.com/coins/images/4128/small/solana.png", color: "#00FFA3" },
+  { id: "polygon", name: "Polygon", shortName: "MATIC", icon: "https://assets.coingecko.com/coins/images/4713/small/polygon.png", color: "#8247E5" }
 ];
 
 const WithdrawPage = () => {
@@ -153,11 +153,16 @@ const WithdrawPage = () => {
           <p className={`text-sm ${textMuted} mb-2`}>Select Network</p>
           <button
             onClick={() => setShowNetworkSelect(!showNetworkSelect)}
-            className={`w-full flex items-center justify-between p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}
+            className={`w-full flex items-center justify-between p-3 rounded-lg border-2 ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}
           >
             <div className="flex items-center gap-3">
-              <img src={selectedNetwork.icon} alt="" className="w-6 h-6 rounded-full" />
-              <span className={text}>{selectedNetwork.shortName}</span>
+              <div 
+                className="w-8 h-8 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: `${selectedNetwork.color}20` }}
+              >
+                <img src={selectedNetwork.icon} alt={selectedNetwork.name} className="w-5 h-5" />
+              </div>
+              <span className={`font-medium ${text}`}>{selectedNetwork.shortName}</span>
             </div>
             <CaretDown size={20} className={textMuted} />
           </button>
@@ -171,10 +176,15 @@ const WithdrawPage = () => {
                     setSelectedNetwork(network);
                     setShowNetworkSelect(false);
                   }}
-                  className={`w-full flex items-center gap-3 p-3 ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'} ${selectedNetwork.id === network.id ? (isDark ? 'bg-[#2B3139]' : 'bg-gray-100') : ''}`}
+                  className={`w-full flex items-center gap-3 p-4 border-b last:border-b-0 ${border} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'} ${selectedNetwork.id === network.id ? (isDark ? 'bg-[#2B3139]' : 'bg-gray-100') : ''}`}
                 >
-                  <img src={network.icon} alt="" className="w-6 h-6 rounded-full" />
-                  <span className={text}>{network.name}</span>
+                  <div 
+                    className="w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: `${network.color}20` }}
+                  >
+                    <img src={network.icon} alt={network.name} className="w-5 h-5" />
+                  </div>
+                  <span className={`font-medium ${text}`}>{network.name}</span>
                 </button>
               ))}
             </div>
