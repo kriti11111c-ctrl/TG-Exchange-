@@ -155,16 +155,26 @@ const DepositPage = () => {
       return;
     }
 
+    if (!txHash || txHash.trim().length < 10) {
+      toast.error("Please enter a valid transaction hash");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const response = await axios.post(`${API}/user/deposit-request`, {
         network: selectedNetwork.id,
         coin: "USDT",
         amount: parseFloat(depositAmount),
-        tx_hash: txHash.trim() || `auto_${Date.now()}`  // Auto-generate if not provided
+        tx_hash: txHash.trim()
       }, { withCredentials: true });
 
-      toast.success(`${depositAmount} USDT credited to your wallet!`);
+      if (response.data.blockchain_verified) {
+        toast.success(`${response.data.amount_credited} USDT verified and credited!`);
+      } else {
+        toast.success("Deposit submitted! Admin will verify shortly.");
+      }
+      
       setShowDepositForm(false);
       setDepositAmount("");
       setTxHash("");
@@ -177,7 +187,7 @@ const DepositPage = () => {
       const res = await axios.get(`${API}/user/deposit-requests`, { withCredentials: true });
       setDepositRequests(res.data.requests || []);
     } catch (error) {
-      toast.error(error.response?.data?.detail || "Failed to credit deposit");
+      toast.error(error.response?.data?.detail || "Failed to submit deposit");
     } finally {
       setSubmitting(false);
     }
@@ -358,15 +368,19 @@ const DepositPage = () => {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[#F0B90B] font-bold">2.</span>
-              <span>Send USDT to this address from your wallet</span>
+              <span>Send USDT from your wallet to this address</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[#F0B90B] font-bold">3.</span>
-              <span>Click button below and enter amount</span>
+              <span>Copy Transaction Hash from your wallet</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-[#0ECB81] font-bold">4.</span>
-              <span className="text-[#0ECB81] font-medium">Balance credited instantly!</span>
+              <span className="text-[#F0B90B] font-bold">4.</span>
+              <span>Click button below, enter Amount & TX Hash</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-[#0ECB81] font-bold">5.</span>
+              <span className="text-[#0ECB81] font-medium">System verifies on blockchain → Balance credited!</span>
             </li>
           </ul>
         </div>
@@ -423,6 +437,22 @@ const DepositPage = () => {
                     data-testid="deposit-amount-input"
                   />
                   <p className={`text-xs ${textMuted} mt-1`}>Minimum: $50</p>
+                </div>
+
+                <div>
+                  <label className={`text-sm ${textMuted} mb-2 block`}>Transaction Hash *</label>
+                  <input
+                    type="text"
+                    value={txHash}
+                    onChange={(e) => setTxHash(e.target.value)}
+                    placeholder="Paste transaction hash from your wallet"
+                    className={`w-full p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11] text-white' : 'bg-gray-50 text-gray-900'} font-mono text-sm`}
+                    required
+                    data-testid="tx-hash-input"
+                  />
+                  <p className={`text-xs text-[#0ECB81] mt-1`}>
+                    System will automatically verify your transaction on blockchain
+                  </p>
                 </div>
 
                 <div className="flex gap-3 pt-2">

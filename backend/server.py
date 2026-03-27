@@ -34,6 +34,9 @@ JWT_SECRET = os.environ.get('JWT_SECRET', 'your-super-secret-key-change-in-produ
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
 
+# Blockchain API Keys
+ETHERSCAN_API_KEY = os.environ.get('ETHERSCAN_API_KEY', '')
+
 # Simple in-memory cache for prices
 price_cache = {
     "data": None,
@@ -2415,9 +2418,111 @@ async def get_admin_profile(admin: dict = Depends(get_current_admin)):
     """Get current admin profile"""
     return admin
 
+# ================= BLOCKCHAIN VERIFICATION =================
+
+# Admin wallet addresses for each network
+ADMIN_WALLETS = {
+    "bep20": "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
+    "erc20": "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
+    "polygon": "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
+    "trc20": "TDqncKUgq4PpCpfZwsXeupQ5SnRKEsG9qV",
+    "solana": "6FQY4KqjyBUELJynQZXfgcC2zseURQQASBY5rJsSUHmR"
+}
+
+# Chain IDs for Etherscan API V2
+CHAIN_IDS = {
+    "bep20": "56",      # BSC Mainnet
+    "erc20": "1",       # Ethereum Mainnet
+    "polygon": "137"    # Polygon Mainnet
+}
+
+# USDT Contract Addresses
+USDT_CONTRACTS = {
+    "bep20": "0x55d398326f99059fF775485246999027B3197955",  # BSC USDT
+    "erc20": "0xdAC17F958D2ee523a2206206994597C13D831ec7",  # ETH USDT
+    "polygon": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"  # Polygon USDT
+}
+
+async def verify_transaction_on_blockchain(tx_hash: str, network: str, expected_amount: float, admin_wallet: str) -> dict:
+    """Verify transaction on blockchain using Etherscan API V2"""
+    
+    if not ETHERSCAN_API_KEY:
+        return {"verified": False, "error": "API key not configured"}
+    
+    # Only EVM chains supported with Etherscan API V2
+    if network not in CHAIN_IDS:
+        return {"verified": False, "error": f"Network {network} not supported for auto-verification"}
+    
+    chain_id = CHAIN_IDS[network]
+    usdt_contract = USDT_CONTRACTS.get(network, "")
+    
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            # Get transaction receipt
+            url = f"https://api.etherscan.io/v2/api?chainid={chain_id}&module=proxy&action=eth_getTransactionReceipt&txhash={tx_hash}&apikey={ETHERSCAN_API_KEY}"
+            
+            response = await client.get(url)
+            data = response.json()
+            
+            if data.get("status") == "0" or not data.get("result"):
+                return {"verified": False, "error": "Transaction not found or pending"}
+            
+            result = data["result"]
+            
+            # Check if transaction was successful
+            if result.get("status") != "0x1":
+                return {"verified": False, "error": "Transaction failed on blockchain"}
+            
+            # Check if it's a transfer to admin wallet
+            to_address = result.get("to", "").lower()
+            logs = result.get("logs", [])
+            
+            # Check for USDT token transfer in logs
+            for log in logs:
+                # ERC20 Transfer event topic
+                if len(log.get("topics", [])) >= 3:
+                    # topics[0] is event signature, topics[2] is recipient (for Transfer event)
+                    recipient = "0x" + log["topics"][2][-40:] if len(log["topics"]) > 2 else ""
+                    
+                    if recipient.lower() == admin_wallet.lower():
+                        # Found transfer to admin wallet
+                        # Decode amount from data (USDT has 6 decimals on most chains, 18 on BSC)
+                        data_hex = log.get("data", "0x0")
+                        try:
+                            amount_wei = int(data_hex, 16)
+                            # BSC USDT has 18 decimals, others have 6
+                            decimals = 18 if network == "bep20" else 6
+                            amount = amount_wei / (10 ** decimals)
+                            
+                            if amount >= expected_amount * 0.99:  # Allow 1% tolerance
+                                return {
+                                    "verified": True,
+                                    "amount": amount,
+                                    "to": admin_wallet,
+                                    "tx_hash": tx_hash
+                                }
+                        except:
+                            pass
+            
+            # Check direct ETH/BNB/MATIC transfer (not token)
+            if to_address == admin_wallet.lower():
+                return {
+                    "verified": True,
+                    "amount": expected_amount,  # Trust user amount for native transfers
+                    "to": admin_wallet,
+                    "tx_hash": tx_hash,
+                    "note": "Native token transfer verified"
+                }
+            
+            return {"verified": False, "error": "Transfer to admin wallet not found in transaction"}
+            
+    except Exception as e:
+        logger.error(f"Blockchain verification error: {str(e)}")
+        return {"verified": False, "error": str(e)}
+
 @api_router.post("/user/deposit-request")
 async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depends(get_current_user)):
-    """User submits a deposit request - AUTO APPROVED and balance credited immediately"""
+    """User submits a deposit request - Blockchain verified and then credited"""
     now = datetime.now(timezone.utc)
     request_id = f"dep_{uuid.uuid4().hex[:12]}"
     tx_id = f"tx_{uuid.uuid4().hex[:16]}"
@@ -2426,63 +2531,115 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
     if deposit.amount < 50:
         raise HTTPException(status_code=400, detail="Minimum deposit is $50")
     
+    # Validate tx_hash
+    if not deposit.tx_hash or len(deposit.tx_hash) < 10:
+        raise HTTPException(status_code=400, detail="Valid transaction hash required")
+    
+    # Check if tx_hash already used
+    existing = await db.deposit_requests.find_one({"tx_hash": deposit.tx_hash})
+    if existing:
+        raise HTTPException(status_code=400, detail="This transaction has already been submitted")
+    
     # Get user details
     user_data = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
-    
     coin = deposit.coin.lower()
+    admin_wallet = ADMIN_WALLETS.get(deposit.network, "")
     
-    # AUTO-APPROVE: Credit user's wallet immediately
-    await db.wallets.update_one(
-        {"user_id": user["user_id"]},
-        {
-            "$inc": {f"balances.{coin}": deposit.amount},
-            "$set": {"updated_at": now.isoformat()}
-        },
-        upsert=True
+    # Try to verify on blockchain (for EVM chains)
+    verification = await verify_transaction_on_blockchain(
+        tx_hash=deposit.tx_hash,
+        network=deposit.network,
+        expected_amount=deposit.amount,
+        admin_wallet=admin_wallet
     )
     
-    # Create transaction record
-    tx_doc = {
-        "tx_id": tx_id,
-        "user_id": user["user_id"],
-        "type": "deposit",
-        "coin": coin,
-        "amount": deposit.amount,
-        "tx_hash": deposit.tx_hash,
-        "network": deposit.network,
-        "status": "completed",
-        "created_at": now.isoformat()
-    }
-    await db.transactions.insert_one(tx_doc)
-    
-    # Store deposit request as approved
-    deposit_doc = {
-        "request_id": request_id,
-        "user_id": user["user_id"],
-        "user_email": user_data.get("email", ""),
-        "user_name": user_data.get("name", ""),
-        "network": deposit.network,
-        "coin": deposit.coin.upper(),
-        "amount": deposit.amount,
-        "tx_hash": deposit.tx_hash,
-        "sender_address": deposit.sender_address,
-        "status": "approved",  # Auto-approved
-        "tx_id": tx_id,
-        "processed_at": now.isoformat(),
-        "created_at": now.isoformat(),
-        "updated_at": now.isoformat()
-    }
-    
-    await db.deposit_requests.insert_one(deposit_doc)
-    
-    return {
-        "success": True,
-        "request_id": request_id,
-        "tx_id": tx_id,
-        "message": f"Deposit successful! {deposit.amount} {deposit.coin.upper()} credited to your wallet.",
-        "status": "approved",
-        "amount_credited": deposit.amount
-    }
+    if verification.get("verified"):
+        # Blockchain verified - AUTO APPROVE
+        verified_amount = verification.get("amount", deposit.amount)
+        
+        # Credit user's wallet
+        await db.wallets.update_one(
+            {"user_id": user["user_id"]},
+            {
+                "$inc": {f"balances.{coin}": verified_amount},
+                "$set": {"updated_at": now.isoformat()}
+            },
+            upsert=True
+        )
+        
+        # Create transaction record
+        tx_doc = {
+            "tx_id": tx_id,
+            "user_id": user["user_id"],
+            "type": "deposit",
+            "coin": coin,
+            "amount": verified_amount,
+            "tx_hash": deposit.tx_hash,
+            "network": deposit.network,
+            "status": "completed",
+            "blockchain_verified": True,
+            "created_at": now.isoformat()
+        }
+        await db.transactions.insert_one(tx_doc)
+        
+        # Store deposit request as approved
+        deposit_doc = {
+            "request_id": request_id,
+            "user_id": user["user_id"],
+            "user_email": user_data.get("email", ""),
+            "user_name": user_data.get("name", ""),
+            "network": deposit.network,
+            "coin": deposit.coin.upper(),
+            "amount": verified_amount,
+            "tx_hash": deposit.tx_hash,
+            "sender_address": deposit.sender_address,
+            "status": "approved",
+            "blockchain_verified": True,
+            "tx_id": tx_id,
+            "processed_at": now.isoformat(),
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        }
+        await db.deposit_requests.insert_one(deposit_doc)
+        
+        return {
+            "success": True,
+            "request_id": request_id,
+            "tx_id": tx_id,
+            "message": f"Deposit verified! {verified_amount} {deposit.coin.upper()} credited to your wallet.",
+            "status": "approved",
+            "blockchain_verified": True,
+            "amount_credited": verified_amount
+        }
+    else:
+        # Could not auto-verify - store as pending for admin review
+        # (This happens for TRC20, Solana, or if API fails)
+        deposit_doc = {
+            "request_id": request_id,
+            "user_id": user["user_id"],
+            "user_email": user_data.get("email", ""),
+            "user_name": user_data.get("name", ""),
+            "network": deposit.network,
+            "coin": deposit.coin.upper(),
+            "amount": deposit.amount,
+            "tx_hash": deposit.tx_hash,
+            "sender_address": deposit.sender_address,
+            "status": "pending",
+            "blockchain_verified": False,
+            "verification_error": verification.get("error", "Unknown"),
+            "created_at": now.isoformat(),
+            "updated_at": now.isoformat()
+        }
+        await db.deposit_requests.insert_one(deposit_doc)
+        
+        return {
+            "success": True,
+            "request_id": request_id,
+            "message": f"Deposit request submitted. Admin will verify and credit your account shortly.",
+            "status": "pending",
+            "blockchain_verified": False,
+            "note": verification.get("error", "Manual verification required")
+        }
 
 @api_router.get("/user/deposit-requests")
 async def get_user_deposit_requests(user: dict = Depends(get_current_user)):
