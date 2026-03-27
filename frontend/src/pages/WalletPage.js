@@ -48,43 +48,7 @@ import {
 } from "../components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Progress } from "../components/ui/progress";
-
-// Navigation Component (Bottom Nav for mobile feel)
-const BottomNav = ({ isDark }) => {
-  const bg = isDark ? 'bg-[#0B0E11]' : 'bg-white';
-  const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
-  const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
-  const textHover = isDark ? 'hover:text-white' : 'hover:text-gray-900';
-
-  return (
-    <nav className={`fixed bottom-0 left-0 right-0 ${bg} border-t ${border} z-50`}>
-      <div className="flex items-center justify-around py-2">
-        <Link to="/dashboard" className={`flex flex-col items-center gap-1 ${textMuted} ${textHover}`}>
-          <Vault size={24} />
-          <span className="text-xs">Home</span>
-        </Link>
-        <Link to="/trade" className={`flex flex-col items-center gap-1 ${textMuted} ${textHover}`}>
-          <ChartLineUp size={24} />
-          <span className="text-xs">Markets</span>
-        </Link>
-        <Link to="/trade" className="flex flex-col items-center gap-1">
-          <div className="w-12 h-12 bg-[#F0B90B] rounded-full flex items-center justify-center -mt-4">
-            <ArrowsLeftRight size={24} className="text-black" />
-          </div>
-          <span className="text-xs text-[#F0B90B]">Trade</span>
-        </Link>
-        <Link to="/transactions" className={`flex flex-col items-center gap-1 ${textMuted} ${textHover}`}>
-          <Clock size={24} />
-          <span className="text-xs">Futures</span>
-        </Link>
-        <Link to="/wallet" className="flex flex-col items-center gap-1 text-[#F0B90B]">
-          <WalletIcon size={24} />
-          <span className="text-xs">Assets</span>
-        </Link>
-      </div>
-    </nav>
-  );
-};
+import BottomNav from "../components/BottomNav";
 
 // Top Header
 const WalletHeader = ({ user, logout, isDark, toggleTheme }) => {
@@ -618,7 +582,7 @@ const WalletPage = () => {
         </div>
       </div>
 
-      <BottomNav isDark={isDark} />
+      <BottomNav />
     </div>
   );
 };

@@ -28,6 +28,7 @@ import {
   Trophy
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
+import BottomNav from "../components/BottomNav";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -374,30 +375,7 @@ const Dashboard = () => {
       </div>
 
       {/* Bottom Navigation - 5 Tabs: Home, Market, Trade, Futures, Assets */}
-      <div className={`fixed bottom-0 left-0 right-0 ${cardBg} border-t ${border} px-2 py-2 flex justify-around items-center z-50`}>
-        <Link to="/dashboard" className="flex flex-col items-center py-1">
-          <ChartLineUp size={22} className="text-[#F0B90B]" weight="fill" />
-          <span className="text-[10px] text-[#F0B90B] mt-0.5">Home</span>
-        </Link>
-        <Link to="/trade" className="flex flex-col items-center py-1">
-          <ArrowsLeftRight size={22} className={textMuted} />
-          <span className={`text-[10px] ${textMuted} mt-0.5`}>Market</span>
-        </Link>
-        <Link to="/trade" className="flex flex-col items-center py-1">
-          <div className="w-12 h-12 rounded-full bg-[#F0B90B] flex items-center justify-center -mt-6 shadow-lg">
-            <Swap size={24} className="text-black" weight="bold" />
-          </div>
-          <span className={`text-[10px] ${textMuted} mt-0.5`}>Trade</span>
-        </Link>
-        <Link to="/trade?futures=true" className="flex flex-col items-center py-1">
-          <TrendUp size={22} className={textMuted} />
-          <span className={`text-[10px] ${textMuted} mt-0.5`}>Futures</span>
-        </Link>
-        <Link to="/wallet" className="flex flex-col items-center py-1">
-          <Wallet size={22} className={textMuted} />
-          <span className={`text-[10px] ${textMuted} mt-0.5`}>Assets</span>
-        </Link>
-      </div>
+      <BottomNav />
     </div>
   );
 };
