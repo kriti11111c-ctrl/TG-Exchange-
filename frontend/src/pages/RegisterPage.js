@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth, API, useTheme } from "../App";
 import axios from "axios";
 import { toast } from "sonner";
-import { Eye, EyeSlash, GoogleLogo, TelegramLogo, Gift, Sun, Moon } from "@phosphor-icons/react";
+import { Eye, EyeSlash, TelegramLogo, Gift, Sun, Moon } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 
@@ -64,18 +64,6 @@ const RegisterPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleGoogleLogin = () => {
-    if (!referralCode.trim()) {
-      toast.error("Please enter Referral Code first");
-      return;
-    }
-    // Store referral code for after Google auth
-    localStorage.setItem("pending_referral_code", referralCode);
-    const redirectUrl = window.location.origin + '/dashboard';
-    const appName = encodeURIComponent('TG Exchange');
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}&app_name=${appName}`;
   };
 
   // Theme colors
@@ -278,16 +266,8 @@ const RegisterPage = () => {
           <div className={`flex-1 h-px ${dividerBg}`}></div>
         </div>
 
-        {/* Social Login Buttons */}
+        {/* Social Login - Telegram only */}
         <div className="flex justify-center gap-6">
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            className={`w-14 h-14 rounded-full border ${socialBorder} flex items-center justify-center transition-colors`}
-            data-testid="google-register-btn"
-          >
-            <GoogleLogo size={28} className={text} />
-          </button>
           <button
             type="button"
             className={`w-14 h-14 rounded-full border ${socialBorder} flex items-center justify-center transition-colors`}

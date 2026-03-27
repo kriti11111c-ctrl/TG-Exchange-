@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth, API, useTheme } from "../App";
 import axios from "axios";
 import { toast } from "sonner";
-import { Vault, EnvelopeSimple, Lock, GoogleLogo, ShieldCheck, Sun, Moon } from "@phosphor-icons/react";
+import { Vault, EnvelopeSimple, Lock, ShieldCheck, Sun, Moon } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -60,13 +60,6 @@ const LoginPage = () => {
     }
   };
 
-  const handleGoogleLogin = () => {
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-    const redirectUrl = window.location.origin + '/dashboard';
-    const appName = encodeURIComponent('TG Exchange');
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}&app_name=${appName}`;
-  };
-
   return (
     <div className={`min-h-screen ${bg} flex`}>
       {/* Left side - Form */}
@@ -99,27 +92,6 @@ const LoginPage = () => {
               Welcome Back
             </h1>
             <p className={textMuted}>Enter your credentials to access your account</p>
-          </div>
-
-          {/* Google Login Button */}
-          <Button
-            type="button"
-            onClick={handleGoogleLogin}
-            variant="outline"
-            className={`w-full py-6 ${inputBorder} ${isDark ? 'hover:bg-white/10 hover:border-white/40' : 'hover:bg-gray-100 hover:border-gray-400'} flex items-center justify-center gap-3 ${text}`}
-            data-testid="google-login-btn"
-          >
-            <GoogleLogo size={24} weight="bold" />
-            Continue with Google
-          </Button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className={`w-full border-t ${dividerBorder}`} />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className={`${bg} px-2 ${textMuted}`}>Or continue with email</span>
-            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
