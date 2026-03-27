@@ -58,16 +58,16 @@ const RankPage = () => {
 
   // Rank requirements (Bronze users / Team)
   const rankRequirements = {
-    1: { bronze: 6, team: 0 },        // 6 Bronze / 0T
-    2: { bronze: 2, team: 30 },       // 2 Bronze / 30T
-    3: { bronze: 3, team: 75 },       // 3 Bronze / 75T
-    4: { bronze: 4, team: 150 },      // 4 Bronze / 150T
-    5: { bronze: 5, team: 300 },      // 5 Bronze / 300T
-    6: { bronze: 6, team: 600 },      // 6 Bronze / 600T
-    7: { bronze: 7, team: 1000 },     // 7 Bronze / 1000T
-    8: { bronze: 8, team: 2000 },     // 8 Bronze / 2000T
-    9: { bronze: 9, team: 4000 },     // 9 Bronze / 4000T
-    10: { bronze: 10, team: 8000 }    // 10 Bronze / 8000T
+    1: { bronze: 0, team: 0 },          // 0 Bronze / 0T (Starting rank)
+    2: { bronze: 2, team: 30 },         // 2 Bronze / 30T
+    3: { bronze: 3, team: 75 },         // 3 Bronze / 75T
+    4: { bronze: 4, team: 150 },        // 4 Bronze / 150T
+    5: { bronze: 5, team: 300 },        // 5 Bronze / 300T
+    6: { bronze: 6, team: 600 },        // 6 Bronze / 600T
+    7: { bronze: 7, team: 1000 },       // 7 Bronze / 1000T
+    8: { bronze: 8, team: 2000 },       // 8 Bronze / 2000T
+    9: { bronze: 9, team: 4000 },       // 9 Bronze / 4000T
+    10: { bronze: 10, team: 8000 }      // 10 Bronze / 8000T
   };
 
   // Format requirement text
@@ -512,6 +512,9 @@ const RankPage = () => {
           </div>
         )}
       </div>
+      
+      {/* Bottom Spacing for Navigation */}
+      <div className="h-24"></div>
       
       {/* Bottom Navigation */}
       <BottomNav />
