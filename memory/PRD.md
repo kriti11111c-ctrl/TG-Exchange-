@@ -1,7 +1,9 @@
-# CryptoVault Exchange - Product Requirements Document
+# TG Xchange - Product Requirements Document
 
 ## Original Problem Statement
 "Mujhe ek real centralized exchange chahie l bank jaisa banao" - Build a centralized cryptocurrency exchange like a bank.
+
+## App Name: TG Xchange (Rebranded from CryptoVault)
 
 ## User Choices
 1. **Exchange Type**: Crypto Exchange (Bitcoin, Ethereum trading)
@@ -138,10 +140,40 @@
 - Bollinger Bands indicator
 - Multiple fiat currencies
 - Staking/Earning features
-- Admin dashboard
 - API keys for programmatic trading
 
+## Latest Updates - March 27, 2026
+
+### Admin Panel (COMPLETE)
+- ✅ **Admin Login Page** at `/admin`
+  - Credentials: admin@tgxchange.com / Admin@TG2024
+  - JWT-based admin authentication
+  - Admin auto-created on server startup
+
+- ✅ **Admin Dashboard** at `/admin/dashboard`
+  - Stats: Total Users, Total Deposits, Pending Approvals, Today Signups
+  - Quick links: All Deposits, All Users
+  - Pending Deposit Requests with Approve/Reject buttons
+  - Refresh functionality
+
+- ✅ **Admin Deposits Page** at `/admin/deposits`
+  - Filter by status: All, Pending, Approved, Rejected
+  - Search by email, name, or tx hash
+  - Table: Request ID, User, Amount, Network, TX Hash, Date, Status, Actions
+  - Approve/Reject buttons for pending requests
+
+- ✅ **Admin Users Page** at `/admin/users`
+  - Search by email, name, or user ID
+  - Table: User, Email, User ID, USDT Balance, Referral Code, Joined date
+
+- ✅ **User Deposit Request Flow**
+  - User submits deposit request with amount and tx hash
+  - Request stored as "pending"
+  - Admin approves -> User wallet balance updated
+  - Admin rejects -> Request marked rejected
+
 ## Next Tasks
-1. KYC/Identity verification
-2. Implement limit orders functionality
-3. Add more indicators (Bollinger Bands, Volume Profile)
+1. APK/PWA for mobile (User requested)
+2. KYC/Identity verification
+3. Implement limit orders functionality
+4. Add more indicators (Bollinger Bands, Volume Profile)
