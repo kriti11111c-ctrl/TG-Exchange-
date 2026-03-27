@@ -31,11 +31,20 @@ const FuturesPage = () => {
   const [orderType, setOrderType] = useState("market");
   const [amount, setAmount] = useState("");
   const [price, setPrice] = useState("");
-  const [currentPrice, setCurrentPrice] = useState(67850);
+  const [currentPrice, setCurrentPrice] = useState(0);
   const [positions, setPositions] = useState([]);
   const [showChart, setShowChart] = useState(true);
   const [tradeCode, setTradeCode] = useState("");
   const [applyingCode, setApplyingCode] = useState(false);
+
+  // Coin ID mapping for API
+  const COIN_IDS = {
+    BTC: "bitcoin",
+    ETH: "ethereum",
+    BNB: "binancecoin",
+    SOL: "solana",
+    XRP: "ripple"
+  };
 
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
   const cardBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
@@ -43,6 +52,21 @@ const FuturesPage = () => {
   const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
   const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
   const inputBg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-100';
+
+  // Fetch real price from our backend API (which caches CoinGecko data)
+  const fetchRealPrice = async () => {
+    try {
+      const coinId = COIN_IDS[selectedCoin] || "bitcoin";
+      const res = await axios.get(`${API}/market/prices`);
+      const prices = res.data;
+      const coin = prices.find(p => p.coin_id === coinId);
+      if (coin?.current_price) {
+        setCurrentPrice(coin.current_price);
+      }
+    } catch (error) {
+      console.error("Error fetching price:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchWallet = async () => {
@@ -55,12 +79,13 @@ const FuturesPage = () => {
     };
     fetchWallet();
 
-    // Simulate price updates
-    const interval = setInterval(() => {
-      setCurrentPrice(prev => prev + (Math.random() - 0.5) * 100);
-    }, 3000);
+    // Fetch real price immediately
+    fetchRealPrice();
+    
+    // Update price every 10 seconds
+    const interval = setInterval(fetchRealPrice, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedCoin]);
 
   const tabs = [
     { id: "positions", label: "Positions", count: positions.length },

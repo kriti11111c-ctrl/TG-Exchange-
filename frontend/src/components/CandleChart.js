@@ -1,21 +1,41 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 
-// Generate realistic candle data
-const generateCandleData = (basePrice, numCandles = 50) => {
+// Coin ID mapping for API
+const COIN_IDS = {
+  BTC: "bitcoin",
+  ETH: "ethereum",
+  BNB: "binancecoin",
+  SOL: "solana",
+  XRP: "ripple",
+  ADA: "cardano",
+  DOGE: "dogecoin",
+  DOT: "polkadot",
+  MATIC: "matic-network",
+  LTC: "litecoin",
+  SHIB: "shiba-inu",
+  TRX: "tron",
+  AVAX: "avalanche-2",
+  LINK: "chainlink",
+  UNI: "uniswap"
+};
+
+// Generate realistic historical candle data based on current price
+const generateHistoricalCandles = (currentPrice, numCandles = 50, volatilityPercent = 2) => {
   const candles = [];
-  let price = basePrice;
+  let price = currentPrice * (1 - volatilityPercent/100 * numCandles * 0.3); // Start lower to create uptrend
   
   for (let i = 0; i < numCandles; i++) {
-    const volatility = price * 0.02; // 2% volatility
+    const volatility = price * (volatilityPercent / 100);
+    const trend = (currentPrice - price) / (numCandles - i) * 0.5; // Gentle trend towards current price
     const open = price;
-    const change = (Math.random() - 0.5) * volatility;
+    const change = trend + (Math.random() - 0.5) * volatility;
     const close = open + change;
-    const high = Math.max(open, close) + Math.random() * volatility * 0.5;
-    const low = Math.min(open, close) - Math.random() * volatility * 0.5;
+    const high = Math.max(open, close) + Math.random() * volatility * 0.3;
+    const low = Math.min(open, close) - Math.random() * volatility * 0.3;
     const volume = Math.random() * 1000000 + 500000;
     
     candles.push({
-      time: Date.now() - (numCandles - i) * 60000, // 1 min candles
+      time: Date.now() - (numCandles - i) * 900000, // 15 min candles
       open,
       high,
       low,
@@ -26,46 +46,72 @@ const generateCandleData = (basePrice, numCandles = 50) => {
     price = close;
   }
   
+  // Ensure last candle ends at current price
+  if (candles.length > 0) {
+    const last = candles[candles.length - 1];
+    last.close = currentPrice;
+    last.high = Math.max(last.high, currentPrice);
+    last.low = Math.min(last.low, currentPrice);
+  }
+  
   return candles;
 };
 
 const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, height = 200 }) => {
   const [candles, setCandles] = useState([]);
   const [timeframe, setTimeframe] = useState("15m");
+  const [loading, setLoading] = useState(true);
+  const [initialPrice, setInitialPrice] = useState(null);
   
   const bg = isDark ? '#0B0E11' : '#f9fafb';
   const gridColor = isDark ? '#1E2329' : '#e5e7eb';
   const textColor = isDark ? '#848E9C' : '#6b7280';
-  
+
+  // Initialize candles when we get the first valid price
   useEffect(() => {
-    // Generate initial candles
-    setCandles(generateCandleData(currentPrice, 50));
-    
-    // Update candles periodically
-    const interval = setInterval(() => {
+    if (currentPrice > 0 && !initialPrice) {
+      setInitialPrice(currentPrice);
+      const newCandles = generateHistoricalCandles(currentPrice, 50, 2);
+      setCandles(newCandles);
+      setLoading(false);
+    }
+  }, [currentPrice, initialPrice]);
+
+  // Update last candle with current price (for real-time effect)
+  useEffect(() => {
+    if (candles.length > 0 && currentPrice > 0) {
       setCandles(prev => {
-        const newCandles = [...prev];
-        const lastCandle = newCandles[newCandles.length - 1];
-        const volatility = currentPrice * 0.005;
-        
-        // Update last candle
-        const change = (Math.random() - 0.5) * volatility;
-        lastCandle.close = lastCandle.close + change;
-        lastCandle.high = Math.max(lastCandle.high, lastCandle.close);
-        lastCandle.low = Math.min(lastCandle.low, lastCandle.close);
-        
-        return newCandles;
+        const updated = [...prev];
+        const last = { ...updated[updated.length - 1] };
+        last.close = currentPrice;
+        last.high = Math.max(last.high, currentPrice);
+        last.low = Math.min(last.low, currentPrice);
+        updated[updated.length - 1] = last;
+        return updated;
       });
-    }, 2000);
-    
-    return () => clearInterval(interval);
+    }
   }, [currentPrice]);
+
+  // Handle timeframe change - regenerate candles
+  const handleTimeframeChange = (tf) => {
+    setTimeframe(tf);
+    if (currentPrice > 0) {
+      const volatility = tf === "1D" ? 5 : tf === "4H" ? 3 : tf === "1H" ? 2.5 : 2;
+      const newCandles = generateHistoricalCandles(currentPrice, 50, volatility);
+      setCandles(newCandles);
+    }
+  };
+
+  // Handle symbol change - reset candles
+  useEffect(() => {
+    setInitialPrice(null);
+    setLoading(true);
+  }, [symbol]);
 
   const timeframes = ["1m", "5m", "15m", "1H", "4H", "1D"];
   
   // Calculate chart dimensions
-  const chartWidth = 100; // percentage
-  const chartHeight = height - 40; // Leave space for timeframe buttons
+  const chartHeight = height - 40;
   const candleWidth = 6;
   const candleGap = 3;
   
@@ -94,6 +140,12 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     return price.toFixed(6);
   };
 
+  // Calculate volume
+  const totalVolume = useMemo(() => {
+    if (candles.length === 0) return 0;
+    return candles.reduce((sum, c) => sum + c.volume, 0);
+  }, [candles]);
+
   return (
     <div className="w-full" style={{ height: height, backgroundColor: bg }}>
       {/* Timeframe buttons */}
@@ -101,8 +153,8 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
         {timeframes.map(tf => (
           <button
             key={tf}
-            onClick={() => setTimeframe(tf)}
-            className={`px-2 py-1 text-xs rounded ${
+            onClick={() => handleTimeframeChange(tf)}
+            className={`px-2 py-1 text-xs rounded transition-colors ${
               timeframe === tf 
                 ? 'bg-[#F0B90B] text-black font-medium' 
                 : `${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-black'}`
@@ -113,80 +165,98 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
         ))}
         <div className="flex-1" />
         <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-          Vol: {(candles[candles.length - 1]?.volume / 1000000).toFixed(2)}M
+          Vol: {(totalVolume / 1000000).toFixed(2)}M
         </span>
       </div>
       
       {/* Chart area */}
       <div className="relative px-2" style={{ height: chartHeight }}>
-        {/* Price labels on right */}
-        <div className="absolute right-0 top-0 bottom-0 w-12 flex flex-col justify-between text-right pr-1" style={{ fontSize: 9, color: textColor }}>
-          <span>{formatPrice(priceRange.max)}</span>
-          <span>{formatPrice((priceRange.max + priceRange.min) / 2)}</span>
-          <span>{formatPrice(priceRange.min)}</span>
-        </div>
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="flex items-end gap-1">
+              {[...Array(5)].map((_, i) => (
+                <div 
+                  key={i}
+                  className={`w-2 ${i % 2 === 0 ? 'bg-[#0ECB81]' : 'bg-[#F6465D]'}`}
+                  style={{
+                    height: `${20 + i * 8}px`,
+                    animation: 'pulse 1s ease-in-out infinite',
+                    animationDelay: `${i * 0.1}s`
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
         
-        {/* Candles */}
-        <svg 
-          className="w-full h-full" 
-          viewBox={`0 0 ${candles.length * (candleWidth + candleGap)} ${chartHeight}`}
-          preserveAspectRatio="none"
-        >
-          {/* Grid lines */}
-          {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => (
-            <line
-              key={i}
-              x1="0"
-              y1={chartHeight * pct}
-              x2={candles.length * (candleWidth + candleGap)}
-              y2={chartHeight * pct}
-              stroke={gridColor}
-              strokeWidth="0.5"
-              strokeDasharray="2,2"
-            />
-          ))}
-          
-          {/* Candles */}
-          {candles.map((candle, i) => {
-            const x = i * (candleWidth + candleGap);
-            const isGreen = candle.close >= candle.open;
-            const color = isGreen ? '#0ECB81' : '#F6465D';
+        {!loading && candles.length > 0 && (
+          <>
+            {/* Price labels on right */}
+            <div className="absolute right-0 top-0 bottom-0 w-12 flex flex-col justify-between text-right pr-1" style={{ fontSize: 9, color: textColor }}>
+              <span>{formatPrice(priceRange.max)}</span>
+              <span>{formatPrice((priceRange.max + priceRange.min) / 2)}</span>
+              <span>{formatPrice(priceRange.min)}</span>
+            </div>
             
-            const bodyTop = priceToY(Math.max(candle.open, candle.close));
-            const bodyBottom = priceToY(Math.min(candle.open, candle.close));
-            const bodyHeight = Math.max(1, bodyBottom - bodyTop);
-            
-            const wickTop = priceToY(candle.high);
-            const wickBottom = priceToY(candle.low);
-            
-            return (
-              <g key={i}>
-                {/* Wick */}
+            {/* Candles */}
+            <svg 
+              className="w-full h-full" 
+              viewBox={`0 0 ${candles.length * (candleWidth + candleGap)} ${chartHeight}`}
+              preserveAspectRatio="none"
+            >
+              {/* Grid lines */}
+              {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => (
                 <line
-                  x1={x + candleWidth / 2}
-                  y1={wickTop}
-                  x2={x + candleWidth / 2}
-                  y2={wickBottom}
-                  stroke={color}
-                  strokeWidth="1"
-                />
-                {/* Body */}
-                <rect
-                  x={x}
-                  y={bodyTop}
-                  width={candleWidth}
-                  height={bodyHeight}
-                  fill={isGreen ? color : color}
-                  stroke={color}
+                  key={i}
+                  x1="0"
+                  y1={chartHeight * pct}
+                  x2={candles.length * (candleWidth + candleGap)}
+                  y2={chartHeight * pct}
+                  stroke={gridColor}
                   strokeWidth="0.5"
+                  strokeDasharray="2,2"
                 />
-              </g>
-            );
-          })}
-          
-          {/* Current price line */}
-          {candles.length > 0 && (
-            <>
+              ))}
+              
+              {/* Candles */}
+              {candles.map((candle, i) => {
+                const x = i * (candleWidth + candleGap);
+                const isGreen = candle.close >= candle.open;
+                const color = isGreen ? '#0ECB81' : '#F6465D';
+                
+                const bodyTop = priceToY(Math.max(candle.open, candle.close));
+                const bodyBottom = priceToY(Math.min(candle.open, candle.close));
+                const bodyHeight = Math.max(1, bodyBottom - bodyTop);
+                
+                const wickTop = priceToY(candle.high);
+                const wickBottom = priceToY(candle.low);
+                
+                return (
+                  <g key={i}>
+                    {/* Wick */}
+                    <line
+                      x1={x + candleWidth / 2}
+                      y1={wickTop}
+                      x2={x + candleWidth / 2}
+                      y2={wickBottom}
+                      stroke={color}
+                      strokeWidth="1"
+                    />
+                    {/* Body */}
+                    <rect
+                      x={x}
+                      y={bodyTop}
+                      width={candleWidth}
+                      height={bodyHeight}
+                      fill={color}
+                      stroke={color}
+                      strokeWidth="0.5"
+                    />
+                  </g>
+                );
+              })}
+              
+              {/* Current price line */}
               <line
                 x1="0"
                 y1={priceToY(candles[candles.length - 1].close)}
@@ -196,18 +266,16 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
                 strokeWidth="0.5"
                 strokeDasharray="3,3"
               />
-            </>
-          )}
-        </svg>
-        
-        {/* Current price label */}
-        {candles.length > 0 && (
-          <div 
-            className="absolute right-12 px-1 py-0.5 bg-[#F0B90B] text-black text-[10px] font-medium rounded"
-            style={{ top: priceToY(candles[candles.length - 1].close) - 8 }}
-          >
-            {formatPrice(candles[candles.length - 1].close)}
-          </div>
+            </svg>
+            
+            {/* Current price label */}
+            <div 
+              className="absolute right-12 px-1 py-0.5 bg-[#F0B90B] text-black text-[10px] font-medium rounded"
+              style={{ top: Math.max(0, Math.min(chartHeight - 16, priceToY(candles[candles.length - 1].close) - 8)) }}
+            >
+              {formatPrice(candles[candles.length - 1].close)}
+            </div>
+          </>
         )}
       </div>
     </div>
