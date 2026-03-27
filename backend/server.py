@@ -2319,6 +2319,305 @@ async def get_2fa_status(user: dict = Depends(get_current_user)):
         "pending": user_data.get("two_fa_pending", False)
     }
 
+# ================= ADMIN SYSTEM =================
+
+# Admin credentials (in production, use environment variables)
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@tgxchange.com')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'Admin@TG2024')
+
+class AdminLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class DepositRequestModel(BaseModel):
+    network: str
+    coin: str
+    amount: float
+    tx_hash: str
+    sender_address: Optional[str] = None
+
+class DepositApproval(BaseModel):
+    request_id: str
+    action: str  # "approve" or "reject"
+    admin_note: Optional[str] = None
+
+# Create admin user on startup
+async def ensure_admin_exists():
+    """Create admin user if not exists"""
+    admin = await db.admins.find_one({"email": ADMIN_EMAIL})
+    if not admin:
+        hashed_password = bcrypt.hashpw(ADMIN_PASSWORD.encode('utf-8'), bcrypt.gensalt())
+        await db.admins.insert_one({
+            "admin_id": f"admin_{uuid.uuid4().hex[:8]}",
+            "email": ADMIN_EMAIL,
+            "password": hashed_password.decode('utf-8'),
+            "name": "TG Xchange Admin",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        logger.info(f"Admin user created: {ADMIN_EMAIL}")
+
+@app.on_event("startup")
+async def startup_event():
+    await ensure_admin_exists()
+
+async def get_current_admin(request: Request):
+    """Get current admin from JWT token"""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Admin authentication required")
+    
+    token = auth_header.split(" ")[1]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "admin":
+            raise HTTPException(status_code=403, detail="Admin access required")
+        admin_id = payload.get("admin_id")
+        admin = await db.admins.find_one({"admin_id": admin_id}, {"_id": 0, "password": 0})
+        if not admin:
+            raise HTTPException(status_code=404, detail="Admin not found")
+        return admin
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+
+@api_router.post("/admin/login")
+async def admin_login(credentials: AdminLogin):
+    """Admin login"""
+    admin = await db.admins.find_one({"email": credentials.email})
+    if not admin:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not bcrypt.checkpw(credentials.password.encode('utf-8'), admin["password"].encode('utf-8')):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # Generate admin JWT
+    token_data = {
+        "admin_id": admin["admin_id"],
+        "email": admin["email"],
+        "type": "admin",
+        "exp": datetime.now(timezone.utc) + timedelta(hours=24)
+    }
+    token = jwt.encode(token_data, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "admin": {
+            "admin_id": admin["admin_id"],
+            "email": admin["email"],
+            "name": admin["name"]
+        }
+    }
+
+@api_router.get("/admin/me")
+async def get_admin_profile(admin: dict = Depends(get_current_admin)):
+    """Get current admin profile"""
+    return admin
+
+@api_router.post("/user/deposit-request")
+async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depends(get_current_user)):
+    """User submits a deposit request for admin approval"""
+    now = datetime.now(timezone.utc)
+    request_id = f"dep_{uuid.uuid4().hex[:12]}"
+    
+    # Get user details
+    user_data = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    
+    deposit_doc = {
+        "request_id": request_id,
+        "user_id": user["user_id"],
+        "user_email": user_data.get("email", ""),
+        "user_name": user_data.get("name", ""),
+        "network": deposit.network,
+        "coin": deposit.coin.upper(),
+        "amount": deposit.amount,
+        "tx_hash": deposit.tx_hash,
+        "sender_address": deposit.sender_address,
+        "status": "pending",
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat()
+    }
+    
+    await db.deposit_requests.insert_one(deposit_doc)
+    
+    return {
+        "success": True,
+        "request_id": request_id,
+        "message": "Deposit request submitted. Admin will verify and credit your account.",
+        "status": "pending"
+    }
+
+@api_router.get("/user/deposit-requests")
+async def get_user_deposit_requests(user: dict = Depends(get_current_user)):
+    """Get user's deposit requests"""
+    requests = await db.deposit_requests.find(
+        {"user_id": user["user_id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    return {"requests": requests}
+
+@api_router.get("/admin/deposit-requests")
+async def get_all_deposit_requests(
+    status: Optional[str] = None,
+    admin: dict = Depends(get_current_admin)
+):
+    """Admin: Get all deposit requests"""
+    query = {}
+    if status:
+        query["status"] = status
+    
+    requests = await db.deposit_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    
+    # Get stats
+    total = await db.deposit_requests.count_documents({})
+    pending = await db.deposit_requests.count_documents({"status": "pending"})
+    approved = await db.deposit_requests.count_documents({"status": "approved"})
+    rejected = await db.deposit_requests.count_documents({"status": "rejected"})
+    
+    return {
+        "requests": requests,
+        "stats": {
+            "total": total,
+            "pending": pending,
+            "approved": approved,
+            "rejected": rejected
+        }
+    }
+
+@api_router.post("/admin/deposit-requests/action")
+async def process_deposit_request(approval: DepositApproval, admin: dict = Depends(get_current_admin)):
+    """Admin: Approve or reject a deposit request"""
+    request = await db.deposit_requests.find_one({"request_id": approval.request_id})
+    if not request:
+        raise HTTPException(status_code=404, detail="Deposit request not found")
+    
+    if request["status"] != "pending":
+        raise HTTPException(status_code=400, detail=f"Request already {request['status']}")
+    
+    now = datetime.now(timezone.utc)
+    
+    if approval.action == "approve":
+        # Credit user's wallet
+        coin = request["coin"].lower()
+        amount = request["amount"]
+        user_id = request["user_id"]
+        
+        # Update wallet
+        await db.wallets.update_one(
+            {"user_id": user_id},
+            {
+                "$inc": {f"balances.{coin}": amount},
+                "$set": {"updated_at": now.isoformat()}
+            },
+            upsert=True
+        )
+        
+        # Create transaction record
+        tx_id = f"tx_{uuid.uuid4().hex[:16]}"
+        tx_doc = {
+            "tx_id": tx_id,
+            "user_id": user_id,
+            "type": "deposit",
+            "coin": coin,
+            "amount": amount,
+            "tx_hash": request["tx_hash"],
+            "network": request["network"],
+            "status": "completed",
+            "approved_by": admin["admin_id"],
+            "created_at": now.isoformat()
+        }
+        await db.transactions.insert_one(tx_doc)
+        
+        # Update deposit request
+        await db.deposit_requests.update_one(
+            {"request_id": approval.request_id},
+            {
+                "$set": {
+                    "status": "approved",
+                    "processed_by": admin["admin_id"],
+                    "processed_at": now.isoformat(),
+                    "admin_note": approval.admin_note,
+                    "tx_id": tx_id,
+                    "updated_at": now.isoformat()
+                }
+            }
+        )
+        
+        return {
+            "success": True,
+            "message": f"Deposit approved. {amount} {coin.upper()} credited to user.",
+            "tx_id": tx_id
+        }
+    
+    elif approval.action == "reject":
+        await db.deposit_requests.update_one(
+            {"request_id": approval.request_id},
+            {
+                "$set": {
+                    "status": "rejected",
+                    "processed_by": admin["admin_id"],
+                    "processed_at": now.isoformat(),
+                    "admin_note": approval.admin_note,
+                    "updated_at": now.isoformat()
+                }
+            }
+        )
+        
+        return {
+            "success": True,
+            "message": "Deposit request rejected."
+        }
+    
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action. Use 'approve' or 'reject'")
+
+@api_router.get("/admin/users")
+async def get_all_users(admin: dict = Depends(get_current_admin)):
+    """Admin: Get all users with their wallet balances"""
+    users = await db.users.find({}, {"_id": 0, "password": 0}).sort("created_at", -1).to_list(1000)
+    
+    # Get wallet info for each user
+    for user in users:
+        wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
+        user["wallet"] = wallet if wallet else {"balances": {}}
+    
+    total_users = len(users)
+    
+    return {
+        "users": users,
+        "total": total_users
+    }
+
+@api_router.get("/admin/stats")
+async def get_admin_stats(admin: dict = Depends(get_current_admin)):
+    """Admin: Get platform statistics"""
+    total_users = await db.users.count_documents({})
+    total_deposits = await db.deposit_requests.count_documents({"status": "approved"})
+    pending_deposits = await db.deposit_requests.count_documents({"status": "pending"})
+    
+    # Calculate total deposit value
+    approved_deposits = await db.deposit_requests.find({"status": "approved"}, {"_id": 0}).to_list(10000)
+    total_deposit_value = sum(d.get("amount", 0) for d in approved_deposits)
+    
+    # Today's stats
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    today_deposits = await db.deposit_requests.count_documents({
+        "status": "approved",
+        "processed_at": {"$gte": today.isoformat()}
+    })
+    today_signups = await db.users.count_documents({
+        "created_at": {"$gte": today.isoformat()}
+    })
+    
+    return {
+        "total_users": total_users,
+        "total_deposits": total_deposits,
+        "pending_deposits": pending_deposits,
+        "total_deposit_value": total_deposit_value,
+        "today_deposits": today_deposits,
+        "today_signups": today_signups
+    }
+
 # Include router
 app.include_router(api_router)
 

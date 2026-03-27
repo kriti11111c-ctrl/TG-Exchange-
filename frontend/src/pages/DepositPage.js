@@ -80,6 +80,13 @@ const DepositPage = () => {
   const [copied, setCopied] = useState(false);
   const [wallet, setWallet] = useState(null);
   const [showBalance, setShowBalance] = useState(true);
+  
+  // Deposit request form states
+  const [showDepositForm, setShowDepositForm] = useState(false);
+  const [depositAmount, setDepositAmount] = useState("");
+  const [txHash, setTxHash] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [depositRequests, setDepositRequests] = useState([]);
 
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
   const cardBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
@@ -87,17 +94,21 @@ const DepositPage = () => {
   const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
   const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
 
-  // Fetch wallet balance
+  // Fetch wallet balance and deposit requests
   useEffect(() => {
-    const fetchWallet = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get(`${API}/wallet`, { withCredentials: true });
-        setWallet(response.data);
+        const [walletRes, requestsRes] = await Promise.all([
+          axios.get(`${API}/wallet`, { withCredentials: true }),
+          axios.get(`${API}/user/deposit-requests`, { withCredentials: true })
+        ]);
+        setWallet(walletRes.data);
+        setDepositRequests(requestsRes.data.requests || []);
       } catch (error) {
-        console.error("Error fetching wallet:", error);
+        console.error("Error fetching data:", error);
       }
     };
-    fetchWallet();
+    fetchData();
   }, []);
 
   // Calculate total balance
@@ -123,6 +134,52 @@ const DepositPage = () => {
     } else {
       copyAddress();
     }
+  };
+
+  const handleSubmitDeposit = async (e) => {
+    e.preventDefault();
+    
+    if (!depositAmount || parseFloat(depositAmount) < 50) {
+      toast.error("Minimum deposit is $50");
+      return;
+    }
+    
+    if (!txHash.trim()) {
+      toast.error("Please enter transaction hash");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await axios.post(`${API}/user/deposit-request`, {
+        network: selectedNetwork.id,
+        coin: "USDT",
+        amount: parseFloat(depositAmount),
+        tx_hash: txHash.trim()
+      }, { withCredentials: true });
+
+      toast.success("Deposit request submitted! Admin will verify and credit your account.");
+      setShowDepositForm(false);
+      setDepositAmount("");
+      setTxHash("");
+      
+      // Refresh requests
+      const res = await axios.get(`${API}/user/deposit-requests`, { withCredentials: true });
+      setDepositRequests(res.data.requests || []);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to submit request");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const styles = {
+      pending: "bg-yellow-500/20 text-yellow-400",
+      approved: "bg-green-500/20 text-green-400",
+      rejected: "bg-red-500/20 text-red-400"
+    };
+    return styles[status] || "bg-gray-500/20 text-gray-400";
   };
 
   return (
@@ -315,6 +372,110 @@ const DepositPage = () => {
             <span className="text-[#0ECB81] font-medium">FREE</span>
           </div>
         </div>
+
+        {/* Submit Deposit Button */}
+        <Button
+          onClick={() => setShowDepositForm(true)}
+          className="w-full py-6 bg-[#F0B90B] hover:bg-[#E5AF0A] text-black font-bold text-lg"
+          data-testid="submit-deposit-btn"
+        >
+          I Have Deposited - Submit Request
+        </Button>
+
+        {/* Deposit Form Modal */}
+        {showDepositForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+            <div className={`${cardBg} rounded-2xl p-6 w-full max-w-md border ${border}`}>
+              <h3 className={`text-xl font-bold mb-4 ${text}`}>Submit Deposit Request</h3>
+              
+              <form onSubmit={handleSubmitDeposit} className="space-y-4">
+                <div>
+                  <label className={`text-sm ${textMuted} mb-2 block`}>Network</label>
+                  <div className={`p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
+                    <div className="flex items-center gap-3">
+                      <img src={selectedNetwork.icon} alt="" className="w-6 h-6 rounded-full" />
+                      <span className={text}>{selectedNetwork.name}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className={`text-sm ${textMuted} mb-2 block`}>Amount (USDT)</label>
+                  <input
+                    type="number"
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    placeholder="Enter amount (min $50)"
+                    className={`w-full p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11] text-white' : 'bg-gray-50 text-gray-900'}`}
+                    min="50"
+                    step="0.01"
+                    required
+                    data-testid="deposit-amount-input"
+                  />
+                </div>
+
+                <div>
+                  <label className={`text-sm ${textMuted} mb-2 block`}>Transaction Hash</label>
+                  <input
+                    type="text"
+                    value={txHash}
+                    onChange={(e) => setTxHash(e.target.value)}
+                    placeholder="Paste your transaction hash"
+                    className={`w-full p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11] text-white' : 'bg-gray-50 text-gray-900'} font-mono text-sm`}
+                    required
+                    data-testid="tx-hash-input"
+                  />
+                  <p className={`text-xs ${textMuted} mt-1`}>
+                    Copy the transaction hash from your wallet after sending
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowDepositForm(false)}
+                    className={`flex-1 ${border}`}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 bg-[#F0B90B] hover:bg-[#E5AF0A] text-black font-semibold"
+                    data-testid="confirm-deposit-btn"
+                  >
+                    {submitting ? "Submitting..." : "Submit Request"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Recent Deposit Requests */}
+        {depositRequests.length > 0 && (
+          <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
+            <h3 className={`font-bold mb-3 ${text}`}>Recent Deposit Requests</h3>
+            <div className="space-y-3">
+              {depositRequests.slice(0, 5).map((req) => (
+                <div key={req.request_id} className={`p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className={`font-semibold ${text}`}>{req.amount} USDT</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(req.status)}`}>
+                      {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                    </span>
+                  </div>
+                  <div className={`text-xs ${textMuted}`}>
+                    <p>Network: {req.network}</p>
+                    <p className="font-mono truncate">TX: {req.tx_hash}</p>
+                    <p>{new Date(req.created_at).toLocaleString()}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

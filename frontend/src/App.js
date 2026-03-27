@@ -19,6 +19,12 @@ import TeamRankPage from "./pages/TeamRankPage";
 import SecurityPage from "./pages/SecurityPage";
 import DepositPage from "./pages/DepositPage";
 
+// Admin Pages
+import AdminLoginPage from "./pages/AdminLoginPage";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminDepositsPage from "./pages/AdminDepositsPage";
+import AdminUsersPage from "./pages/AdminUsersPage";
+
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
 
@@ -243,6 +249,12 @@ function AppRouter() {
           <DepositPage />
         </ProtectedRoute>
       } />
+      
+      {/* Admin Routes */}
+      <Route path="/admin" element={<AdminLoginPage />} />
+      <Route path="/admin/dashboard" element={<AdminDashboard />} />
+      <Route path="/admin/deposits" element={<AdminDepositsPage />} />
+      <Route path="/admin/users" element={<AdminUsersPage />} />
     </Routes>
   );
 }
