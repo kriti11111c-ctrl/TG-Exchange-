@@ -26,6 +26,7 @@ import {
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import BottomNav from "../components/BottomNav";
 
 // Navigation Component with Theme Toggle
 const DashboardNav = () => {
@@ -1784,6 +1785,9 @@ const TradePage = () => {
           prices={prices} 
           isDark={isDark} 
         />
+        
+        {/* Bottom Navigation */}
+        <BottomNav />
       </main>
     </div>
   );
