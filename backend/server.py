@@ -36,6 +36,8 @@ JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
 
 # Blockchain API Keys
 ETHERSCAN_API_KEY = os.environ.get('ETHERSCAN_API_KEY', '')
+TRONSCAN_API_KEY = os.environ.get('TRONSCAN_API_KEY', '')
+SOLSCAN_API_KEY = os.environ.get('SOLSCAN_API_KEY', '')
 
 # Simple in-memory cache for prices
 price_cache = {
@@ -2520,6 +2522,135 @@ async def verify_transaction_on_blockchain(tx_hash: str, network: str, expected_
         logger.error(f"Blockchain verification error: {str(e)}")
         return {"verified": False, "error": str(e)}
 
+async def verify_tron_transaction(tx_hash: str, expected_amount: float, admin_wallet: str) -> dict:
+    """Verify TRC20 transaction on Tron network using Tronscan API"""
+    
+    if not TRONSCAN_API_KEY:
+        return {"verified": False, "error": "Tronscan API key not configured"}
+    
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            # Get transaction info from Tronscan
+            url = f"https://apilist.tronscanapi.com/api/transaction-info?hash={tx_hash}"
+            headers = {"TRON-PRO-API-KEY": TRONSCAN_API_KEY}
+            
+            response = await client.get(url, headers=headers)
+            data = response.json()
+            
+            if not data or data.get("contractRet") != "SUCCESS":
+                return {"verified": False, "error": "Transaction not found or failed"}
+            
+            # Check if it's a TRC20 transfer
+            token_transfer_info = data.get("tokenTransferInfo", {})
+            if token_transfer_info:
+                to_address = token_transfer_info.get("to_address", "")
+                amount_str = token_transfer_info.get("amount_str", "0")
+                decimals = int(token_transfer_info.get("decimals", 6))
+                
+                try:
+                    amount = float(amount_str) / (10 ** decimals)
+                except:
+                    amount = 0
+                
+                if to_address.lower() == admin_wallet.lower() and amount >= expected_amount * 0.99:
+                    return {
+                        "verified": True,
+                        "amount": amount,
+                        "to": admin_wallet,
+                        "tx_hash": tx_hash
+                    }
+            
+            # Check contract data for transfers
+            contract_data = data.get("contractData", {})
+            if contract_data:
+                to_address = contract_data.get("to_address", "")
+                amount = contract_data.get("amount", 0)
+                
+                # Convert from SUN to TRX if needed (1 TRX = 1,000,000 SUN)
+                if isinstance(amount, int) and amount > 1000000:
+                    amount = amount / 1000000
+                
+                if to_address.lower() == admin_wallet.lower():
+                    return {
+                        "verified": True,
+                        "amount": expected_amount,
+                        "to": admin_wallet,
+                        "tx_hash": tx_hash
+                    }
+            
+            return {"verified": False, "error": "Transfer to admin wallet not found"}
+            
+    except Exception as e:
+        logger.error(f"Tron verification error: {str(e)}")
+        return {"verified": False, "error": str(e)}
+
+async def verify_solana_transaction(tx_hash: str, expected_amount: float, admin_wallet: str) -> dict:
+    """Verify Solana transaction using Solscan API"""
+    
+    if not SOLSCAN_API_KEY:
+        return {"verified": False, "error": "Solscan API key not configured"}
+    
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            # Get transaction info from Solscan API V2
+            url = f"https://pro-api.solscan.io/v2.0/transaction/detail?tx={tx_hash}"
+            headers = {"token": SOLSCAN_API_KEY}
+            
+            response = await client.get(url, headers=headers)
+            data = response.json()
+            
+            if not data.get("success") or not data.get("data"):
+                return {"verified": False, "error": "Transaction not found"}
+            
+            tx_data = data["data"]
+            
+            # Check transaction status
+            if tx_data.get("status") != "Success":
+                return {"verified": False, "error": "Transaction failed"}
+            
+            # Check token transfers
+            token_transfers = tx_data.get("tokenTransfers", [])
+            for transfer in token_transfers:
+                destination = transfer.get("destination", "")
+                amount = transfer.get("amount", 0)
+                decimals = transfer.get("decimals", 6)
+                
+                try:
+                    actual_amount = float(amount) / (10 ** decimals)
+                except:
+                    actual_amount = 0
+                
+                if destination.lower() == admin_wallet.lower() and actual_amount >= expected_amount * 0.99:
+                    return {
+                        "verified": True,
+                        "amount": actual_amount,
+                        "to": admin_wallet,
+                        "tx_hash": tx_hash
+                    }
+            
+            # Check SOL transfers
+            sol_transfers = tx_data.get("solTransfers", [])
+            for transfer in sol_transfers:
+                destination = transfer.get("destination", "")
+                amount = transfer.get("amount", 0)
+                
+                # SOL has 9 decimals
+                actual_amount = float(amount) / (10 ** 9)
+                
+                if destination.lower() == admin_wallet.lower():
+                    return {
+                        "verified": True,
+                        "amount": expected_amount,
+                        "to": admin_wallet,
+                        "tx_hash": tx_hash
+                    }
+            
+            return {"verified": False, "error": "Transfer to admin wallet not found"}
+            
+    except Exception as e:
+        logger.error(f"Solana verification error: {str(e)}")
+        return {"verified": False, "error": str(e)}
+
 @api_router.post("/user/deposit-request")
 async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depends(get_current_user)):
     """User submits a deposit request - Blockchain verified and then credited"""
@@ -2545,13 +2676,31 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
     coin = deposit.coin.lower()
     admin_wallet = ADMIN_WALLETS.get(deposit.network, "")
     
-    # Try to verify on blockchain (for EVM chains)
-    verification = await verify_transaction_on_blockchain(
-        tx_hash=deposit.tx_hash,
-        network=deposit.network,
-        expected_amount=deposit.amount,
-        admin_wallet=admin_wallet
-    )
+    # Try to verify on blockchain based on network
+    verification = {"verified": False, "error": "Unknown network"}
+    
+    if deposit.network in ["bep20", "erc20", "polygon"]:
+        # EVM chains - use Etherscan API V2
+        verification = await verify_transaction_on_blockchain(
+            tx_hash=deposit.tx_hash,
+            network=deposit.network,
+            expected_amount=deposit.amount,
+            admin_wallet=admin_wallet
+        )
+    elif deposit.network == "trc20":
+        # Tron network - use Tronscan API
+        verification = await verify_tron_transaction(
+            tx_hash=deposit.tx_hash,
+            expected_amount=deposit.amount,
+            admin_wallet=admin_wallet
+        )
+    elif deposit.network == "solana":
+        # Solana network - use Solscan API
+        verification = await verify_solana_transaction(
+            tx_hash=deposit.tx_hash,
+            expected_amount=deposit.amount,
+            admin_wallet=admin_wallet
+        )
     
     if verification.get("verified"):
         # Blockchain verified - AUTO APPROVE
