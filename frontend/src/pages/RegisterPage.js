@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth, API } from "../App";
+import { useAuth, API, useTheme } from "../App";
 import axios from "axios";
 import { toast } from "sonner";
-import { Eye, EyeSlash, GoogleLogo, TelegramLogo, Gift } from "@phosphor-icons/react";
+import { Eye, EyeSlash, GoogleLogo, TelegramLogo, Gift, Sun, Moon } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 
 const RegisterPage = () => {
+  const { isDark, toggleTheme } = useTheme();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState("email"); // email or phone
   const [name, setName] = useState("");
@@ -76,12 +77,33 @@ const RegisterPage = () => {
     window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
   };
 
+  // Theme colors
+  const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
+  const text = isDark ? 'text-white' : 'text-gray-900';
+  const textMuted = isDark ? 'text-gray-400' : 'text-gray-600';
+  const textSubtle = isDark ? 'text-gray-500' : 'text-gray-400';
+  const inputBorder = isDark ? 'border-gray-700' : 'border-gray-300';
+  const inputText = isDark ? 'text-white' : 'text-gray-900';
+  const inputPlaceholder = isDark ? 'placeholder-gray-500' : 'placeholder-gray-400';
+  const dividerBg = isDark ? 'bg-gray-700' : 'bg-gray-300';
+  const socialBorder = isDark ? 'border-gray-700 hover:border-gray-500' : 'border-gray-300 hover:border-gray-400';
+
   return (
-    <div className="min-h-screen bg-[#0B0E11] flex items-center justify-center p-4">
+    <div className={`min-h-screen ${bg} flex items-center justify-center p-4`}>
       <div className="w-full max-w-md">
+        {/* Theme Toggle */}
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={toggleTheme}
+            className={`p-2 rounded-lg ${isDark ? 'bg-[#1E2329] hover:bg-[#2B3139]' : 'bg-white hover:bg-gray-100'} border ${isDark ? 'border-[#2B3139]' : 'border-gray-200'}`}
+          >
+            {isDark ? <Sun size={20} className="text-[#F0B90B]" /> : <Moon size={20} className="text-gray-600" />}
+          </button>
+        </div>
+
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white mb-2">TG Xchange Registration</h1>
+          <h1 className={`text-2xl font-bold ${text} mb-2`}>TG Xchange Registration</h1>
           <div className="h-1 w-32 bg-gradient-to-r from-[#F0B90B] to-[#F0B90B]/50 rounded"></div>
         </div>
 
@@ -91,8 +113,8 @@ const RegisterPage = () => {
             onClick={() => setActiveTab("email")}
             className={`text-lg font-medium pb-2 border-b-2 transition-colors ${
               activeTab === "email" 
-                ? "text-white border-[#F0B90B]" 
-                : "text-gray-500 border-transparent hover:text-gray-300"
+                ? `${text} border-[#F0B90B]` 
+                : `${textSubtle} border-transparent hover:${isDark ? 'text-gray-300' : 'text-gray-600'}`
             }`}
           >
             Email
@@ -101,8 +123,8 @@ const RegisterPage = () => {
             onClick={() => setActiveTab("phone")}
             className={`text-lg font-medium pb-2 border-b-2 transition-colors ${
               activeTab === "phone" 
-                ? "text-white border-[#F0B90B]" 
-                : "text-gray-500 border-transparent hover:text-gray-300"
+                ? `${text} border-[#F0B90B]` 
+                : `${textSubtle} border-transparent hover:${isDark ? 'text-gray-300' : 'text-gray-600'}`
             }`}
           >
             Phone
@@ -118,7 +140,7 @@ const RegisterPage = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter email"
-                className="w-full py-4 px-4 bg-transparent border-0 border-b border-gray-700 rounded-none text-white placeholder-gray-500 focus:border-[#F0B90B] focus:ring-0"
+                className={`w-full py-4 px-4 bg-transparent border-0 border-b ${inputBorder} rounded-none ${inputText} ${inputPlaceholder} focus:border-[#F0B90B] focus:ring-0`}
                 required
                 data-testid="register-email-input"
               />
@@ -130,7 +152,7 @@ const RegisterPage = () => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Enter phone number"
-                className="w-full py-4 px-4 bg-transparent border-0 border-b border-gray-700 rounded-none text-white placeholder-gray-500 focus:border-[#F0B90B] focus:ring-0"
+                className={`w-full py-4 px-4 bg-transparent border-0 border-b ${inputBorder} rounded-none ${inputText} ${inputPlaceholder} focus:border-[#F0B90B] focus:ring-0`}
                 required
                 data-testid="register-phone-input"
               />
@@ -139,14 +161,14 @@ const RegisterPage = () => {
 
           {/* Password Input */}
           <div>
-            <p className="text-gray-400 text-sm mb-2">Set the login password (min 8 characters)</p>
+            <p className={`${textMuted} text-sm mb-2`}>Set the login password (min 8 characters)</p>
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                className="w-full py-4 px-4 pr-12 bg-transparent border-0 border-b border-gray-700 rounded-none text-white placeholder-gray-500 focus:border-[#F0B90B] focus:ring-0"
+                className={`w-full py-4 px-4 pr-12 bg-transparent border-0 border-b ${inputBorder} rounded-none ${inputText} ${inputPlaceholder} focus:border-[#F0B90B] focus:ring-0`}
                 required
                 minLength={8}
                 data-testid="register-password-input"
@@ -154,7 +176,7 @@ const RegisterPage = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                className={`absolute right-3 top-1/2 -translate-y-1/2 ${textSubtle} hover:${isDark ? 'text-gray-300' : 'text-gray-600'}`}
               >
                 {showPassword ? <EyeSlash size={22} /> : <Eye size={22} />}
               </button>
@@ -163,17 +185,17 @@ const RegisterPage = () => {
 
           {/* Confirm Password Input */}
           <div>
-            <p className="text-gray-400 text-sm mb-2">Confirm password</p>
+            <p className={`${textMuted} text-sm mb-2`}>Confirm password</p>
             <div className="relative">
               <Input
                 type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm password"
-                className={`w-full py-4 px-4 pr-12 bg-transparent border-0 border-b rounded-none text-white placeholder-gray-500 focus:ring-0 ${
+                className={`w-full py-4 px-4 pr-12 bg-transparent border-0 border-b rounded-none ${inputText} ${inputPlaceholder} focus:ring-0 ${
                   confirmPassword && password !== confirmPassword 
                     ? "border-red-500 focus:border-red-500" 
-                    : "border-gray-700 focus:border-[#F0B90B]"
+                    : `${inputBorder} focus:border-[#F0B90B]`
                 }`}
                 required
                 minLength={8}
@@ -182,7 +204,7 @@ const RegisterPage = () => {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                className={`absolute right-3 top-1/2 -translate-y-1/2 ${textSubtle} hover:${isDark ? 'text-gray-300' : 'text-gray-600'}`}
               >
                 {showConfirmPassword ? <EyeSlash size={22} /> : <Eye size={22} />}
               </button>
@@ -194,7 +216,7 @@ const RegisterPage = () => {
 
           {/* Referral Code - REQUIRED */}
           <div>
-            <p className="text-gray-400 text-sm mb-2">
+            <p className={`${textMuted} text-sm mb-2`}>
               Referral Code <span className="text-red-500">*</span>
             </p>
             <Input
@@ -202,7 +224,7 @@ const RegisterPage = () => {
               value={referralCode}
               onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
               placeholder="Enter referral code (Required)"
-              className="w-full py-4 px-4 bg-transparent border-0 border-b border-gray-700 rounded-none text-white placeholder-gray-500 focus:border-[#F0B90B] focus:ring-0 uppercase"
+              className={`w-full py-4 px-4 bg-transparent border-0 border-b ${inputBorder} rounded-none ${inputText} ${inputPlaceholder} focus:border-[#F0B90B] focus:ring-0 uppercase`}
               required
               data-testid="register-referral-input"
             />
@@ -218,7 +240,7 @@ const RegisterPage = () => {
             className={`w-full py-6 font-semibold text-lg transition-all ${
               referralCode.trim() && password && password === confirmPassword
                 ? "bg-[#F0B90B] hover:bg-[#E5AF0A] text-black"
-                : "bg-gray-700 text-gray-400 cursor-not-allowed"
+                : `${isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-300 text-gray-500'} cursor-not-allowed`
             }`}
             data-testid="register-submit-btn"
           >
@@ -228,7 +250,7 @@ const RegisterPage = () => {
 
         {/* Gift Banner */}
         <div className="mt-6 text-center">
-          <p className="text-gray-400 text-sm">
+          <p className={`${textMuted} text-sm`}>
             It only takes 1 minute to register and receive a new user gift worth{" "}
             <span className="text-[#F0B90B] font-bold">200 USDT</span>!
           </p>
@@ -236,9 +258,9 @@ const RegisterPage = () => {
 
         {/* Login Link */}
         <div className="mt-8 text-center">
-          <p className="text-gray-400">
+          <p className={textMuted}>
             Already have an account?{" "}
-            <Link to="/login" className="text-white hover:text-[#F0B90B] font-medium">
+            <Link to="/login" className={`${text} hover:text-[#F0B90B] font-medium`}>
               Log in
             </Link>
           </p>
@@ -246,9 +268,9 @@ const RegisterPage = () => {
 
         {/* Divider */}
         <div className="flex items-center gap-4 my-6">
-          <div className="flex-1 h-px bg-gray-700"></div>
-          <span className="text-gray-500 text-sm">or</span>
-          <div className="flex-1 h-px bg-gray-700"></div>
+          <div className={`flex-1 h-px ${dividerBg}`}></div>
+          <span className={textSubtle}>or</span>
+          <div className={`flex-1 h-px ${dividerBg}`}></div>
         </div>
 
         {/* Social Login Buttons */}
@@ -256,23 +278,23 @@ const RegisterPage = () => {
           <button
             type="button"
             onClick={handleGoogleLogin}
-            className="w-14 h-14 rounded-full border border-gray-700 flex items-center justify-center hover:border-gray-500 transition-colors"
+            className={`w-14 h-14 rounded-full border ${socialBorder} flex items-center justify-center transition-colors`}
             data-testid="google-register-btn"
           >
-            <GoogleLogo size={28} className="text-white" />
+            <GoogleLogo size={28} className={text} />
           </button>
           <button
             type="button"
-            className="w-14 h-14 rounded-full border border-gray-700 flex items-center justify-center hover:border-gray-500 transition-colors"
+            className={`w-14 h-14 rounded-full border ${socialBorder} flex items-center justify-center transition-colors`}
           >
             <TelegramLogo size={28} className="text-[#0088CC]" />
           </button>
         </div>
 
         {/* Terms */}
-        <p className="mt-8 text-center text-gray-500 text-xs">
+        <p className={`mt-8 text-center ${textSubtle} text-xs`}>
           By clicking the button, you agree to{" "}
-          <Link to="#" className="text-white hover:text-[#F0B90B]">
+          <Link to="#" className={`${text} hover:text-[#F0B90B]`}>
             TG Xchange Service Agreement
           </Link>
         </p>

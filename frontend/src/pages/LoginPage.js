@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth, API } from "../App";
+import { useAuth, API, useTheme } from "../App";
 import axios from "axios";
 import { toast } from "sonner";
-import { Vault, EnvelopeSimple, Lock, GoogleLogo, ShieldCheck } from "@phosphor-icons/react";
+import { Vault, EnvelopeSimple, Lock, GoogleLogo, ShieldCheck, Sun, Moon } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 
 const LoginPage = () => {
+  const { isDark, toggleTheme } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
@@ -16,6 +17,15 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  // Theme colors
+  const bg = isDark ? 'bg-[#0A0A0A]' : 'bg-gray-50';
+  const cardBg = isDark ? 'bg-[#12121A]' : 'bg-white';
+  const text = isDark ? 'text-white' : 'text-gray-900';
+  const textMuted = isDark ? 'text-[#8F8F9D]' : 'text-gray-600';
+  const inputBg = isDark ? 'bg-[#12121A]' : 'bg-white';
+  const inputBorder = isDark ? 'border-white/20' : 'border-gray-300';
+  const dividerBorder = isDark ? 'border-white/10' : 'border-gray-200';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,27 +67,37 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex">
+    <div className={`min-h-screen ${bg} flex`}>
       {/* Left side - Form */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md space-y-8">
+          {/* Theme Toggle */}
+          <div className="flex justify-end">
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-lg ${isDark ? 'bg-[#12121A] hover:bg-[#1E1E2A]' : 'bg-white hover:bg-gray-100'} border ${isDark ? 'border-white/10' : 'border-gray-200'}`}
+            >
+              {isDark ? <Sun size={20} className="text-[#F0B90B]" /> : <Moon size={20} className="text-gray-600" />}
+            </button>
+          </div>
+          
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 mb-12" data-testid="login-logo">
             <Vault size={32} weight="duotone" className="text-[#00E599]" />
-            <span className="font-bold text-xl tracking-tight" style={{ fontFamily: 'Unbounded' }}>
+            <span className={`font-bold text-xl tracking-tight ${text}`} style={{ fontFamily: 'Unbounded' }}>
               TG Xchange
             </span>
           </Link>
 
           <div>
             <h1 
-              className="text-3xl font-bold mb-2" 
+              className={`text-3xl font-bold mb-2 ${text}`}
               style={{ fontFamily: 'Unbounded' }}
               data-testid="login-title"
             >
               Welcome Back
             </h1>
-            <p className="text-[#8F8F9D]">Enter your credentials to access your account</p>
+            <p className={textMuted}>Enter your credentials to access your account</p>
           </div>
 
           {/* Google Login Button */}
@@ -85,7 +105,7 @@ const LoginPage = () => {
             type="button"
             onClick={handleGoogleLogin}
             variant="outline"
-            className="w-full py-6 border-white/20 hover:bg-white/10 hover:border-white/40 flex items-center justify-center gap-3"
+            className={`w-full py-6 ${inputBorder} ${isDark ? 'hover:bg-white/10 hover:border-white/40' : 'hover:bg-gray-100 hover:border-gray-400'} flex items-center justify-center gap-3 ${text}`}
             data-testid="google-login-btn"
           >
             <GoogleLogo size={24} weight="bold" />
@@ -94,20 +114,20 @@ const LoginPage = () => {
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-white/10" />
+              <span className={`w-full border-t ${dividerBorder}`} />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-[#0A0A0A] px-2 text-[#8F8F9D]">Or continue with email</span>
+              <span className={`${bg} px-2 ${textMuted}`}>Or continue with email</span>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-[#8F8F9D]">Email</Label>
+              <Label htmlFor="email" className={textMuted}>Email</Label>
               <div className="relative">
                 <EnvelopeSimple 
                   size={20} 
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8F8F9D]" 
+                  className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`}
                 />
                 <Input
                   id="email"
@@ -115,7 +135,7 @@ const LoginPage = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
-                  className="pl-10 py-6 bg-[#12121A] border-white/20 focus:border-[#00E599] focus:ring-[#00E599]"
+                  className={`pl-10 py-6 ${inputBg} ${inputBorder} focus:border-[#00E599] focus:ring-[#00E599] ${text}`}
                   required
                   data-testid="login-email-input"
                 />
@@ -123,11 +143,11 @@ const LoginPage = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-[#8F8F9D]">Password</Label>
+              <Label htmlFor="password" className={textMuted}>Password</Label>
               <div className="relative">
                 <Lock 
                   size={20} 
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8F8F9D]" 
+                  className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`}
                 />
                 <Input
                   id="password"
@@ -135,7 +155,7 @@ const LoginPage = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="pl-10 py-6 bg-[#12121A] border-white/20 focus:border-[#00E599] focus:ring-[#00E599]"
+                  className={`pl-10 py-6 ${inputBg} ${inputBorder} focus:border-[#00E599] focus:ring-[#00E599] ${text}`}
                   required
                   data-testid="login-password-input"
                 />
@@ -145,7 +165,7 @@ const LoginPage = () => {
             {/* 2FA Code Input - Shows when required */}
             {requires2FA && (
               <div className="space-y-2">
-                <Label htmlFor="totp" className="text-[#8F8F9D] flex items-center gap-2">
+                <Label htmlFor="totp" className={`${textMuted} flex items-center gap-2`}>
                   <ShieldCheck size={16} className="text-[#00E599]" />
                   2FA Code (Google Authenticator)
                 </Label>
@@ -162,12 +182,12 @@ const LoginPage = () => {
                     value={totpCode}
                     onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
                     placeholder="Enter 6-digit code"
-                    className="pl-10 py-6 bg-[#12121A] border-[#00E599]/50 focus:border-[#00E599] focus:ring-[#00E599] text-center text-xl tracking-widest font-mono"
+                    className={`pl-10 py-6 ${inputBg} border-[#00E599]/50 focus:border-[#00E599] focus:ring-[#00E599] text-center text-xl tracking-widest font-mono ${text}`}
                     autoFocus
                     data-testid="login-2fa-input"
                   />
                 </div>
-                <p className="text-xs text-[#8F8F9D]">
+                <p className={`text-xs ${textMuted}`}>
                   Open Google Authenticator app and enter the 6-digit code
                 </p>
               </div>
@@ -183,7 +203,7 @@ const LoginPage = () => {
             </Button>
           </form>
 
-          <p className="text-center text-[#8F8F9D]">
+          <p className={`text-center ${textMuted}`}>
             Don't have an account?{" "}
             <Link to="/register" className="text-[#00E599] hover:underline" data-testid="login-register-link">
               Create one
@@ -199,7 +219,7 @@ const LoginPage = () => {
           alt="Crypto"
           className="absolute inset-0 w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-l from-transparent to-[#0A0A0A]" />
+        <div className={`absolute inset-0 bg-gradient-to-l from-transparent ${isDark ? 'to-[#0A0A0A]' : 'to-gray-50'}`} />
       </div>
     </div>
   );
