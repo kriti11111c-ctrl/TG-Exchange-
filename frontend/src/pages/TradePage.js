@@ -1245,14 +1245,14 @@ const OrdersPanel = ({ wallet, selectedCoin, prices, isDark }) => {
           ))}
         </div>
         
-        {/* History Icon */}
-        <button 
-          onClick={() => setActiveTab("history")}
-          className={`p-2 rounded-lg ${activeTab === "history" ? 'bg-[#F0B90B]/20 text-[#F0B90B]' : textMuted} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'}`}
+        {/* History Icon - Links to History Page */}
+        <Link 
+          to="/trade-history"
+          className={`p-2 rounded-lg ${textMuted} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'}`}
           title="Trade History"
         >
-          <ClockCounterClockwise size={20} weight={activeTab === "history" ? "fill" : "regular"} />
-        </button>
+          <ClockCounterClockwise size={20} />
+        </Link>
       </div>
 
       {/* Tab Content */}

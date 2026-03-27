@@ -29,6 +29,7 @@ import WithdrawPage from "./pages/WithdrawPage";
 import StakingPage from "./pages/StakingPage";
 import FuturesPage from "./pages/FuturesPage";
 import MarketsPage from "./pages/MarketsPage";
+import TradeHistoryPage from "./pages/TradeHistoryPage";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -272,6 +273,11 @@ function AppRouter() {
       <Route path="/markets" element={
         <ProtectedRoute>
           <MarketsPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/trade-history" element={
+        <ProtectedRoute>
+          <TradeHistoryPage />
         </ProtectedRoute>
       } />
       
