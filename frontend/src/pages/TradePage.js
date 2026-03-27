@@ -18,7 +18,10 @@ import {
   Star,
   List,
   Sun,
-  Moon
+  Moon,
+  Clock,
+  Folder,
+  Warning
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -1147,6 +1150,243 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
   );
 };
 
+// Orders Panel Component (Open Orders, Holdings, Spot Grid, History)
+const OrdersPanel = ({ wallet, selectedCoin, prices, isDark }) => {
+  const [activeTab, setActiveTab] = useState("open");
+  const [trades, setTrades] = useState([]);
+  const [loadingTrades, setLoadingTrades] = useState(false);
+
+  const bg = isDark ? 'bg-[#0B0E11]' : 'bg-white';
+  const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
+  const text = isDark ? 'text-white' : 'text-gray-900';
+  const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
+
+  // Fetch trade history
+  useEffect(() => {
+    const fetchTrades = async () => {
+      setLoadingTrades(true);
+      try {
+        const response = await axios.get(`${API}/transactions`, { withCredentials: true });
+        const tradeTransactions = response.data.filter(t => t.type === 'buy' || t.type === 'sell');
+        setTrades(tradeTransactions);
+      } catch (error) {
+        console.error("Error fetching trades:", error);
+      } finally {
+        setLoadingTrades(false);
+      }
+    };
+    fetchTrades();
+  }, []);
+
+  // Calculate holdings
+  const getHoldings = () => {
+    if (!wallet?.balances) return [];
+    
+    const holdings = [];
+    const coinMap = {
+      btc: { name: 'Bitcoin', coinId: 'bitcoin' },
+      eth: { name: 'Ethereum', coinId: 'ethereum' },
+      bnb: { name: 'BNB', coinId: 'binancecoin' },
+      xrp: { name: 'XRP', coinId: 'ripple' },
+      sol: { name: 'Solana', coinId: 'solana' },
+      usdt: { name: 'USDT', coinId: 'tether' }
+    };
+
+    Object.entries(wallet.balances).forEach(([coin, amount]) => {
+      if (amount > 0) {
+        const coinInfo = coinMap[coin] || { name: coin.toUpperCase(), coinId: coin };
+        const priceData = prices.find(p => p.coin_id === coinInfo.coinId);
+        const currentPrice = coin === 'usdt' ? 1 : (priceData?.current_price || 0);
+        const value = amount * currentPrice;
+        
+        holdings.push({
+          coin: coin.toUpperCase(),
+          name: coinInfo.name,
+          amount,
+          price: currentPrice,
+          value,
+          change: priceData?.price_change_percentage_24h || 0
+        });
+      }
+    });
+
+    return holdings.sort((a, b) => b.value - a.value);
+  };
+
+  const holdings = getHoldings();
+  const totalHoldings = holdings.length;
+  const openOrders = 0; // For now, no open orders (limit orders not implemented)
+
+  const tabs = [
+    { id: "open", label: "Open Orders", count: openOrders },
+    { id: "holdings", label: "Holdings", count: totalHoldings },
+    { id: "spotgrid", label: "Spot Grid", count: null }
+  ];
+
+  return (
+    <div className={`${bg} border-t ${border}`}>
+      {/* Tab Header */}
+      <div className={`flex items-center justify-between px-4 border-b ${border}`}>
+        <div className="flex items-center gap-4">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`py-3 text-sm font-medium relative ${
+                activeTab === tab.id ? text : textMuted
+              }`}
+            >
+              {tab.label} {tab.count !== null && `(${tab.count})`}
+              {activeTab === tab.id && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F0B90B]"></div>
+              )}
+            </button>
+          ))}
+        </div>
+        
+        {/* History Icon */}
+        <button 
+          onClick={() => setActiveTab("history")}
+          className={`p-2 rounded-lg ${activeTab === "history" ? 'bg-[#F0B90B]/20 text-[#F0B90B]' : textMuted} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'}`}
+          title="Trade History"
+        >
+          <ClockCounterClockwise size={20} weight={activeTab === "history" ? "fill" : "regular"} />
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      <div className="p-4 min-h-[200px]">
+        {/* Open Orders Tab */}
+        {activeTab === "open" && (
+          <div className="flex flex-col items-center justify-center py-8">
+            <div className={`w-16 h-16 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} flex items-center justify-center mb-3`}>
+              <Warning size={32} className={textMuted} />
+            </div>
+            <p className={text}>Available Funds: {wallet?.balances?.usdt?.toFixed(2) || '0.00'} USDT</p>
+            <p className={`text-sm ${textMuted} mt-1`}>Transfer funds to your Spot wallet to trade</p>
+            <button className={`mt-4 px-6 py-2 rounded-lg border ${border} ${text} font-medium text-sm hover:bg-[#F0B90B]/10`}>
+              Increase Balance
+            </button>
+          </div>
+        )}
+
+        {/* Holdings Tab */}
+        {activeTab === "holdings" && (
+          <div>
+            {holdings.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <Folder size={48} className={textMuted} />
+                <p className={`${textMuted} mt-2`}>No holdings yet</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {/* Header */}
+                <div className={`grid grid-cols-5 text-xs ${textMuted} pb-2 border-b ${border}`}>
+                  <span>Coin</span>
+                  <span className="text-right">Amount</span>
+                  <span className="text-right">Price</span>
+                  <span className="text-right">Value</span>
+                  <span className="text-right">24h %</span>
+                </div>
+                
+                {/* Holdings List */}
+                {holdings.map((holding, index) => (
+                  <div key={index} className={`grid grid-cols-5 text-sm py-2 items-center border-b ${border} border-opacity-50`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`font-medium ${text}`}>{holding.coin}</span>
+                    </div>
+                    <span className={`text-right font-mono ${text}`}>
+                      {holding.amount < 0.0001 ? holding.amount.toFixed(8) : holding.amount.toFixed(4)}
+                    </span>
+                    <span className={`text-right font-mono ${textMuted}`}>
+                      ${holding.price < 1 ? holding.price.toFixed(4) : holding.price.toLocaleString()}
+                    </span>
+                    <span className={`text-right font-mono ${text}`}>
+                      ${holding.value.toFixed(2)}
+                    </span>
+                    <span className={`text-right font-mono ${holding.change >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+                      {holding.change >= 0 ? '+' : ''}{holding.change.toFixed(2)}%
+                    </span>
+                  </div>
+                ))}
+                
+                {/* Total */}
+                <div className={`flex justify-between pt-2 text-sm font-medium ${text}`}>
+                  <span>Total Value:</span>
+                  <span>${holdings.reduce((sum, h) => sum + h.value, 0).toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Spot Grid Tab */}
+        {activeTab === "spotgrid" && (
+          <div className="flex flex-col items-center justify-center py-8">
+            <div className={`w-16 h-16 rounded-full bg-[#F0B90B]/20 flex items-center justify-center mb-3`}>
+              <Clock size={32} className="text-[#F0B90B]" />
+            </div>
+            <p className={`text-lg font-medium ${text}`}>Coming Soon</p>
+            <p className={`text-sm ${textMuted} mt-1 text-center`}>Spot Grid trading bot will be available soon</p>
+          </div>
+        )}
+
+        {/* Trade History Tab */}
+        {activeTab === "history" && (
+          <div>
+            {loadingTrades ? (
+              <div className="flex justify-center py-8">
+                <div className="w-8 h-8 border-2 border-[#F0B90B] border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : trades.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <ClockCounterClockwise size={48} className={textMuted} />
+                <p className={`${textMuted} mt-2`}>No trade history</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {/* Header */}
+                <div className={`grid grid-cols-6 text-xs ${textMuted} pb-2 border-b ${border}`}>
+                  <span>Time</span>
+                  <span>Type</span>
+                  <span>Pair</span>
+                  <span className="text-right">Amount</span>
+                  <span className="text-right">Price</span>
+                  <span className="text-right">Total</span>
+                </div>
+                
+                {/* Trade List */}
+                {trades.slice(0, 10).map((trade, index) => (
+                  <div key={index} className={`grid grid-cols-6 text-xs py-2 items-center border-b ${border} border-opacity-50`}>
+                    <span className={textMuted}>
+                      {new Date(trade.timestamp).toLocaleDateString()}
+                    </span>
+                    <span className={trade.type === 'buy' ? 'text-[#0ECB81]' : 'text-[#F6465D]'}>
+                      {trade.type.toUpperCase()}
+                    </span>
+                    <span className={text}>
+                      {trade.coin?.toUpperCase()}/USDT
+                    </span>
+                    <span className={`text-right font-mono ${text}`}>
+                      {trade.amount?.toFixed(4)}
+                    </span>
+                    <span className={`text-right font-mono ${textMuted}`}>
+                      ${trade.price_at_trade?.toFixed(2) || '0.00'}
+                    </span>
+                    <span className={`text-right font-mono ${text}`}>
+                      ${trade.total_usd?.toFixed(2) || '0.00'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Main Trade Page
 const TradePage = () => {
   const [searchParams] = useSearchParams();
@@ -1536,6 +1776,14 @@ const TradePage = () => {
             <RecentTrades selectedCoin={selectedCoin} currentPrice={getCurrentPrice()} isDark={isDark} />
           </div>
         </div>
+        
+        {/* Orders Panel - Open Orders, Holdings, Spot Grid, History */}
+        <OrdersPanel 
+          wallet={wallet} 
+          selectedCoin={selectedCoin} 
+          prices={prices} 
+          isDark={isDark} 
+        />
       </main>
     </div>
   );
