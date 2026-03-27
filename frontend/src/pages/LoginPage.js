@@ -83,7 +83,7 @@ const LoginPage = () => {
           
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 mb-12" data-testid="login-logo">
-            <Vault size={32} weight="duotone" className="text-[#00E599]" />
+            <img src="/images/tg-logo.png" alt="TG Exchange" className="w-10 h-10 rounded-full" />
             <span className={`font-bold text-xl tracking-tight ${text}`} style={{ fontFamily: 'Unbounded' }}>
               TG Exchange
             </span>

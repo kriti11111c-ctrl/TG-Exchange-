@@ -59,7 +59,7 @@ const WalletHeader = ({ user, logout, isDark, toggleTheme }) => {
   return (
     <div className={`${bg} px-4 py-3 flex items-center justify-between`}>
       <Link to="/dashboard" className="flex items-center gap-2">
-        <Vault size={28} weight="duotone" className="text-[#F0B90B]" />
+        <img src="/images/tg-logo.png" alt="TG Exchange" className="w-7 h-7 rounded-full" />
         <span className={`font-bold text-lg ${text}`}>TG Exchange</span>
       </Link>
       <div className="flex items-center gap-3">

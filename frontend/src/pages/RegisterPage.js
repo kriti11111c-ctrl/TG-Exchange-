@@ -103,8 +103,12 @@ const RegisterPage = () => {
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className={`text-2xl font-bold ${text} mb-2`}>TG Exchange Registration</h1>
-          <div className="h-1 w-32 bg-gradient-to-r from-[#F0B90B] to-[#F0B90B]/50 rounded"></div>
+          <div className="flex items-center gap-3 mb-3">
+            <img src="/images/tg-logo.png" alt="TG Exchange" className="w-12 h-12 rounded-full" />
+            <h1 className={`text-2xl font-bold ${text}`}>TG Exchange</h1>
+          </div>
+          <p className={`${textMuted} text-sm`}>Create your account</p>
+          <div className="h-1 w-32 bg-gradient-to-r from-[#F0B90B] to-[#F0B90B]/50 rounded mt-2"></div>
         </div>
 
         {/* Email/Phone Tabs */}

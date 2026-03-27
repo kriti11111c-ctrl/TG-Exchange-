@@ -182,7 +182,7 @@ const Dashboard = () => {
         {/* Top Bar */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Vault size={28} weight="duotone" className="text-[#00E599]" />
+            <img src="/images/tg-logo.png" alt="TG Exchange" className="w-8 h-8 rounded-full" />
             <span className={`font-bold text-lg ${text}`} style={{ fontFamily: 'Unbounded' }}>
               TG Exchange
             </span>

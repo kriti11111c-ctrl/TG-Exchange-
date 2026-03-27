@@ -38,7 +38,7 @@ const DashboardNav = () => {
       <div className="max-w-full mx-auto px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Link to="/dashboard" className="flex items-center gap-2" data-testid="trade-logo">
-            <Vault size={28} weight="duotone" className="text-[#F0B90B]" />
+            <img src="/images/tg-logo.png" alt="TG Exchange" className="w-7 h-7 rounded-full" />
             <span className={`font-bold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>TG Exchange</span>
           </Link>
           
