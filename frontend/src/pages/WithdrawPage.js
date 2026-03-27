@@ -228,13 +228,15 @@ const WithdrawPage = () => {
           {/* Fee Info */}
           <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
             <div className="flex justify-between items-center">
-              <span className={textMuted}>Network Fee</span>
-              <span className={`font-medium ${text}`}>$1.00</span>
+              <span className={textMuted}>Withdrawal Fee (10%)</span>
+              <span className="text-[#F6465D] font-medium">
+                -${amount ? (parseFloat(amount) * 0.10).toFixed(2) : '0.00'}
+              </span>
             </div>
-            <div className="flex justify-between items-center mt-2">
-              <span className={textMuted}>You will receive</span>
-              <span className="text-[#0ECB81] font-bold">
-                ${amount ? Math.max(0, parseFloat(amount) - 1).toFixed(2) : '0.00'} USDT
+            <div className="flex justify-between items-center mt-2 pt-2 border-t border-[#2B3139]">
+              <span className={`font-medium ${text}`}>You will receive</span>
+              <span className="text-[#0ECB81] font-bold text-lg">
+                ${amount ? (parseFloat(amount) * 0.90).toFixed(2) : '0.00'} USDT
               </span>
             </div>
           </div>

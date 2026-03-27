@@ -3057,6 +3057,11 @@ async def create_withdrawal_request(withdrawal: WithdrawalRequestModel, user: di
     if current_balance < withdrawal.amount:
         raise HTTPException(status_code=400, detail=f"Insufficient balance. Available: {current_balance} {coin.upper()}")
     
+    # Calculate 10% fee
+    fee_percent = 10
+    fee_amount = withdrawal.amount * (fee_percent / 100)
+    net_amount = withdrawal.amount - fee_amount
+    
     # Get user details
     user_data = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
     
@@ -3069,6 +3074,9 @@ async def create_withdrawal_request(withdrawal: WithdrawalRequestModel, user: di
         "network": withdrawal.network,
         "coin": withdrawal.coin.upper(),
         "amount": withdrawal.amount,
+        "fee_percent": fee_percent,
+        "fee_amount": fee_amount,
+        "net_amount": net_amount,
         "wallet_address": withdrawal.wallet_address,
         "status": "pending",
         "created_at": now.isoformat(),
@@ -3080,8 +3088,12 @@ async def create_withdrawal_request(withdrawal: WithdrawalRequestModel, user: di
     return {
         "success": True,
         "request_id": request_id,
-        "message": "Withdrawal request submitted. Admin will process it shortly.",
-        "status": "pending"
+        "message": f"Withdrawal request submitted. Fee: {fee_percent}% (${fee_amount:.2f}). You will receive ${net_amount:.2f}",
+        "status": "pending",
+        "amount": withdrawal.amount,
+        "fee_percent": fee_percent,
+        "fee_amount": fee_amount,
+        "net_amount": net_amount
     }
 
 @api_router.get("/user/withdraw-requests")

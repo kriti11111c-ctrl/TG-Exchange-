@@ -214,6 +214,18 @@ const AdminWithdrawalsPage = () => {
                       {getStatusBadge(withdrawal.status)}
                     </div>
 
+                    {/* Fee Info */}
+                    <div className="flex items-center gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500">Fee (10%):</span>
+                        <span className="text-yellow-400 ml-1">${(withdrawal.fee_amount || withdrawal.amount * 0.1).toFixed(2)}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">To Send:</span>
+                        <span className="text-green-400 ml-1 font-bold">${(withdrawal.net_amount || withdrawal.amount * 0.9).toFixed(2)}</span>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                       <div>
                         <span className="text-gray-500">User:</span>
