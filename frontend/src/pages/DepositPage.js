@@ -323,6 +323,25 @@ const DepositPage = () => {
             </p>
           </div>
 
+          {/* IMPORTANT: Unique Deposit ID / Memo */}
+          {depositId && (
+            <div className="mb-4 p-4 rounded-xl bg-gradient-to-r from-[#F0B90B]/20 to-[#F0B90B]/5 border-2 border-[#F0B90B]">
+              <div className="text-center">
+                <p className="text-[#F0B90B] text-xs font-bold mb-1 uppercase">⚠️ IMPORTANT: Your Deposit MEMO</p>
+                <p className="font-mono text-2xl font-bold text-[#F0B90B] tracking-wider">{depositId}</p>
+                <p className="text-[#F0B90B]/70 text-xs mt-2">
+                  You MUST include this MEMO in your transaction
+                </p>
+              </div>
+              <Button
+                onClick={copyDepositId}
+                className="w-full mt-3 bg-[#F0B90B] hover:bg-[#E5AF0A] text-black font-bold"
+              >
+                {copiedMemo ? "✓ Copied!" : "Copy MEMO"}
+              </Button>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="grid grid-cols-3 gap-3">
             <Button
@@ -368,11 +387,11 @@ const DepositPage = () => {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[#F0B90B] font-bold">2.</span>
-              <span>Send USDT from your wallet to this address</span>
+              <span className="text-[#F0B90B] font-medium">Copy your MEMO: {depositId}</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[#F0B90B] font-bold">3.</span>
-              <span>Copy Transaction Hash from your wallet</span>
+              <span>Send USDT and <strong className="text-white">include MEMO</strong> in transaction</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[#F0B90B] font-bold">4.</span>
@@ -380,9 +399,14 @@ const DepositPage = () => {
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[#0ECB81] font-bold">5.</span>
-              <span className="text-[#0ECB81] font-medium">System verifies on blockchain → Balance credited!</span>
+              <span className="text-[#0ECB81] font-medium">System verifies → Balance credited!</span>
             </li>
           </ul>
+          <div className="mt-3 p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <p className="text-red-400 text-xs text-center">
+              ⚠️ Without MEMO, your deposit cannot be identified!
+            </p>
+          </div>
         </div>
 
         {/* Min Deposit */}
