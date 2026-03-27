@@ -139,7 +139,7 @@ const RegisterPage = () => {
 
           {/* Password Input */}
           <div>
-            <p className="text-gray-400 text-sm mb-2">Set the login password</p>
+            <p className="text-gray-400 text-sm mb-2">Set the login password (min 8 characters)</p>
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
@@ -148,7 +148,7 @@ const RegisterPage = () => {
                 placeholder="Password"
                 className="w-full py-4 px-4 pr-12 bg-transparent border-0 border-b border-gray-700 rounded-none text-white placeholder-gray-500 focus:border-[#F0B90B] focus:ring-0"
                 required
-                minLength={6}
+                minLength={8}
                 data-testid="register-password-input"
               />
               <button
@@ -176,7 +176,7 @@ const RegisterPage = () => {
                     : "border-gray-700 focus:border-[#F0B90B]"
                 }`}
                 required
-                minLength={6}
+                minLength={8}
                 data-testid="register-confirm-password-input"
               />
               <button

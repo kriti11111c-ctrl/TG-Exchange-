@@ -65,7 +65,7 @@ logger = logging.getLogger(__name__)
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=8)
     name: str
     referral_code: Optional[str] = None  # Optional referral code
 
