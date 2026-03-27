@@ -4,6 +4,7 @@ import { useTheme, API } from "../App";
 import axios from "axios";
 import { toast } from "sonner";
 import BottomNav from "../components/BottomNav";
+import CandleChart from "../components/CandleChart";
 import { 
   ArrowLeft, 
   ClockCounterClockwise,
@@ -14,7 +15,8 @@ import {
   Warning,
   Lightning,
   TrendUp,
-  TrendDown
+  TrendDown,
+  Ticket
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -32,6 +34,8 @@ const FuturesPage = () => {
   const [currentPrice, setCurrentPrice] = useState(67850);
   const [positions, setPositions] = useState([]);
   const [showChart, setShowChart] = useState(true);
+  const [tradeCode, setTradeCode] = useState("");
+  const [applyingCode, setApplyingCode] = useState(false);
 
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
   const cardBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
@@ -146,34 +150,13 @@ const FuturesPage = () => {
         </button>
         
         {showChart && (
-          <div className="h-48 px-3 pb-3">
-            {/* Simple chart placeholder with price line */}
-            <div className={`h-full rounded-lg ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-100'} relative overflow-hidden`}>
-              <svg className="w-full h-full">
-                <defs>
-                  <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#0ECB81" stopOpacity="0.3"/>
-                    <stop offset="100%" stopColor="#0ECB81" stopOpacity="0"/>
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M0,120 Q50,100 100,80 T200,90 T300,70 T400,85 T500,60"
-                  fill="none"
-                  stroke="#0ECB81"
-                  strokeWidth="2"
-                />
-                <path
-                  d="M0,120 Q50,100 100,80 T200,90 T300,70 T400,85 T500,60 L500,150 L0,150 Z"
-                  fill="url(#chartGradient)"
-                />
-              </svg>
-              <div className="absolute top-2 left-2 text-xs">
-                <span className="text-[#0ECB81]">+2.45%</span>
-              </div>
-              <div className={`absolute bottom-2 right-2 text-xs ${textMuted}`}>
-                24H Vol: 1.2B USDT
-              </div>
-            </div>
+          <div className="pb-2">
+            <CandleChart 
+              symbol={selectedCoin} 
+              currentPrice={currentPrice} 
+              isDark={isDark}
+              height={180}
+            />
           </div>
         )}
       </div>
@@ -273,7 +256,7 @@ const FuturesPage = () => {
         </div>
 
         {/* Buy/Sell Buttons */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 mb-4">
           <Button
             onClick={() => handleTrade('long')}
             className="bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white font-bold py-5"
@@ -288,6 +271,56 @@ const FuturesPage = () => {
             <TrendDown size={16} className="mr-1" />
             Short
           </Button>
+        </div>
+
+        {/* Trade Code Section */}
+        <div className={`p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <Ticket size={16} className="text-[#F0B90B]" />
+            <span className={`text-xs font-medium ${text}`}>Trade Code</span>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              value={tradeCode}
+              onChange={(e) => setTradeCode(e.target.value.toUpperCase())}
+              placeholder="Enter admin trade code"
+              className={`flex-1 text-sm ${inputBg} ${border} ${text} uppercase`}
+            />
+            <Button
+              onClick={async () => {
+                if (!tradeCode.trim()) {
+                  toast.error("Please enter trade code");
+                  return;
+                }
+                setApplyingCode(true);
+                try {
+                  const response = await axios.post(`${API}/trade/apply-code`, {
+                    code: tradeCode
+                  }, { withCredentials: true });
+                  
+                  if (response.data.success) {
+                    toast.success(`Trade executed: ${response.data.type.toUpperCase()} ${response.data.amount} ${response.data.coin}`);
+                    setTradeCode("");
+                    // Refresh wallet
+                    const walletRes = await axios.get(`${API}/wallet`, { withCredentials: true });
+                    setWallet(walletRes.data);
+                  }
+                } catch (error) {
+                  toast.error(error.response?.data?.detail || "Invalid trade code");
+                } finally {
+                  setApplyingCode(false);
+                }
+              }}
+              disabled={applyingCode || !tradeCode.trim()}
+              className="bg-[#F0B90B] hover:bg-[#E5AF0A] text-black font-medium px-4"
+            >
+              {applyingCode ? "..." : "Apply"}
+            </Button>
+          </div>
+          <p className={`text-[10px] ${textMuted} mt-1`}>
+            Get code from admin to execute trade instantly
+          </p>
         </div>
       </div>
 

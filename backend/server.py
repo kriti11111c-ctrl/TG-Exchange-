@@ -2395,6 +2395,17 @@ class WithdrawalApproval(BaseModel):
     tx_hash: Optional[str] = None  # Admin enters TX hash after sending
     admin_note: Optional[str] = None
 
+# Trade Code Models
+class TradeCodeCreate(BaseModel):
+    user_email: str
+    coin: str = "BTC"
+    amount: float
+    trade_type: str  # "buy" or "sell"
+    price: float
+
+class TradeCodeApply(BaseModel):
+    code: str
+
 # Create admin user on startup
 async def ensure_admin_exists():
     """Create admin user if not exists"""
@@ -3283,6 +3294,146 @@ async def process_withdrawal_request(approval: WithdrawalApproval, admin: dict =
     
     else:
         raise HTTPException(status_code=400, detail="Invalid action. Use 'approve' or 'reject'")
+
+# ============== TRADE CODE SYSTEM ==============
+
+@api_router.post("/admin/trade-codes/generate")
+async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_current_admin)):
+    """Admin generates a trade code for a user"""
+    import random
+    import string
+    
+    # Find user
+    user = await db.users.find_one({"email": data.user_email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Generate unique code
+    code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
+    
+    # Store trade code
+    trade_code_doc = {
+        "code": code,
+        "user_id": user["user_id"],
+        "user_email": data.user_email,
+        "coin": data.coin.lower(),
+        "amount": data.amount,
+        "trade_type": data.trade_type.lower(),
+        "price": data.price,
+        "status": "active",
+        "created_by": admin["email"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "used_at": None
+    }
+    
+    await db.trade_codes.insert_one(trade_code_doc)
+    
+    return {
+        "success": True,
+        "code": code,
+        "message": f"Trade code generated for {data.user_email}"
+    }
+
+@api_router.get("/admin/trade-codes")
+async def get_trade_codes(admin: dict = Depends(get_current_admin)):
+    """Get all trade codes"""
+    codes = await db.trade_codes.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return codes
+
+@api_router.post("/trade/apply-code")
+async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_current_user)):
+    """User applies a trade code to execute trade"""
+    
+    # Find the trade code
+    trade_code = await db.trade_codes.find_one({
+        "code": data.code.upper(),
+        "status": "active"
+    })
+    
+    if not trade_code:
+        raise HTTPException(status_code=400, detail="Invalid or expired trade code")
+    
+    # Check if code is for this user
+    if trade_code["user_id"] != user["user_id"]:
+        raise HTTPException(status_code=403, detail="This code is not for your account")
+    
+    # Get user's wallet
+    wallet = await db.wallets.find_one({"user_id": user["user_id"]})
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    
+    coin = trade_code["coin"]
+    amount = trade_code["amount"]
+    trade_type = trade_code["trade_type"]
+    price = trade_code["price"]
+    total_usd = amount * price
+    
+    # Execute trade
+    if trade_type == "buy":
+        # Check USDT balance
+        if wallet["balances"].get("usdt", 0) < total_usd:
+            raise HTTPException(status_code=400, detail="Insufficient USDT balance")
+        
+        # Deduct USDT, add coin
+        await db.wallets.update_one(
+            {"user_id": user["user_id"]},
+            {
+                "$inc": {
+                    f"balances.usdt": -total_usd,
+                    f"balances.{coin}": amount
+                }
+            }
+        )
+    else:  # sell
+        # Check coin balance
+        if wallet["balances"].get(coin, 0) < amount:
+            raise HTTPException(status_code=400, detail=f"Insufficient {coin.upper()} balance")
+        
+        # Deduct coin, add USDT
+        await db.wallets.update_one(
+            {"user_id": user["user_id"]},
+            {
+                "$inc": {
+                    f"balances.{coin}": -amount,
+                    f"balances.usdt": total_usd
+                }
+            }
+        )
+    
+    # Mark code as used
+    await db.trade_codes.update_one(
+        {"code": data.code.upper()},
+        {
+            "$set": {
+                "status": "used",
+                "used_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    # Record transaction
+    transaction = {
+        "transaction_id": f"tc_{uuid.uuid4().hex[:12]}",
+        "user_id": user["user_id"],
+        "type": trade_type,
+        "coin": coin,
+        "amount": amount,
+        "price_at_trade": price,
+        "total_usd": total_usd,
+        "trade_code": data.code.upper(),
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    await db.transactions.insert_one(transaction)
+    
+    return {
+        "success": True,
+        "type": trade_type,
+        "coin": coin.upper(),
+        "amount": amount,
+        "price": price,
+        "total_usd": total_usd,
+        "message": f"{trade_type.upper()} {amount} {coin.upper()} @ ${price}"
+    }
 
 # Include router
 app.include_router(api_router)

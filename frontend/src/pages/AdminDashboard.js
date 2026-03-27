@@ -13,9 +13,12 @@ import {
   ArrowsClockwise,
   CaretRight,
   Wallet,
-  TrendUp
+  TrendUp,
+  Ticket,
+  Copy
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
 import { toast } from "sonner";
 
 const AdminDashboard = () => {
@@ -24,6 +27,17 @@ const AdminDashboard = () => {
   const [pendingDeposits, setPendingDeposits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Trade Code State
+  const [tradeCodeForm, setTradeCodeForm] = useState({
+    user_email: "",
+    coin: "BTC",
+    amount: "",
+    trade_type: "buy",
+    price: ""
+  });
+  const [generatedCode, setGeneratedCode] = useState("");
+  const [generatingCode, setGeneratingCode] = useState(false);
 
   const adminToken = localStorage.getItem("admin_token");
   const adminData = JSON.parse(localStorage.getItem("admin_data") || "{}");
@@ -70,6 +84,37 @@ const AdminDashboard = () => {
     localStorage.removeItem("admin_token");
     localStorage.removeItem("admin_data");
     navigate("/admin");
+  };
+
+  const handleGenerateTradeCode = async () => {
+    if (!tradeCodeForm.user_email || !tradeCodeForm.amount || !tradeCodeForm.price) {
+      toast.error("Please fill all fields");
+      return;
+    }
+    
+    setGeneratingCode(true);
+    try {
+      const headers = { Authorization: `Bearer ${adminToken}` };
+      const response = await axios.post(`${API}/admin/trade-codes/generate`, {
+        user_email: tradeCodeForm.user_email,
+        coin: tradeCodeForm.coin,
+        amount: parseFloat(tradeCodeForm.amount),
+        trade_type: tradeCodeForm.trade_type,
+        price: parseFloat(tradeCodeForm.price)
+      }, { headers });
+      
+      setGeneratedCode(response.data.code);
+      toast.success("Trade code generated!");
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to generate code");
+    } finally {
+      setGeneratingCode(false);
+    }
+  };
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(generatedCode);
+    toast.success("Code copied!");
   };
 
   const handleDepositAction = async (requestId, action) => {
@@ -213,6 +258,102 @@ const AdminDashboard = () => {
             </div>
             <CaretRight size={20} className="text-gray-500" />
           </Link>
+        </div>
+
+        {/* Trade Code Generator */}
+        <div className="bg-[#111111] border border-[#222] rounded-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-[#222] flex items-center gap-2">
+            <Ticket size={20} className="text-[#F0B90B]" />
+            <h2 className="text-lg font-bold text-white">Generate Trade Code</h2>
+          </div>
+          
+          <div className="p-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">User Email</label>
+                <Input
+                  type="email"
+                  placeholder="user@example.com"
+                  value={tradeCodeForm.user_email}
+                  onChange={(e) => setTradeCodeForm({...tradeCodeForm, user_email: e.target.value})}
+                  className="bg-[#0A0A0A] border-[#333] text-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Coin</label>
+                <select
+                  value={tradeCodeForm.coin}
+                  onChange={(e) => setTradeCodeForm({...tradeCodeForm, coin: e.target.value})}
+                  className="w-full h-10 px-3 bg-[#0A0A0A] border border-[#333] text-white rounded-md"
+                >
+                  <option value="BTC">BTC</option>
+                  <option value="ETH">ETH</option>
+                  <option value="BNB">BNB</option>
+                  <option value="SOL">SOL</option>
+                  <option value="XRP">XRP</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Trade Type</label>
+                <select
+                  value={tradeCodeForm.trade_type}
+                  onChange={(e) => setTradeCodeForm({...tradeCodeForm, trade_type: e.target.value})}
+                  className="w-full h-10 px-3 bg-[#0A0A0A] border border-[#333] text-white rounded-md"
+                >
+                  <option value="buy">BUY</option>
+                  <option value="sell">SELL</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Amount</label>
+                <Input
+                  type="number"
+                  placeholder="0.01"
+                  value={tradeCodeForm.amount}
+                  onChange={(e) => setTradeCodeForm({...tradeCodeForm, amount: e.target.value})}
+                  className="bg-[#0A0A0A] border-[#333] text-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Price (USD)</label>
+                <Input
+                  type="number"
+                  placeholder="68000"
+                  value={tradeCodeForm.price}
+                  onChange={(e) => setTradeCodeForm({...tradeCodeForm, price: e.target.value})}
+                  className="bg-[#0A0A0A] border-[#333] text-white"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button
+                  onClick={handleGenerateTradeCode}
+                  disabled={generatingCode}
+                  className="w-full bg-[#F0B90B] hover:bg-[#E5AF0A] text-black font-medium"
+                >
+                  {generatingCode ? "Generating..." : "Generate Code"}
+                </Button>
+              </div>
+            </div>
+            
+            {generatedCode && (
+              <div className="mt-4 p-4 bg-[#0A0A0A] border border-[#F0B90B]/50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Generated Trade Code:</p>
+                    <p className="text-2xl font-mono font-bold text-[#F0B90B]">{generatedCode}</p>
+                  </div>
+                  <Button onClick={copyCode} variant="outline" className="border-[#F0B90B] text-[#F0B90B]">
+                    <Copy size={16} className="mr-1" />
+                    Copy
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Share this code with user: {tradeCodeForm.user_email} • 
+                  {tradeCodeForm.trade_type.toUpperCase()} {tradeCodeForm.amount} {tradeCodeForm.coin} @ ${tradeCodeForm.price}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Pending Deposits */}
