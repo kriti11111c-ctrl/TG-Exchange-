@@ -1,179 +1,92 @@
-# TG Xchange - Product Requirements Document
+# TG Exchange - Product Requirements Document
 
-## Original Problem Statement
-"Mujhe ek real centralized exchange chahie l bank jaisa banao" - Build a centralized cryptocurrency exchange like a bank.
+## Project Overview
+A full-stack centralized cryptocurrency exchange similar to Binance/WazirX called "TG Exchange".
 
-## App Name: TG Xchange (Rebranded from CryptoVault)
+## Core Features Implemented
 
-## User Choices
-1. **Exchange Type**: Crypto Exchange (Bitcoin, Ethereum trading)
-2. **Main Features**: Wallet system (deposit/withdraw)
-3. **Payment Method**: Crypto deposits only
-4. **Authentication**: Both Email/Password + Google OAuth
-5. **Price Data**: CoinGecko API (real crypto prices)
-6. **Theme**: Day/Night Mode toggle (Light/Dark theme support)
+### Authentication System
+- JWT-based custom authentication
+- Google OAuth via Emergent Managed Auth
+- Admin and User roles
+- Session management with cookies
 
-## Architecture
+### Wallet System
+- Multi-currency support (BTC, ETH, USDT, etc.)
+- Deposit functionality with blockchain verification
+- Withdrawal system with admin approval
+- Welcome bonus system
 
-### Backend (FastAPI)
-- **Auth**: JWT tokens + Emergent Google OAuth
-- **Database**: MongoDB with collections (users, user_sessions, wallets, transactions)
-- **Market Data**: CoinGecko API with async httpx + caching + fallback
+### Trading Features
+- Live crypto prices via CoinGecko API (50+ coins)
+- Trade Page with buy/sell functionality
+- Futures Page with candlestick charts
+- Trade History with filters (All/Buy/Sell)
+- Admin Trade Code system (Admin generates, User executes)
 
-### Frontend (React)
-- **Styling**: Tailwind CSS + Shadcn UI components
-- **Design**: Light/Dark theme toggle, Unbounded/Manrope/JetBrains Mono fonts
-- **Pages**: Landing, Login, Register, Dashboard, Wallet, Trade, Transactions
-- **Theme**: ThemeContext with localStorage persistence
+### Markets
+- Markets Page with 50+ cryptocurrencies
+- Real-time price updates
+- Sorting and categorization
+- CoinGecko API integration for reliable logos
 
-## Core Requirements (Static)
-- User registration and login (email/password + Google)
-- Crypto wallet with multi-coin support (BTC, ETH, USDT, BNB, XRP, SOL)
-- Live market prices from CoinGecko
-- Buy/Sell trading with USDT as base currency
-- Transaction history
-- Deposit/Withdrawal functionality
-- Light/Dark Mode toggle
+### User Features
+- Profile management
+- Team building/Referral system
+- Rank system (Bronze to Diamond)
+- Security settings
 
-## What's Been Implemented
+### Admin Panel
+- User management
+- Deposit approval
+- Withdrawal approval
+- Trade Code generator
 
-### March 27, 2026
-- ✅ **Admin Wallet Integration** - Deposit with admin addresses
-  - DepositPage created at `/deposit`
-  - Network selector: ETH/ERC20, BSC/BEP20, TRC20, Solana, Polygon
-  - QR Code generation for each address
-  - Copy and Share functionality
-  - Admin deposit addresses configured
-  - Warning messages for each network
+### UI/UX
+- Dark/Light mode on Auth pages
+- Global Bottom Navigation (Home, Markets, Trade, Futures, Assets)
+- Custom "Golden Bull" logo branding
+- Animated Candlestick Loading Page
+- Binance-style design
 
-- ✅ **Binance-Style Dashboard** - Complete redesign
-  - Est. Total Value with eye toggle
-  - Quick Actions: Referral, Earn, Trading Bots, VIP Rank, More
-  - Market tabs: Favorites, Hot
-  - Coin list with proper logos and borders
-  - 20+ coins with real-time prices
-  - Bottom navigation bar
+## Technical Stack
+- **Frontend:** React, Tailwind CSS, Shadcn/UI
+- **Backend:** FastAPI, Python
+- **Database:** MongoDB
+- **APIs:** CoinGecko (prices/logos), OKX (market data)
 
-- ✅ **WebSocket Real-Time Prices** - Live price updates without page refresh
-  - WebSocket connection at `/ws/prices`
-  - Automatic reconnection with exponential backoff
-  - LIVE/Offline status indicator on Dashboard
-  - Updates every 3 seconds from OKX API
-  - Fallback to REST API when WebSocket disconnected
+## Key Credentials
+- Admin: `admin@tgxchange.com` / `Admin@TG2024`
+- Demo User: `demo@cryptovault.com` / `Demo@123`
 
-- ✅ **2FA Google Authenticator (TOTP)** - QR code based authentication
-  - Setup flow with QR code generation
-  - Manual key entry option with copy button
-  - 6-digit TOTP code verification
-  - Enable/Disable 2FA in Security settings
-  - Login integration - requires code when 2FA enabled
-  - Security page at `/profile/security`
+## Changelog
 
-- ✅ **Transaction History 6 Summary Cards** - Complete overview at top of page
-  - **Row 1 (Basic Stats)**: Total Deposits, Total Withdrawals, Total Trades
-  - **Row 2 (Bonus Stats)**: Welcome Bonus (green), Salary (golden), Rank Reward (purple)
-  - Gradient borders and colored styling for bonus cards
-  - Responsive grid layout (2 cols on mobile, 3 cols on desktop)
-  - Auto-calculates totals from transaction history
+### December 27, 2025
+- Fixed Loading Page speed (2.5s → 1.2s)
+- Added candlestick animation to all loading states
+- Mini candle loader for auth checks
 
-### March 25, 2026
-- ✅ **Real Exchange Data (OKX API)** - Candles now EXACTLY match real exchanges
-  - Replaced CoinGecko OHLC with OKX API for real-time candlestick data
-  - Real-time price updates every 10 seconds from OKX
-  - 24h High, Low, Volume from real exchange data
-  - Supports all timeframes: 15m, 1H, 4H, 1D, 1W
-  - Charts now match Binance/OKX exactly
-  
-- ✅ **Technical Indicators on Charts** - Professional trading analysis tools
-  - **MA (Moving Average)**: 7-period (yellow) and 25-period (purple) lines on main chart
-  - **VOL (Volume)**: Volume bars (green/red) with MA(5) and MA(10) lines - exactly like Binance
-  - **RSI (Relative Strength Index)**: 14-period RSI in sub-chart with 30/70 levels
-  - **MACD**: 12,26,9 configuration with histogram, MACD line, and Signal line
-  - Indicator selector dropdown with easy toggle
-  - Visual legend showing active indicators
-  - Chart height auto-adjusts when sub-chart indicators active
-  
-- ✅ **Day/Night Mode Toggle** - Full light/dark theme support across all pages
-  - Theme toggle button (☀️/🌙) in navbar on Dashboard, Trade, and Wallet pages
-  - Theme state persists in localStorage
-  - Candlestick chart background responds to theme changes
-  - Order Book, Recent Trades, Buy/Sell panel all theme-aware
-  - Bottom navigation theme support
+### Previous Updates
+- Implemented candlestick loading page animation
+- Added Golden Bull logo branding
+- Created Trade Code system
+- Fixed CoinGecko logo integration
+- Added Markets Page with 50+ coins
+- Implemented Trade History page
+- Fixed Rank Page format issues
 
-### January 24, 2026
-- ✅ Landing page with hero, features, stats
-- ✅ User authentication (Email/Password + Google OAuth)
-- ✅ Dashboard with portfolio value, holdings, market overview
-- ✅ Wallet page with deposit/withdraw modals
-- ✅ Trade page with buy/sell functionality
-- ✅ Real Candlestick Charts with OHLC data (15m, 1H, 4H, 1D, 1W timeframes)
-- ✅ Order Book and Recent Trades panel
-- ✅ Transaction history page
-- ✅ CoinGecko API integration with caching
-- ✅ New users get 1000 USDT for testing
-- ✅ Mobile responsive Trade page
+## Pending/Future Tasks
 
-## User Personas
-1. **Retail Trader**: Buys/sells crypto, needs simple UI
-2. **HODLer**: Deposits crypto, wants secure storage
-3. **New User**: Needs onboarding, demo USDT balance
-
-## P0/P1/P2 Features
-
-### P0 (Done)
-- Auth system
-- Wallet management
-- Trading functionality
-- Market prices
-- Real Candlestick Charts
-- Light/Dark Mode toggle
-- Technical Indicators (MA, RSI, MACD)
-- WebSocket Real-Time Prices
-- 2FA Google Authenticator
-
-### P1 (Backlog)
-- KYC/Identity verification
-- Order book with limit orders
+### P0 (High Priority)
+- PWA Configuration (for mobile app-like experience)
 
 ### P2 (Future)
-- Margin trading / Futures UI
-- Bollinger Bands indicator
-- Multiple fiat currencies
-- Staking/Earning features
-- API keys for programmatic trading
+- Margin trading / Real Futures engine logic
+- KYC/Identity verification module
+- Advanced technical indicators (Bollinger Bands, MACD)
 
-## Latest Updates - March 27, 2026
-
-### Admin Panel (COMPLETE)
-- ✅ **Admin Login Page** at `/admin`
-  - Credentials: admin@tgxchange.com / Admin@TG2024
-  - JWT-based admin authentication
-  - Admin auto-created on server startup
-
-- ✅ **Admin Dashboard** at `/admin/dashboard`
-  - Stats: Total Users, Total Deposits, Pending Approvals, Today Signups
-  - Quick links: All Deposits, All Users
-  - Pending Deposit Requests with Approve/Reject buttons
-  - Refresh functionality
-
-- ✅ **Admin Deposits Page** at `/admin/deposits`
-  - Filter by status: All, Pending, Approved, Rejected
-  - Search by email, name, or tx hash
-  - Table: Request ID, User, Amount, Network, TX Hash, Date, Status, Actions
-  - Approve/Reject buttons for pending requests
-
-- ✅ **Admin Users Page** at `/admin/users`
-  - Search by email, name, or user ID
-  - Table: User, Email, User ID, USDT Balance, Referral Code, Joined date
-
-- ✅ **User Deposit Request Flow**
-  - User submits deposit request with amount and tx hash
-  - Request stored as "pending"
-  - Admin approves -> User wallet balance updated
-  - Admin rejects -> Request marked rejected
-
-## Next Tasks
-1. APK/PWA for mobile (User requested)
-2. KYC/Identity verification
-3. Implement limit orders functionality
-4. Add more indicators (Bollinger Bands, Volume Profile)
+## Architecture Notes
+- `server.py` is monolithic (~3300 lines) - needs modularization
+- All backend routes prefixed with `/api`
+- Theme context for dark/light mode
+- WebSocket support for real-time updates

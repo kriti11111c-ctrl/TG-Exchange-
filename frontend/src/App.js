@@ -133,17 +133,59 @@ const AuthProvider = ({ children }) => {
   );
 };
 
+// Mini Candle Loader for Auth checks (inline version to avoid circular dependency)
+const MiniCandleLoader = () => {
+  const candles = [...Array(6)].map((_, i) => ({
+    id: i,
+    isGreen: i % 2 === 0,
+    height: 20 + (i * 8),
+    delay: i * 0.08
+  }));
+
+  return (
+    <div className="fixed inset-0 bg-[#0B0E11] flex flex-col items-center justify-center z-[9999]">
+      <div className="flex items-end justify-center gap-1 h-16 mb-4">
+        {candles.map((candle) => (
+          <div key={candle.id} className="flex flex-col items-center">
+            <div 
+              className={`w-[1px] ${candle.isGreen ? 'bg-[#0ECB81]' : 'bg-[#F6465D]'}`}
+              style={{
+                height: '6px',
+                animation: 'candleWick 1s ease-in-out infinite',
+                animationDelay: `${candle.delay}s`
+              }}
+            />
+            <div 
+              className={`w-2 rounded-sm ${candle.isGreen ? 'bg-[#0ECB81]' : 'bg-[#F6465D]'}`}
+              style={{
+                height: `${candle.height}px`,
+                animation: 'candleGrow 1s ease-in-out infinite',
+                animationDelay: `${candle.delay}s`
+              }}
+            />
+            <div 
+              className={`w-[1px] ${candle.isGreen ? 'bg-[#0ECB81]' : 'bg-[#F6465D]'}`}
+              style={{
+                height: '4px',
+                animation: 'candleWick 1s ease-in-out infinite',
+                animationDelay: `${candle.delay}s`
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      <p className="text-[#848E9C] text-sm">Loading...</p>
+    </div>
+  );
+};
+
 // Protected Route
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
-      </div>
-    );
+    return <MiniCandleLoader />;
   }
 
   if (!user) {
@@ -187,11 +229,7 @@ const AuthCallback = () => {
     processSession();
   }, [navigate, login, location]);
 
-  return (
-    <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-      <div className="text-white text-xl">Authenticating...</div>
-    </div>
-  );
+  return <MiniCandleLoader />;
 };
 
 // App Router

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const LoadingPage = ({ onComplete }) => {
+const LoadingPage = ({ onComplete, minimal = false }) => {
   const [progress, setProgress] = useState(0);
   const [candles, setCandles] = useState([]);
   
@@ -12,23 +12,64 @@ const LoadingPage = ({ onComplete }) => {
       height: 30 + Math.random() * 70,
       wickTop: 10 + Math.random() * 15,
       wickBottom: 5 + Math.random() * 10,
-      delay: i * 0.1
+      delay: i * 0.08
     }));
     setCandles(generatedCandles);
     
+    // Faster loading: complete in ~1.2 seconds (progress +5 every 60ms)
     const timer = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) {
           clearInterval(timer);
-          setTimeout(() => onComplete && onComplete(), 500);
+          setTimeout(() => onComplete && onComplete(), 200);
           return 100;
         }
-        return prev + 2;
+        return prev + 5;
       });
-    }, 50);
+    }, 60);
     
     return () => clearInterval(timer);
   }, [onComplete]);
+
+  // Minimal loader for quick auth checks
+  if (minimal) {
+    return (
+      <div className="fixed inset-0 bg-[#0B0E11] flex flex-col items-center justify-center z-[9999]">
+        {/* Mini Candle Animation */}
+        <div className="flex items-end justify-center gap-1 h-16 mb-4">
+          {candles.slice(0, 6).map((candle) => (
+            <div key={candle.id} className="flex flex-col items-center">
+              <div 
+                className={`w-[1px] ${candle.isGreen ? 'bg-[#0ECB81]' : 'bg-[#F6465D]'}`}
+                style={{
+                  height: `${candle.wickTop * 0.5}px`,
+                  animation: 'candleWick 1s ease-in-out infinite',
+                  animationDelay: `${candle.delay}s`
+                }}
+              />
+              <div 
+                className={`w-2 rounded-sm ${candle.isGreen ? 'bg-[#0ECB81]' : 'bg-[#F6465D]'}`}
+                style={{
+                  height: `${candle.height * 0.4}px`,
+                  animation: 'candleGrow 1s ease-in-out infinite',
+                  animationDelay: `${candle.delay}s`
+                }}
+              />
+              <div 
+                className={`w-[1px] ${candle.isGreen ? 'bg-[#0ECB81]' : 'bg-[#F6465D]'}`}
+                style={{
+                  height: `${candle.wickBottom * 0.5}px`,
+                  animation: 'candleWick 1s ease-in-out infinite',
+                  animationDelay: `${candle.delay}s`
+                }}
+              />
+            </div>
+          ))}
+        </div>
+        <p className="text-[#848E9C] text-sm">Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-[#0B0E11] flex flex-col items-center justify-center z-[9999]">
@@ -55,7 +96,7 @@ const LoadingPage = ({ onComplete }) => {
               className={`w-[2px] ${candle.isGreen ? 'bg-[#0ECB81]' : 'bg-[#F6465D]'}`}
               style={{
                 height: `${candle.wickTop}px`,
-                animation: 'candleWick 1.5s ease-in-out infinite',
+                animation: 'candleWick 1.2s ease-in-out infinite',
                 animationDelay: `${candle.delay}s`
               }}
             />
@@ -64,7 +105,7 @@ const LoadingPage = ({ onComplete }) => {
               className={`w-4 rounded-sm ${candle.isGreen ? 'bg-[#0ECB81]' : 'bg-[#F6465D]'}`}
               style={{
                 height: `${candle.height}px`,
-                animation: 'candleGrow 1.5s ease-in-out infinite',
+                animation: 'candleGrow 1.2s ease-in-out infinite',
                 animationDelay: `${candle.delay}s`
               }}
             />
@@ -73,7 +114,7 @@ const LoadingPage = ({ onComplete }) => {
               className={`w-[2px] ${candle.isGreen ? 'bg-[#0ECB81]' : 'bg-[#F6465D]'}`}
               style={{
                 height: `${candle.wickBottom}px`,
-                animation: 'candleWick 1.5s ease-in-out infinite',
+                animation: 'candleWick 1.2s ease-in-out infinite',
                 animationDelay: `${candle.delay}s`
               }}
             />
@@ -99,15 +140,15 @@ const LoadingPage = ({ onComplete }) => {
 
       {/* Floating Candles Animation */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(10)].map((_, i) => (
+        {[...Array(8)].map((_, i) => (
           <div
             key={i}
             className="absolute"
             style={{
-              left: `${5 + i * 10}%`,
+              left: `${5 + i * 12}%`,
               bottom: '-60px',
-              animation: `floatUp ${5 + Math.random() * 4}s ease-in-out infinite`,
-              animationDelay: `${i * 0.7}s`,
+              animation: `floatUp ${4 + Math.random() * 3}s ease-in-out infinite`,
+              animationDelay: `${i * 0.5}s`,
             }}
           >
             <div className="flex flex-col items-center opacity-20">
