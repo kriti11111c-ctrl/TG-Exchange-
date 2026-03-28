@@ -1,19 +1,21 @@
-# Test Credentials
+# Test Credentials - TG Exchange
 
-## Demo Account
+## User Accounts
+
+### Demo User
 - **Email:** demo@cryptovault.com
 - **Password:** Demo@123
+- **Role:** User
+- **KYC Status:** Verified
 
-## New Test User (with Welcome Bonus)
-- **Email:** newuser@test.com
-- **Password:** Test@123
+## Admin Accounts
 
-## Referred User
-- **Email:** referred_user@test.com
-- **Password:** Test@123
-- **Referred by:** demo@cryptovault.com (CVB57E6DAA)
-
-## Admin Account
+### TG Exchange Admin
 - **Email:** admin@tgxchange.com
 - **Password:** Admin@TG2024
-- **Admin Panel URL:** /admin
+- **Role:** Admin
+
+## Notes
+- Admin login: /admin
+- User login: /login
+- KYC Verification: Profile → KYC Verification

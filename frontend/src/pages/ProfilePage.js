@@ -217,6 +217,20 @@ const ProfilePage = () => {
       <div className="mx-4 mt-6">
         <h3 className={`font-semibold mb-3 ${text}`}>Account</h3>
         <div className={`${cardBg} rounded-2xl overflow-hidden`}>
+          {/* KYC Verification - New */}
+          <Link to="/kyc" className={`flex items-center justify-between p-4 ${hoverBg}`}>
+            <div className="flex items-center gap-3">
+              <Fingerprint size={22} className="text-[#F0B90B]" />
+              <span className={text}>KYC Verification</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs px-2 py-1 rounded-full bg-[#F0B90B]/20 text-[#F0B90B] font-medium">
+                Verify Now
+              </span>
+              <CaretRight size={18} className={textMuted} />
+            </div>
+          </Link>
+          <div className={`h-px ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} mx-4`}></div>
           <Link to="/profile/security" className={`flex items-center justify-between p-4 ${hoverBg}`}>
             <div className="flex items-center gap-3">
               <Shield size={22} className="text-[#3498DB]" />

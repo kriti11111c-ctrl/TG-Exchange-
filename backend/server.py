@@ -160,6 +160,26 @@ REFERRAL_COMMISSION_RATES = {
     10: 0.001  # 0.1%
 }
 
+# ================= KYC MODELS =================
+
+class KYCSubmit(BaseModel):
+    aadhar_number: str = Field(..., min_length=12, max_length=12)
+    phone_number: str = Field(..., min_length=10, max_length=15)
+    date_of_birth: str  # Format: YYYY-MM-DD
+    country: str
+
+class KYCResponse(BaseModel):
+    kyc_id: str
+    user_id: str
+    aadhar_number: str
+    phone_number: str
+    date_of_birth: str
+    country: str
+    status: str  # pending, verified, rejected
+    submitted_at: datetime
+    reviewed_at: Optional[datetime] = None
+    rejection_reason: Optional[str] = None
+
 # ================= BONUS & LIMITS CONFIG =================
 WELCOME_BONUS_AMOUNT = 200.0  # $200 welcome bonus
 WELCOME_BONUS_DAYS = 5  # Bonus valid for 5 days
@@ -3433,6 +3453,182 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         "price": price,
         "total_usd": total_usd,
         "message": f"{trade_type.upper()} {amount} {coin.upper()} @ ${price}"
+    }
+
+# ==================== KYC VERIFICATION SYSTEM ====================
+
+@api_router.post("/user/kyc/submit")
+async def submit_kyc(data: KYCSubmit, request: Request):
+    """Submit KYC verification request"""
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_id = user["user_id"]
+    
+    # Check if KYC already submitted
+    existing_kyc = await db.kyc_requests.find_one({"user_id": user_id}, {"_id": 0})
+    if existing_kyc:
+        if existing_kyc["status"] == "verified":
+            raise HTTPException(status_code=400, detail="KYC already verified")
+        elif existing_kyc["status"] == "pending":
+            raise HTTPException(status_code=400, detail="KYC already under verification")
+    
+    # Validate Aadhar (should be 12 digits)
+    if not data.aadhar_number.isdigit() or len(data.aadhar_number) != 12:
+        raise HTTPException(status_code=400, detail="Invalid Aadhar number. Must be 12 digits.")
+    
+    # Validate phone number
+    phone_clean = data.phone_number.replace("+", "").replace(" ", "").replace("-", "")
+    if not phone_clean.isdigit() or len(phone_clean) < 10:
+        raise HTTPException(status_code=400, detail="Invalid phone number")
+    
+    # Validate date of birth format
+    try:
+        dob = datetime.strptime(data.date_of_birth, "%Y-%m-%d")
+        # Check age (must be at least 18)
+        today = datetime.now()
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        if age < 18:
+            raise HTTPException(status_code=400, detail="You must be at least 18 years old")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    
+    kyc_id = str(uuid.uuid4())
+    kyc_doc = {
+        "kyc_id": kyc_id,
+        "user_id": user_id,
+        "aadhar_number": data.aadhar_number,
+        "phone_number": data.phone_number,
+        "date_of_birth": data.date_of_birth,
+        "country": data.country,
+        "status": "pending",
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "reviewed_at": None,
+        "rejection_reason": None
+    }
+    
+    # Delete any existing rejected KYC and insert new
+    await db.kyc_requests.delete_many({"user_id": user_id, "status": "rejected"})
+    await db.kyc_requests.insert_one(kyc_doc)
+    
+    # Update user's KYC status
+    await db.users.update_one(
+        {"user_id": user_id},
+        {"$set": {"kyc_status": "pending"}}
+    )
+    
+    return {
+        "success": True,
+        "message": "KYC submitted successfully. Under verification.",
+        "kyc_id": kyc_id,
+        "status": "pending"
+    }
+
+@api_router.get("/user/kyc/status")
+async def get_kyc_status(request: Request):
+    """Get user's KYC status"""
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    kyc = await db.kyc_requests.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    
+    if not kyc:
+        return {
+            "status": "not_submitted",
+            "kyc": None
+        }
+    
+    return {
+        "status": kyc["status"],
+        "kyc": kyc
+    }
+
+# ==================== ADMIN KYC MANAGEMENT ====================
+
+@api_router.get("/admin/kyc/pending")
+async def get_pending_kyc(admin: dict = Depends(get_current_admin)):
+    """Get all pending KYC requests (Admin only)"""
+    pending_kyc = await db.kyc_requests.find(
+        {"status": "pending"},
+        {"_id": 0}
+    ).sort("submitted_at", -1).to_list(length=100)
+    
+    # Enrich with user data
+    enriched = []
+    for kyc in pending_kyc:
+        user = await db.users.find_one({"user_id": kyc["user_id"]}, {"_id": 0})
+        if user:
+            kyc["user_name"] = user.get("name", "Unknown")
+            kyc["user_email"] = user.get("email", "Unknown")
+        enriched.append(kyc)
+    
+    return {"requests": enriched, "count": len(enriched)}
+
+@api_router.get("/admin/kyc/all")
+async def get_all_kyc(admin: dict = Depends(get_current_admin)):
+    """Get all KYC requests (Admin only)"""
+    all_kyc = await db.kyc_requests.find(
+        {},
+        {"_id": 0}
+    ).sort("submitted_at", -1).to_list(length=500)
+    
+    # Enrich with user data
+    enriched = []
+    for kyc in all_kyc:
+        user = await db.users.find_one({"user_id": kyc["user_id"]}, {"_id": 0})
+        if user:
+            kyc["user_name"] = user.get("name", "Unknown")
+            kyc["user_email"] = user.get("email", "Unknown")
+        enriched.append(kyc)
+    
+    return {"requests": enriched, "count": len(enriched)}
+
+class KYCAction(BaseModel):
+    kyc_id: str
+    action: str  # "approve" or "reject"
+    rejection_reason: Optional[str] = None
+
+@api_router.post("/admin/kyc/action")
+async def kyc_action(data: KYCAction, admin: dict = Depends(get_current_admin)):
+    """Approve or reject KYC request (Admin only)"""
+    if data.action not in ["approve", "reject"]:
+        raise HTTPException(status_code=400, detail="Action must be 'approve' or 'reject'")
+    
+    kyc = await db.kyc_requests.find_one({"kyc_id": data.kyc_id}, {"_id": 0})
+    if not kyc:
+        raise HTTPException(status_code=404, detail="KYC request not found")
+    
+    if kyc["status"] != "pending":
+        raise HTTPException(status_code=400, detail=f"KYC already {kyc['status']}")
+    
+    new_status = "verified" if data.action == "approve" else "rejected"
+    
+    update_data = {
+        "status": new_status,
+        "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        "reviewed_by": admin["admin_id"]
+    }
+    
+    if data.action == "reject" and data.rejection_reason:
+        update_data["rejection_reason"] = data.rejection_reason
+    
+    await db.kyc_requests.update_one(
+        {"kyc_id": data.kyc_id},
+        {"$set": update_data}
+    )
+    
+    # Update user's KYC status
+    await db.users.update_one(
+        {"user_id": kyc["user_id"]},
+        {"$set": {"kyc_status": new_status, "kyc_verified": new_status == "verified"}}
+    )
+    
+    return {
+        "success": True,
+        "message": f"KYC {new_status}",
+        "kyc_id": data.kyc_id
     }
 
 # Include router

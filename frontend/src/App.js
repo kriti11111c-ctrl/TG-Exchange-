@@ -33,6 +33,7 @@ import StakingPage from "./pages/StakingPage";
 import FuturesPage from "./pages/FuturesPage";
 import MarketsPage from "./pages/MarketsPage";
 import TradeHistoryPage from "./pages/TradeHistoryPage";
+import KYCPage from "./pages/KYCPage";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -319,6 +320,11 @@ function AppRouter() {
       <Route path="/trade-history" element={
         <ProtectedRoute>
           <TradeHistoryPage />
+        </ProtectedRoute>
+      } />
+      <Route path="/kyc" element={
+        <ProtectedRoute>
+          <KYCPage />
         </ProtectedRoute>
       } />
       
