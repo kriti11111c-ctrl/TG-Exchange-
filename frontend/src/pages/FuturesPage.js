@@ -180,7 +180,7 @@ const FuturesPage = () => {
               symbol={selectedCoin} 
               currentPrice={currentPrice} 
               isDark={isDark}
-              height={180}
+              height={260}
             />
           </div>
         )}

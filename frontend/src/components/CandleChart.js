@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 
 // Coin ID mapping for API
 const COIN_IDS = {
@@ -11,31 +11,27 @@ const COIN_IDS = {
   DOGE: "dogecoin",
   DOT: "polkadot",
   MATIC: "matic-network",
-  LTC: "litecoin",
-  SHIB: "shiba-inu",
-  TRX: "tron",
-  AVAX: "avalanche-2",
-  LINK: "chainlink",
-  UNI: "uniswap"
+  LTC: "litecoin"
 };
 
-// Generate realistic historical candle data based on current price
-const generateHistoricalCandles = (currentPrice, numCandles = 50, volatilityPercent = 2) => {
+// Generate realistic historical candle data
+const generateHistoricalCandles = (currentPrice, numCandles = 60, volatilityPercent = 3) => {
   const candles = [];
-  let price = currentPrice * (1 - volatilityPercent/100 * numCandles * 0.3); // Start lower to create uptrend
+  let price = currentPrice * (1 - volatilityPercent/100 * numCandles * 0.15);
   
   for (let i = 0; i < numCandles; i++) {
     const volatility = price * (volatilityPercent / 100);
-    const trend = (currentPrice - price) / (numCandles - i) * 0.5; // Gentle trend towards current price
+    const trend = (currentPrice - price) / (numCandles - i) * 0.3;
+    const randomFactor = (Math.random() - 0.5) * 2;
     const open = price;
-    const change = trend + (Math.random() - 0.5) * volatility;
+    const change = trend + randomFactor * volatility;
     const close = open + change;
-    const high = Math.max(open, close) + Math.random() * volatility * 0.3;
-    const low = Math.min(open, close) - Math.random() * volatility * 0.3;
-    const volume = Math.random() * 1000000 + 500000;
+    const high = Math.max(open, close) + Math.random() * volatility * 0.5;
+    const low = Math.min(open, close) - Math.random() * volatility * 0.5;
+    const volume = (Math.random() * 500 + 100) * (1 + Math.abs(change/price) * 10);
     
     candles.push({
-      time: Date.now() - (numCandles - i) * 900000, // 15 min candles
+      time: Date.now() - (numCandles - i) * 900000,
       open,
       high,
       low,
@@ -46,7 +42,6 @@ const generateHistoricalCandles = (currentPrice, numCandles = 50, volatilityPerc
     price = close;
   }
   
-  // Ensure last candle ends at current price
   if (candles.length > 0) {
     const last = candles[candles.length - 1];
     last.close = currentPrice;
@@ -57,27 +52,40 @@ const generateHistoricalCandles = (currentPrice, numCandles = 50, volatilityPerc
   return candles;
 };
 
-const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, height = 200 }) => {
+// Calculate Moving Average
+const calculateMA = (candles, period) => {
+  const ma = [];
+  for (let i = 0; i < candles.length; i++) {
+    if (i < period - 1) {
+      ma.push(null);
+    } else {
+      const sum = candles.slice(i - period + 1, i + 1).reduce((acc, c) => acc + c.close, 0);
+      ma.push(sum / period);
+    }
+  }
+  return ma;
+};
+
+const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, height = 280 }) => {
+  const canvasRef = useRef(null);
   const [candles, setCandles] = useState([]);
-  const [timeframe, setTimeframe] = useState("1m");
+  const [timeframe, setTimeframe] = useState("15m");
   const [loading, setLoading] = useState(true);
   const [initialPrice, setInitialPrice] = useState(null);
   
-  const bg = isDark ? '#0B0E11' : '#f9fafb';
-  const gridColor = isDark ? '#1E2329' : '#e5e7eb';
-  const textColor = isDark ? '#848E9C' : '#6b7280';
+  const timeframes = ["15s", "30s", "1m", "15m", "30m"];
 
-  // Initialize candles when we get the first valid price
+  // Initialize candles
   useEffect(() => {
     if (currentPrice > 0 && !initialPrice) {
       setInitialPrice(currentPrice);
-      const newCandles = generateHistoricalCandles(currentPrice, 50, 2);
+      const newCandles = generateHistoricalCandles(currentPrice, 60, 3);
       setCandles(newCandles);
       setLoading(false);
     }
   }, [currentPrice, initialPrice]);
 
-  // Update last candle with current price (for real-time effect)
+  // Update last candle with current price
   useEffect(() => {
     if (candles.length > 0 && currentPrice > 0) {
       setCandles(prev => {
@@ -92,88 +100,240 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     }
   }, [currentPrice]);
 
-  // Handle timeframe change - regenerate candles
+  // Handle timeframe change
   const handleTimeframeChange = (tf) => {
     setTimeframe(tf);
     if (currentPrice > 0) {
-      // Different volatility for different timeframes
-      const volatility = tf === "30m" ? 3 : tf === "15m" ? 2.5 : tf === "1m" ? 2 : 1.5;
-      const newCandles = generateHistoricalCandles(currentPrice, 50, volatility);
+      const volatility = tf === "30m" ? 4 : tf === "15m" ? 3 : 2;
+      const newCandles = generateHistoricalCandles(currentPrice, 60, volatility);
       setCandles(newCandles);
     }
   };
 
-  // Handle symbol change - reset candles
+  // Reset on symbol change
   useEffect(() => {
     setInitialPrice(null);
     setLoading(true);
   }, [symbol]);
 
-  const timeframes = ["15s", "30s", "1m", "15m", "30m"];
-  
-  // Calculate chart dimensions
-  const chartHeight = height - 40;
-  const candleWidth = 6;
-  const candleGap = 3;
-  
-  // Calculate price range
-  const priceRange = useMemo(() => {
-    if (candles.length === 0) return { min: 0, max: 0 };
-    const highs = candles.map(c => c.high);
-    const lows = candles.map(c => c.low);
-    const max = Math.max(...highs);
-    const min = Math.min(...lows);
-    const padding = (max - min) * 0.1;
-    return { min: min - padding, max: max + padding };
+  // Calculate MAs
+  const ma7 = useMemo(() => calculateMA(candles, 7), [candles]);
+  const ma25 = useMemo(() => calculateMA(candles, 25), [candles]);
+
+  // Calculate total volume
+  const totalVolume = useMemo(() => {
+    if (candles.length === 0) return 0;
+    return candles.reduce((sum, c) => sum + c.volume, 0);
   }, [candles]);
 
-  // Convert price to Y coordinate
-  const priceToY = (price) => {
-    const range = priceRange.max - priceRange.min;
-    if (range === 0) return chartHeight / 2;
-    return chartHeight - ((price - priceRange.min) / range) * chartHeight;
-  };
+  // Draw chart on canvas
+  useEffect(() => {
+    if (!canvasRef.current || candles.length === 0) return;
 
-  // Format price for display
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    
+    // Set canvas size
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    
+    const width = rect.width;
+    const chartHeight = rect.height;
+    
+    // Clear canvas
+    ctx.fillStyle = isDark ? '#0B0E11' : '#f9fafb';
+    ctx.fillRect(0, 0, width, chartHeight);
+
+    // Dimensions
+    const padding = { top: 10, right: 50, bottom: 25, left: 5 };
+    const mainChartHeight = chartHeight * 0.75;
+    const volumeHeight = chartHeight * 0.2;
+    const volumeTop = mainChartHeight + 5;
+
+    // Calculate price range
+    const highs = candles.map(c => c.high);
+    const lows = candles.map(c => c.low);
+    const maxPrice = Math.max(...highs) * 1.002;
+    const minPrice = Math.min(...lows) * 0.998;
+    const priceRange = maxPrice - minPrice;
+
+    // Calculate volume range
+    const maxVolume = Math.max(...candles.map(c => c.volume));
+
+    // Candle dimensions
+    const candleAreaWidth = width - padding.left - padding.right;
+    const candleWidth = Math.max(4, (candleAreaWidth / candles.length) * 0.7);
+    const candleGap = (candleAreaWidth - candleWidth * candles.length) / candles.length;
+
+    // Draw grid lines
+    ctx.strokeStyle = isDark ? '#1E2329' : '#e5e7eb';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 4; i++) {
+      const y = padding.top + (mainChartHeight - padding.top - padding.bottom) * (i / 4);
+      ctx.beginPath();
+      ctx.setLineDash([2, 2]);
+      ctx.moveTo(padding.left, y);
+      ctx.lineTo(width - padding.right, y);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+
+    // Price to Y coordinate (for main chart)
+    const priceToY = (price) => {
+      return padding.top + ((maxPrice - price) / priceRange) * (mainChartHeight - padding.top - padding.bottom);
+    };
+
+    // Draw candles and volume
+    candles.forEach((candle, i) => {
+      const x = padding.left + i * (candleWidth + candleGap) + candleGap / 2;
+      const isGreen = candle.close >= candle.open;
+      const color = isGreen ? '#0ECB81' : '#F6465D';
+
+      // Draw candle wick
+      const highY = priceToY(candle.high);
+      const lowY = priceToY(candle.low);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x + candleWidth / 2, highY);
+      ctx.lineTo(x + candleWidth / 2, lowY);
+      ctx.stroke();
+
+      // Draw candle body
+      const openY = priceToY(candle.open);
+      const closeY = priceToY(candle.close);
+      const bodyTop = Math.min(openY, closeY);
+      const bodyHeight = Math.max(1, Math.abs(closeY - openY));
+      
+      ctx.fillStyle = color;
+      ctx.fillRect(x, bodyTop, candleWidth, bodyHeight);
+
+      // Draw volume bar
+      const volHeight = (candle.volume / maxVolume) * (volumeHeight - 5);
+      const volY = volumeTop + volumeHeight - volHeight;
+      ctx.fillStyle = isGreen ? 'rgba(14, 203, 129, 0.5)' : 'rgba(246, 70, 93, 0.5)';
+      ctx.fillRect(x, volY, candleWidth, volHeight);
+    });
+
+    // Draw MA7 line (yellow)
+    ctx.strokeStyle = '#F0B90B';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    let started = false;
+    ma7.forEach((val, i) => {
+      if (val !== null) {
+        const x = padding.left + i * (candleWidth + candleGap) + candleWidth / 2;
+        const y = priceToY(val);
+        if (!started) {
+          ctx.moveTo(x, y);
+          started = true;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+    });
+    ctx.stroke();
+
+    // Draw MA25 line (purple)
+    ctx.strokeStyle = '#9B59B6';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    started = false;
+    ma25.forEach((val, i) => {
+      if (val !== null) {
+        const x = padding.left + i * (candleWidth + candleGap) + candleWidth / 2;
+        const y = priceToY(val);
+        if (!started) {
+          ctx.moveTo(x, y);
+          started = true;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+    });
+    ctx.stroke();
+
+    // Draw current price line
+    const currentPriceY = priceToY(currentPrice);
+    ctx.strokeStyle = '#F0B90B';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(padding.left, currentPriceY);
+    ctx.lineTo(width - padding.right, currentPriceY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw current price label
+    ctx.fillStyle = '#F0B90B';
+    ctx.fillRect(width - padding.right + 2, currentPriceY - 8, 46, 16);
+    ctx.fillStyle = '#000';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(currentPrice >= 1000 ? currentPrice.toFixed(0) : currentPrice.toFixed(2), width - padding.right + 4, currentPriceY + 4);
+
+    // Draw price labels on right
+    ctx.fillStyle = isDark ? '#848E9C' : '#6b7280';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'left';
+    for (let i = 0; i <= 4; i++) {
+      const price = maxPrice - (priceRange * i / 4);
+      const y = padding.top + (mainChartHeight - padding.top - padding.bottom) * (i / 4);
+      ctx.fillText(price >= 1000 ? price.toFixed(0) : price.toFixed(2), width - padding.right + 4, y + 3);
+    }
+
+    // Draw "Vol" label
+    ctx.fillStyle = isDark ? '#848E9C' : '#6b7280';
+    ctx.font = '9px sans-serif';
+    ctx.fillText('Vol', padding.left, volumeTop + 10);
+
+  }, [candles, currentPrice, isDark, ma7, ma25]);
+
+  // Format price
   const formatPrice = (price) => {
     if (price >= 1000) return price.toFixed(0);
     if (price >= 1) return price.toFixed(2);
     return price.toFixed(6);
   };
 
-  // Calculate volume
-  const totalVolume = useMemo(() => {
-    if (candles.length === 0) return 0;
-    return candles.reduce((sum, c) => sum + c.volume, 0);
-  }, [candles]);
-
   return (
-    <div className="w-full" style={{ height: height, backgroundColor: bg }}>
+    <div className="w-full" style={{ height: height }}>
+      {/* Header with MA indicators */}
+      <div className={`flex items-center justify-between px-2 py-1 text-xs ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
+        <div className="flex items-center gap-3">
+          <span className="text-[#F0B90B]">MA(7)</span>
+          <span className="text-[#9B59B6]">MA(25)</span>
+          <span className={isDark ? 'text-[#0ECB81]' : 'text-green-600'}>Vol</span>
+        </div>
+        <span className={`${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+          Vol: {(totalVolume / 1000000).toFixed(2)}M
+        </span>
+      </div>
+
       {/* Timeframe buttons */}
-      <div className="flex items-center gap-1 px-2 py-1 overflow-x-auto">
+      <div className={`flex items-center gap-1 px-2 py-1 ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
         {timeframes.map(tf => (
           <button
             key={tf}
             onClick={() => handleTimeframeChange(tf)}
-            className={`px-2 py-1 text-xs rounded transition-colors ${
+            className={`px-3 py-1 text-xs rounded transition-colors ${
               timeframe === tf 
                 ? 'bg-[#F0B90B] text-black font-medium' 
-                : `${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-black'}`
+                : `${isDark ? 'text-gray-400 hover:text-white bg-[#1E2329]' : 'text-gray-600 hover:text-black bg-gray-200'}`
             }`}
           >
             {tf}
           </button>
         ))}
-        <div className="flex-1" />
-        <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-          Vol: {(totalVolume / 1000000).toFixed(2)}M
-        </span>
       </div>
       
       {/* Chart area */}
-      <div className="relative px-2" style={{ height: chartHeight }}>
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center">
+      <div className="relative" style={{ height: height - 60 }}>
+        {loading ? (
+          <div className={`absolute inset-0 flex items-center justify-center ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
             <div className="flex items-end gap-1">
               {[...Array(5)].map((_, i) => (
                 <div 
@@ -188,95 +348,12 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
               ))}
             </div>
           </div>
-        )}
-        
-        {!loading && candles.length > 0 && (
-          <>
-            {/* Price labels on right */}
-            <div className="absolute right-0 top-0 bottom-0 w-12 flex flex-col justify-between text-right pr-1" style={{ fontSize: 9, color: textColor }}>
-              <span>{formatPrice(priceRange.max)}</span>
-              <span>{formatPrice((priceRange.max + priceRange.min) / 2)}</span>
-              <span>{formatPrice(priceRange.min)}</span>
-            </div>
-            
-            {/* Candles */}
-            <svg 
-              className="w-full h-full" 
-              viewBox={`0 0 ${candles.length * (candleWidth + candleGap)} ${chartHeight}`}
-              preserveAspectRatio="none"
-            >
-              {/* Grid lines */}
-              {[0, 0.25, 0.5, 0.75, 1].map((pct, i) => (
-                <line
-                  key={i}
-                  x1="0"
-                  y1={chartHeight * pct}
-                  x2={candles.length * (candleWidth + candleGap)}
-                  y2={chartHeight * pct}
-                  stroke={gridColor}
-                  strokeWidth="0.5"
-                  strokeDasharray="2,2"
-                />
-              ))}
-              
-              {/* Candles */}
-              {candles.map((candle, i) => {
-                const x = i * (candleWidth + candleGap);
-                const isGreen = candle.close >= candle.open;
-                const color = isGreen ? '#0ECB81' : '#F6465D';
-                
-                const bodyTop = priceToY(Math.max(candle.open, candle.close));
-                const bodyBottom = priceToY(Math.min(candle.open, candle.close));
-                const bodyHeight = Math.max(1, bodyBottom - bodyTop);
-                
-                const wickTop = priceToY(candle.high);
-                const wickBottom = priceToY(candle.low);
-                
-                return (
-                  <g key={i}>
-                    {/* Wick */}
-                    <line
-                      x1={x + candleWidth / 2}
-                      y1={wickTop}
-                      x2={x + candleWidth / 2}
-                      y2={wickBottom}
-                      stroke={color}
-                      strokeWidth="1"
-                    />
-                    {/* Body */}
-                    <rect
-                      x={x}
-                      y={bodyTop}
-                      width={candleWidth}
-                      height={bodyHeight}
-                      fill={color}
-                      stroke={color}
-                      strokeWidth="0.5"
-                    />
-                  </g>
-                );
-              })}
-              
-              {/* Current price line */}
-              <line
-                x1="0"
-                y1={priceToY(candles[candles.length - 1].close)}
-                x2={candles.length * (candleWidth + candleGap)}
-                y2={priceToY(candles[candles.length - 1].close)}
-                stroke="#F0B90B"
-                strokeWidth="0.5"
-                strokeDasharray="3,3"
-              />
-            </svg>
-            
-            {/* Current price label */}
-            <div 
-              className="absolute right-12 px-1 py-0.5 bg-[#F0B90B] text-black text-[10px] font-medium rounded"
-              style={{ top: Math.max(0, Math.min(chartHeight - 16, priceToY(candles[candles.length - 1].close) - 8)) }}
-            >
-              {formatPrice(candles[candles.length - 1].close)}
-            </div>
-          </>
+        ) : (
+          <canvas 
+            ref={canvasRef} 
+            className="w-full h-full"
+            style={{ display: 'block' }}
+          />
         )}
       </div>
     </div>
