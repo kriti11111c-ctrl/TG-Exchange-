@@ -2839,21 +2839,56 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
             "amount_credited": verified_amount
         }
     else:
-        # Could not auto-verify - store as pending for admin review
-        # (This happens for TRC20, Solana, or if API fails)
+        # Blockchain API verification failed BUT user provided valid tx_hash
+        # AUTO-APPROVE based on user's submitted amount (trust-based system)
+        # Admin can review later if needed
+        
+        submitted_amount = deposit.amount
+        coin = deposit.coin.upper()
+        
+        # Credit user's wallet immediately
+        await db.wallets.update_one(
+            {"user_id": user["user_id"]},
+            {
+                "$inc": {f"balances.{coin}": submitted_amount},
+                "$set": {"updated_at": now.isoformat()}
+            },
+            upsert=True
+        )
+        
+        # Create transaction record
+        tx_id = f"tx_{uuid.uuid4().hex[:16]}"
+        tx_doc = {
+            "tx_id": tx_id,
+            "user_id": user["user_id"],
+            "type": "deposit",
+            "coin": coin,
+            "amount": submitted_amount,
+            "tx_hash": deposit.tx_hash,
+            "network": deposit.network,
+            "status": "completed",
+            "blockchain_verified": False,
+            "auto_approved": True,
+            "created_at": now.isoformat()
+        }
+        await db.transactions.insert_one(tx_doc)
+        
+        # Store deposit request as approved
         deposit_doc = {
             "request_id": request_id,
             "user_id": user["user_id"],
             "user_email": user_data.get("email", ""),
             "user_name": user_data.get("name", ""),
             "network": deposit.network,
-            "coin": deposit.coin.upper(),
-            "amount": deposit.amount,
+            "coin": coin,
+            "amount": submitted_amount,
             "tx_hash": deposit.tx_hash,
             "sender_address": deposit.sender_address,
-            "status": "pending",
+            "status": "approved",
             "blockchain_verified": False,
-            "verification_error": verification.get("error", "Unknown"),
+            "auto_approved": True,
+            "tx_id": tx_id,
+            "processed_at": now.isoformat(),
             "created_at": now.isoformat(),
             "updated_at": now.isoformat()
         }
@@ -2862,10 +2897,10 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
         return {
             "success": True,
             "request_id": request_id,
-            "message": f"Deposit request submitted. Admin will verify and credit your account shortly.",
-            "status": "pending",
-            "blockchain_verified": False,
-            "note": verification.get("error", "Manual verification required")
+            "tx_id": tx_id,
+            "message": f"Deposit successful! {submitted_amount} {coin} credited to your wallet.",
+            "status": "approved",
+            "amount_credited": submitted_amount
         }
 
 @api_router.get("/user/deposit-requests")
