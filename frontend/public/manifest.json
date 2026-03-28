@@ -1,0 +1,27 @@
+{
+  "name": "TG Exchange",
+  "short_name": "TG Exchange",
+  "description": "Cryptocurrency Exchange - Trade BTC, ETH, USDT and more",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0B0E11",
+  "theme_color": "#F0B90B",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/images/tg-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/tg-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["finance", "business"],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

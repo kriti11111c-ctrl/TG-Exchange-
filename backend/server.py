@@ -5,6 +5,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import random
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional, Dict
@@ -179,6 +180,23 @@ class KYCResponse(BaseModel):
     submitted_at: datetime
     reviewed_at: Optional[datetime] = None
     rejection_reason: Optional[str] = None
+
+# ================= MARGIN TRADING MODELS =================
+
+class MarginPosition(BaseModel):
+    coin: str
+    side: str  # "long" or "short"
+    leverage: int = Field(ge=1, le=125)
+    amount: float = Field(gt=0)
+    entry_price: Optional[float] = None
+
+class ClosePosition(BaseModel):
+    position_id: str
+
+# Margin trading constants
+MAX_LEVERAGE = 125
+MAINTENANCE_MARGIN_RATE = 0.005  # 0.5% maintenance margin
+LIQUIDATION_FEE_RATE = 0.005  # 0.5% liquidation fee
 
 # ================= BONUS & LIMITS CONFIG =================
 WELCOME_BONUS_AMOUNT = 200.0  # $200 welcome bonus
@@ -3664,6 +3682,222 @@ async def kyc_action(data: KYCAction, admin: dict = Depends(get_current_admin)):
         "success": True,
         "message": f"KYC {new_status}",
         "kyc_id": data.kyc_id
+    }
+
+# ==================== MARGIN/FUTURES TRADING ====================
+
+@api_router.get("/futures/positions")
+async def get_futures_positions(request: Request):
+    """Get user's open futures positions"""
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    positions = await db.futures_positions.find(
+        {"user_id": user["user_id"], "status": "open"},
+        {"_id": 0}
+    ).to_list(length=100)
+    
+    return {"positions": positions, "count": len(positions)}
+
+@api_router.get("/futures/history")
+async def get_futures_history(request: Request):
+    """Get user's futures trading history"""
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    history = await db.futures_positions.find(
+        {"user_id": user["user_id"], "status": {"$ne": "open"}},
+        {"_id": 0}
+    ).sort("closed_at", -1).to_list(length=100)
+    
+    return {"history": history, "count": len(history)}
+
+@api_router.post("/futures/open")
+async def open_futures_position(data: MarginPosition, request: Request):
+    """Open a new futures position"""
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_id = user["user_id"]
+    
+    # Get wallet
+    wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0})
+    if not wallet:
+        raise HTTPException(status_code=400, detail="Wallet not found")
+    
+    usdt_balance = wallet.get("balances", {}).get("USDT", 0)
+    
+    # Calculate required margin
+    margin_required = data.amount / data.leverage
+    
+    if usdt_balance < margin_required:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Insufficient balance. Required margin: ${margin_required:.2f}, Available: ${usdt_balance:.2f}"
+        )
+    
+    # Get current price (from our price cache or default)
+    coin_prices = {
+        "BTC": 69500, "ETH": 3500, "BNB": 600, "SOL": 180, "XRP": 0.55
+    }
+    entry_price = data.entry_price or coin_prices.get(data.coin.upper(), 1000)
+    
+    # Calculate position size
+    position_size = data.amount / entry_price
+    
+    # Calculate liquidation price
+    if data.side == "long":
+        liquidation_price = entry_price * (1 - (1 / data.leverage) + MAINTENANCE_MARGIN_RATE)
+    else:
+        liquidation_price = entry_price * (1 + (1 / data.leverage) - MAINTENANCE_MARGIN_RATE)
+    
+    # Deduct margin from wallet
+    await db.wallets.update_one(
+        {"user_id": user_id},
+        {"$inc": {"balances.USDT": -margin_required}}
+    )
+    
+    # Create position
+    position_id = f"pos_{uuid.uuid4().hex[:12]}"
+    now = datetime.now(timezone.utc)
+    
+    position_doc = {
+        "position_id": position_id,
+        "user_id": user_id,
+        "coin": data.coin.upper(),
+        "side": data.side,
+        "leverage": data.leverage,
+        "margin": margin_required,
+        "position_size": position_size,
+        "entry_price": entry_price,
+        "liquidation_price": liquidation_price,
+        "unrealized_pnl": 0,
+        "status": "open",
+        "opened_at": now.isoformat()
+    }
+    
+    await db.futures_positions.insert_one(position_doc)
+    
+    return {
+        "success": True,
+        "position_id": position_id,
+        "message": f"Opened {data.side.upper()} position: {position_size:.6f} {data.coin.upper()} @ ${entry_price}",
+        "position": {
+            "position_id": position_id,
+            "coin": data.coin.upper(),
+            "side": data.side,
+            "leverage": data.leverage,
+            "margin": margin_required,
+            "position_size": position_size,
+            "entry_price": entry_price,
+            "liquidation_price": liquidation_price
+        }
+    }
+
+@api_router.post("/futures/close")
+async def close_futures_position(data: ClosePosition, request: Request):
+    """Close an open futures position"""
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_id = user["user_id"]
+    
+    # Get position
+    position = await db.futures_positions.find_one(
+        {"position_id": data.position_id, "user_id": user_id, "status": "open"},
+        {"_id": 0}
+    )
+    
+    if not position:
+        raise HTTPException(status_code=404, detail="Position not found or already closed")
+    
+    # Get current price (simulated with slight change from entry)
+    price_change = (random.random() - 0.45) * 0.02  # -1% to +1.1% change bias slightly positive
+    exit_price = position["entry_price"] * (1 + price_change)
+    
+    # Calculate PnL
+    if position["side"] == "long":
+        pnl_percent = (exit_price - position["entry_price"]) / position["entry_price"]
+    else:
+        pnl_percent = (position["entry_price"] - exit_price) / position["entry_price"]
+    
+    pnl = position["margin"] * position["leverage"] * pnl_percent
+    
+    # Return margin + PnL to wallet
+    return_amount = position["margin"] + pnl
+    if return_amount > 0:
+        await db.wallets.update_one(
+            {"user_id": user_id},
+            {"$inc": {"balances.USDT": return_amount}}
+        )
+    
+    # Update position
+    now = datetime.now(timezone.utc)
+    await db.futures_positions.update_one(
+        {"position_id": data.position_id},
+        {"$set": {
+            "status": "closed",
+            "exit_price": exit_price,
+            "realized_pnl": pnl,
+            "return_amount": return_amount,
+            "closed_at": now.isoformat()
+        }}
+    )
+    
+    return {
+        "success": True,
+        "message": f"Position closed. PnL: ${pnl:+.2f}",
+        "exit_price": exit_price,
+        "pnl": pnl,
+        "return_amount": return_amount
+    }
+
+@api_router.get("/futures/account")
+async def get_futures_account(request: Request):
+    """Get user's futures account summary"""
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_id = user["user_id"]
+    
+    # Get wallet
+    wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0})
+    available_balance = wallet.get("balances", {}).get("USDT", 0) if wallet else 0
+    
+    # Get open positions
+    positions = await db.futures_positions.find(
+        {"user_id": user_id, "status": "open"},
+        {"_id": 0}
+    ).to_list(length=100)
+    
+    total_margin = sum(p.get("margin", 0) for p in positions)
+    total_unrealized_pnl = sum(p.get("unrealized_pnl", 0) for p in positions)
+    
+    # Get trading history stats
+    history = await db.futures_positions.find(
+        {"user_id": user_id, "status": "closed"},
+        {"_id": 0}
+    ).to_list(length=1000)
+    
+    total_trades = len(history)
+    total_pnl = sum(h.get("realized_pnl", 0) for h in history)
+    winning_trades = len([h for h in history if h.get("realized_pnl", 0) > 0])
+    win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+    
+    return {
+        "available_balance": available_balance,
+        "total_margin_used": total_margin,
+        "unrealized_pnl": total_unrealized_pnl,
+        "total_equity": available_balance + total_margin + total_unrealized_pnl,
+        "open_positions": len(positions),
+        "total_trades": total_trades,
+        "total_pnl": total_pnl,
+        "win_rate": win_rate
     }
 
 # Include router

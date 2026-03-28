@@ -36,6 +36,8 @@ const FuturesPage = () => {
   const [showChart, setShowChart] = useState(true);
   const [tradeCode, setTradeCode] = useState("");
   const [applyingCode, setApplyingCode] = useState(false);
+  const [futuresAccount, setFuturesAccount] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   // Coin ID mapping for API
   const COIN_IDS = {
@@ -53,7 +55,7 @@ const FuturesPage = () => {
   const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
   const inputBg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-100';
 
-  // Fetch real price from our backend API (which caches CoinGecko data)
+  // Fetch real price from our backend API
   const fetchRealPrice = async () => {
     try {
       const coinId = COIN_IDS[selectedCoin] || "bitcoin";
@@ -68,18 +70,24 @@ const FuturesPage = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchWallet = async () => {
-      try {
-        const res = await axios.get(`${API}/wallet`, { withCredentials: true });
-        setWallet(res.data);
-      } catch (error) {
-        console.error("Error fetching wallet:", error);
-      }
-    };
-    fetchWallet();
+  // Fetch futures account and positions
+  const fetchFuturesData = async () => {
+    try {
+      const [accountRes, positionsRes, walletRes] = await Promise.all([
+        axios.get(`${API}/futures/account`, { withCredentials: true }),
+        axios.get(`${API}/futures/positions`, { withCredentials: true }),
+        axios.get(`${API}/wallet`, { withCredentials: true })
+      ]);
+      setFuturesAccount(accountRes.data);
+      setPositions(positionsRes.data.positions || []);
+      setWallet(walletRes.data);
+    } catch (error) {
+      console.error("Error fetching futures data:", error);
+    }
+  };
 
-    // Fetch real price immediately
+  useEffect(() => {
+    fetchFuturesData();
     fetchRealPrice();
     
     // Update price every 10 seconds
@@ -95,40 +103,51 @@ const FuturesPage = () => {
 
   const leverageOptions = [1, 2, 5, 10, 20, 50, 75, 100, 125];
 
-  const handleTrade = (side) => {
+  // Open real futures position
+  const handleTrade = async (side) => {
     if (!amount || parseFloat(amount) <= 0) {
       toast.error("Please enter a valid amount");
       return;
     }
     
     const tradeAmount = parseFloat(amount);
-    const tradePrice = orderType === "market" ? currentPrice : parseFloat(price);
+    setLoading(true);
     
-    // Add to positions
-    const newPosition = {
-      id: Date.now(),
-      coin: selectedCoin,
-      side: side,
-      size: tradeAmount,
-      entryPrice: tradePrice,
-      leverage: leverage,
-      pnl: 0,
-      pnlPercent: 0,
-      liquidationPrice: side === "long" 
-        ? tradePrice * (1 - 1/leverage) 
-        : tradePrice * (1 + 1/leverage),
-      margin: (tradeAmount * tradePrice) / leverage,
-      timestamp: new Date().toISOString()
-    };
-    
-    setPositions(prev => [...prev, newPosition]);
-    setAmount("");
-    toast.success(`${side.toUpperCase()} ${tradeAmount} ${selectedCoin} @ ${tradePrice.toFixed(2)}`);
+    try {
+      const res = await axios.post(`${API}/futures/open`, {
+        coin: selectedCoin,
+        side: side,
+        leverage: leverage,
+        amount: tradeAmount,
+        entry_price: currentPrice
+      }, { withCredentials: true });
+      
+      if (res.data.success) {
+        toast.success(res.data.message);
+        setAmount("");
+        fetchFuturesData();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to open position");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const closePosition = (positionId) => {
-    setPositions(prev => prev.filter(p => p.id !== positionId));
-    toast.success("Position closed");
+  // Close futures position
+  const closePosition = async (positionId) => {
+    try {
+      const res = await axios.post(`${API}/futures/close`, {
+        position_id: positionId
+      }, { withCredentials: true });
+      
+      if (res.data.success) {
+        toast.success(res.data.message);
+        fetchFuturesData();
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to close position");
+    }
   };
 
   return (
@@ -180,7 +199,7 @@ const FuturesPage = () => {
               symbol={selectedCoin} 
               currentPrice={currentPrice} 
               isDark={isDark}
-              height={260}
+              height={320}
             />
           </div>
         )}
@@ -384,6 +403,30 @@ const FuturesPage = () => {
         {/* Positions Tab */}
         {activeTab === "positions" && (
           <div className="p-4">
+            {/* Account Summary */}
+            {futuresAccount && (
+              <div className={`p-3 rounded-lg border ${border} mb-4 grid grid-cols-2 gap-3`}>
+                <div>
+                  <p className={`text-[10px] ${textMuted}`}>Available Balance</p>
+                  <p className={`font-bold ${text}`}>${futuresAccount.available_balance?.toFixed(2) || '0.00'}</p>
+                </div>
+                <div>
+                  <p className={`text-[10px] ${textMuted}`}>Total PnL</p>
+                  <p className={`font-bold ${futuresAccount.total_pnl >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+                    ${futuresAccount.total_pnl?.toFixed(2) || '0.00'}
+                  </p>
+                </div>
+                <div>
+                  <p className={`text-[10px] ${textMuted}`}>Win Rate</p>
+                  <p className={`font-bold text-[#F0B90B]`}>{futuresAccount.win_rate?.toFixed(1) || '0'}%</p>
+                </div>
+                <div>
+                  <p className={`text-[10px] ${textMuted}`}>Total Trades</p>
+                  <p className={`font-bold ${text}`}>{futuresAccount.total_trades || 0}</p>
+                </div>
+              </div>
+            )}
+            
             {positions.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8">
                 <div className={`w-16 h-16 rounded-xl ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} flex items-center justify-center mb-3`}>
@@ -394,25 +437,29 @@ const FuturesPage = () => {
             ) : (
               <div className="space-y-3">
                 {positions.map(pos => {
+                  // Calculate PnL from real position data
+                  const entryPrice = pos.entry_price || pos.entryPrice || currentPrice;
+                  const positionSize = pos.position_size || pos.size || 0;
                   const pnl = pos.side === 'long' 
-                    ? (currentPrice - pos.entryPrice) * pos.size
-                    : (pos.entryPrice - currentPrice) * pos.size;
-                  const pnlPercent = (pnl / pos.margin) * 100;
+                    ? (currentPrice - entryPrice) * positionSize
+                    : (entryPrice - currentPrice) * positionSize;
+                  const margin = pos.margin || 0;
+                  const pnlPercent = margin > 0 ? (pnl / margin) * 100 : 0;
                   
                   return (
-                    <div key={pos.id} className={`p-3 rounded-lg border ${border}`}>
+                    <div key={pos.position_id || pos.id} className={`p-3 rounded-lg border ${border}`}>
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <span className={`px-2 py-0.5 rounded text-xs font-bold ${
                             pos.side === 'long' ? 'bg-[#0ECB81]/20 text-[#0ECB81]' : 'bg-[#F6465D]/20 text-[#F6465D]'
                           }`}>
-                            {pos.side.toUpperCase()} {pos.leverage}x
+                            {pos.side?.toUpperCase()} {pos.leverage}x
                           </span>
                           <span className={`font-medium ${text}`}>{pos.coin}USDT</span>
                         </div>
                         <button 
-                          onClick={() => closePosition(pos.id)}
-                          className="text-xs text-[#F6465D] font-medium"
+                          onClick={() => closePosition(pos.position_id || pos.id)}
+                          className="text-xs text-[#F6465D] font-medium px-2 py-1 border border-[#F6465D]/50 rounded"
                         >
                           Close
                         </button>
@@ -420,17 +467,27 @@ const FuturesPage = () => {
                       <div className="grid grid-cols-3 gap-2 text-xs">
                         <div>
                           <p className={textMuted}>Size</p>
-                          <p className={text}>{pos.size} {pos.coin}</p>
+                          <p className={text}>{positionSize.toFixed(4)} {pos.coin}</p>
                         </div>
                         <div>
                           <p className={textMuted}>Entry Price</p>
-                          <p className={text}>${pos.entryPrice.toFixed(2)}</p>
+                          <p className={text}>${entryPrice.toFixed(2)}</p>
                         </div>
                         <div>
                           <p className={textMuted}>PNL</p>
                           <p className={pnl >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}>
                             {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)} ({pnlPercent.toFixed(2)}%)
                           </p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs mt-2 pt-2 border-t border-dashed" style={{ borderColor: isDark ? '#2B3139' : '#e5e7eb' }}>
+                        <div>
+                          <p className={textMuted}>Margin</p>
+                          <p className={text}>${margin.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className={textMuted}>Liq. Price</p>
+                          <p className="text-[#F6465D]">${(pos.liquidation_price || pos.liquidationPrice || 0).toFixed(2)}</p>
                         </div>
                       </div>
                     </div>
