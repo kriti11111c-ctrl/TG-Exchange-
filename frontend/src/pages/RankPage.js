@@ -85,16 +85,16 @@ const RankPage = () => {
 
   // Rank benefits (Bonus %, Monthly Salary, Level-up Reward)
   const rankBenefits = {
-    1: { bonus: 0.5, salary: 30, reward: 50 },
-    2: { bonus: 1.0, salary: 100, reward: 150 },
-    3: { bonus: 1.5, salary: 250, reward: 400 },
-    4: { bonus: 2.0, salary: 500, reward: 800 },
-    5: { bonus: 2.5, salary: 1000, reward: 1500 },
-    6: { bonus: 3.0, salary: 2000, reward: 3000 },
-    7: { bonus: 3.5, salary: 4000, reward: 6000 },
-    8: { bonus: 4.0, salary: 7000, reward: 10000 },
-    9: { bonus: 4.5, salary: 12000, reward: 18000 },
-    10: { bonus: 5.0, salary: 20000, reward: 30000 }
+    1: { bonus: 0.5, salary: 30, reward: 20 },
+    2: { bonus: 1.0, salary: 100, reward: 100 },
+    3: { bonus: 1.5, salary: 250, reward: 240 },
+    4: { bonus: 2.0, salary: 500, reward: 500 },
+    5: { bonus: 2.5, salary: 1000, reward: 975 },
+    6: { bonus: 3.0, salary: 2000, reward: 1950 },
+    7: { bonus: 3.5, salary: 4000, reward: 3250 },
+    8: { bonus: 4.0, salary: 7000, reward: 6500 },
+    9: { bonus: 4.5, salary: 12000, reward: 13000 },
+    10: { bonus: 5.0, salary: 20000, reward: 26000 }
   };
 
   // Calculate progress to a specific rank
@@ -233,8 +233,28 @@ const RankPage = () => {
                   : `0 Bronze / ${rankInfo?.total_team || 0}T`
                 }
               </p>
+              {/* One-time Reward */}
+              {rankInfo?.rank?.level > 0 && (
+                <p className="text-sm text-[#0ECB81] font-semibold mt-1">
+                  Reward: ${rankBenefits[rankInfo.rank.level]?.reward || 0}
+                </p>
+              )}
             </div>
           </div>
+
+          {/* Next Rank Reward Preview */}
+          {(rankInfo?.next_rank || rankInfo?.rank?.level === 0) && (
+            <div className={`mt-3 p-3 rounded-lg ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
+              <div className="flex items-center justify-between">
+                <span className={`text-xs ${textMuted}`}>
+                  Next Rank Reward ({rankInfo?.next_rank ? rankNames[rankInfo.next_rank.level] : rankNames[1]}):
+                </span>
+                <span className="text-sm text-[#F0B90B] font-bold">
+                  ${rankBenefits[rankInfo?.next_rank?.level || 1]?.reward || 20}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Progress to next rank */}
           {(rankInfo?.next_rank || rankInfo?.rank?.level === 0) && (
@@ -426,6 +446,10 @@ const RankPage = () => {
                         {/* Requirements on second line */}
                         <p className={`text-sm ${isCurrentRank ? 'text-[#F0B90B]' : textMuted}`}>
                           {formatRequirement(rank.level)}
+                        </p>
+                        {/* One-time Reward */}
+                        <p className="text-xs text-[#0ECB81] font-semibold">
+                          Reward: ${rankBenefits[rank.level]?.reward || 0}
                         </p>
                       </div>
                     </div>

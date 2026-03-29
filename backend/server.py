@@ -228,7 +228,7 @@ TEAM_RANKS = [
         "type": "team",
         "bonus_percent": 0.50,
         "monthly_salary": 30,
-        "levelup_reward": 50,
+        "levelup_reward": 20,
         "color": "#9CA3AF"
     },
     {
@@ -241,7 +241,7 @@ TEAM_RANKS = [
         "type": "bronze",
         "bonus_percent": 1.00,
         "monthly_salary": 100,
-        "levelup_reward": 150,
+        "levelup_reward": 100,
         "color": "#60A5FA"
     },
     {
@@ -254,7 +254,7 @@ TEAM_RANKS = [
         "type": "bronze",
         "bonus_percent": 1.50,
         "monthly_salary": 250,
-        "levelup_reward": 400,
+        "levelup_reward": 240,
         "color": "#34D399"
     },
     {
@@ -267,7 +267,7 @@ TEAM_RANKS = [
         "type": "bronze",
         "bonus_percent": 2.00,
         "monthly_salary": 500,
-        "levelup_reward": 800,
+        "levelup_reward": 500,
         "color": "#FBBF24"
     },
     {
@@ -280,7 +280,7 @@ TEAM_RANKS = [
         "type": "bronze",
         "bonus_percent": 2.50,
         "monthly_salary": 1000,
-        "levelup_reward": 1500,
+        "levelup_reward": 975,
         "color": "#F97316"
     },
     {
@@ -293,7 +293,7 @@ TEAM_RANKS = [
         "type": "bronze",
         "bonus_percent": 3.00,
         "monthly_salary": 2000,
-        "levelup_reward": 3000,
+        "levelup_reward": 1950,
         "color": "#3B82F6"
     },
     {
@@ -306,7 +306,7 @@ TEAM_RANKS = [
         "type": "bronze",
         "bonus_percent": 3.50,
         "monthly_salary": 4000,
-        "levelup_reward": 6000,
+        "levelup_reward": 3250,
         "color": "#8B5CF6"
     },
     {
@@ -319,7 +319,7 @@ TEAM_RANKS = [
         "type": "bronze",
         "bonus_percent": 4.00,
         "monthly_salary": 7000,
-        "levelup_reward": 10000,
+        "levelup_reward": 6500,
         "color": "#EC4899"
     },
     {
@@ -332,7 +332,7 @@ TEAM_RANKS = [
         "type": "bronze",
         "bonus_percent": 4.50,
         "monthly_salary": 12000,
-        "levelup_reward": 18000,
+        "levelup_reward": 13000,
         "color": "#F59E0B"
     },
     {
@@ -345,7 +345,7 @@ TEAM_RANKS = [
         "type": "bronze",
         "bonus_percent": 5.00,
         "monthly_salary": 20000,
-        "levelup_reward": 30000,
+        "levelup_reward": 26000,
         "color": "#EF4444"
     }
 ]
