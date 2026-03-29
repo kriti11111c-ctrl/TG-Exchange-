@@ -77,7 +77,9 @@ const LoginPage = () => {
           
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 mb-12" data-testid="login-logo">
-            <img src="/images/tg-logo.png" alt="TG Exchange" className="w-10 h-10 rounded-full" />
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-black ring-2 ring-[#00E5FF]/30">
+              <img src="/images/tg-logo.png" alt="TG Exchange" className="w-full h-full object-cover" />
+            </div>
             <span className={`font-bold text-xl tracking-tight ${text}`} style={{ fontFamily: 'Unbounded' }}>
               TG Exchange
             </span>
