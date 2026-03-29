@@ -417,14 +417,6 @@ const WalletPage = () => {
           </div>
         </div>
         
-        {/* Withdrawable Balance Info */}
-        {withdrawalLimits && wallet?.welcome_bonus && (
-          <div className={`flex items-center gap-2 mb-2 ${textMuted} text-xs`}>
-            <Info size={14} />
-            <span>Withdrawable: ${withdrawalLimits.withdrawable_balance?.toFixed(2) || '0.00'}</span>
-          </div>
-        )}
-        
         <div className="flex items-center gap-2">
           <span className={`${textMuted} text-sm`}>Today's PnL</span>
           <span className={`text-sm ${pnl.value >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
