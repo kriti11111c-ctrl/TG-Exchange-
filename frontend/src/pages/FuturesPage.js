@@ -91,14 +91,19 @@ const FuturesPage = () => {
   // Fetch futures account and positions
   const fetchFuturesData = async () => {
     try {
-      const [accountRes, positionsRes, walletRes] = await Promise.all([
+      const [accountRes, positionsRes, walletRes, tradeCodesRes] = await Promise.all([
         axios.get(`${API}/futures/account`, { withCredentials: true }),
         axios.get(`${API}/futures/positions`, { withCredentials: true }),
-        axios.get(`${API}/wallet`, { withCredentials: true })
+        axios.get(`${API}/wallet`, { withCredentials: true }),
+        axios.get(`${API}/user/trade-codes`, { withCredentials: true })
       ]);
       setFuturesAccount(accountRes.data);
       setPositions(positionsRes.data.positions || []);
       setWallet(walletRes.data);
+      
+      // Set leverage based on current multiplier from backend
+      const multiplier = tradeCodesRes.data.current_multiplier || 1;
+      setLeverage(multiplier);
     } catch (error) {
       console.error("Error fetching futures data:", error);
     }
@@ -225,30 +230,25 @@ const FuturesPage = () => {
 
       {/* Trading Panel */}
       <div className={`${cardBg} p-3 border-b ${border}`}>
-        {/* Leverage Selector */}
+        {/* Leverage Display - Fixed by System */}
         <div className="mb-3">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between">
             <span className={`text-xs ${textMuted}`}>Leverage</span>
-            <span className={`text-xs font-bold text-[#00E5FF]`}>{leverage}x</span>
+            <div className="flex items-center gap-2">
+              <div className={`px-4 py-2 rounded-lg ${leverage === 1 ? 'bg-[#00E5FF]/20 border border-[#00E5FF]' : 'bg-[#2B3139]'}`}>
+                <span className={`text-sm font-bold ${leverage === 1 ? 'text-[#00E5FF]' : textMuted}`}>1x</span>
+              </div>
+              <div className={`px-4 py-2 rounded-lg ${leverage === 2 ? 'bg-[#00E5FF]/20 border border-[#00E5FF]' : 'bg-[#2B3139]'}`}>
+                <span className={`text-sm font-bold ${leverage === 2 ? 'text-[#00E5FF]' : textMuted}`}>2x</span>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-1 overflow-x-auto pb-1">
-            {leverageOptions.map(lev => (
-              <button
-                key={lev}
-                onClick={() => setLeverage(lev)}
-                className={`px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap ${
-                  leverage === lev 
-                    ? 'bg-[#00E5FF] text-black' 
-                    : `${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} ${textMuted} opacity-50 cursor-not-allowed`
-                }`}
-                disabled={true}
-                title="Leverage is set automatically by system"
-              >
-                {lev}x
-              </button>
-            ))}
-          </div>
-          <p className={`text-[9px] ${textMuted} mt-1`}>* Leverage set by system (1x default, 2x after loss)</p>
+          <p className={`text-[10px] ${textMuted} mt-2 text-center`}>
+            {leverage === 1 
+              ? "✓ Default 1x leverage active" 
+              : "⚡ 2x leverage activated (after missed trade)"
+            }
+          </p>
         </div>
 
         {/* Order Type */}

@@ -3869,10 +3869,20 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
         
         processed_codes.append(code_data)
     
+    # Determine current multiplier based on last trade result
+    current_multiplier = 1
+    last_trade = await db.trade_codes.find_one(
+        {"user_id": user["user_id"], "status": "used"},
+        sort=[("used_at", -1)]
+    )
+    if last_trade and last_trade.get("result") == "fail":
+        current_multiplier = 2
+    
     return {
         "codes": processed_codes,
         "total_balance": total_balance,
-        "active_count": len([c for c in processed_codes if c.get("is_live", False)])
+        "active_count": len([c for c in processed_codes if c.get("is_live", False)]),
+        "current_multiplier": current_multiplier
     }
 
 @api_router.post("/trade/apply-code")
