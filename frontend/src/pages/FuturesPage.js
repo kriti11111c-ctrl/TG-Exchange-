@@ -331,12 +331,21 @@ const FuturesPage = () => {
             <div className="mb-3 p-3 rounded-lg bg-[#0ECB81]/20 border border-[#0ECB81]/40">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle size={20} className="text-[#0ECB81]" weight="fill" />
-                <span className="text-[#0ECB81] font-bold text-sm">Position Opened Successfully!</span>
+                <span className="text-[#0ECB81] font-bold text-sm">Trade Successful!</span>
               </div>
               <div className={`text-xs ${text} space-y-1`}>
-                <p><span className="opacity-60">Type:</span> <span className={codeSuccess.trade_type === 'buy' ? 'text-[#0ECB81]' : 'text-red-500'}>{codeSuccess.trade_type?.toUpperCase()}</span></p>
-                <p><span className="opacity-60">Amount:</span> {codeSuccess.amount} {codeSuccess.coin?.toUpperCase()}</p>
-                <p><span className="opacity-60">Price:</span> ${codeSuccess.price?.toLocaleString()}</p>
+                <p className="flex justify-between">
+                  <span className="opacity-60">Trade Amount:</span> 
+                  <span>${codeSuccess.trade_amount_usdt?.toFixed(2)}</span>
+                </p>
+                <p className="flex justify-between">
+                  <span className="opacity-60">Profit:</span> 
+                  <span className="text-[#0ECB81] font-bold">+${codeSuccess.profit_usdt?.toFixed(2)} ({codeSuccess.profit_percent}%)</span>
+                </p>
+                <p className="flex justify-between border-t border-[#0ECB81]/30 pt-1 mt-1">
+                  <span className="opacity-60">Total Earned:</span> 
+                  <span className="text-[#0ECB81] font-bold text-sm">+${codeSuccess.profit_usdt?.toFixed(2)}</span>
+                </p>
               </div>
             </div>
           )}

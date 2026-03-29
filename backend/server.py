@@ -2440,6 +2440,7 @@ class TradeCodeCreate(BaseModel):
     amount: float
     trade_type: str  # "buy" or "sell"
     price: float
+    scheduled_slot: str = "morning"  # "morning" (10:30 AM) or "evening" (8:45 PM)
 
 class TradeCodeApply(BaseModel):
     code: str
@@ -3372,7 +3373,7 @@ async def process_withdrawal_request(approval: WithdrawalApproval, admin: dict =
 
 @api_router.post("/admin/trade-codes/generate")
 async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_current_admin)):
-    """Admin generates a trade code for a user"""
+    """Admin generates a trade code for a user with scheduled time slots"""
     import random
     import string
     from datetime import timedelta
@@ -3385,9 +3386,39 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
     # Generate unique code
     code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
     
-    # Code expires in 1 hour
-    created_at = datetime.now(timezone.utc)
-    expires_at = created_at + timedelta(hours=1)
+    # Calculate scheduled start time based on slot
+    now = datetime.now(timezone.utc)
+    today = now.date()
+    
+    # IST is UTC+5:30, so we need to convert
+    # 10:30 AM IST = 05:00 UTC
+    # 8:45 PM IST = 15:15 UTC
+    if data.scheduled_slot == "morning":
+        # 10:30 AM IST = 05:00 UTC
+        scheduled_hour = 5
+        scheduled_minute = 0
+        slot_name = "10:30 AM"
+    else:  # evening
+        # 8:45 PM IST = 15:15 UTC
+        scheduled_hour = 15
+        scheduled_minute = 15
+        slot_name = "8:45 PM"
+    
+    # Create scheduled start time for today
+    scheduled_start = datetime.combine(today, datetime.min.time().replace(
+        hour=scheduled_hour, 
+        minute=scheduled_minute
+    )).replace(tzinfo=timezone.utc)
+    
+    # If scheduled time has passed today, schedule for tomorrow
+    if now > scheduled_start + timedelta(hours=1):
+        scheduled_start = scheduled_start + timedelta(days=1)
+    
+    # Code expires 1 hour after scheduled start
+    expires_at = scheduled_start + timedelta(hours=1)
+    
+    # Generate random profit percentage between 60-65%
+    profit_percent = round(60 + random.random() * 5, 2)
     
     # Store trade code
     trade_code_doc = {
@@ -3398,10 +3429,15 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
         "amount": data.amount,
         "trade_type": data.trade_type.lower(),
         "price": data.price,
-        "status": "active",
-        "created_by": admin["email"],
-        "created_at": created_at.isoformat(),
+        "status": "scheduled",  # New status for scheduled codes
+        "scheduled_slot": data.scheduled_slot,
+        "slot_name": slot_name,
+        "scheduled_start": scheduled_start.isoformat(),
         "expires_at": expires_at.isoformat(),
+        "profit_percent": profit_percent,
+        "fund_percent": 1.0,  # Use 1% of user's fund
+        "created_by": admin["email"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "used_at": None
     }
     
@@ -3410,8 +3446,11 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
     return {
         "success": True,
         "code": code,
+        "scheduled_slot": slot_name,
+        "scheduled_start": scheduled_start.isoformat(),
         "expires_at": expires_at.isoformat(),
-        "message": f"Trade code generated for {data.user_email}"
+        "profit_percent": profit_percent,
+        "message": f"Trade code generated for {data.user_email} - Slot: {slot_name}"
     }
 
 @api_router.get("/admin/trade-codes")
@@ -3422,54 +3461,101 @@ async def get_trade_codes(admin: dict = Depends(get_current_admin)):
 
 @api_router.get("/user/trade-codes")
 async def get_user_trade_codes(user: dict = Depends(get_current_user)):
-    """Get all trade codes for current user with expiry status"""
+    """Get all trade codes for current user with live/scheduled status"""
     from datetime import timedelta
     
     codes = await db.trade_codes.find(
         {"user_id": user["user_id"]},
         {"_id": 0}
-    ).sort("created_at", -1).to_list(50)
+    ).sort("scheduled_start", -1).to_list(50)
     
     now = datetime.now(timezone.utc)
     
-    # Process codes to add expiry status
+    # Get user's wallet for fund calculation
+    wallet = await db.wallets.find_one({"user_id": user["user_id"]})
+    total_balance = 0
+    if wallet and wallet.get("balances"):
+        total_balance = wallet["balances"].get("usdt", 0)
+    
+    # Process codes to add live/scheduled status
     processed_codes = []
     for code in codes:
         code_data = dict(code)
         
-        # Check if expired (1 hour from creation)
-        if code_data.get("expires_at"):
+        # Check scheduled start time
+        if code_data.get("scheduled_start"):
+            scheduled_start = datetime.fromisoformat(code_data["scheduled_start"].replace('Z', '+00:00'))
+            if scheduled_start.tzinfo is None:
+                scheduled_start = scheduled_start.replace(tzinfo=timezone.utc)
+            
+            # Check expiry
             expires_at = datetime.fromisoformat(code_data["expires_at"].replace('Z', '+00:00'))
             if expires_at.tzinfo is None:
                 expires_at = expires_at.replace(tzinfo=timezone.utc)
-            code_data["is_expired"] = now > expires_at
-            code_data["time_remaining"] = max(0, int((expires_at - now).total_seconds()))
+            
+            # Determine status
+            if code_data["status"] == "used":
+                code_data["is_live"] = False
+                code_data["is_expired"] = True
+                code_data["time_remaining"] = 0
+                code_data["countdown_to_live"] = 0
+            elif now < scheduled_start:
+                # Not yet live - show countdown to live
+                code_data["is_live"] = False
+                code_data["is_expired"] = False
+                code_data["countdown_to_live"] = int((scheduled_start - now).total_seconds())
+                code_data["time_remaining"] = 3600  # 1 hour validity once live
+            elif now >= scheduled_start and now < expires_at:
+                # Currently LIVE
+                code_data["is_live"] = True
+                code_data["is_expired"] = False
+                code_data["countdown_to_live"] = 0
+                code_data["time_remaining"] = int((expires_at - now).total_seconds())
+                # Update status to active if not already
+                if code_data["status"] == "scheduled":
+                    await db.trade_codes.update_one(
+                        {"code": code_data["code"]},
+                        {"$set": {"status": "active"}}
+                    )
+                    code_data["status"] = "active"
+            else:
+                # Expired
+                code_data["is_live"] = False
+                code_data["is_expired"] = True
+                code_data["time_remaining"] = 0
+                code_data["countdown_to_live"] = 0
         else:
-            # Legacy codes without expires_at - check 1 hour from creation
-            created_at = datetime.fromisoformat(code_data["created_at"].replace('Z', '+00:00'))
-            if created_at.tzinfo is None:
-                created_at = created_at.replace(tzinfo=timezone.utc)
-            expires_at = created_at + timedelta(hours=1)
-            code_data["expires_at"] = expires_at.isoformat()
-            code_data["is_expired"] = now > expires_at
-            code_data["time_remaining"] = max(0, int((expires_at - now).total_seconds()))
+            # Legacy codes - treat as already active
+            if code_data.get("expires_at"):
+                expires_at = datetime.fromisoformat(code_data["expires_at"].replace('Z', '+00:00'))
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                code_data["is_expired"] = now > expires_at
+                code_data["is_live"] = not code_data["is_expired"] and code_data["status"] == "active"
+                code_data["time_remaining"] = max(0, int((expires_at - now).total_seconds()))
+                code_data["countdown_to_live"] = 0
+        
+        # Calculate 1% of user's fund for this trade
+        code_data["trade_fund"] = round(total_balance * 0.01, 2)
         
         processed_codes.append(code_data)
     
     return {
         "codes": processed_codes,
-        "active_count": len([c for c in processed_codes if c["status"] == "active" and not c["is_expired"]])
+        "total_balance": total_balance,
+        "active_count": len([c for c in processed_codes if c.get("is_live", False)])
     }
 
 @api_router.post("/trade/apply-code")
 async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_current_user)):
-    """User applies a trade code to execute trade"""
+    """User applies a trade code to execute trade with profit calculation"""
     from datetime import timedelta
+    import random
     
-    # Find the trade code
+    # Find the trade code (can be active or scheduled that's now live)
     trade_code = await db.trade_codes.find_one({
         "code": data.code.upper(),
-        "status": "active"
+        "status": {"$in": ["active", "scheduled"]}
     })
     
     if not trade_code:
@@ -3479,8 +3565,24 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     if trade_code["user_id"] != user["user_id"]:
         raise HTTPException(status_code=403, detail="This code is not for your account")
     
-    # Check if code has expired (1 hour validity)
     now = datetime.now(timezone.utc)
+    
+    # Check if code is live (scheduled_start has passed)
+    if trade_code.get("scheduled_start"):
+        scheduled_start = datetime.fromisoformat(trade_code["scheduled_start"].replace('Z', '+00:00'))
+        if scheduled_start.tzinfo is None:
+            scheduled_start = scheduled_start.replace(tzinfo=timezone.utc)
+        
+        if now < scheduled_start:
+            time_to_live = int((scheduled_start - now).total_seconds())
+            mins = time_to_live // 60
+            secs = time_to_live % 60
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Code not yet live. Starts in {mins}m {secs}s"
+            )
+    
+    # Check if code has expired
     if trade_code.get("expires_at"):
         expires_at = datetime.fromisoformat(trade_code["expires_at"].replace('Z', '+00:00'))
         if expires_at.tzinfo is None:
@@ -3492,7 +3594,6 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         expires_at = created_at + timedelta(hours=1)
     
     if now > expires_at:
-        # Mark as expired
         await db.trade_codes.update_one(
             {"code": data.code.upper()},
             {"$set": {"status": "expired"}}
@@ -3504,43 +3605,36 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
     
-    coin = trade_code["coin"]
-    amount = trade_code["amount"]
-    trade_type = trade_code["trade_type"]
-    price = trade_code["price"]
-    total_usd = amount * price
+    # Calculate trade amount based on 1% of user's USDT balance
+    usdt_balance = wallet["balances"].get("usdt", 0)
+    fund_percent = trade_code.get("fund_percent", 1.0)
+    trade_amount_usdt = usdt_balance * (fund_percent / 100)
     
-    # Execute trade
-    if trade_type == "buy":
-        # Check USDT balance
-        if wallet["balances"].get("usdt", 0) < total_usd:
-            raise HTTPException(status_code=400, detail="Insufficient USDT balance")
-        
-        # Deduct USDT, add coin
-        await db.wallets.update_one(
-            {"user_id": user["user_id"]},
-            {
-                "$inc": {
-                    f"balances.usdt": -total_usd,
-                    f"balances.{coin}": amount
-                }
+    coin = trade_code["coin"]
+    price = trade_code["price"]
+    
+    # Calculate coin amount from USDT
+    amount = trade_amount_usdt / price if price > 0 else 0
+    
+    # Get profit percentage (60-65%)
+    profit_percent = trade_code.get("profit_percent", round(60 + random.random() * 5, 2))
+    
+    # Calculate profit
+    profit_usdt = trade_amount_usdt * (profit_percent / 100)
+    total_return = trade_amount_usdt + profit_usdt
+    
+    trade_type = trade_code["trade_type"]
+    
+    # Execute trade - for this system, we add the profit directly
+    # Deduct trade amount, add back with profit
+    await db.wallets.update_one(
+        {"user_id": user["user_id"]},
+        {
+            "$inc": {
+                "balances.usdt": profit_usdt  # Add only the profit (trade amount stays same)
             }
-        )
-    else:  # sell
-        # Check coin balance
-        if wallet["balances"].get(coin, 0) < amount:
-            raise HTTPException(status_code=400, detail=f"Insufficient {coin.upper()} balance")
-        
-        # Deduct coin, add USDT
-        await db.wallets.update_one(
-            {"user_id": user["user_id"]},
-            {
-                "$inc": {
-                    f"balances.{coin}": -amount,
-                    f"balances.usdt": total_usd
-                }
-            }
-        )
+        }
+    )
     
     # Mark code as used
     await db.trade_codes.update_one(
@@ -3548,7 +3642,9 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         {
             "$set": {
                 "status": "used",
-                "used_at": datetime.now(timezone.utc).isoformat()
+                "used_at": now.isoformat(),
+                "actual_profit": profit_usdt,
+                "actual_trade_amount": trade_amount_usdt
             }
         }
     )
@@ -3557,30 +3653,35 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     transaction = {
         "transaction_id": f"tc_{uuid.uuid4().hex[:12]}",
         "user_id": user["user_id"],
-        "type": trade_type,
+        "type": "trade_code",
         "coin": coin,
         "amount": amount,
+        "trade_amount_usdt": trade_amount_usdt,
+        "profit_percent": profit_percent,
+        "profit_usdt": profit_usdt,
         "price_at_trade": price,
-        "total_usd": total_usd,
         "trade_code": data.code.upper(),
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": now.isoformat()
     }
     await db.transactions.insert_one(transaction)
     
     return {
         "success": True,
-        "type": trade_type,
+        "trade_type": trade_type,
         "coin": coin.upper(),
-        "amount": amount,
-        "price": price,
-        "total_usd": total_usd,
-        "message": f"{trade_type.upper()} {amount} {coin.upper()} @ ${price}",
+        "trade_amount": round(trade_amount_usdt, 2),
+        "profit_percent": profit_percent,
+        "profit_usdt": round(profit_usdt, 2),
+        "new_balance": round(usdt_balance + profit_usdt, 2),
+        "message": f"Trade completed! +${round(profit_usdt, 2)} ({profit_percent}% profit)",
         "trade_details": {
             "trade_type": trade_type,
             "coin": coin,
-            "amount": amount,
-            "price": price,
-            "total_usd": total_usd
+            "amount": round(amount, 8),
+            "trade_amount_usdt": round(trade_amount_usdt, 2),
+            "profit_percent": profit_percent,
+            "profit_usdt": round(profit_usdt, 2),
+            "price": price
         }
     }
 

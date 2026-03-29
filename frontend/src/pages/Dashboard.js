@@ -102,23 +102,37 @@ const Dashboard = () => {
 
   // Format countdown time
   const formatCountdown = (seconds) => {
-    if (seconds <= 0) return "Expired";
-    const mins = Math.floor(seconds / 60);
+    if (seconds <= 0) return "00:00";
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Countdown timer effect
+  // Countdown timer effect - handles both live timer and countdown to live
   useEffect(() => {
     const interval = setInterval(() => {
       setCountdowns(prev => {
         const updated = {};
         tradeCodes.forEach(code => {
-          if (code.status === "active" && !code.is_expired && code.time_remaining > 0) {
-            const currentRemaining = prev[code.code] !== undefined 
-              ? prev[code.code] 
+          // For live codes - count down remaining time
+          if (code.is_live && code.time_remaining > 0) {
+            const key = `${code.code}_remaining`;
+            const currentRemaining = prev[key] !== undefined 
+              ? prev[key] 
               : code.time_remaining;
-            updated[code.code] = Math.max(0, currentRemaining - 1);
+            updated[key] = Math.max(0, currentRemaining - 1);
+          }
+          // For scheduled codes - count down to live
+          if (code.countdown_to_live > 0) {
+            const key = `${code.code}_tolive`;
+            const currentCountdown = prev[key] !== undefined 
+              ? prev[key] 
+              : code.countdown_to_live;
+            updated[key] = Math.max(0, currentCountdown - 1);
           }
         });
         return updated;
@@ -280,9 +294,9 @@ const Dashboard = () => {
   const filteredPrices = getFilteredPrices();
   const portfolioValue = calculatePortfolioValue();
   
-  // Get active codes (not used and not expired)
-  const activeCodes = tradeCodes.filter(c => 
-    c.status === "active" && !c.is_expired && (countdowns[c.code] > 0 || c.time_remaining > 0)
+  // Get codes for notification badge - live or scheduled
+  const activeOrScheduledCodes = tradeCodes.filter(c => 
+    (c.is_live || (c.countdown_to_live > 0 && c.status !== "used"))
   );
 
   return (
@@ -314,9 +328,9 @@ const Dashboard = () => {
               >
                 <Bell size={18} className={isDark ? 'text-white' : 'text-gray-600'} />
                 {/* Notification Badge */}
-                {activeCodes.length > 0 && (
+                {activeOrScheduledCodes.length > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center font-bold">
-                    {activeCodes.length}
+                    {activeOrScheduledCodes.length}
                   </span>
                 )}
               </button>
@@ -356,67 +370,117 @@ const Dashboard = () => {
                     ) : (
                       <div className="p-3 space-y-3">
                         {tradeCodes.map((code) => {
-                          const remaining = countdowns[code.code] !== undefined 
-                            ? countdowns[code.code] 
+                          // Get countdown values from state
+                          const remainingKey = `${code.code}_remaining`;
+                          const toLiveKey = `${code.code}_tolive`;
+                          const remaining = countdowns[remainingKey] !== undefined 
+                            ? countdowns[remainingKey] 
                             : code.time_remaining;
-                          const isExpired = code.is_expired || remaining <= 0;
+                          const countdownToLive = countdowns[toLiveKey] !== undefined
+                            ? countdowns[toLiveKey]
+                            : code.countdown_to_live;
+                          
                           const isUsed = code.status === "used";
-                          const isActive = !isUsed && !isExpired;
+                          const isExpired = code.is_expired || (code.is_live && remaining <= 0);
+                          const isLive = code.is_live && remaining > 0;
+                          const isScheduled = !isLive && !isUsed && !isExpired && countdownToLive > 0;
                           
                           return (
                             <div 
                               key={code.code}
                               className={`p-3 rounded-xl ${
-                                isActive 
+                                isLive 
                                   ? 'bg-gradient-to-r from-[#0ECB81]/20 to-[#0ECB81]/5 border border-[#0ECB81]/40' 
-                                  : isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'
+                                  : isScheduled
+                                    ? 'bg-gradient-to-r from-[#F0B90B]/20 to-[#F0B90B]/5 border border-[#F0B90B]/40'
+                                    : isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'
                               } ${isUsed ? 'opacity-50' : ''}`}
                             >
+                              {/* LIVE or Scheduled Badge */}
+                              <div className="flex items-center justify-between mb-2">
+                                {isLive && (
+                                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#0ECB81] text-white text-[10px] font-bold animate-pulse">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+                                    LIVE
+                                  </div>
+                                )}
+                                {isScheduled && (
+                                  <div className="flex items-center gap-1 text-[10px] text-[#F0B90B] font-medium">
+                                    <Clock size={12} />
+                                    <span>Starts in {formatCountdown(countdownToLive)}</span>
+                                  </div>
+                                )}
+                                {code.slot_name && (
+                                  <span className={`text-[10px] ${textMuted}`}>{code.slot_name}</span>
+                                )}
+                                {code.profit_percent && (
+                                  <span className="text-[10px] text-[#0ECB81] font-bold">+{code.profit_percent}%</span>
+                                )}
+                              </div>
+                              
                               {/* Code with Copy - Full Width */}
                               <div className="mb-3">
                                 <button
                                   onClick={() => copyCode(code.code)}
                                   className={`w-full flex items-center justify-center gap-2 ${
-                                    isActive 
+                                    isLive 
                                       ? 'bg-[#0ECB81]/30 hover:bg-[#0ECB81]/40' 
-                                      : isDark ? 'bg-[#2B3139] hover:bg-[#3B4149]' : 'bg-gray-200 hover:bg-gray-300'
+                                      : isScheduled
+                                        ? 'bg-[#F0B90B]/30 hover:bg-[#F0B90B]/40'
+                                        : isDark ? 'bg-[#2B3139] hover:bg-[#3B4149]' : 'bg-gray-200 hover:bg-gray-300'
                                   } rounded-lg px-4 py-2.5 transition-all`}
                                   data-testid={`copy-code-${code.code}`}
                                 >
-                                  <span className={`font-mono font-bold text-base tracking-wider ${isActive ? 'text-[#0ECB81]' : text}`}>
+                                  <span className={`font-mono font-bold text-base tracking-wider ${
+                                    isLive ? 'text-[#0ECB81]' : isScheduled ? 'text-[#F0B90B]' : text
+                                  }`}>
                                     {code.code}
                                   </span>
-                                  <Copy size={16} className={isActive ? 'text-[#0ECB81]' : textMuted} />
+                                  <Copy size={16} className={isLive ? 'text-[#0ECB81]' : isScheduled ? 'text-[#F0B90B]' : textMuted} />
                                 </button>
                               </div>
                               
-                              {/* Timer and Apply Row */}
+                              {/* Timer Row */}
                               <div className="flex items-center justify-between">
-                                {/* Timer Badge */}
+                                {/* Status Badge */}
                                 <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
                                   isUsed 
                                     ? 'bg-green-500/20 text-green-500' 
                                     : isExpired 
                                       ? 'bg-red-500/20 text-red-500' 
-                                      : 'bg-[#0ECB81]/20 text-[#0ECB81]'
+                                      : isLive
+                                        ? 'bg-[#0ECB81]/20 text-[#0ECB81]'
+                                        : 'bg-[#F0B90B]/20 text-[#F0B90B]'
                                 }`}>
                                   {isUsed ? (
                                     <>
                                       <CheckCircle size={12} weight="fill" />
-                                      <span>Used</span>
+                                      <span>+${code.actual_profit?.toFixed(2) || '0'} Earned</span>
                                     </>
                                   ) : isExpired ? (
                                     <>
                                       <XCircle size={12} weight="fill" />
                                       <span>Expired</span>
                                     </>
+                                  ) : isLive ? (
+                                    <>
+                                      <Clock size={12} weight="fill" />
+                                      <span>{formatCountdown(remaining)} left</span>
+                                    </>
                                   ) : (
                                     <>
                                       <Clock size={12} weight="fill" />
-                                      <span>{formatCountdown(remaining)}</span>
+                                      <span>Waiting</span>
                                     </>
                                   )}
                                 </div>
+                                
+                                {/* Fund Info */}
+                                {code.trade_fund > 0 && !isUsed && !isExpired && (
+                                  <span className={`text-[10px] ${textMuted}`}>
+                                    Trade: ${code.trade_fund} (1%)
+                                  </span>
+                                )}
                               </div>
                               
                               {/* Trade Details + Instruction */}
@@ -424,11 +488,16 @@ const Dashboard = () => {
                                 <span className={code.trade_type === 'buy' ? 'text-[#0ECB81]' : 'text-red-500'}>
                                   {code.trade_type?.toUpperCase()}
                                 </span>
-                                {' '}{code.amount} {code.coin?.toUpperCase()} @ ${code.price?.toLocaleString()}
+                                {' '}{code.coin?.toUpperCase()} @ ${code.price?.toLocaleString()}
                               </div>
-                              {isActive && (
+                              {isLive && (
                                 <p className={`text-[10px] ${textMuted} mt-1 italic`}>
                                   Copy code & paste in Futures → Trade Code
+                                </p>
+                              )}
+                              {isScheduled && (
+                                <p className={`text-[10px] text-[#F0B90B] mt-1`}>
+                                  Code will be LIVE at {code.slot_name}
                                 </p>
                               )}
                             </div>
