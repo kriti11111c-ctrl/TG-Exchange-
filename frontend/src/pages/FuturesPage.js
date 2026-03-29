@@ -369,19 +369,13 @@ const FuturesPage = () => {
           <button
             onClick={() => handleTrade('long')}
             disabled={loading}
-            className="flex-1 py-5 rounded-xl bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white font-bold disabled:opacity-50 transition-all shadow-lg relative overflow-hidden"
+            data-testid="call-button"
+            className="flex-1 py-2.5 rounded-lg bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white font-semibold disabled:opacity-50 transition-all"
           >
-            <div className="flex items-center justify-between px-4">
-              <div className="flex items-center gap-3">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M7 17l5-5 5 5"/>
-                  <path d="M7 12l5-5 5 5"/>
-                </svg>
-                <span className="text-xl font-bold">CALL</span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-2xl font-bold">{callPercent}%</span>
-              </div>
+            <div className="flex items-center justify-center gap-2">
+              <CaretUp size={16} weight="bold" />
+              <span className="text-sm font-semibold">CALL</span>
+              <span className="text-xs font-medium opacity-90">{callPercent}%</span>
             </div>
           </button>
           
@@ -389,19 +383,13 @@ const FuturesPage = () => {
           <button
             onClick={() => handleTrade('short')}
             disabled={loading}
-            className="flex-1 py-5 rounded-xl bg-[#F6465D] hover:bg-[#F6465D]/90 text-white font-bold disabled:opacity-50 transition-all shadow-lg relative overflow-hidden"
+            data-testid="put-button"
+            className="flex-1 py-2.5 rounded-lg bg-[#F6465D] hover:bg-[#F6465D]/90 text-white font-semibold disabled:opacity-50 transition-all"
           >
-            <div className="flex items-center justify-between px-4">
-              <div className="flex flex-col items-start">
-                <span className="text-2xl font-bold">{putPercent}%</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xl font-bold">PUT</span>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M7 7l5 5 5-5"/>
-                  <path d="M7 12l5 5 5-5"/>
-                </svg>
-              </div>
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-xs font-medium opacity-90">{putPercent}%</span>
+              <span className="text-sm font-semibold">PUT</span>
+              <CaretDown size={16} weight="bold" />
             </div>
           </button>
         </div>
