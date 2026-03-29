@@ -78,13 +78,30 @@ const RegisterPage = () => {
   const socialBorder = isDark ? 'border-gray-700 hover:border-gray-500' : 'border-gray-300 hover:border-gray-400';
 
   return (
-    <div className={`min-h-screen ${bg} flex items-center justify-center p-4`}>
-      <div className="w-full max-w-md">
+    <div className={`min-h-screen ${bg} flex items-center justify-center p-4 relative overflow-hidden`}>
+      {/* Cinematic Background Effects */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* Animated Gradient Orbs */}
+        <div className="absolute top-10 -right-20 w-72 h-72 bg-[#00E5FF]/15 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-[#00E5FF]/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1.5s'}}></div>
+        
+        {/* Grid Pattern */}
+        <div className="absolute inset-0 opacity-[0.02]" style={{
+          backgroundImage: 'linear-gradient(rgba(0,229,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.5) 1px, transparent 1px)',
+          backgroundSize: '50px 50px'
+        }}></div>
+        
+        {/* Floating Particles */}
+        <div className="absolute top-[15%] right-[15%] w-2 h-2 bg-[#00E5FF]/40 rounded-full animate-bounce" style={{animationDuration: '3s'}}></div>
+        <div className="absolute bottom-[30%] left-[10%] w-1.5 h-1.5 bg-[#00E5FF]/30 rounded-full animate-bounce" style={{animationDuration: '4s', animationDelay: '1s'}}></div>
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
         {/* Theme Toggle */}
         <div className="flex justify-end mb-4">
           <button
             onClick={toggleTheme}
-            className={`p-2 rounded-lg ${isDark ? 'bg-[#1E2329] hover:bg-[#2B3139]' : 'bg-white hover:bg-gray-100'} border ${isDark ? 'border-[#2B3139]' : 'border-gray-200'}`}
+            className={`p-2.5 rounded-xl ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-black/5 hover:bg-black/10'} backdrop-blur-sm border ${isDark ? 'border-white/10' : 'border-gray-200'} transition-all duration-300 hover:scale-105`}
           >
             {isDark ? <Sun size={20} className="text-[#00E5FF]" /> : <Moon size={20} className="text-gray-600" />}
           </button>
@@ -92,14 +109,17 @@ const RegisterPage = () => {
 
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-full overflow-hidden bg-black ring-2 ring-[#00E5FF]/30">
-              <img src="/images/tg-logo.png" alt="TG Exchange" className="w-full h-full object-cover" />
+          <div className="flex items-center gap-4 mb-4 group">
+            <div className="relative">
+              <div className="absolute inset-0 bg-[#00E5FF] rounded-full blur-xl opacity-30 group-hover:opacity-50 transition-opacity duration-500"></div>
+              <div className="w-14 h-14 rounded-full overflow-hidden bg-black ring-2 ring-[#00E5FF]/50 relative z-10">
+                <img src="/images/tg-logo.png" alt="TG Exchange" className="w-full h-full object-cover" />
+              </div>
             </div>
-            <h1 className={`text-2xl font-bold ${text}`}>TG Exchange</h1>
+            <h1 className={`text-2xl font-bold ${text}`} style={{ fontFamily: 'Unbounded' }}>TG Exchange</h1>
           </div>
           <p className={`${textMuted} text-sm`}>Create your account</p>
-          <div className="h-1 w-32 bg-gradient-to-r from-[#00E5FF] to-[#00E5FF]/50 rounded mt-2"></div>
+          <div className="h-1 w-32 bg-gradient-to-r from-[#00E5FF] to-transparent rounded mt-2"></div>
         </div>
 
         {/* Email/Phone Tabs */}
@@ -232,9 +252,9 @@ const RegisterPage = () => {
           <Button
             type="submit"
             disabled={loading || !referralCode.trim() || !password || password !== confirmPassword}
-            className={`w-full py-6 font-semibold text-lg transition-all ${
+            className={`w-full py-6 font-bold text-lg rounded-xl transition-all duration-300 ${
               referralCode.trim() && password && password === confirmPassword
-                ? "bg-[#00E5FF] hover:bg-[#E5AF0A] text-black"
+                ? "bg-[#00E5FF] hover:bg-[#00E5FF]/90 text-black shadow-lg shadow-[#00E5FF]/25 hover:shadow-[#00E5FF]/40 hover:scale-[1.02] active:scale-[0.98]"
                 : `${isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-300 text-gray-500'} cursor-not-allowed`
             }`}
             data-testid="register-submit-btn"
@@ -247,7 +267,7 @@ const RegisterPage = () => {
         <div className="mt-6 text-center">
           <p className={`${textMuted} text-sm`}>
             It only takes 1 minute to register and receive a new user gift worth{" "}
-            <span className="text-[#00E5FF] font-bold">200 USDT</span>!
+            <span className="text-[#00E5FF] font-bold animate-pulse">200 USDT</span>!
           </p>
         </div>
 
@@ -255,7 +275,7 @@ const RegisterPage = () => {
         <div className="mt-8 text-center">
           <p className={textMuted}>
             Already have an account?{" "}
-            <Link to="/login" className={`${text} hover:text-[#00E5FF] font-medium`}>
+            <Link to="/login" className={`${text} hover:text-[#00E5FF] font-semibold transition-colors`}>
               Log in
             </Link>
           </p>
