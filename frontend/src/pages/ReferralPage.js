@@ -254,7 +254,7 @@ const ReferralPage = () => {
                   </div>
                   <div>
                     <p className={text}>Level {level.level}</p>
-                    <p className={`text-xs ${textMuted}`}>Team</p>
+                    <p className={`text-xs text-[#0ECB81]`}>0.6%</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
