@@ -869,7 +869,7 @@ async def logout(response: Response, user: dict = Depends(get_current_user)):
 # ================= WALLET ROUTES =================
 
 async def check_and_expire_welcome_bonus(user_id: str):
-    """Check if welcome bonus has expired and remove it"""
+    """Check if welcome bonus has expired and remove it from FUTURES balance"""
     wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0})
     if not wallet:
         return None
@@ -885,15 +885,15 @@ async def check_and_expire_welcome_bonus(user_id: str):
         now = datetime.now(timezone.utc)
         
         if now > expires_at:
-            # Welcome bonus expired - remove it from balance
-            current_usdt = wallet["balances"].get("usdt", 0)
-            new_usdt = max(0, current_usdt - welcome_bonus)
+            # Welcome bonus expired - remove it from FUTURES balance (not Spot)
+            current_futures = wallet.get("futures_balance", 0)
+            new_futures = max(0, current_futures - welcome_bonus)
             
             await db.wallets.update_one(
                 {"user_id": user_id},
                 {
                     "$set": {
-                        "balances.usdt": new_usdt,
+                        "futures_balance": new_futures,
                         "welcome_bonus": 0,
                         "welcome_bonus_expired": True,
                         "updated_at": now.isoformat()
@@ -908,7 +908,7 @@ async def check_and_expire_welcome_bonus(user_id: str):
                 "type": "welcome_bonus_expired",
                 "coin": "usdt",
                 "amount": -welcome_bonus,
-                "note": "Welcome bonus expired after 5 days",
+                "note": "Welcome bonus expired after 5 days - deducted from Futures",
                 "status": "completed",
                 "created_at": now.isoformat()
             })
