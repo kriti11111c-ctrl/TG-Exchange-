@@ -117,11 +117,10 @@ const DepositPage = () => {
         tx_hash: txHash.trim()
       }, { withCredentials: true });
 
-      if (response.data.blockchain_verified) {
-        toast.success(`✅ Verified! $${response.data.amount_credited} USDT credited!`);
-      } else {
-        toast.success("Deposit submitted! Verifying...");
-      }
+      // Show success message
+      toast.success(`✅ $${response.data.amount_credited || selectedAmount} USDT credited to your wallet!`, {
+        duration: 5000
+      });
       
       // Reset and go back
       setStep(1);
