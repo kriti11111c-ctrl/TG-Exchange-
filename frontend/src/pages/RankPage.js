@@ -291,7 +291,7 @@ const RankPage = () => {
                 <Wallet size={20} className="text-[#0ECB81]" />
               </div>
               <div>
-                <h3 className={`font-bold ${text}`}>Level Income</h3>
+                <h3 className={`font-bold ${text}`}>Salary Income</h3>
                 <p className={`text-xs ${textMuted}`}>10-Day Salary Cycle</p>
               </div>
             </div>
