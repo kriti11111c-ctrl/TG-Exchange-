@@ -2862,7 +2862,7 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
         # Admin can review later if needed
         
         submitted_amount = deposit.amount
-        coin = deposit.coin.upper()
+        coin = deposit.coin.lower()  # Use lowercase for consistency
         
         # Credit user's wallet immediately
         await db.wallets.update_one(
@@ -3757,7 +3757,7 @@ async def open_futures_position(data: MarginPosition, request: Request):
     # Deduct margin from wallet
     await db.wallets.update_one(
         {"user_id": user_id},
-        {"$inc": {"balances.USDT": -margin_required}}
+        {"$inc": {"balances.usdt": -margin_required}}
     )
     
     # Create position
@@ -3832,7 +3832,7 @@ async def close_futures_position(data: ClosePosition, request: Request):
     if return_amount > 0:
         await db.wallets.update_one(
             {"user_id": user_id},
-            {"$inc": {"balances.USDT": return_amount}}
+            {"$inc": {"balances.usdt": return_amount}}
         )
     
     # Update position

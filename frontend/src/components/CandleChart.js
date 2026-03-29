@@ -1,41 +1,35 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 
-// Generate realistic historical candle data
-const generateHistoricalCandles = (currentPrice, numCandles = 80, volatilityPercent = 3) => {
-  const candles = [];
-  let price = currentPrice * (1 - volatilityPercent/100 * numCandles * 0.12);
-  
-  for (let i = 0; i < numCandles; i++) {
-    const volatility = price * (volatilityPercent / 100);
-    const trend = (currentPrice - price) / (numCandles - i) * 0.25;
-    const randomFactor = (Math.random() - 0.5) * 2;
-    const open = price;
-    const change = trend + randomFactor * volatility;
-    const close = open + change;
-    const high = Math.max(open, close) + Math.random() * volatility * 0.5;
-    const low = Math.min(open, close) - Math.random() * volatility * 0.5;
-    const volume = (Math.random() * 500 + 100) * (1 + Math.abs(change/price) * 10);
-    
-    candles.push({
-      time: Date.now() - (numCandles - i) * 900000,
-      open,
-      high,
-      low,
-      close,
-      volume
-    });
-    
-    price = close;
-  }
-  
-  if (candles.length > 0) {
-    const last = candles[candles.length - 1];
-    last.close = currentPrice;
-    last.high = Math.max(last.high, currentPrice);
-    last.low = Math.min(last.low, currentPrice);
-  }
-  
-  return candles;
+// Binance symbol mapping
+const BINANCE_SYMBOLS = {
+  BTC: "BTCUSDT",
+  ETH: "ETHUSDT",
+  BNB: "BNBUSDT",
+  SOL: "SOLUSDT",
+  XRP: "XRPUSDT",
+  ADA: "ADAUSDT",
+  DOGE: "DOGEUSDT",
+  DOT: "DOTUSDT",
+  MATIC: "MATICUSDT",
+  LTC: "LTCUSDT",
+  SHIB: "SHIBUSDT",
+  TRX: "TRXUSDT",
+  AVAX: "AVAXUSDT",
+  LINK: "LINKUSDT",
+  UNI: "UNIUSDT"
+};
+
+// Timeframe to Binance interval mapping
+const TIMEFRAME_MAP = {
+  "15s": "1m",   // Binance minimum is 1m, we'll use 1m for 15s/30s
+  "30s": "1m",
+  "1m": "1m",
+  "5m": "5m",
+  "15m": "15m",
+  "30m": "30m",
+  "1h": "1h",
+  "4h": "4h",
+  "1d": "1d"
 };
 
 // Calculate Moving Average
@@ -88,6 +82,24 @@ const calculateRSI = (candles, period = 14) => {
   return rsi;
 };
 
+// Calculate EMA
+const calculateEMA = (candles, period) => {
+  const ema = [];
+  const multiplier = 2 / (period + 1);
+  
+  for (let i = 0; i < candles.length; i++) {
+    if (i < period - 1) {
+      ema.push(null);
+    } else if (i === period - 1) {
+      const sum = candles.slice(0, period).reduce((acc, c) => acc + c.close, 0);
+      ema.push(sum / period);
+    } else {
+      ema.push((candles[i].close - ema[i - 1]) * multiplier + ema[i - 1]);
+    }
+  }
+  return ema;
+};
+
 // Calculate MACD
 const calculateMACD = (candles) => {
   const ema12 = calculateEMA(candles, 12);
@@ -104,7 +116,6 @@ const calculateMACD = (candles) => {
     }
   }
   
-  // Calculate signal line (9-period EMA of MACD)
   const validMacd = macdLine.filter(v => v !== null);
   if (validMacd.length >= 9) {
     let ema = validMacd.slice(0, 9).reduce((a, b) => a + b, 0) / 9;
@@ -125,24 +136,6 @@ const calculateMACD = (candles) => {
   }
   
   return { macdLine, signalLine, histogram };
-};
-
-// Calculate EMA
-const calculateEMA = (candles, period) => {
-  const ema = [];
-  const multiplier = 2 / (period + 1);
-  
-  for (let i = 0; i < candles.length; i++) {
-    if (i < period - 1) {
-      ema.push(null);
-    } else if (i === period - 1) {
-      const sum = candles.slice(0, period).reduce((acc, c) => acc + c.close, 0);
-      ema.push(sum / period);
-    } else {
-      ema.push((candles[i].close - ema[i - 1]) * multiplier + ema[i - 1]);
-    }
-  }
-  return ema;
 };
 
 // Calculate Bollinger Bands
@@ -176,57 +169,65 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
   const [candles, setCandles] = useState([]);
   const [timeframe, setTimeframe] = useState("15m");
   const [loading, setLoading] = useState(true);
-  const [initialPrice, setInitialPrice] = useState(null);
-  const [activeIndicator, setActiveIndicator] = useState("none"); // none, rsi, macd
+  const [error, setError] = useState(null);
+  const [activeIndicator, setActiveIndicator] = useState("none");
   const [showBollinger, setShowBollinger] = useState(false);
   
-  const timeframes = ["15s", "30s", "1m", "15m", "30m"];
+  const timeframes = ["1m", "5m", "15m", "30m", "1h", "4h", "1d"];
   const indicators = [
     { id: "none", label: "MA" },
     { id: "rsi", label: "RSI" },
     { id: "macd", label: "MACD" }
   ];
 
-  // Initialize candles
-  useEffect(() => {
-    if (currentPrice > 0 && !initialPrice) {
-      setInitialPrice(currentPrice);
-      const newCandles = generateHistoricalCandles(currentPrice, 80, 3);
-      setCandles(newCandles);
+  // Fetch real candles from Binance API
+  const fetchBinanceCandles = useCallback(async () => {
+    const binanceSymbol = BINANCE_SYMBOLS[symbol] || "BTCUSDT";
+    const interval = TIMEFRAME_MAP[timeframe] || "15m";
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Using Binance public API (no authentication needed)
+      const response = await fetch(
+        `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=100`
+      );
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch from Binance");
+      }
+      
+      const data = await response.json();
+      
+      // Binance klines format: [openTime, open, high, low, close, volume, closeTime, ...]
+      const formattedCandles = data.map(k => ({
+        time: k[0],
+        open: parseFloat(k[1]),
+        high: parseFloat(k[2]),
+        low: parseFloat(k[3]),
+        close: parseFloat(k[4]),
+        volume: parseFloat(k[5])
+      }));
+      
+      setCandles(formattedCandles);
+      setLoading(false);
+    } catch (err) {
+      console.error("Binance API error:", err);
+      setError("Failed to load chart");
       setLoading(false);
     }
-  }, [currentPrice, initialPrice]);
+  }, [symbol, timeframe]);
 
-  // Update last candle with current price
+  // Fetch candles on mount and when symbol/timeframe changes
   useEffect(() => {
-    if (candles.length > 0 && currentPrice > 0) {
-      setCandles(prev => {
-        const updated = [...prev];
-        const last = { ...updated[updated.length - 1] };
-        last.close = currentPrice;
-        last.high = Math.max(last.high, currentPrice);
-        last.low = Math.min(last.low, currentPrice);
-        updated[updated.length - 1] = last;
-        return updated;
-      });
-    }
-  }, [currentPrice]);
-
-  // Handle timeframe change
-  const handleTimeframeChange = (tf) => {
-    setTimeframe(tf);
-    if (currentPrice > 0) {
-      const volatility = tf === "30m" ? 4 : tf === "15m" ? 3 : 2;
-      const newCandles = generateHistoricalCandles(currentPrice, 80, volatility);
-      setCandles(newCandles);
-    }
-  };
-
-  // Reset on symbol change
-  useEffect(() => {
-    setInitialPrice(null);
-    setLoading(true);
-  }, [symbol]);
+    fetchBinanceCandles();
+    
+    // Refresh every 5 seconds for live updates
+    const interval = setInterval(fetchBinanceCandles, 5000);
+    
+    return () => clearInterval(interval);
+  }, [fetchBinanceCandles]);
 
   // Calculate indicators
   const ma7 = useMemo(() => calculateMA(candles, 7), [candles]);
@@ -240,6 +241,9 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     if (candles.length === 0) return 0;
     return candles.reduce((sum, c) => sum + c.volume, 0);
   }, [candles]);
+
+  // Get current price from last candle
+  const lastPrice = candles.length > 0 ? candles[candles.length - 1].close : currentPrice;
 
   // Draw chart on canvas
   useEffect(() => {
@@ -277,7 +281,6 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     let maxPrice = Math.max(...highs);
     let minPrice = Math.min(...lows);
     
-    // Include Bollinger bands in range if active
     if (showBollinger) {
       const validUpper = bollinger.upper.filter(v => v !== null);
       const validLower = bollinger.lower.filter(v => v !== null);
@@ -289,7 +292,6 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     minPrice *= 0.998;
     const priceRange = maxPrice - minPrice;
 
-    // Calculate volume range
     const maxVolume = Math.max(...candles.map(c => c.volume));
 
     // Candle dimensions
@@ -310,14 +312,12 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     }
     ctx.setLineDash([]);
 
-    // Price to Y coordinate (for main chart)
     const priceToY = (price) => {
       return padding.top + ((maxPrice - price) / priceRange) * (mainChartHeight - padding.top - padding.bottom);
     };
 
-    // Draw Bollinger Bands (if active)
+    // Draw Bollinger Bands
     if (showBollinger) {
-      // Fill between bands
       ctx.fillStyle = isDark ? 'rgba(33, 150, 243, 0.1)' : 'rgba(33, 150, 243, 0.15)';
       ctx.beginPath();
       let started = false;
@@ -325,12 +325,8 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
         if (val !== null) {
           const x = padding.left + i * (candleWidth + candleGap) + candleWidth / 2;
           const y = priceToY(val);
-          if (!started) {
-            ctx.moveTo(x, y);
-            started = true;
-          } else {
-            ctx.lineTo(x, y);
-          }
+          if (!started) { ctx.moveTo(x, y); started = true; }
+          else { ctx.lineTo(x, y); }
         }
       });
       for (let i = candles.length - 1; i >= 0; i--) {
@@ -343,7 +339,6 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
       ctx.closePath();
       ctx.fill();
 
-      // Draw upper band
       ctx.strokeStyle = '#2196F3';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -358,7 +353,6 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
       });
       ctx.stroke();
 
-      // Draw lower band
       ctx.beginPath();
       started = false;
       bollinger.lower.forEach((val, i) => {
@@ -378,7 +372,7 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
       const isGreen = candle.close >= candle.open;
       const color = isGreen ? '#0ECB81' : '#F6465D';
 
-      // Draw candle wick
+      // Wick
       const highY = priceToY(candle.high);
       const lowY = priceToY(candle.low);
       ctx.strokeStyle = color;
@@ -388,7 +382,7 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
       ctx.lineTo(x + candleWidth / 2, lowY);
       ctx.stroke();
 
-      // Draw candle body
+      // Body
       const openY = priceToY(candle.open);
       const closeY = priceToY(candle.close);
       const bodyTop = Math.min(openY, closeY);
@@ -397,14 +391,14 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
       ctx.fillStyle = color;
       ctx.fillRect(x, bodyTop, candleWidth, bodyHeight);
 
-      // Draw volume bar
+      // Volume
       const volHeight = (candle.volume / maxVolume) * (volumeHeight - 5);
       const volY = volumeTop + volumeHeight - volHeight;
       ctx.fillStyle = isGreen ? 'rgba(14, 203, 129, 0.4)' : 'rgba(246, 70, 93, 0.4)';
       ctx.fillRect(x, volY, candleWidth, volHeight);
     });
 
-    // Draw MA7 line (yellow)
+    // Draw MA7 (yellow)
     ctx.strokeStyle = '#F0B90B';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -419,7 +413,7 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     });
     ctx.stroke();
 
-    // Draw MA25 line (purple)
+    // Draw MA25 (purple)
     ctx.strokeStyle = '#9B59B6';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -434,8 +428,8 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     });
     ctx.stroke();
 
-    // Draw current price line
-    const currentPriceY = priceToY(currentPrice);
+    // Current price line
+    const currentPriceY = priceToY(lastPrice);
     ctx.strokeStyle = '#F0B90B';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
@@ -445,33 +439,32 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Draw current price label
+    // Price label
     ctx.fillStyle = '#F0B90B';
     ctx.fillRect(width - padding.right + 2, currentPriceY - 8, 50, 16);
     ctx.fillStyle = '#000';
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(currentPrice >= 1000 ? currentPrice.toFixed(0) : currentPrice.toFixed(2), width - padding.right + 5, currentPriceY + 4);
+    ctx.fillText(lastPrice >= 1000 ? lastPrice.toFixed(2) : lastPrice.toFixed(4), width - padding.right + 4, currentPriceY + 4);
 
-    // Draw price labels
+    // Price scale labels
     ctx.fillStyle = isDark ? '#848E9C' : '#6b7280';
     ctx.font = '9px sans-serif';
     for (let i = 0; i <= 4; i++) {
       const price = maxPrice - (priceRange * i / 4);
       const y = padding.top + (mainChartHeight - padding.top - padding.bottom) * (i / 4);
-      ctx.fillText(price >= 1000 ? price.toFixed(0) : price.toFixed(2), width - padding.right + 5, y + 3);
+      ctx.fillText(price >= 1000 ? price.toFixed(2) : price.toFixed(4), width - padding.right + 4, y + 3);
     }
 
-    // Draw "Vol" label
+    // Vol label
     ctx.fillStyle = isDark ? '#848E9C' : '#6b7280';
     ctx.font = '9px sans-serif';
     ctx.fillText('Vol', padding.left, volumeTop + 12);
 
-    // Draw RSI sub-chart
+    // Draw RSI
     if (activeIndicator === "rsi" && subChartHeight > 0) {
       const rsiY = (val) => subChartTop + ((100 - val) / 100) * (subChartHeight - 10);
       
-      // Draw RSI background levels
       ctx.strokeStyle = isDark ? '#1E2329' : '#e5e7eb';
       ctx.setLineDash([2, 2]);
       [70, 50, 30].forEach(level => {
@@ -482,7 +475,6 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
       });
       ctx.setLineDash([]);
       
-      // Draw RSI line
       ctx.strokeStyle = '#E91E63';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -497,22 +489,28 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
       });
       ctx.stroke();
       
-      // RSI labels
       ctx.fillStyle = isDark ? '#848E9C' : '#6b7280';
       ctx.font = '8px sans-serif';
       ctx.fillText('RSI(14)', padding.left, subChartTop + 10);
       ctx.fillText('70', width - padding.right + 5, rsiY(70) + 3);
       ctx.fillText('30', width - padding.right + 5, rsiY(30) + 3);
+      
+      // Show current RSI value
+      const lastRSI = rsi.filter(v => v !== null).pop();
+      if (lastRSI) {
+        ctx.fillStyle = lastRSI > 70 ? '#F6465D' : lastRSI < 30 ? '#0ECB81' : '#F0B90B';
+        ctx.fillText(lastRSI.toFixed(1), padding.left + 50, subChartTop + 10);
+      }
     }
 
-    // Draw MACD sub-chart
+    // Draw MACD
     if (activeIndicator === "macd" && subChartHeight > 0) {
       const validHistogram = macd.histogram.filter(v => v !== null);
       if (validHistogram.length > 0) {
         const maxHist = Math.max(...validHistogram.map(Math.abs));
         const macdY = (val) => subChartTop + subChartHeight / 2 - (val / maxHist) * (subChartHeight / 2 - 10);
         
-        // Draw histogram
+        // Histogram
         candles.forEach((_, i) => {
           if (macd.histogram[i] !== null) {
             const x = padding.left + i * (candleWidth + candleGap) + candleGap / 2;
@@ -524,7 +522,7 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
           }
         });
         
-        // Draw MACD line
+        // MACD line
         ctx.strokeStyle = '#2196F3';
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -539,7 +537,7 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
         });
         ctx.stroke();
         
-        // Draw Signal line
+        // Signal line
         ctx.strokeStyle = '#FF9800';
         ctx.beginPath();
         started = false;
@@ -553,18 +551,25 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
         });
         ctx.stroke();
         
-        // MACD labels
         ctx.fillStyle = isDark ? '#848E9C' : '#6b7280';
         ctx.font = '8px sans-serif';
         ctx.fillText('MACD', padding.left, subChartTop + 10);
       }
     }
 
-  }, [candles, currentPrice, isDark, ma7, ma25, rsi, macd, bollinger, activeIndicator, showBollinger]);
+  }, [candles, lastPrice, isDark, ma7, ma25, rsi, macd, bollinger, activeIndicator, showBollinger]);
+
+  // Format volume
+  const formatVolume = (vol) => {
+    if (vol >= 1e9) return (vol / 1e9).toFixed(2) + 'B';
+    if (vol >= 1e6) return (vol / 1e6).toFixed(2) + 'M';
+    if (vol >= 1e3) return (vol / 1e3).toFixed(2) + 'K';
+    return vol.toFixed(2);
+  };
 
   return (
     <div className="w-full" style={{ height: height }}>
-      {/* Header with indicators */}
+      {/* Header */}
       <div className={`flex items-center justify-between px-2 py-1 text-xs ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
         <div className="flex items-center gap-2">
           <span className="text-[#F0B90B]">MA(7)</span>
@@ -577,18 +582,18 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
           </button>
         </div>
         <span className={`${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-          Vol: {(totalVolume / 1000000).toFixed(2)}M
+          Vol: {formatVolume(totalVolume)}
         </span>
       </div>
 
       {/* Timeframe and Indicator buttons */}
       <div className={`flex items-center justify-between px-2 py-1 ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 overflow-x-auto">
           {timeframes.map(tf => (
             <button
               key={tf}
-              onClick={() => handleTimeframeChange(tf)}
-              className={`px-2 py-0.5 text-[10px] rounded transition-colors ${
+              onClick={() => setTimeframe(tf)}
+              className={`px-2 py-0.5 text-[10px] rounded transition-colors whitespace-nowrap ${
                 timeframe === tf 
                   ? 'bg-[#F0B90B] text-black font-medium' 
                   : `${isDark ? 'text-gray-400 bg-[#1E2329]' : 'text-gray-600 bg-gray-200'}`
@@ -615,9 +620,9 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
         </div>
       </div>
       
-      {/* Chart area */}
+      {/* Chart */}
       <div className="relative" style={{ height: height - 55 }}>
-        {loading ? (
+        {loading && candles.length === 0 ? (
           <div className={`absolute inset-0 flex items-center justify-center ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
             <div className="flex items-end gap-1">
               {[...Array(5)].map((_, i) => (
@@ -633,12 +638,26 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
               ))}
             </div>
           </div>
+        ) : error ? (
+          <div className={`absolute inset-0 flex items-center justify-center ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
+            <span className="text-[#F6465D] text-sm">{error}</span>
+          </div>
         ) : (
           <canvas 
             ref={canvasRef} 
             className="w-full h-full"
             style={{ display: 'block' }}
           />
+        )}
+        
+        {/* Live indicator */}
+        {!loading && candles.length > 0 && (
+          <div className="absolute top-1 left-2">
+            <span className="text-[10px] text-[#0ECB81] flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#0ECB81] animate-pulse"></span>
+              LIVE
+            </span>
+          </div>
         )}
       </div>
     </div>
