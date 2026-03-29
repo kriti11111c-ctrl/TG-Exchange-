@@ -618,17 +618,18 @@ async def register(user_data: UserCreate, response: Response):
         "created_at": now.isoformat()
     })
     
-    # Create wallet with welcome bonus only (no extra bonus for new user)
+    # Create wallet with welcome bonus in FUTURES (not Spot)
     wallet_doc = {
         "user_id": user_id,
         "balances": {
             "btc": 0.0,
             "eth": 0.0,
-            "usdt": WELCOME_BONUS_AMOUNT,  # Only welcome bonus
+            "usdt": 0.0,  # Spot balance starts at 0
             "bnb": 0.0,
             "xrp": 0.0,
             "sol": 0.0
         },
+        "futures_balance": WELCOME_BONUS_AMOUNT,  # Welcome bonus goes to Futures
         "welcome_bonus": WELCOME_BONUS_AMOUNT,
         "welcome_bonus_expires_at": welcome_bonus_expires.isoformat(),
         "updated_at": now.isoformat()
@@ -3841,11 +3842,15 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
             detail="Trade failed due to market volatility. Next trade will be at 2x to recover."
         )
     
-    # Calculate trade amount based on fund_percent (1% * multiplier)
-    usdt_balance = wallet["balances"].get("usdt", 0)
+    # Calculate trade amount based on fund_percent (1% * multiplier) from FUTURES balance
+    futures_balance = wallet.get("futures_balance", 0)
     fund_percent = trade_code.get("fund_percent", 1.0)
     multiplier = trade_code.get("multiplier", 1)
-    trade_amount_usdt = usdt_balance * (fund_percent / 100)
+    trade_amount_usdt = futures_balance * (fund_percent / 100)
+    
+    # Check if user has enough futures balance
+    if futures_balance <= 0:
+        raise HTTPException(status_code=400, detail="Insufficient Futures balance. Please transfer funds from Spot to Futures first.")
     
     coin = trade_code["coin"]
     price = trade_code["price"]
@@ -3861,12 +3866,12 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     
     trade_type = trade_code["trade_type"]
     
-    # Execute trade - add the profit to wallet
+    # Execute trade - add the profit to FUTURES balance (not Spot)
     await db.wallets.update_one(
         {"user_id": user["user_id"]},
         {
             "$inc": {
-                "balances.usdt": profit_usdt
+                "futures_balance": profit_usdt
             }
         }
     )

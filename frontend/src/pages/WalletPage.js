@@ -106,7 +106,8 @@ const WalletPage = () => {
   const [selectedDepositAmount, setSelectedDepositAmount] = useState(null);
   const [address, setAddress] = useState("");
   const [txHash, setTxHash] = useState("");
-  const [transferTo, setTransferTo] = useState("margin");
+  const [transferFrom, setTransferFrom] = useState("spot");
+  const [transferTo, setTransferTo] = useState("futures");
   const [submitting, setSubmitting] = useState(false);
 
   // Theme colors
@@ -190,9 +191,13 @@ const WalletPage = () => {
 
   const getTotalValue = () => {
     if (!wallet) return 0;
-    return Object.entries(wallet.balances).reduce((total, [coin, amount]) => {
+    // Calculate Spot balance (all coins in USDT value)
+    const spotValue = Object.entries(wallet.balances).reduce((total, [coin, amount]) => {
       return total + getCoinValue(coin, amount);
     }, 0);
+    // Add Futures balance
+    const futuresValue = wallet.futures_balance || 0;
+    return spotValue + futuresValue;
   };
 
   // Calculate PnL (mock data for demo)
@@ -266,9 +271,63 @@ const WalletPage = () => {
 
   const handleTransfer = async (e) => {
     e.preventDefault();
-    // Mock transfer between accounts
-    toast.success(`Transferred ${amount} ${selectedCoin.toUpperCase()} to ${transferTo}`);
-    setTransferOpen(false);
+    
+    const transferAmount = parseFloat(amount);
+    if (!transferAmount || transferAmount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+    
+    // Get available balance based on 'from' account
+    const spotBalance = wallet?.balances?.usdt || 0;
+    const futuresBalance = wallet?.futures_balance || 0;
+    const availableBalance = transferFrom === "spot" ? spotBalance : futuresBalance;
+    
+    if (transferAmount > availableBalance) {
+      toast.error(`Insufficient balance. Available: $${availableBalance.toFixed(2)}`);
+      return;
+    }
+    
+    // Determine transfer direction
+    const direction = transferFrom === "spot" ? "spot_to_futures" : "futures_to_spot";
+    
+    setSubmitting(true);
+    try {
+      const response = await axios.post(`${API}/wallet/transfer`, {
+        amount: transferAmount,
+        direction: direction
+      }, { withCredentials: true });
+      
+      toast.success(response.data.message || `Transferred $${transferAmount} successfully!`);
+      setTransferOpen(false);
+      setAmount("");
+      fetchData(); // Refresh wallet data
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Transfer failed");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+  // Get balance for transfer modal
+  const getTransferFromBalance = () => {
+    if (transferFrom === "spot") {
+      return wallet?.balances?.usdt || 0;
+    } else {
+      return wallet?.futures_balance || 0;
+    }
+  };
+  
+  const handleMaxAmount = () => {
+    const maxBalance = getTransferFromBalance();
+    setAmount(maxBalance.toString());
+  };
+  
+  // Swap From and To accounts
+  const handleSwapAccounts = () => {
+    const temp = transferFrom;
+    setTransferFrom(transferTo);
+    setTransferTo(temp);
     setAmount("");
   };
 
@@ -397,63 +456,151 @@ const WalletPage = () => {
           {/* Transfer */}
           <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
             <DialogTrigger asChild>
-              <button className="flex flex-col items-center gap-2">
+              <button className="flex flex-col items-center gap-2" data-testid="transfer-btn">
                 <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center ${actionBtnHover} transition-colors`}>
                   <ArrowsDownUp size={24} className={text} />
                 </div>
                 <span className={`${text} text-sm`}>Transfer</span>
               </button>
             </DialogTrigger>
-            <DialogContent className={`${dialogBg} ${border}`}>
+            <DialogContent className={`${dialogBg} ${border} max-w-sm`}>
               <DialogHeader>
                 <DialogTitle className={text}>Transfer Between Accounts</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleTransfer} className="space-y-4 mt-4">
+                {/* From Account */}
                 <div>
                   <Label className={textMuted}>From</Label>
-                  <Select defaultValue="spot">
-                    <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`}>
+                  <Select value={transferFrom} onValueChange={(val) => { setTransferFrom(val); setAmount(""); }}>
+                    <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`} data-testid="transfer-from-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className={`${dialogBg} ${border}`}>
-                      <SelectItem value="spot" className={text}>Spot</SelectItem>
-                      <SelectItem value="margin" className={text}>Margin</SelectItem>
-                      <SelectItem value="futures" className={text}>Futures</SelectItem>
+                      <SelectItem value="spot" className={text}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-[#3B82F6]" />
+                          <span>Spot</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="futures" className={text}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-[#10B981]" />
+                          <span>Futures</span>
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                
+                {/* Swap Button */}
+                <div className="flex justify-center">
+                  <button 
+                    type="button" 
+                    onClick={handleSwapAccounts}
+                    className={`p-2 rounded-full ${actionBtnBg} ${actionBtnHover} transition-colors`}
+                    data-testid="swap-accounts-btn"
+                  >
+                    <ArrowsDownUp size={20} className={text} />
+                  </button>
+                </div>
+                
+                {/* To Account */}
                 <div>
                   <Label className={textMuted}>To</Label>
                   <Select value={transferTo} onValueChange={setTransferTo}>
-                    <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`}>
+                    <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`} data-testid="transfer-to-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className={`${dialogBg} ${border}`}>
-                      <SelectItem value="margin" className={text}>Margin</SelectItem>
-                      <SelectItem value="futures" className={text}>Futures</SelectItem>
-                      <SelectItem value="earn" className={text}>Earn</SelectItem>
+                      <SelectItem value="spot" className={text}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-[#3B82F6]" />
+                          <span>Spot</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="futures" className={text}>
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-[#10B981]" />
+                          <span>Futures</span>
+                        </div>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                
+                {/* Coin Selector - Only USDT for now */}
                 <div>
                   <Label className={textMuted}>Coin</Label>
-                  <Select value={selectedCoin} onValueChange={setSelectedCoin}>
+                  <Select value="usdt" disabled>
                     <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`}>
-                      <SelectValue />
+                      <SelectValue>
+                        <div className="flex items-center gap-2">
+                          <img src="https://coin-images.coingecko.com/coins/images/325/large/Tether.png" alt="USDT" className="w-5 h-5 rounded-full" />
+                          <span>USDT</span>
+                        </div>
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent className={`${dialogBg} ${border}`}>
-                      {supportedCoins.map(coin => (
-                        <SelectItem key={coin.id} value={coin.id} className={text}>{coin.symbol}</SelectItem>
-                      ))}
+                      <SelectItem value="usdt" className={text}>USDT</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                
+                {/* Amount with Max Button */}
                 <div>
-                  <Label className={textMuted}>Amount</Label>
-                  <Input type="number" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className={`${dialogInputBg} ${border} ${text} mt-1`} required />
+                  <div className="flex items-center justify-between mb-1">
+                    <Label className={textMuted}>Amount</Label>
+                    <span className={`text-xs ${textMuted}`}>
+                      Available: <span className="text-[#F0B90B] font-semibold">${getTransferFromBalance().toFixed(2)}</span>
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <Input 
+                      type="number" 
+                      step="any" 
+                      value={amount} 
+                      onChange={(e) => setAmount(e.target.value)} 
+                      placeholder="0.00" 
+                      className={`${dialogInputBg} ${border} ${text} pr-16`} 
+                      required 
+                      data-testid="transfer-amount-input"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleMaxAmount}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 text-xs font-semibold text-[#F0B90B] bg-[#F0B90B]/20 rounded hover:bg-[#F0B90B]/30 transition-colors"
+                      data-testid="max-amount-btn"
+                    >
+                      Max
+                    </button>
+                  </div>
                 </div>
-                <Button type="submit" className="w-full bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black font-semibold">
-                  Transfer
+                
+                {/* Transfer Summary */}
+                {amount && parseFloat(amount) > 0 && (
+                  <div className={`p-3 rounded-lg ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'} border ${border}`}>
+                    <div className="flex justify-between text-sm">
+                      <span className={textMuted}>You will transfer</span>
+                      <span className={`${text} font-semibold`}>${parseFloat(amount).toFixed(2)} USDT</span>
+                    </div>
+                    <div className="flex justify-between text-sm mt-1">
+                      <span className={textMuted}>From</span>
+                      <span className={text}>{transferFrom === 'spot' ? 'Spot' : 'Futures'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm mt-1">
+                      <span className={textMuted}>To</span>
+                      <span className={text}>{transferTo === 'spot' ? 'Spot' : 'Futures'}</span>
+                    </div>
+                  </div>
+                )}
+                
+                <Button 
+                  type="submit" 
+                  className="w-full bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black font-semibold h-12"
+                  disabled={submitting || !amount || parseFloat(amount) <= 0 || transferFrom === transferTo}
+                  data-testid="confirm-transfer-btn"
+                >
+                  {submitting ? "Transferring..." : "Transfer"}
                 </Button>
               </form>
             </DialogContent>
@@ -469,7 +616,7 @@ const WalletPage = () => {
         </div>
       </div>
 
-      {/* Account Section */}
+      {/* Account Section - Spot & Futures Balances */}
       <div className={`px-4 pb-4 ${cardBg}`}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -479,31 +626,73 @@ const WalletPage = () => {
           <CaretDown size={16} className={textMuted} />
         </div>
         
-        {/* Progress Bar */}
-        <div className={`h-2 ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} rounded-full overflow-hidden mb-4`}>
-          <div className="h-full bg-[#3B82F6]" style={{ width: '100%' }} />
-        </div>
-        
-        {/* Account Types List */}
-        <div className="space-y-3">
-          {accountTypes.map((account, index) => {
-            const accountBalance = index === 0 ? totalBalance : 0; // Only Spot has balance
-            const percentage = index === 0 ? 100 : 0;
-            
-            return (
-              <div key={account.id} className="flex items-center justify-between py-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: account.color }} />
-                  <span className={text}>{account.name}</span>
+        {/* Progress Bar - Shows Spot vs Futures ratio */}
+        {(() => {
+          const spotBalance = wallet?.balances?.usdt || 0;
+          const futuresBalance = wallet?.futures_balance || 0;
+          const total = spotBalance + futuresBalance;
+          const spotPercent = total > 0 ? (spotBalance / total) * 100 : 0;
+          const futuresPercent = total > 0 ? (futuresBalance / total) * 100 : 100;
+          
+          return (
+            <>
+              <div className={`h-2 ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} rounded-full overflow-hidden mb-4 flex`}>
+                {spotPercent > 0 && (
+                  <div className="h-full bg-[#3B82F6]" style={{ width: `${spotPercent}%` }} />
+                )}
+                {futuresPercent > 0 && (
+                  <div className="h-full bg-[#10B981]" style={{ width: `${futuresPercent}%` }} />
+                )}
+              </div>
+              
+              {/* Spot & Futures Accounts */}
+              <div className="space-y-3">
+                {/* Spot Account */}
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-[#3B82F6]" />
+                    <span className={text}>Spot</span>
+                  </div>
+                  <div className="text-right">
+                    <p className={`${text} font-mono`}>${showBalance ? spotBalance.toFixed(2) : '****'}</p>
+                    <p className={`text-xs ${textMuted}`}>{spotPercent.toFixed(2)}%</p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className={`${text} font-mono`}>${showBalance ? accountBalance.toFixed(2) : '****'}</p>
-                  <p className={`text-xs ${textMuted}`}>{percentage.toFixed(2)}%</p>
+                
+                {/* Futures Account */}
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-[#10B981]" />
+                    <span className={text}>Futures</span>
+                    {wallet?.welcome_bonus && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F0B90B]/20 text-[#F0B90B]">Bonus</span>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className={`${text} font-mono`}>${showBalance ? futuresBalance.toFixed(2) : '****'}</p>
+                    <p className={`text-xs ${textMuted}`}>{futuresPercent.toFixed(2)}%</p>
+                  </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
+              
+              {/* Transfer Hint */}
+              <div className={`mt-4 p-3 rounded-lg ${isDark ? 'bg-[#1E2329]' : 'bg-gray-50'} border ${border}`}>
+                <div className="flex items-start gap-2">
+                  <Info size={16} className="text-[#F0B90B] mt-0.5 flex-shrink-0" />
+                  <div className="text-xs">
+                    <p className={textMuted}>
+                      <span className="text-[#F0B90B] font-semibold">Trading:</span> Futures balance se hota hai. 
+                      <span className="text-[#3B82F6] font-semibold"> Withdrawal:</span> Spot balance se hota hai.
+                    </p>
+                    <p className={`${textMuted} mt-1`}>
+                      Transfer button se Spot ↔ Futures transfer karein.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* Divider */}

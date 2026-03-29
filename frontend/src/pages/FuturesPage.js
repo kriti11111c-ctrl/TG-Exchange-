@@ -304,7 +304,7 @@ const FuturesPage = () => {
             <button
               key={pct}
               onClick={() => {
-                const max = (wallet?.balances?.usdt || 0) * leverage / currentPrice;
+                const max = (wallet?.futures_balance || 0) * leverage / currentPrice;
                 setAmount((max * pct / 100).toFixed(4));
               }}
               className={`py-1.5 rounded text-xs ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} ${textMuted}`}
@@ -314,10 +314,10 @@ const FuturesPage = () => {
           ))}
         </div>
 
-        {/* Available Balance */}
+        {/* Available Balance - Futures */}
         <div className={`flex justify-between text-xs mb-3 ${textMuted}`}>
-          <span>Available</span>
-          <span>{wallet?.balances?.usdt?.toFixed(2) || '0.00'} USDT</span>
+          <span>Futures Balance</span>
+          <span className="text-[#10B981]">{wallet?.futures_balance?.toFixed(2) || '0.00'} USDT</span>
         </div>
       </div>
 
