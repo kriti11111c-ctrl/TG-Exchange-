@@ -463,14 +463,14 @@ const WalletPage = () => {
                 <span className={`${text} text-sm`}>Transfer</span>
               </button>
             </DialogTrigger>
-            <DialogContent className={`${dialogBg} ${border} max-w-sm`}>
+            <DialogContent className={`${dialogBg} ${border} max-w-sm max-h-[90vh] overflow-y-auto`}>
               <DialogHeader>
-                <DialogTitle className={text}>Transfer Between Accounts</DialogTitle>
+                <DialogTitle className={text}>Transfer</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleTransfer} className="space-y-4 mt-4">
+              <form onSubmit={handleTransfer} className="space-y-3 mt-3">
                 {/* From Account */}
                 <div>
-                  <Label className={textMuted}>From</Label>
+                  <Label className={textMuted}>कहाँ से</Label>
                   <Select value={transferFrom} onValueChange={(val) => { setTransferFrom(val); setAmount(""); }}>
                     <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`} data-testid="transfer-from-select">
                       <SelectValue />
@@ -493,20 +493,20 @@ const WalletPage = () => {
                 </div>
                 
                 {/* Swap Button */}
-                <div className="flex justify-center">
+                <div className="flex justify-center -my-1">
                   <button 
                     type="button" 
                     onClick={handleSwapAccounts}
-                    className={`p-2 rounded-full ${actionBtnBg} ${actionBtnHover} transition-colors`}
+                    className={`p-1.5 rounded-full ${actionBtnBg} ${actionBtnHover} transition-colors`}
                     data-testid="swap-accounts-btn"
                   >
-                    <ArrowsDownUp size={20} className={text} />
+                    <ArrowsDownUp size={18} className={text} />
                   </button>
                 </div>
                 
                 {/* To Account */}
                 <div>
-                  <Label className={textMuted}>To</Label>
+                  <Label className={textMuted}>कहाँ तक</Label>
                   <Select value={transferTo} onValueChange={setTransferTo}>
                     <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`} data-testid="transfer-to-select">
                       <SelectValue />
@@ -528,30 +528,12 @@ const WalletPage = () => {
                   </Select>
                 </div>
                 
-                {/* Coin Selector - Only USDT for now */}
-                <div>
-                  <Label className={textMuted}>Coin</Label>
-                  <Select value="usdt" disabled>
-                    <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`}>
-                      <SelectValue>
-                        <div className="flex items-center gap-2">
-                          <img src="https://coin-images.coingecko.com/coins/images/325/large/Tether.png" alt="USDT" className="w-5 h-5 rounded-full" />
-                          <span>USDT</span>
-                        </div>
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent className={`${dialogBg} ${border}`}>
-                      <SelectItem value="usdt" className={text}>USDT</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
                 {/* Amount with Max Button */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <Label className={textMuted}>Amount</Label>
+                    <Label className={textMuted}>राशि (USDT)</Label>
                     <span className={`text-xs ${textMuted}`}>
-                      Available: <span className="text-[#F0B90B] font-semibold">${getTransferFromBalance().toFixed(2)}</span>
+                      उपलब्ध: <span className="text-[#F0B90B] font-semibold">${getTransferFromBalance().toFixed(2)}</span>
                     </span>
                   </div>
                   <div className="relative">
@@ -580,15 +562,15 @@ const WalletPage = () => {
                 {amount && parseFloat(amount) > 0 && (
                   <div className={`p-3 rounded-lg ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'} border ${border}`}>
                     <div className="flex justify-between text-sm">
-                      <span className={textMuted}>You will transfer</span>
+                      <span className={textMuted}>ट्रांसफर राशि</span>
                       <span className={`${text} font-semibold`}>${parseFloat(amount).toFixed(2)} USDT</span>
                     </div>
                     <div className="flex justify-between text-sm mt-1">
-                      <span className={textMuted}>From</span>
+                      <span className={textMuted}>कहाँ से</span>
                       <span className={text}>{transferFrom === 'spot' ? 'Spot' : 'Futures'}</span>
                     </div>
                     <div className="flex justify-between text-sm mt-1">
-                      <span className={textMuted}>To</span>
+                      <span className={textMuted}>कहाँ तक</span>
                       <span className={text}>{transferTo === 'spot' ? 'Spot' : 'Futures'}</span>
                     </div>
                   </div>
