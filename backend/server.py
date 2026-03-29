@@ -3574,7 +3574,14 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         "amount": amount,
         "price": price,
         "total_usd": total_usd,
-        "message": f"{trade_type.upper()} {amount} {coin.upper()} @ ${price}"
+        "message": f"{trade_type.upper()} {amount} {coin.upper()} @ ${price}",
+        "trade_details": {
+            "trade_type": trade_type,
+            "coin": coin,
+            "amount": amount,
+            "price": price,
+            "total_usd": total_usd
+        }
     }
 
 # ==================== KYC VERIFICATION SYSTEM ====================

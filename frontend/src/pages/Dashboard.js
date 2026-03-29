@@ -417,26 +417,20 @@ const Dashboard = () => {
                                     </>
                                   )}
                                 </div>
-                                
-                                {isActive && (
-                                  <Button
-                                    onClick={() => applyTradeCode(code.code)}
-                                    size="sm"
-                                    className="bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white font-bold text-xs h-7 px-4"
-                                    data-testid={`apply-code-${code.code}`}
-                                  >
-                                    Apply
-                                  </Button>
-                                )}
                               </div>
                               
-                              {/* Trade Details */}
+                              {/* Trade Details + Instruction */}
                               <div className={`text-xs ${textMuted} mt-2`}>
                                 <span className={code.trade_type === 'buy' ? 'text-[#0ECB81]' : 'text-red-500'}>
                                   {code.trade_type?.toUpperCase()}
                                 </span>
                                 {' '}{code.amount} {code.coin?.toUpperCase()} @ ${code.price?.toLocaleString()}
                               </div>
+                              {isActive && (
+                                <p className={`text-[10px] ${textMuted} mt-1 italic`}>
+                                  Copy code & paste in Futures → Trade Code
+                                </p>
+                              )}
                             </div>
                           );
                         })}

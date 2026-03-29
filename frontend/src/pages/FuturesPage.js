@@ -16,7 +16,9 @@ import {
   Lightning,
   TrendUp,
   TrendDown,
-  Ticket
+  Ticket,
+  CheckCircle,
+  Confetti
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -36,6 +38,7 @@ const FuturesPage = () => {
   const [showChart, setShowChart] = useState(true);
   const [tradeCode, setTradeCode] = useState("");
   const [applyingCode, setApplyingCode] = useState(false);
+  const [codeSuccess, setCodeSuccess] = useState(null);
   const [futuresAccount, setFuturesAccount] = useState(null);
   const [loading, setLoading] = useState(false);
   const [callPercent, setCallPercent] = useState("61.23");
@@ -317,18 +320,35 @@ const FuturesPage = () => {
 
       {/* Trade Code Section - Above CALL/PUT */}
       <div className="px-3 pb-20">
-        <div className={`p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
-          <div className="flex items-center gap-2 mb-2">
-            <Ticket size={16} className="text-[#F0B90B]" />
-            <span className={`text-xs font-medium ${text}`}>Trade Code</span>
+        <div className={`p-3 rounded-xl border ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
+          <div className="flex items-center gap-2 mb-3">
+            <Ticket size={18} className="text-[#0ECB81]" weight="fill" />
+            <span className={`text-sm font-semibold ${text}`}>Trade Code</span>
           </div>
+          
+          {/* Success Message */}
+          {codeSuccess && (
+            <div className="mb-3 p-3 rounded-lg bg-[#0ECB81]/20 border border-[#0ECB81]/40">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle size={20} className="text-[#0ECB81]" weight="fill" />
+                <span className="text-[#0ECB81] font-bold text-sm">Position Opened Successfully!</span>
+              </div>
+              <div className={`text-xs ${text} space-y-1`}>
+                <p><span className="opacity-60">Type:</span> <span className={codeSuccess.trade_type === 'buy' ? 'text-[#0ECB81]' : 'text-red-500'}>{codeSuccess.trade_type?.toUpperCase()}</span></p>
+                <p><span className="opacity-60">Amount:</span> {codeSuccess.amount} {codeSuccess.coin?.toUpperCase()}</p>
+                <p><span className="opacity-60">Price:</span> ${codeSuccess.price?.toLocaleString()}</p>
+              </div>
+            </div>
+          )}
+          
           <div className="flex gap-2">
             <Input
               type="text"
               value={tradeCode}
               onChange={(e) => setTradeCode(e.target.value.toUpperCase())}
-              placeholder="Enter admin trade code"
-              className={`flex-1 text-sm ${inputBg} ${border} ${text} uppercase`}
+              placeholder="Paste trade code here"
+              className={`flex-1 text-sm ${inputBg} ${border} ${text} uppercase tracking-wider font-mono`}
+              data-testid="trade-code-input"
             />
             <Button
               onClick={async () => {
@@ -337,27 +357,45 @@ const FuturesPage = () => {
                   return;
                 }
                 setApplyingCode(true);
+                setCodeSuccess(null);
                 try {
-                  const res = await axios.post(`${API}/trades/execute-code`, {
+                  const res = await axios.post(`${API}/trade/apply-code`, {
                     code: tradeCode
                   }, { withCredentials: true });
-                  toast.success(res.data.message);
+                  
+                  // Show success with confetti effect
+                  toast.success("🎉 " + res.data.message, {
+                    duration: 5000,
+                  });
+                  
+                  // Set success data for display
+                  setCodeSuccess(res.data.trade_details || {
+                    trade_type: res.data.trade_type,
+                    amount: res.data.amount,
+                    coin: res.data.coin,
+                    price: res.data.price
+                  });
+                  
                   setTradeCode("");
                   fetchFuturesData();
+                  
+                  // Auto-hide success after 10 seconds
+                  setTimeout(() => setCodeSuccess(null), 10000);
                 } catch (error) {
-                  toast.error(error.response?.data?.detail || "Invalid trade code");
+                  toast.error(error.response?.data?.detail || "Invalid or expired trade code");
                 } finally {
                   setApplyingCode(false);
                 }
               }}
-              disabled={applyingCode}
-              className="bg-[#F0B90B] hover:bg-[#E5AF0A] text-black font-medium px-4"
+              disabled={applyingCode || !tradeCode.trim()}
+              className="bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white font-bold px-5 disabled:opacity-50"
+              data-testid="apply-code-button"
             >
               {applyingCode ? "..." : "Apply"}
             </Button>
           </div>
           <p className={`text-[10px] ${textMuted} mt-2`}>
-            Get code from admin to execute trades instantly
+            Paste code from notification to execute trade
           </p>
         </div>
       </div>
