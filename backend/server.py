@@ -2680,32 +2680,64 @@ async def get_current_admin(request: Request):
 
 @api_router.post("/admin/login")
 async def admin_login(credentials: AdminLogin):
-    """Admin login"""
+    """Admin login - checks both admins collection and users collection"""
+    
+    # First check admins collection
     admin = await db.admins.find_one({"email": credentials.email})
-    if not admin:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    if not bcrypt.checkpw(credentials.password.encode('utf-8'), admin["password"].encode('utf-8')):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    # Generate admin JWT
-    token_data = {
-        "admin_id": admin["admin_id"],
-        "email": admin["email"],
-        "type": "admin",
-        "exp": datetime.now(timezone.utc) + timedelta(hours=24)
-    }
-    token = jwt.encode(token_data, JWT_SECRET, algorithm=JWT_ALGORITHM)
-    
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "admin": {
+    if admin:
+        if not bcrypt.checkpw(credentials.password.encode('utf-8'), admin["password"].encode('utf-8')):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        # Generate admin JWT
+        token_data = {
             "admin_id": admin["admin_id"],
             "email": admin["email"],
-            "name": admin["name"]
+            "type": "admin",
+            "exp": datetime.now(timezone.utc) + timedelta(hours=24)
         }
-    }
+        token = jwt.encode(token_data, JWT_SECRET, algorithm=JWT_ALGORITHM)
+        
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "admin": {
+                "admin_id": admin["admin_id"],
+                "email": admin["email"],
+                "name": admin.get("name", "Admin"),
+                "referral_code": admin.get("referral_code", "ADMIN")
+            }
+        }
+    
+    # Also check users collection for admin role
+    user_admin = await db.users.find_one({"email": credentials.email, "role": "admin"})
+    
+    if user_admin:
+        password_hash = user_admin.get("password_hash") or user_admin.get("password", "")
+        if not bcrypt.checkpw(credentials.password.encode('utf-8'), password_hash.encode('utf-8')):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
+        
+        # Generate admin JWT
+        token_data = {
+            "admin_id": user_admin["user_id"],
+            "email": user_admin["email"],
+            "type": "admin",
+            "exp": datetime.now(timezone.utc) + timedelta(hours=24)
+        }
+        token = jwt.encode(token_data, JWT_SECRET, algorithm=JWT_ALGORITHM)
+        
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "admin": {
+                "admin_id": user_admin["user_id"],
+                "email": user_admin["email"],
+                "name": user_admin.get("name", "Admin"),
+                "referral_code": user_admin.get("referral_code", "ADMIN")
+            }
+        }
+    
+    raise HTTPException(status_code=401, detail="Invalid credentials")
 
 @api_router.get("/admin/me")
 async def get_admin_profile(admin: dict = Depends(get_current_admin)):

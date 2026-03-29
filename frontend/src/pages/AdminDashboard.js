@@ -209,6 +209,33 @@ const AdminDashboard = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        {/* Admin Referral Link Card */}
+        <div className="bg-gradient-to-r from-[#00E5FF]/20 to-[#00E5FF]/5 border border-[#00E5FF]/30 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-400 mb-1">Your Referral Link</p>
+              <p className="text-white font-mono text-sm break-all">
+                {window.location.origin}/?ref={adminData.referral_code || 'ADMIN'}
+              </p>
+            </div>
+            <Button
+              onClick={() => {
+                const link = `${window.location.origin}/?ref=${adminData.referral_code || 'ADMIN'}`;
+                navigator.clipboard.writeText(link);
+                toast.success("Referral link copied!");
+              }}
+              className="bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black"
+              size="sm"
+            >
+              <Copy size={16} className="mr-1" />
+              Copy
+            </Button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Referral Code: <span className="text-[#00E5FF] font-bold">{adminData.referral_code || 'N/A'}</span>
+          </p>
+        </div>
+
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
