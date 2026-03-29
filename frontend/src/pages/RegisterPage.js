@@ -147,9 +147,24 @@ const RegisterPage = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Email or Phone Input */}
+          {/* 1. Name Input - FIRST */}
+          <div>
+            <p className={`${textMuted} text-sm mb-2`}>Full Name</p>
+            <Input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter your full name"
+              className={`w-full py-4 px-4 bg-transparent border-0 border-b ${inputBorder} rounded-none ${inputText} ${inputPlaceholder} focus:border-[#00E5FF] focus:ring-0`}
+              required
+              data-testid="register-name-input"
+            />
+          </div>
+
+          {/* 2. Email or Phone Input */}
           {activeTab === "email" ? (
             <div>
+              <p className={`${textMuted} text-sm mb-2`}>Email Address</p>
               <Input
                 type="email"
                 value={email}
@@ -162,6 +177,7 @@ const RegisterPage = () => {
             </div>
           ) : (
             <div>
+              <p className={`${textMuted} text-sm mb-2`}>Phone Number</p>
               <Input
                 type="tel"
                 value={phone}
@@ -174,15 +190,15 @@ const RegisterPage = () => {
             </div>
           )}
 
-          {/* Password Input */}
+          {/* 3. Password Input */}
           <div>
-            <p className={`${textMuted} text-sm mb-2`}>Set the login password (min 8 characters)</p>
+            <p className={`${textMuted} text-sm mb-2`}>Password (min 8 characters)</p>
             <div className="relative">
               <Input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
+                placeholder="Enter password"
                 className={`w-full py-4 px-4 pr-12 bg-transparent border-0 border-b ${inputBorder} rounded-none ${inputText} ${inputPlaceholder} focus:border-[#00E5FF] focus:ring-0`}
                 required
                 minLength={8}
@@ -198,9 +214,9 @@ const RegisterPage = () => {
             </div>
           </div>
 
-          {/* Confirm Password Input */}
+          {/* 4. Confirm Password Input */}
           <div>
-            <p className={`${textMuted} text-sm mb-2`}>Confirm password</p>
+            <p className={`${textMuted} text-sm mb-2`}>Confirm Password</p>
             <div className="relative">
               <Input
                 type={showConfirmPassword ? "text" : "password"}
@@ -229,7 +245,7 @@ const RegisterPage = () => {
             )}
           </div>
 
-          {/* Referral Code - REQUIRED */}
+          {/* 5. Referral Code - REQUIRED */}
           <div>
             <p className={`${textMuted} text-sm mb-2`}>
               Referral Code <span className="text-red-500">*</span>
