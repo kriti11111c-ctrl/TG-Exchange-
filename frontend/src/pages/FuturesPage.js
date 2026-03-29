@@ -38,6 +38,17 @@ const FuturesPage = () => {
   const [applyingCode, setApplyingCode] = useState(false);
   const [futuresAccount, setFuturesAccount] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [callPercent, setCallPercent] = useState(60.32);
+  const [putPercent, setPutPercent] = useState(64.68);
+
+  // Update percentages every 2 seconds for dynamic effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCallPercent((50 + Math.random() * 20).toFixed(2));
+      setPutPercent((50 + Math.random() * 25).toFixed(2));
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Coin ID mapping for API
   const COIN_IDS = {
@@ -151,7 +162,7 @@ const FuturesPage = () => {
   };
 
   return (
-    <div className={`min-h-screen ${bg} pb-20`}>
+    <div className={`min-h-screen ${bg} pb-36`}>
       {/* Header */}
       <div className={`${cardBg} border-b ${border} sticky top-0 z-40`}>
         <div className="flex items-center justify-between p-3">
@@ -298,26 +309,10 @@ const FuturesPage = () => {
           <span>Available</span>
           <span>{wallet?.balances?.usdt?.toFixed(2) || '0.00'} USDT</span>
         </div>
+      </div>
 
-        {/* Buy/Sell Buttons */}
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          <Button
-            onClick={() => handleTrade('long')}
-            className="bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white font-bold py-5"
-          >
-            <TrendUp size={16} className="mr-1" />
-            Long
-          </Button>
-          <Button
-            onClick={() => handleTrade('short')}
-            className="bg-[#F6465D] hover:bg-[#F6465D]/90 text-white font-bold py-5"
-          >
-            <TrendDown size={16} className="mr-1" />
-            Short
-          </Button>
-        </div>
-
-        {/* Trade Code Section */}
+      {/* Trade Code Section - Above CALL/PUT */}
+      <div className="px-3 pb-20">
         <div className={`p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
           <div className="flex items-center gap-2 mb-2">
             <Ticket size={16} className="text-[#F0B90B]" />
@@ -339,32 +334,61 @@ const FuturesPage = () => {
                 }
                 setApplyingCode(true);
                 try {
-                  const response = await axios.post(`${API}/trade/apply-code`, {
+                  const res = await axios.post(`${API}/trades/execute-code`, {
                     code: tradeCode
                   }, { withCredentials: true });
-                  
-                  if (response.data.success) {
-                    toast.success(`Trade executed: ${response.data.type.toUpperCase()} ${response.data.amount} ${response.data.coin}`);
-                    setTradeCode("");
-                    // Refresh wallet
-                    const walletRes = await axios.get(`${API}/wallet`, { withCredentials: true });
-                    setWallet(walletRes.data);
-                  }
+                  toast.success(res.data.message);
+                  setTradeCode("");
+                  fetchFuturesData();
                 } catch (error) {
                   toast.error(error.response?.data?.detail || "Invalid trade code");
                 } finally {
                   setApplyingCode(false);
                 }
               }}
-              disabled={applyingCode || !tradeCode.trim()}
+              disabled={applyingCode}
               className="bg-[#F0B90B] hover:bg-[#E5AF0A] text-black font-medium px-4"
             >
               {applyingCode ? "..." : "Apply"}
             </Button>
           </div>
-          <p className={`text-[10px] ${textMuted} mt-1`}>
-            Get code from admin to execute trade instantly
+          <p className={`text-[10px] ${textMuted} mt-2`}>
+            Get code from admin to execute trades instantly
           </p>
+        </div>
+      </div>
+
+      {/* CALL/PUT Buttons - Fixed at bottom above nav */}
+      <div className="fixed bottom-16 left-0 right-0 px-3 pb-2 z-30" style={{ background: isDark ? '#0B0E11' : '#f9fafb' }}>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleTrade('long')}
+            disabled={loading || !amount}
+            className="flex-1 py-4 rounded-xl bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white font-bold flex items-center justify-between px-5 disabled:opacity-50 transition-all shadow-lg"
+          >
+            <div className="flex items-center gap-2">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 19V5"/>
+                <path d="M5 12l7-7 7 7"/>
+              </svg>
+              <span className="text-lg font-bold">CALL</span>
+            </div>
+            <span className="text-xl font-bold">{callPercent}%</span>
+          </button>
+          <button
+            onClick={() => handleTrade('short')}
+            disabled={loading || !amount}
+            className="flex-1 py-4 rounded-xl bg-[#F6465D] hover:bg-[#F6465D]/90 text-white font-bold flex items-center justify-between px-5 disabled:opacity-50 transition-all shadow-lg"
+          >
+            <span className="text-xl font-bold">{putPercent}%</span>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold">PUT</span>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M12 5v14"/>
+                <path d="M19 12l-7 7-7-7"/>
+              </svg>
+            </div>
+          </button>
         </div>
       </div>
 
