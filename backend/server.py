@@ -2035,6 +2035,33 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
     bonus_percent = rank_info["current_rank"]["bonus_percent"] if rank_info["current_rank"] else 0
     bonus_income = team_income * (bonus_percent / 100)
     
+    # Get salary accumulation info
+    accumulated_salary = user_doc.get("accumulated_salary", 0)
+    last_claim_date = user_doc.get("last_salary_claim_date")
+    salary_cycle_start = user_doc.get("salary_cycle_start")
+    
+    # Calculate days remaining for claim
+    days_in_cycle = 0
+    days_remaining = 10
+    can_claim_salary = False
+    
+    if salary_cycle_start:
+        cycle_start = datetime.fromisoformat(salary_cycle_start.replace('Z', '+00:00'))
+        if cycle_start.tzinfo is None:
+            cycle_start = cycle_start.replace(tzinfo=timezone.utc)
+        days_in_cycle = (now - cycle_start).days
+        days_remaining = max(0, 10 - days_in_cycle)
+        can_claim_salary = days_in_cycle >= 10
+    elif last_claim_date:
+        last_claim = datetime.fromisoformat(last_claim_date.replace('Z', '+00:00'))
+        if last_claim.tzinfo is None:
+            last_claim = last_claim.replace(tzinfo=timezone.utc)
+        days_in_cycle = (now - last_claim).days
+        days_remaining = max(0, 10 - days_in_cycle)
+        can_claim_salary = days_in_cycle >= 10
+    else:
+        can_claim_salary = accumulated_salary > 0
+    
     return {
         "user_id": user_id,
         "direct_referrals": team_stats["direct_referrals"],
@@ -2048,7 +2075,12 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         "bonus_income": bonus_income,
         "monthly_salary": monthly_salary,
         "levelup_reward_received": levelup_reward if levelup_reward > 0 else None,
-        "demotion_message": demotion_message
+        "demotion_message": demotion_message,
+        # Salary info
+        "accumulated_salary": accumulated_salary,
+        "days_in_cycle": days_in_cycle,
+        "days_remaining": days_remaining,
+        "can_claim_salary": can_claim_salary
     }
 
 async def calculate_team_level_income(user_id: str) -> float:
@@ -2093,70 +2125,137 @@ async def get_salary_history(user: dict = Depends(get_current_user)):
     }
 
 @api_router.post("/team-rank/claim-salary")
-async def claim_monthly_salary(user: dict = Depends(get_current_user)):
-    """Claim monthly salary (can be claimed on 9th, 19th, 29th of each month)"""
+async def claim_salary(user: dict = Depends(get_current_user)):
+    """Claim accumulated level income every 10 days"""
     user_id = user["user_id"]
     now = datetime.now(timezone.utc)
     
-    # Check if today is salary day (9, 19, or 29)
-    salary_days = [9, 19, 29]
-    # For testing, allow any day
-    # if now.day not in salary_days:
-    #     raise HTTPException(status_code=400, detail="Salary can only be claimed on 9th, 19th, or 29th of the month")
+    # Get user's salary data
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
     
-    # Check if already claimed this period
-    period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    existing_claim = await db.transactions.find_one({
-        "user_id": user_id,
-        "type": "monthly_salary",
-        "created_at": {"$gte": period_start.isoformat()}
-    })
+    last_claim_date = user_doc.get("last_salary_claim_date")
+    accumulated_salary = user_doc.get("accumulated_salary", 0)
     
-    # Get user's team rank
-    team_stats = await get_team_stats(user_id)
-    rank_info = get_team_rank(team_stats["direct_referrals"], team_stats["total_team"])
+    # Check if 10 days have passed since last claim
+    if last_claim_date:
+        last_claim = datetime.fromisoformat(last_claim_date.replace('Z', '+00:00'))
+        if last_claim.tzinfo is None:
+            last_claim = last_claim.replace(tzinfo=timezone.utc)
+        
+        days_passed = (now - last_claim).days
+        if days_passed < 10:
+            remaining_days = 10 - days_passed
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Salary can be claimed after {remaining_days} days"
+            )
     
-    if not rank_info["current_rank"]:
-        raise HTTPException(status_code=400, detail="You need to reach Junior Promoter rank first")
-    
-    # Calculate salary (monthly salary / 3 for each claim period)
-    salary_amount = rank_info["current_rank"]["monthly_salary"] / 3
-    
-    # Calculate team bonus
-    team_income = await calculate_team_level_income(user_id)
-    bonus_percent = rank_info["current_rank"]["bonus_percent"]
-    bonus_amount = team_income * (bonus_percent / 100) / 3  # Divide by 3 for each period
-    
-    total_payout = salary_amount + bonus_amount
-    
-    if total_payout <= 0:
+    if accumulated_salary <= 0:
         raise HTTPException(status_code=400, detail="No salary to claim")
     
     # Add to wallet
     await db.wallets.update_one(
         {"user_id": user_id},
-        {"$inc": {"balances.usdt": total_payout}}
+        {"$inc": {"balances.usdt": accumulated_salary}}
+    )
+    
+    # Reset accumulated salary and update claim date
+    await db.users.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "last_salary_claim_date": now.isoformat(),
+                "accumulated_salary": 0,
+                "salary_cycle_start": now.isoformat()
+            }
+        }
     )
     
     # Record transaction
     await db.transactions.insert_one({
         "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
         "user_id": user_id,
-        "type": "monthly_salary",
+        "type": "salary_claim",
         "coin": "usdt",
-        "amount": total_payout,
-        "note": f"Salary: ${salary_amount:.2f} + Team Bonus: ${bonus_amount:.2f}",
+        "amount": accumulated_salary,
+        "note": f"10-Day Salary Claim",
         "status": "completed",
         "created_at": now.isoformat()
     })
     
     return {
         "success": True,
-        "salary": salary_amount,
-        "team_bonus": bonus_amount,
-        "total_payout": total_payout,
-        "message": f"Successfully claimed ${total_payout:.2f}"
+        "amount": accumulated_salary,
+        "message": f"Successfully claimed ${accumulated_salary:.2f}"
     }
+
+@api_router.get("/team-rank/salary-info")
+async def get_salary_info(user: dict = Depends(get_current_user)):
+    """Get user's salary accumulation info"""
+    user_id = user["user_id"]
+    now = datetime.now(timezone.utc)
+    
+    # Get user's salary data
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    
+    accumulated_salary = user_doc.get("accumulated_salary", 0)
+    last_claim_date = user_doc.get("last_salary_claim_date")
+    salary_cycle_start = user_doc.get("salary_cycle_start")
+    
+    # Calculate days in current cycle
+    days_in_cycle = 0
+    days_remaining = 10
+    can_claim = False
+    
+    if salary_cycle_start:
+        cycle_start = datetime.fromisoformat(salary_cycle_start.replace('Z', '+00:00'))
+        if cycle_start.tzinfo is None:
+            cycle_start = cycle_start.replace(tzinfo=timezone.utc)
+        days_in_cycle = (now - cycle_start).days
+        days_remaining = max(0, 10 - days_in_cycle)
+        can_claim = days_in_cycle >= 10
+    elif last_claim_date:
+        last_claim = datetime.fromisoformat(last_claim_date.replace('Z', '+00:00'))
+        if last_claim.tzinfo is None:
+            last_claim = last_claim.replace(tzinfo=timezone.utc)
+        days_in_cycle = (now - last_claim).days
+        days_remaining = max(0, 10 - days_in_cycle)
+        can_claim = days_in_cycle >= 10
+    else:
+        # First time - can claim if has accumulated salary
+        can_claim = accumulated_salary > 0
+    
+    return {
+        "accumulated_salary": accumulated_salary,
+        "days_in_cycle": days_in_cycle,
+        "days_remaining": days_remaining,
+        "can_claim": can_claim,
+        "last_claim_date": last_claim_date
+    }
+
+async def add_level_income(user_id: str, amount: float, source_user_id: str, level: int):
+    """Add level income to user's accumulated salary"""
+    if amount <= 0:
+        return
+    
+    # Add to accumulated salary
+    await db.users.update_one(
+        {"user_id": user_id},
+        {
+            "$inc": {"accumulated_salary": amount},
+            "$setOnInsert": {"salary_cycle_start": datetime.now(timezone.utc).isoformat()}
+        },
+        upsert=True
+    )
+    
+    # Record the level income
+    await db.level_income.insert_one({
+        "user_id": user_id,
+        "source_user_id": source_user_id,
+        "level": level,
+        "amount": amount,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
 
 # ==================== WebSocket Price Updates ====================
 

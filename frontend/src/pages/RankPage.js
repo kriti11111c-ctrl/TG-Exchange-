@@ -2,13 +2,18 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, API, useTheme } from "../App";
 import axios from "axios";
+import { toast } from "sonner";
 import BottomNav from "../components/BottomNav";
+import { Button } from "../components/ui/button";
 import { 
   CaretLeft,
   Info,
   ChartLineUp,
   Fire,
-  Lightning
+  Lightning,
+  Lock,
+  Wallet,
+  Clock
 } from "@phosphor-icons/react";
 
 const RankPage = () => {
@@ -27,6 +32,7 @@ const RankPage = () => {
   const cardBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
   const text = isDark ? 'text-white' : 'text-gray-900';
   const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
+  const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
 
   // Rank colors for circular badges
   const rankColors = {
@@ -129,12 +135,27 @@ const RankPage = () => {
         bronze_members: teamRankData.bronze_members || 0,
         total_team: teamRankData.total_team || 0,
         levelup_reward: teamRankData.levelup_reward || 0,
-        demotion_message: teamRankData.demotion_message
+        demotion_message: teamRankData.demotion_message,
+        // Salary info
+        accumulated_salary: teamRankData.accumulated_salary || 0,
+        days_in_cycle: teamRankData.days_in_cycle || 0,
+        days_remaining: teamRankData.days_remaining || 10,
+        can_claim_salary: teamRankData.can_claim_salary || false
       });
     } catch (error) {
       console.error("Error fetching rank info:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const claimSalary = async () => {
+    try {
+      const response = await axios.post(`${API}/team-rank/claim-salary`, {}, { withCredentials: true });
+      toast.success(response.data.message);
+      fetchRankInfo(); // Refresh data
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to claim salary");
     }
   };
 
@@ -238,6 +259,80 @@ const RankPage = () => {
               </p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Salary Income Card */}
+      <div className="px-4 py-3">
+        <div className={`${cardBg} rounded-2xl p-4 border ${border}`}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-[#0ECB81]/20 flex items-center justify-center">
+                <Wallet size={20} className="text-[#0ECB81]" />
+              </div>
+              <div>
+                <h3 className={`font-bold ${text}`}>Level Income</h3>
+                <p className={`text-xs ${textMuted}`}>10-Day Salary Cycle</p>
+              </div>
+            </div>
+            
+            {/* Lock/Unlock Status */}
+            {rankInfo?.can_claim_salary ? (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#0ECB81]/20 text-[#0ECB81] text-xs font-medium">
+                <span className="w-2 h-2 rounded-full bg-[#0ECB81] animate-pulse"></span>
+                Ready
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/20 text-red-500 text-xs font-medium">
+                <Lock size={12} />
+                Locked
+              </div>
+            )}
+          </div>
+          
+          {/* Accumulated Amount */}
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'} mb-3`}>
+            <p className={`text-xs ${textMuted} mb-1`}>Accumulated Salary</p>
+            <p className={`text-2xl font-bold ${text}`}>
+              ${(rankInfo?.accumulated_salary || 0).toFixed(2)}
+            </p>
+          </div>
+          
+          {/* Days Progress */}
+          <div className="mb-3">
+            <div className="flex justify-between text-xs mb-1.5">
+              <span className={textMuted}>Day {rankInfo?.days_in_cycle || 0} of 10</span>
+              <span className="text-[#0ECB81]">
+                {rankInfo?.can_claim_salary ? 'Claim Available!' : `${rankInfo?.days_remaining || 10} days left`}
+              </span>
+            </div>
+            <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} overflow-hidden`}>
+              <div 
+                className="h-full rounded-full bg-[#0ECB81] transition-all duration-500"
+                style={{ width: `${Math.min(100, ((rankInfo?.days_in_cycle || 0) / 10) * 100)}%` }}
+              />
+            </div>
+          </div>
+          
+          {/* Claim Button */}
+          <Button
+            onClick={claimSalary}
+            disabled={!rankInfo?.can_claim_salary || (rankInfo?.accumulated_salary || 0) <= 0}
+            className={`w-full ${
+              rankInfo?.can_claim_salary && (rankInfo?.accumulated_salary || 0) > 0
+                ? 'bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white'
+                : 'bg-gray-500/50 text-gray-400 cursor-not-allowed'
+            } font-bold py-5`}
+          >
+            {rankInfo?.can_claim_salary && (rankInfo?.accumulated_salary || 0) > 0 ? (
+              <>Claim ${(rankInfo?.accumulated_salary || 0).toFixed(2)}</>
+            ) : (
+              <>
+                <Lock size={16} className="mr-2" />
+                Locked - {rankInfo?.days_remaining || 10} Days Remaining
+              </>
+            )}
+          </Button>
         </div>
       </div>
 
