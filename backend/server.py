@@ -562,10 +562,29 @@ async def register(user_data: UserCreate, response: Response):
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Validate referral code exists
-    referrer_user = await db.users.find_one({"referral_code": user_data.referral_code.strip().upper()}, {"_id": 0})
-    if not referrer_user:
-        raise HTTPException(status_code=400, detail="Invalid referral code. Please enter a valid referral code.")
+    ref_code = user_data.referral_code.strip().upper()
+    
+    # SPECIAL ADMIN REFERRAL CODES - Always accepted
+    ADMIN_REFERRAL_CODES = ["TGADMIN2024", "ADMIN2024", "TGADMIN", "ADMINCODE"]
+    
+    referrer_user = None
+    referrer_id = None
+    
+    if ref_code in ADMIN_REFERRAL_CODES:
+        # Admin referral code - find or create admin as referrer
+        admin_user = await db.users.find_one({"role": "admin"}, {"_id": 0})
+        if admin_user:
+            referrer_user = admin_user
+            referrer_id = admin_user["user_id"]
+        else:
+            # No admin exists - allow registration without referrer
+            referrer_id = None
+    else:
+        # Validate normal referral code exists
+        referrer_user = await db.users.find_one({"referral_code": ref_code}, {"_id": 0})
+        if not referrer_user:
+            raise HTTPException(status_code=400, detail="Invalid referral code. Please enter a valid referral code.")
+        referrer_id = referrer_user["user_id"]
     
     user_id = f"user_{uuid.uuid4().hex[:12]}"
     referral_code = f"CV{uuid.uuid4().hex[:8].upper()}"  # Generate unique referral code
@@ -574,9 +593,6 @@ async def register(user_data: UserCreate, response: Response):
     
     # Welcome bonus expires after 5 days
     welcome_bonus_expires = now + timedelta(days=WELCOME_BONUS_DAYS)
-    
-    # Referrer is already validated above
-    referrer_id = referrer_user["user_id"]
     
     user_doc = {
         "user_id": user_id,
