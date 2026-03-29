@@ -470,7 +470,7 @@ const WalletPage = () => {
               <form onSubmit={handleTransfer} className="space-y-3 mt-3">
                 {/* From Account */}
                 <div>
-                  <Label className={textMuted}>कहाँ से</Label>
+                  <Label className={textMuted}>From</Label>
                   <Select value={transferFrom} onValueChange={(val) => { setTransferFrom(val); setAmount(""); }}>
                     <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`} data-testid="transfer-from-select">
                       <SelectValue />
@@ -506,7 +506,7 @@ const WalletPage = () => {
                 
                 {/* To Account */}
                 <div>
-                  <Label className={textMuted}>कहाँ तक</Label>
+                  <Label className={textMuted}>To</Label>
                   <Select value={transferTo} onValueChange={setTransferTo}>
                     <SelectTrigger className={`${dialogInputBg} ${border} ${text} mt-1`} data-testid="transfer-to-select">
                       <SelectValue />
@@ -531,9 +531,9 @@ const WalletPage = () => {
                 {/* Amount with Max Button */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <Label className={textMuted}>राशि (USDT)</Label>
+                    <Label className={textMuted}>Amount (USDT)</Label>
                     <span className={`text-xs ${textMuted}`}>
-                      उपलब्ध: <span className="text-[#F0B90B] font-semibold">${getTransferFromBalance().toFixed(2)}</span>
+                      Available: <span className="text-[#F0B90B] font-semibold">${getTransferFromBalance().toFixed(2)}</span>
                     </span>
                   </div>
                   <div className="relative">
@@ -562,15 +562,15 @@ const WalletPage = () => {
                 {amount && parseFloat(amount) > 0 && (
                   <div className={`p-3 rounded-lg ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'} border ${border}`}>
                     <div className="flex justify-between text-sm">
-                      <span className={textMuted}>ट्रांसफर राशि</span>
+                      <span className={textMuted}>Transfer Amount</span>
                       <span className={`${text} font-semibold`}>${parseFloat(amount).toFixed(2)} USDT</span>
                     </div>
                     <div className="flex justify-between text-sm mt-1">
-                      <span className={textMuted}>कहाँ से</span>
+                      <span className={textMuted}>From</span>
                       <span className={text}>{transferFrom === 'spot' ? 'Spot' : 'Futures'}</span>
                     </div>
                     <div className="flex justify-between text-sm mt-1">
-                      <span className={textMuted}>कहाँ तक</span>
+                      <span className={textMuted}>To</span>
                       <span className={text}>{transferTo === 'spot' ? 'Spot' : 'Futures'}</span>
                     </div>
                   </div>
