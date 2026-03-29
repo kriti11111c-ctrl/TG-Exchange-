@@ -391,7 +391,16 @@ const Dashboard = () => {
                       </div>
                     ) : (
                       <div className="p-3 space-y-3">
-                        {tradeCodes.map((code) => {
+                        {/* Sort: LIVE first, then Coming Soon, then Used/Expired */}
+                        {[...tradeCodes].sort((a, b) => {
+                          // LIVE codes first
+                          if (a.is_live && !b.is_live) return -1;
+                          if (!a.is_live && b.is_live) return 1;
+                          // Then Coming Soon (has countdown_to_live > 0)
+                          if (a.countdown_to_live > 0 && b.countdown_to_live <= 0) return -1;
+                          if (a.countdown_to_live <= 0 && b.countdown_to_live > 0) return 1;
+                          return 0;
+                        }).map((code) => {
                           // Get countdown values from state
                           const remainingKey = `${code.code}_remaining`;
                           const toLiveKey = `${code.code}_tolive`;

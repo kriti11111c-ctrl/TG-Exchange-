@@ -2636,6 +2636,7 @@ class TradeCodeCreate(BaseModel):
     price: float
     scheduled_slot: str = "morning"  # "morning" (10:30 AM) or "evening" (8:45 PM)
     will_fail: bool = False  # Admin can mark trade as intentional fail
+    instant_live: bool = False  # Make code LIVE immediately
 
 class TradeCodeApply(BaseModel):
     code: str
@@ -3660,6 +3661,18 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
     
     fund_percent = 1.0 * multiplier  # 1% * multiplier
     
+    # Check if instant live code (for testing)
+    is_instant_live = getattr(data, 'instant_live', False)
+    
+    if is_instant_live:
+        # Make code LIVE immediately for 5 minutes
+        scheduled_start = now - timedelta(seconds=10)  # Already started
+        expires_at = now + timedelta(minutes=5)  # Expires in 5 minutes
+        slot_name = "LIVE Now"
+        status = "live"
+    else:
+        status = "scheduled"
+    
     # Store trade code
     trade_code_doc = {
         "code": code,
@@ -3669,8 +3682,8 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
         "amount": data.amount,
         "trade_type": data.trade_type.lower(),
         "price": data.price,
-        "status": "scheduled",
-        "scheduled_slot": data.scheduled_slot,
+        "status": status,
+        "scheduled_slot": data.scheduled_slot if not is_instant_live else "instant",
         "slot_name": slot_name,
         "scheduled_start": scheduled_start.isoformat(),
         "expires_at": expires_at.isoformat(),
