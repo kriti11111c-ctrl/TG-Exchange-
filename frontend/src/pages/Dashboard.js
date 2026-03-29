@@ -390,25 +390,25 @@ const Dashboard = () => {
                             return (
                               <div 
                                 key={code.code}
-                                className={`p-4 rounded-xl bg-gradient-to-r from-[#F0B90B]/10 to-[#F0B90B]/5 border border-[#F0B90B]/30`}
+                                className={`p-4 rounded-xl bg-gradient-to-r from-[#0ECB81]/15 to-[#0ECB81]/5 border border-[#0ECB81]/30`}
                               >
                                 {/* Coming Soon Header */}
                                 <div className="flex items-center justify-between mb-3">
                                   <div className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-full bg-[#F0B90B]/20 flex items-center justify-center">
-                                      <Clock size={18} className="text-[#F0B90B]" />
+                                    <div className="w-8 h-8 rounded-full bg-[#0ECB81]/20 flex items-center justify-center">
+                                      <Clock size={18} className="text-[#0ECB81]" />
                                     </div>
                                     <div>
-                                      <span className="text-[#F0B90B] font-bold text-sm">Coming Soon</span>
+                                      <span className="text-[#0ECB81] font-bold text-sm">Coming Soon</span>
                                       <p className={`text-[10px] ${textMuted}`}>{code.slot_name} Slot</p>
                                     </div>
                                   </div>
                                 </div>
                                 
                                 {/* Countdown */}
-                                <div className="text-center py-3 bg-[#F0B90B]/10 rounded-lg mb-2">
+                                <div className="text-center py-3 bg-[#0ECB81]/10 rounded-lg mb-2">
                                   <p className={`text-[10px] ${textMuted} mb-1`}>Code will be available in</p>
-                                  <p className="text-[#F0B90B] font-bold text-xl">{formatCountdown(countdownToLive)}</p>
+                                  <p className="text-[#0ECB81] font-bold text-xl">{formatCountdown(countdownToLive)}</p>
                                 </div>
                                 
                                 <p className={`text-[10px] ${textMuted} text-center`}>
