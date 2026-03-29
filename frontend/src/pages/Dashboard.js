@@ -501,8 +501,18 @@ const Dashboard = () => {
                                 </button>
                               </div>
                               
-                              {/* Status Row */}
+                              {/* Status Row with Timer */}
                               <div className="flex items-center justify-between">
+                                {/* Timer for LIVE codes - Made more prominent */}
+                                {isLive && (
+                                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0ECB81]/20 border border-[#0ECB81]/40">
+                                    <Clock size={16} weight="fill" className="text-[#0ECB81]" />
+                                    <span className="text-[#0ECB81] font-bold text-sm font-mono">
+                                      {formatCountdown(remaining)}
+                                    </span>
+                                  </div>
+                                )}
+                                
                                 {/* Status Badge */}
                                 <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
                                   isUsed 
@@ -519,13 +529,10 @@ const Dashboard = () => {
                                   ) : isExpired ? (
                                     <>
                                       <XCircle size={12} weight="fill" />
-                                      <span>Missed - Expired</span>
+                                      <span>Missed</span>
                                     </>
                                   ) : (
-                                    <>
-                                      <Clock size={12} weight="fill" />
-                                      <span>{formatCountdown(remaining)} left</span>
-                                    </>
+                                    <span>Active</span>
                                   )}
                                 </div>
                                 
