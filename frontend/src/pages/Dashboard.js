@@ -321,19 +321,30 @@ const Dashboard = () => {
                 )}
               </button>
               
-              {/* Notification Dropdown */}
+              {/* Notification Dropdown - Fixed Center */}
               {showNotifications && (
-                <div className={`absolute right-0 top-full mt-2 w-[340px] ${isDark ? 'bg-[#1E2329]' : 'bg-white'} rounded-xl shadow-2xl border ${border} z-50 overflow-hidden`}>
-                  {/* Dropdown Header */}
-                  <div className={`flex items-center justify-between px-4 py-3 border-b ${border}`}>
-                    <div className="flex items-center gap-2">
-                      <Bell size={18} className="text-[#0ECB81]" weight="fill" />
-                      <span className={`font-semibold ${text}`}>Trade Codes</span>
+                <div className="fixed inset-0 z-50" onClick={() => setShowNotifications(false)}>
+                  {/* Backdrop */}
+                  <div className="absolute inset-0 bg-black/30" />
+                  
+                  {/* Dropdown Card */}
+                  <div 
+                    className={`absolute left-4 right-4 top-20 ${isDark ? 'bg-[#1E2329]' : 'bg-white'} rounded-2xl shadow-2xl border ${border} overflow-hidden`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Dropdown Header */}
+                    <div className={`flex items-center justify-between px-4 py-3 border-b ${border}`}>
+                      <div className="flex items-center gap-2">
+                        <Bell size={20} className="text-[#0ECB81]" weight="fill" />
+                        <span className={`font-bold text-lg ${text}`}>Trade Codes</span>
+                      </div>
+                      <button 
+                        onClick={() => setShowNotifications(false)}
+                        className={`p-1.5 rounded-full ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'}`}
+                      >
+                        <X size={20} className={textMuted} />
+                      </button>
                     </div>
-                    <button onClick={() => setShowNotifications(false)}>
-                      <X size={18} className={textMuted} />
-                    </button>
-                  </div>
                   
                   {/* Codes List */}
                   <div className="max-h-80 overflow-y-auto">
@@ -433,6 +444,7 @@ const Dashboard = () => {
                     )}
                   </div>
                 </div>
+              </div>
               )}
             </div>
             
