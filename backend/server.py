@@ -4378,48 +4378,37 @@ async def setup_admin(secret_key: str = "TG_SETUP_2024"):
     if secret_key != "TG_SETUP_SECRET_KEY_2024":
         raise HTTPException(status_code=403, detail="Invalid setup key")
     
-    # Check if admin already exists
-    existing = await db.users.find_one({"email": "admin@tgxchange.com"})
-    
-    # Admin credentials
+    # FIXED Admin credentials and referral code
     admin_email = "admin@tgxchange.com"
     admin_password = "Admin@TG2024"
+    FIXED_REFERRAL_CODE = "TGADMIN2024"  # Fixed code that will always work
     
     # Hash password
     password_hash = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     
-    # Generate proper referral code
-    new_referral_code = f"ADMIN{uuid.uuid4().hex[:6].upper()}"
+    # Check if admin already exists
+    existing = await db.users.find_one({"email": admin_email})
     
     if existing:
-        # Update to admin with proper referral code
-        update_fields = {
-            "password_hash": password_hash,
-            "role": "admin",
-            "is_active": True
-        }
-        # Only set referral_code if it doesn't exist or is just "ADMIN"
-        current_ref = existing.get("referral_code", "")
-        if not current_ref or current_ref == "ADMIN" or len(current_ref) < 8:
-            update_fields["referral_code"] = new_referral_code
-        
+        # Update admin with FIXED referral code
         await db.users.update_one(
             {"email": admin_email},
-            {"$set": update_fields}
+            {"$set": {
+                "password_hash": password_hash,
+                "role": "admin",
+                "is_active": True,
+                "referral_code": FIXED_REFERRAL_CODE  # Always set fixed code
+            }}
         )
         
-        # Get updated referral code
-        updated_admin = await db.users.find_one({"email": admin_email})
-        final_ref_code = updated_admin.get("referral_code", new_referral_code)
-        
         return {
-            "message": "Admin user updated", 
+            "message": "Admin user updated with fixed referral code", 
             "email": admin_email,
-            "referral_code": final_ref_code,
-            "referral_link": f"/?ref={final_ref_code}"
+            "referral_code": FIXED_REFERRAL_CODE,
+            "referral_link": f"/?ref={FIXED_REFERRAL_CODE}"
         }
     else:
-        # Create admin
+        # Create admin with FIXED referral code
         admin_id = f"admin_{uuid.uuid4().hex[:8]}"
         admin_doc = {
             "user_id": admin_id,
@@ -4427,7 +4416,7 @@ async def setup_admin(secret_key: str = "TG_SETUP_2024"):
             "password_hash": password_hash,
             "name": "Admin",
             "role": "admin",
-            "referral_code": f"ADMIN{uuid.uuid4().hex[:6].upper()}",
+            "referral_code": FIXED_REFERRAL_CODE,  # Fixed code
             "referred_by": None,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "is_active": True,
@@ -4449,8 +4438,8 @@ async def setup_admin(secret_key: str = "TG_SETUP_2024"):
             "message": "Admin user created", 
             "email": admin_email, 
             "password": admin_password,
-            "referral_code": admin_doc["referral_code"],
-            "referral_link": f"/?ref={admin_doc['referral_code']}"
+            "referral_code": FIXED_REFERRAL_CODE,
+            "referral_link": f"/?ref={FIXED_REFERRAL_CODE}"
         }
 
 # Include router

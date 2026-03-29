@@ -215,12 +215,13 @@ const AdminDashboard = () => {
             <div>
               <p className="text-sm text-gray-400 mb-1">Your Referral Link</p>
               <p className="text-white font-mono text-sm break-all">
-                {window.location.origin}/?ref={adminData.referral_code || 'ADMIN'}
+                {window.location.origin}/?ref={adminData.referral_code && adminData.referral_code.length > 5 ? adminData.referral_code : 'TGADMIN2024'}
               </p>
             </div>
             <Button
               onClick={() => {
-                const link = `${window.location.origin}/?ref=${adminData.referral_code || 'ADMIN'}`;
+                const refCode = adminData.referral_code && adminData.referral_code.length > 5 ? adminData.referral_code : 'TGADMIN2024';
+                const link = `${window.location.origin}/?ref=${refCode}`;
                 navigator.clipboard.writeText(link);
                 toast.success("Referral link copied!");
               }}
@@ -232,7 +233,7 @@ const AdminDashboard = () => {
             </Button>
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            Referral Code: <span className="text-[#00E5FF] font-bold">{adminData.referral_code || 'N/A'}</span>
+            Referral Code: <span className="text-[#00E5FF] font-bold">{adminData.referral_code && adminData.referral_code.length > 5 ? adminData.referral_code : 'TGADMIN2024'}</span>
           </p>
         </div>
 
