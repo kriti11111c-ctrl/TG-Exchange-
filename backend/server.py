@@ -952,11 +952,100 @@ async def get_wallet(user: dict = Depends(get_current_user)):
                 "hours_remaining": hours_remaining
             }
     
+    # Get futures balance
+    futures_balance = wallet.get("futures_balance", 0)
+    
     return {
         "user_id": wallet["user_id"],
-        "balances": wallet["balances"],
+        "balances": wallet["balances"],  # Spot balances
+        "futures_balance": futures_balance,  # Futures USDT balance
         "welcome_bonus": welcome_bonus_info,
         "updated_at": updated_at.isoformat() if updated_at else None
+    }
+
+# Transfer between Spot and Futures
+class TransferRequest(BaseModel):
+    amount: float
+    direction: str  # "spot_to_futures" or "futures_to_spot"
+
+@api_router.post("/wallet/transfer")
+async def transfer_funds(transfer: TransferRequest, user: dict = Depends(get_current_user)):
+    """Transfer USDT between Spot and Futures accounts"""
+    user_id = user["user_id"]
+    amount = transfer.amount
+    direction = transfer.direction
+    
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+    
+    # Get wallet
+    wallet = await db.wallets.find_one({"user_id": user_id})
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    
+    spot_balance = wallet.get("balances", {}).get("usdt", 0)
+    futures_balance = wallet.get("futures_balance", 0)
+    
+    now = datetime.now(timezone.utc)
+    
+    if direction == "spot_to_futures":
+        # Transfer from Spot to Futures
+        if spot_balance < amount:
+            raise HTTPException(status_code=400, detail="Insufficient Spot balance")
+        
+        await db.wallets.update_one(
+            {"user_id": user_id},
+            {
+                "$inc": {
+                    "balances.usdt": -amount,
+                    "futures_balance": amount
+                },
+                "$set": {"updated_at": now.isoformat()}
+            }
+        )
+        
+        message = f"Transferred ${amount} from Spot to Futures"
+        
+    elif direction == "futures_to_spot":
+        # Transfer from Futures to Spot
+        if futures_balance < amount:
+            raise HTTPException(status_code=400, detail="Insufficient Futures balance")
+        
+        await db.wallets.update_one(
+            {"user_id": user_id},
+            {
+                "$inc": {
+                    "futures_balance": -amount,
+                    "balances.usdt": amount
+                },
+                "$set": {"updated_at": now.isoformat()}
+            }
+        )
+        
+        message = f"Transferred ${amount} from Futures to Spot"
+    else:
+        raise HTTPException(status_code=400, detail="Invalid direction")
+    
+    # Record transaction
+    await db.transactions.insert_one({
+        "tx_id": f"transfer_{uuid.uuid4().hex[:12]}",
+        "user_id": user_id,
+        "type": "internal_transfer",
+        "direction": direction,
+        "coin": "usdt",
+        "amount": amount,
+        "status": "completed",
+        "created_at": now.isoformat()
+    })
+    
+    # Get updated wallet
+    updated_wallet = await db.wallets.find_one({"user_id": user_id})
+    
+    return {
+        "success": True,
+        "message": message,
+        "spot_balance": updated_wallet.get("balances", {}).get("usdt", 0),
+        "futures_balance": updated_wallet.get("futures_balance", 0)
     }
 
 @api_router.post("/wallet/deposit", response_model=TransactionResponse)
