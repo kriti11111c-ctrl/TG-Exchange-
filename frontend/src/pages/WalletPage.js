@@ -430,29 +430,29 @@ const WalletPage = () => {
       <div className={`px-4 pb-6 ${cardBg}`}>
         <div className="flex justify-around">
           {/* Deposit - Link to DepositPage */}
-          <Link to="/deposit" className="flex flex-col items-center gap-2">
-            <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center ${actionBtnHover} transition-colors`}>
-              <ArrowDown size={24} className={text} />
+          <Link to="/deposit" className="flex flex-col items-center gap-2 group">
+            <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:bg-[#00E5FF]/20 group-active:scale-95`}>
+              <ArrowDown size={24} className={`${text} transition-transform duration-300 group-hover:scale-110`} />
             </div>
-            <span className={`${text} text-sm`}>Deposit</span>
+            <span className={`${text} text-sm transition-colors duration-200 group-hover:text-[#00E5FF]`}>Deposit</span>
           </Link>
 
           {/* Withdraw - Link to WithdrawPage */}
-          <Link to="/withdraw" className="flex flex-col items-center gap-2">
-            <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center ${actionBtnHover} transition-colors`}>
-              <ArrowUp size={24} className={text} />
+          <Link to="/withdraw" className="flex flex-col items-center gap-2 group">
+            <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:bg-[#00E5FF]/20 group-active:scale-95`}>
+              <ArrowUp size={24} className={`${text} transition-transform duration-300 group-hover:scale-110`} />
             </div>
-            <span className={`${text} text-sm`}>Withdraw</span>
+            <span className={`${text} text-sm transition-colors duration-200 group-hover:text-[#00E5FF]`}>Withdraw</span>
           </Link>
 
           {/* Transfer */}
           <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
             <DialogTrigger asChild>
-              <button className="flex flex-col items-center gap-2" data-testid="transfer-btn">
-                <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center ${actionBtnHover} transition-colors`}>
-                  <ArrowsDownUp size={24} className={text} />
+              <button className="flex flex-col items-center gap-2 group" data-testid="transfer-btn">
+                <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:bg-[#00E5FF]/20 group-active:scale-95`}>
+                  <ArrowsDownUp size={24} className={`${text} transition-transform duration-300 group-hover:scale-110`} />
                 </div>
-                <span className={`${text} text-sm`}>Transfer</span>
+                <span className={`${text} text-sm transition-colors duration-200 group-hover:text-[#00E5FF]`}>Transfer</span>
               </button>
             </DialogTrigger>
             <DialogContent className={`${dialogBg} ${border} max-w-sm max-h-[90vh] overflow-y-auto`}>

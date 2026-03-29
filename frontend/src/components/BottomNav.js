@@ -12,7 +12,7 @@ const BottomNav = () => {
   const { isDark } = useTheme();
   const location = useLocation();
   
-  const cardBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
+  const cardBg = isDark ? 'bg-[#1E2329]/95 backdrop-blur-lg' : 'bg-white/95 backdrop-blur-lg';
   const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
   const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
 
@@ -40,23 +40,23 @@ const BottomNav = () => {
         
         if (item.isCenter) {
           return (
-            <Link key={index} to={item.path} className="flex flex-col items-center py-1">
-              <div className="w-12 h-12 rounded-full bg-[#00E5FF] flex items-center justify-center -mt-6 shadow-lg">
+            <Link key={index} to={item.path} className="flex flex-col items-center py-1 group">
+              <div className="w-12 h-12 rounded-full bg-[#00E5FF] flex items-center justify-center -mt-6 shadow-lg shadow-[#00E5FF]/30 transition-all duration-300 group-hover:scale-110 group-hover:shadow-[#00E5FF]/50 group-active:scale-95">
                 <item.icon size={24} className="text-black" weight="bold" />
               </div>
-              <span className={`text-[10px] ${textMuted} mt-0.5`}>{item.label}</span>
+              <span className={`text-[10px] ${textMuted} mt-0.5 transition-colors duration-200`}>{item.label}</span>
             </Link>
           );
         }
         
         return (
-          <Link key={index} to={item.path} className="flex flex-col items-center py-1">
+          <Link key={index} to={item.path} className="flex flex-col items-center py-1 transition-all duration-200 hover:-translate-y-0.5 active:scale-95">
             <item.icon 
               size={22} 
-              className={active ? "text-[#00E5FF]" : textMuted} 
+              className={`transition-colors duration-200 ${active ? "text-[#00E5FF]" : textMuted}`}
               weight={active ? "fill" : "regular"} 
             />
-            <span className={`text-[10px] mt-0.5 ${active ? "text-[#00E5FF]" : textMuted}`}>
+            <span className={`text-[10px] mt-0.5 transition-colors duration-200 ${active ? "text-[#00E5FF]" : textMuted}`}>
               {item.label}
             </span>
           </Link>

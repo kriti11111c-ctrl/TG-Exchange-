@@ -599,11 +599,11 @@ const Dashboard = () => {
       <div className={`${cardBg} px-4 py-4`}>
         <div className="flex justify-between">
           {quickActions.map((action, index) => (
-            <Link key={index} to={action.path} className="flex flex-col items-center gap-1">
-              <div className={`w-12 h-12 rounded-xl ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} flex items-center justify-center`}>
-                <action.icon size={24} className={action.color} weight="duotone" />
+            <Link key={index} to={action.path} className="flex flex-col items-center gap-1 group">
+              <div className={`w-12 h-12 rounded-xl ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:bg-[#00E5FF]/20 group-active:scale-95`}>
+                <action.icon size={24} className={`${action.color} transition-transform duration-300 group-hover:scale-110`} weight="duotone" />
               </div>
-              <span className={`text-xs ${textMuted}`}>{action.label}</span>
+              <span className={`text-xs ${textMuted} transition-colors duration-200 group-hover:text-[#00E5FF]`}>{action.label}</span>
             </Link>
           ))}
         </div>
@@ -611,7 +611,7 @@ const Dashboard = () => {
 
       {/* Discover Banner */}
       <div className="px-4 py-3">
-        <div className="bg-gradient-to-r from-[#00E5FF] to-[#FCD535] rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-[#00E5FF] to-[#FCD535] rounded-xl p-4 flex items-center justify-between cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-[#00E5FF]/20 active:scale-[0.98]">
           <div>
             <p className="text-black font-bold text-sm">Discover personalized home</p>
             <p className="text-black font-bold text-sm">experiences!</p>
@@ -629,7 +629,7 @@ const Dashboard = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${
                   activeTab === tab.id 
                     ? 'bg-[#00E5FF]/20 text-[#00E5FF]' 
                     : `${textMuted} hover:bg-white/5`
@@ -687,7 +687,8 @@ const Dashboard = () => {
                 <Link
                   key={coin.coin_id || index}
                   to={`/trade?symbol=${coin.symbol || 'BTC'}`}
-                  className={`flex items-center px-4 py-3 rounded-xl border-2 ${isDark ? 'border-[#2B3139] hover:border-[#3B4149] hover:bg-[#1E2329]' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'} transition-all`}
+                  className={`flex items-center px-4 py-3 rounded-xl border-2 ${isDark ? 'border-[#2B3139] hover:border-[#00E5FF]/50 hover:bg-[#1E2329]' : 'border-gray-200 hover:border-[#00E5FF]/50 hover:bg-gray-50'} transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]`}
+                  style={{ animationDelay: `${index * 0.05}s` }}
                 >
                 {/* Coin Name */}
                 <div className="flex-1 flex items-center gap-3">
