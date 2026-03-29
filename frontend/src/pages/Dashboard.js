@@ -323,11 +323,11 @@ const Dashboard = () => {
               
               {/* Notification Dropdown */}
               {showNotifications && (
-                <div className={`absolute right-0 top-full mt-2 w-80 ${isDark ? 'bg-[#1E2329]' : 'bg-white'} rounded-xl shadow-2xl border ${border} z-50 overflow-hidden`}>
+                <div className={`absolute right-0 top-full mt-2 w-[340px] ${isDark ? 'bg-[#1E2329]' : 'bg-white'} rounded-xl shadow-2xl border ${border} z-50 overflow-hidden`}>
                   {/* Dropdown Header */}
                   <div className={`flex items-center justify-between px-4 py-3 border-b ${border}`}>
                     <div className="flex items-center gap-2">
-                      <Bell size={18} className="text-[#F0B90B]" weight="fill" />
+                      <Bell size={18} className="text-[#0ECB81]" weight="fill" />
                       <span className={`font-semibold ${text}`}>Trade Codes</span>
                     </div>
                     <button onClick={() => setShowNotifications(false)}>
@@ -343,7 +343,7 @@ const Dashboard = () => {
                         <p className={textMuted}>No trade codes yet</p>
                       </div>
                     ) : (
-                      <div className="p-2 space-y-2">
+                      <div className="p-3 space-y-3">
                         {tradeCodes.map((code) => {
                           const remaining = countdowns[code.code] !== undefined 
                             ? countdowns[code.code] 
@@ -355,36 +355,39 @@ const Dashboard = () => {
                           return (
                             <div 
                               key={code.code}
-                              className={`p-3 rounded-lg ${
+                              className={`p-3 rounded-xl ${
                                 isActive 
-                                  ? 'bg-gradient-to-r from-[#F0B90B]/20 to-[#FCD535]/10 border border-[#F0B90B]/30' 
+                                  ? 'bg-gradient-to-r from-[#0ECB81]/20 to-[#0ECB81]/5 border border-[#0ECB81]/40' 
                                   : isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'
                               } ${isUsed ? 'opacity-50' : ''}`}
                             >
-                              {/* Code with Copy */}
-                              <div className="flex items-center justify-between mb-2">
+                              {/* Code with Copy - Full Width */}
+                              <div className="mb-3">
                                 <button
                                   onClick={() => copyCode(code.code)}
-                                  className={`flex items-center gap-2 ${
+                                  className={`w-full flex items-center justify-center gap-2 ${
                                     isActive 
-                                      ? 'bg-[#F0B90B]/30 hover:bg-[#F0B90B]/40' 
+                                      ? 'bg-[#0ECB81]/30 hover:bg-[#0ECB81]/40' 
                                       : isDark ? 'bg-[#2B3139] hover:bg-[#3B4149]' : 'bg-gray-200 hover:bg-gray-300'
-                                  } rounded-lg px-3 py-1.5 transition-all`}
+                                  } rounded-lg px-4 py-2.5 transition-all`}
                                   data-testid={`copy-code-${code.code}`}
                                 >
-                                  <span className={`font-mono font-bold text-sm ${isActive ? 'text-[#F0B90B]' : text}`}>
+                                  <span className={`font-mono font-bold text-base tracking-wider ${isActive ? 'text-[#0ECB81]' : text}`}>
                                     {code.code}
                                   </span>
-                                  <Copy size={14} className={isActive ? 'text-[#F0B90B]' : textMuted} />
+                                  <Copy size={16} className={isActive ? 'text-[#0ECB81]' : textMuted} />
                                 </button>
-                                
+                              </div>
+                              
+                              {/* Timer and Apply Row */}
+                              <div className="flex items-center justify-between">
                                 {/* Timer Badge */}
-                                <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
+                                <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
                                   isUsed 
                                     ? 'bg-green-500/20 text-green-500' 
                                     : isExpired 
                                       ? 'bg-red-500/20 text-red-500' 
-                                      : 'bg-[#F0B90B]/20 text-[#F0B90B]'
+                                      : 'bg-[#0ECB81]/20 text-[#0ECB81]'
                                 }`}>
                                   {isUsed ? (
                                     <>
@@ -403,27 +406,25 @@ const Dashboard = () => {
                                     </>
                                   )}
                                 </div>
-                              </div>
-                              
-                              {/* Trade Details */}
-                              <div className="flex items-center justify-between">
-                                <div className={`text-xs ${textMuted}`}>
-                                  <span className={code.trade_type === 'buy' ? 'text-green-500' : 'text-red-500'}>
-                                    {code.trade_type?.toUpperCase()}
-                                  </span>
-                                  {' '}{code.amount} {code.coin?.toUpperCase()} @ ${code.price?.toLocaleString()}
-                                </div>
                                 
                                 {isActive && (
                                   <Button
                                     onClick={() => applyTradeCode(code.code)}
                                     size="sm"
-                                    className="bg-[#F0B90B] hover:bg-[#E5AF0A] text-black font-bold text-xs h-7 px-3"
+                                    className="bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white font-bold text-xs h-7 px-4"
                                     data-testid={`apply-code-${code.code}`}
                                   >
                                     Apply
                                   </Button>
                                 )}
+                              </div>
+                              
+                              {/* Trade Details */}
+                              <div className={`text-xs ${textMuted} mt-2`}>
+                                <span className={code.trade_type === 'buy' ? 'text-[#0ECB81]' : 'text-red-500'}>
+                                  {code.trade_type?.toUpperCase()}
+                                </span>
+                                {' '}{code.amount} {code.coin?.toUpperCase()} @ ${code.price?.toLocaleString()}
                               </div>
                             </div>
                           );
