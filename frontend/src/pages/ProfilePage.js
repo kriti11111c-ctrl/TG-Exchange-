@@ -52,9 +52,11 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [rankInfo, setRankInfo] = useState(null);
+  const [kycStatus, setKycStatus] = useState("unverified"); // unverified, pending, approved, rejected
 
   useEffect(() => {
     fetchRankInfo();
+    fetchKycStatus();
   }, []);
 
   const fetchRankInfo = async () => {
@@ -63,6 +65,16 @@ const ProfilePage = () => {
       setRankInfo(response.data);
     } catch (error) {
       console.error("Error fetching rank:", error);
+    }
+  };
+
+  const fetchKycStatus = async () => {
+    try {
+      const response = await axios.get(`${API}/user/kyc/status`, { withCredentials: true });
+      setKycStatus(response.data.status || "unverified");
+    } catch (error) {
+      console.error("Error fetching KYC status:", error);
+      setKycStatus("unverified");
     }
   };
 
@@ -174,9 +186,19 @@ const ProfilePage = () => {
                   <span className="text-xs px-2 py-0.5 rounded bg-[#00E5FF]/20 text-[#00E5FF] font-medium">
                     {getRankName(rankInfo?.rank?.level || 1)}
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded bg-[#0ECB81]/20 text-[#0ECB81] font-medium">
-                    Verified
-                  </span>
+                  {kycStatus === "approved" ? (
+                    <span className="text-xs px-2 py-0.5 rounded bg-[#0ECB81]/20 text-[#0ECB81] font-medium">
+                      Verified
+                    </span>
+                  ) : kycStatus === "pending" ? (
+                    <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-500 font-medium">
+                      Pending
+                    </span>
+                  ) : (
+                    <span className="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-500 font-medium">
+                      Unverified
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
