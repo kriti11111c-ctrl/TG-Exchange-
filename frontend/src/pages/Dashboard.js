@@ -425,19 +425,35 @@ const Dashboard = () => {
                               className={`p-3 rounded-xl ${
                                 isLive 
                                   ? 'bg-gradient-to-r from-[#0ECB81]/20 to-[#0ECB81]/5 border border-[#0ECB81]/40' 
-                                  : isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'
-                              } ${isUsed ? 'opacity-50' : ''}`}
+                                  : isExpired
+                                    ? 'bg-gradient-to-r from-red-500/10 to-red-500/5 border border-red-500/30'
+                                    : isUsed
+                                      ? 'bg-gradient-to-r from-green-500/10 to-green-500/5 border border-green-500/30'
+                                      : isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'
+                              }`}
                             >
-                              {/* LIVE Badge */}
-                              {isLive && (
-                                <div className="flex items-center justify-between mb-2">
+                              {/* Status Header */}
+                              <div className="flex items-center justify-between mb-2">
+                                {isLive && (
                                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#0ECB81] text-white text-[10px] font-bold animate-pulse">
                                     <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
                                     LIVE
                                   </div>
-                                  <span className={`text-[10px] ${textMuted}`}>{code.slot_name}</span>
-                                </div>
-                              )}
+                                )}
+                                {isUsed && (
+                                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500 text-white text-[10px] font-bold">
+                                    <CheckCircle size={12} weight="fill" />
+                                    SUCCESS
+                                  </div>
+                                )}
+                                {isExpired && !isUsed && (
+                                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                                    <XCircle size={12} weight="fill" />
+                                    EXPIRED
+                                  </div>
+                                )}
+                                <span className={`text-[10px] ${textMuted}`}>{code.slot_name}</span>
+                              </div>
                               
                               {/* Code with Copy - Full Width */}
                               <div className="mb-3">
@@ -446,18 +462,24 @@ const Dashboard = () => {
                                   className={`w-full flex items-center justify-center gap-2 ${
                                     isLive 
                                       ? 'bg-[#0ECB81]/30 hover:bg-[#0ECB81]/40' 
-                                      : isDark ? 'bg-[#2B3139] hover:bg-[#3B4149]' : 'bg-gray-200 hover:bg-gray-300'
+                                      : isExpired
+                                        ? 'bg-red-500/20'
+                                        : isUsed
+                                          ? 'bg-green-500/20'
+                                          : isDark ? 'bg-[#2B3139] hover:bg-[#3B4149]' : 'bg-gray-200 hover:bg-gray-300'
                                   } rounded-lg px-4 py-2.5 transition-all`}
                                   data-testid={`copy-code-${code.code}`}
                                 >
-                                  <span className={`font-mono font-bold text-base tracking-wider ${isLive ? 'text-[#0ECB81]' : text}`}>
+                                  <span className={`font-mono font-bold text-base tracking-wider ${
+                                    isLive ? 'text-[#0ECB81]' : isExpired ? 'text-red-500' : isUsed ? 'text-green-500' : text
+                                  }`}>
                                     {code.code}
                                   </span>
-                                  <Copy size={16} className={isLive ? 'text-[#0ECB81]' : textMuted} />
+                                  <Copy size={16} className={isLive ? 'text-[#0ECB81]' : isExpired ? 'text-red-500' : isUsed ? 'text-green-500' : textMuted} />
                                 </button>
                               </div>
                               
-                              {/* Timer Row */}
+                              {/* Status Row */}
                               <div className="flex items-center justify-between">
                                 {/* Status Badge */}
                                 <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
@@ -470,12 +492,12 @@ const Dashboard = () => {
                                   {isUsed ? (
                                     <>
                                       <CheckCircle size={12} weight="fill" />
-                                      <span>+${code.actual_profit?.toFixed(2) || '0'} Earned</span>
+                                      <span>+${(code.actual_profit || 0).toFixed(2)} Earned</span>
                                     </>
                                   ) : isExpired ? (
                                     <>
                                       <XCircle size={12} weight="fill" />
-                                      <span>Expired</span>
+                                      <span>Missed - Expired</span>
                                     </>
                                   ) : (
                                     <>
@@ -488,7 +510,7 @@ const Dashboard = () => {
                                 {/* Fund Info - only for LIVE */}
                                 {isLive && code.trade_fund > 0 && (
                                   <span className={`text-[10px] ${textMuted}`}>
-                                    Trade: ${code.trade_fund} (1%)
+                                    Trade: ${code.trade_fund} ({code.multiplier || 1}x)
                                   </span>
                                 )}
                               </div>
@@ -497,6 +519,13 @@ const Dashboard = () => {
                               {isLive && (
                                 <p className={`text-[10px] ${textMuted} mt-2 italic`}>
                                   Copy code & paste in Futures → Trade Code
+                                </p>
+                              )}
+                              
+                              {/* Used code details */}
+                              {isUsed && code.actual_trade_amount > 0 && (
+                                <p className={`text-[10px] ${textMuted} mt-2`}>
+                                  Traded ${code.actual_trade_amount?.toFixed(2)} at {code.multiplier || 1}x
                                 </p>
                               )}
                             </div>

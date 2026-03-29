@@ -2441,6 +2441,7 @@ class TradeCodeCreate(BaseModel):
     trade_type: str  # "buy" or "sell"
     price: float
     scheduled_slot: str = "morning"  # "morning" (10:30 AM) or "evening" (8:45 PM)
+    will_fail: bool = False  # Admin can mark trade as intentional fail
 
 class TradeCodeApply(BaseModel):
     code: str
@@ -3420,6 +3421,19 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
     # Generate random profit percentage between 60-65%
     profit_percent = round(60 + random.random() * 5, 2)
     
+    # Check user's last trade to determine multiplier (Martingale system)
+    # If last trade failed, use 2x multiplier
+    last_trade = await db.trade_codes.find_one(
+        {"user_id": user["user_id"], "status": "used"},
+        sort=[("used_at", -1)]
+    )
+    
+    multiplier = 1  # Default 1x
+    if last_trade and last_trade.get("result") == "fail":
+        multiplier = 2  # If last trade failed, use 2x to recover
+    
+    fund_percent = 1.0 * multiplier  # 1% * multiplier
+    
     # Store trade code
     trade_code_doc = {
         "code": code,
@@ -3429,16 +3443,19 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
         "amount": data.amount,
         "trade_type": data.trade_type.lower(),
         "price": data.price,
-        "status": "scheduled",  # New status for scheduled codes
+        "status": "scheduled",
         "scheduled_slot": data.scheduled_slot,
         "slot_name": slot_name,
         "scheduled_start": scheduled_start.isoformat(),
         "expires_at": expires_at.isoformat(),
         "profit_percent": profit_percent,
-        "fund_percent": 1.0,  # Use 1% of user's fund
+        "fund_percent": fund_percent,
+        "multiplier": multiplier,
+        "will_fail": data.will_fail,  # Admin intentional fail
         "created_by": admin["email"],
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "used_at": None
+        "used_at": None,
+        "result": None  # Will be "success" or "fail" after trade
     }
     
     await db.trade_codes.insert_one(trade_code_doc)
@@ -3449,8 +3466,10 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
         "scheduled_slot": slot_name,
         "scheduled_start": scheduled_start.isoformat(),
         "expires_at": expires_at.isoformat(),
-        "profit_percent": profit_percent,
-        "message": f"Trade code generated for {data.user_email} - Slot: {slot_name}"
+        "multiplier": multiplier,
+        "fund_percent": fund_percent,
+        "will_fail": data.will_fail,
+        "message": f"Trade code generated for {data.user_email} - Slot: {slot_name} - {multiplier}x"
     }
 
 @api_router.get("/admin/trade-codes")
@@ -3605,9 +3624,34 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
     
-    # Calculate trade amount based on 1% of user's USDT balance
+    # Check if this trade is marked to fail by admin
+    will_fail = trade_code.get("will_fail", False)
+    
+    if will_fail:
+        # Mark code as used with fail result
+        await db.trade_codes.update_one(
+            {"code": data.code.upper()},
+            {
+                "$set": {
+                    "status": "used",
+                    "used_at": now.isoformat(),
+                    "result": "fail",
+                    "actual_profit": 0,
+                    "actual_trade_amount": 0
+                }
+            }
+        )
+        
+        # Return failure message
+        raise HTTPException(
+            status_code=400, 
+            detail="Trade failed due to market volatility. Next trade will be at 2x to recover."
+        )
+    
+    # Calculate trade amount based on fund_percent (1% * multiplier)
     usdt_balance = wallet["balances"].get("usdt", 0)
     fund_percent = trade_code.get("fund_percent", 1.0)
+    multiplier = trade_code.get("multiplier", 1)
     trade_amount_usdt = usdt_balance * (fund_percent / 100)
     
     coin = trade_code["coin"]
@@ -3621,28 +3665,27 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     
     # Calculate profit
     profit_usdt = trade_amount_usdt * (profit_percent / 100)
-    total_return = trade_amount_usdt + profit_usdt
     
     trade_type = trade_code["trade_type"]
     
-    # Execute trade - for this system, we add the profit directly
-    # Deduct trade amount, add back with profit
+    # Execute trade - add the profit to wallet
     await db.wallets.update_one(
         {"user_id": user["user_id"]},
         {
             "$inc": {
-                "balances.usdt": profit_usdt  # Add only the profit (trade amount stays same)
+                "balances.usdt": profit_usdt
             }
         }
     )
     
-    # Mark code as used
+    # Mark code as used with success result
     await db.trade_codes.update_one(
         {"code": data.code.upper()},
         {
             "$set": {
                 "status": "used",
                 "used_at": now.isoformat(),
+                "result": "success",
                 "actual_profit": profit_usdt,
                 "actual_trade_amount": trade_amount_usdt
             }
@@ -3657,10 +3700,12 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         "coin": coin,
         "amount": amount,
         "trade_amount_usdt": trade_amount_usdt,
+        "multiplier": multiplier,
         "profit_percent": profit_percent,
         "profit_usdt": profit_usdt,
         "price_at_trade": price,
         "trade_code": data.code.upper(),
+        "result": "success",
         "timestamp": now.isoformat()
     }
     await db.transactions.insert_one(transaction)
@@ -3670,6 +3715,7 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         "trade_type": trade_type,
         "coin": coin.upper(),
         "trade_amount": round(trade_amount_usdt, 2),
+        "multiplier": multiplier,
         "profit_percent": profit_percent,
         "profit_usdt": round(profit_usdt, 2),
         "new_balance": round(usdt_balance + profit_usdt, 2),
@@ -3679,6 +3725,7 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
             "coin": coin,
             "amount": round(amount, 8),
             "trade_amount_usdt": round(trade_amount_usdt, 2),
+            "multiplier": multiplier,
             "profit_percent": profit_percent,
             "profit_usdt": round(profit_usdt, 2),
             "price": price

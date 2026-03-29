@@ -239,13 +239,16 @@ const FuturesPage = () => {
                 className={`px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap ${
                   leverage === lev 
                     ? 'bg-[#F0B90B] text-black' 
-                    : `${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} ${textMuted}`
+                    : `${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} ${textMuted} opacity-50 cursor-not-allowed`
                 }`}
+                disabled={true}
+                title="Leverage is set automatically by system"
               >
                 {lev}x
               </button>
             ))}
           </div>
+          <p className={`text-[9px] ${textMuted} mt-1`}>* Leverage set by system (1x default, 2x after loss)</p>
         </div>
 
         {/* Order Type */}
