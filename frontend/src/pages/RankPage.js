@@ -58,7 +58,7 @@ const RankPage = () => {
 
   // Rank requirements (Bronze users / Team)
   const rankRequirements = {
-    1: { bronze: 0, team: 0 },          // 0 Bronze / 0T (Starting rank)
+    1: { bronze: 0, team: 6 },           // 0 Bronze / 6T (Starting rank)
     2: { bronze: 2, team: 30 },         // 2 Bronze / 30T
     3: { bronze: 3, team: 75 },         // 3 Bronze / 75T
     4: { bronze: 4, team: 150 },        // 4 Bronze / 150T
