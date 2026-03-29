@@ -1573,9 +1573,9 @@ const TradePage = () => {
     <div className={`min-h-screen ${bg}`}>
       <DashboardNav />
       
-      <main className="pt-12">
+      <main className="pt-14">
         {/* Trading Pair Header */}
-        <div className={`${cardBg} border-b ${border} px-4 py-2`}>
+        <div className={`${cardBg} border-b ${border} px-4 py-3`}>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
               <span className={`text-xl font-bold ${text}`}>{selectedCoin.toUpperCase()}/USDT</span>
