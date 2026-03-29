@@ -118,12 +118,18 @@ const RankPage = () => {
         axios.get(`${API}/team-rank/info`, { withCredentials: true }).catch(() => ({ data: {} }))
       ]);
       
-      // Merge team stats into rankInfo
+      // Use team rank info for display (this contains actual rank based on team)
+      const teamRankData = teamRes.data || {};
+      
       setRankInfo({
-        ...rankRes.data,
-        direct_referrals: teamRes.data?.direct_referrals || 0,
-        bronze_members: teamRes.data?.bronze_members || 0,
-        total_team: teamRes.data?.total_team || 0
+        rank: teamRankData.current_rank || { level: 0, name: "No Rank" },
+        next_rank: teamRankData.next_rank,
+        progress: teamRankData.progress || 0,
+        direct_referrals: teamRankData.direct_referrals || 0,
+        bronze_members: teamRankData.bronze_members || 0,
+        total_team: teamRankData.total_team || 0,
+        levelup_reward: teamRankData.levelup_reward || 0,
+        demotion_message: teamRankData.demotion_message
       });
     } catch (error) {
       console.error("Error fetching rank info:", error);
@@ -182,48 +188,53 @@ const RankPage = () => {
         <div 
           className={`rounded-2xl p-5 relative overflow-hidden`}
           style={{
-            background: `linear-gradient(135deg, ${rankColors[rankInfo?.rank?.level || 1]}40, ${rankColors[rankInfo?.rank?.level || 1]}20)`
+            background: `linear-gradient(135deg, ${rankColors[rankInfo?.rank?.level || 0] || '#374151'}40, ${rankColors[rankInfo?.rank?.level || 0] || '#374151'}20)`
           }}
         >
           <div className="flex items-center gap-4">
             {/* Circular Badge */}
             <div 
               className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg"
-              style={{ backgroundColor: rankColors[rankInfo?.rank?.level || 1] }}
+              style={{ backgroundColor: rankColors[rankInfo?.rank?.level || 0] || '#374151' }}
             >
-              <span className="text-white text-3xl font-bold">{rankInfo?.rank?.level || 1}</span>
+              <span className="text-white text-3xl font-bold">{rankInfo?.rank?.level || 0}</span>
             </div>
             
             {/* Info */}
             <div className="flex-1">
               <p className={`text-sm ${textMuted}`}>Current Rank</p>
               <h2 className={`text-2xl font-bold ${text}`}>
-                {rankNames[rankInfo?.rank?.level || 1]}
+                {rankInfo?.rank?.level > 0 ? rankNames[rankInfo?.rank?.level] : "No Rank"}
               </h2>
               <p className={`text-sm ${textMuted}`}>
-                {rankRequirements[rankInfo?.rank?.level || 1]?.direct || 0}D/{rankRequirements[rankInfo?.rank?.level || 1]?.team || 0}T
+                {rankInfo?.rank?.level > 0 
+                  ? `${rankRequirements[rankInfo.rank.level]?.bronze || 0} Bronze / ${rankRequirements[rankInfo.rank.level]?.team || 0}T`
+                  : `0 Bronze / ${rankInfo?.total_team || 0}T`
+                }
               </p>
             </div>
           </div>
 
-          {/* Progress to next */}
-          {rankInfo?.next_rank && (
+          {/* Progress to next rank */}
+          {(rankInfo?.next_rank || rankInfo?.rank?.level === 0) && (
             <div className="mt-4">
               <div className="flex justify-between text-xs mb-1.5">
-                <span className={textMuted}>Next: {rankNames[rankInfo?.next_rank?.level]}</span>
-                <span className="text-[#F0B90B] font-medium">{rankInfo?.progress?.toFixed(0)}%</span>
+                <span className={textMuted}>
+                  Next: {rankInfo?.next_rank ? rankNames[rankInfo.next_rank.level] : rankNames[1]}
+                </span>
+                <span className="text-[#F0B90B] font-medium">{(rankInfo?.progress || 0).toFixed(0)}%</span>
               </div>
               <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} overflow-hidden`}>
                 <div 
                   className="h-full rounded-full transition-all duration-700"
                   style={{ 
                     width: `${rankInfo?.progress || 0}%`,
-                    backgroundColor: rankColors[rankInfo?.next_rank?.level]
+                    backgroundColor: rankColors[rankInfo?.next_rank?.level || 1]
                   }}
                 />
               </div>
               <p className={`text-xs mt-1.5 ${textMuted}`}>
-                Need: {rankRequirements[rankInfo?.next_rank?.level]?.direct || 0} direct + {rankRequirements[rankInfo?.next_rank?.level]?.team || 0} team (min $50 deposit)
+                Need: {rankRequirements[rankInfo?.next_rank?.level || 1]?.team || 6}T team members
               </p>
             </div>
           )}

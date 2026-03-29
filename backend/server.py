@@ -222,10 +222,10 @@ TEAM_RANKS = [
         "level": 1, 
         "name": "Bronze", 
         "emoji": "🥉",
-        "direct_required": 6,
+        "direct_required": 0,
         "bronze_required": 0,
-        "team_required": 0,
-        "type": "direct",
+        "team_required": 6,
+        "type": "team",
         "bonus_percent": 0.50,
         "monthly_salary": 30,
         "levelup_reward": 50,
@@ -408,8 +408,11 @@ def get_team_rank(direct_referrals: int, bronze_members: int, total_team: int) -
         # Check if user qualifies for this rank
         qualifies = False
         
-        if rank["type"] == "direct":
-            # Bronze rank - needs direct referrals
+        if rank["type"] == "team":
+            # Bronze rank - needs total team members
+            qualifies = total_team >= rank["team_required"]
+        elif rank["type"] == "direct":
+            # Needs direct referrals
             qualifies = direct_referrals >= rank["direct_required"] and total_team >= rank["team_required"]
         else:
             # Silver onwards - needs Bronze rank members
@@ -433,7 +436,9 @@ def get_team_rank(direct_referrals: int, bronze_members: int, total_team: int) -
             progress = min(100, (team_progress / team_range) * 100) if team_range > 0 else 100
     elif not current_rank and next_rank:
         # Progress to first rank (Bronze)
-        if next_rank["type"] == "direct":
+        if next_rank["type"] == "team":
+            progress = min(100, (total_team / next_rank["team_required"]) * 100) if next_rank["team_required"] > 0 else 100
+        elif next_rank["type"] == "direct":
             progress = min(100, (direct_referrals / next_rank["direct_required"]) * 100) if next_rank["direct_required"] > 0 else 100
     
     return {
