@@ -674,22 +674,6 @@ const WalletPage = () => {
                   </div>
                 </div>
               </div>
-              
-              {/* Transfer Hint */}
-              <div className={`mt-4 p-3 rounded-lg ${isDark ? 'bg-[#1E2329]' : 'bg-gray-50'} border ${border}`}>
-                <div className="flex items-start gap-2">
-                  <Info size={16} className="text-[#F0B90B] mt-0.5 flex-shrink-0" />
-                  <div className="text-xs">
-                    <p className={textMuted}>
-                      <span className="text-[#F0B90B] font-semibold">Trading:</span> Futures balance se hota hai. 
-                      <span className="text-[#3B82F6] font-semibold"> Withdrawal:</span> Spot balance se hota hai.
-                    </p>
-                    <p className={`${textMuted} mt-1`}>
-                      Transfer button se Spot ↔ Futures transfer karein.
-                    </p>
-                  </div>
-                </div>
-              </div>
             </>
           );
         })()}
