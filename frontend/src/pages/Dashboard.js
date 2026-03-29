@@ -385,38 +385,59 @@ const Dashboard = () => {
                           const isLive = code.is_live && remaining > 0;
                           const isScheduled = !isLive && !isUsed && !isExpired && countdownToLive > 0;
                           
+                          // For scheduled codes - show "Coming Soon" card
+                          if (isScheduled) {
+                            return (
+                              <div 
+                                key={code.code}
+                                className={`p-4 rounded-xl bg-gradient-to-r from-[#F0B90B]/10 to-[#F0B90B]/5 border border-[#F0B90B]/30`}
+                              >
+                                {/* Coming Soon Header */}
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-full bg-[#F0B90B]/20 flex items-center justify-center">
+                                      <Clock size={18} className="text-[#F0B90B]" />
+                                    </div>
+                                    <div>
+                                      <span className="text-[#F0B90B] font-bold text-sm">Coming Soon</span>
+                                      <p className={`text-[10px] ${textMuted}`}>{code.slot_name} Slot</p>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Countdown */}
+                                <div className="text-center py-3 bg-[#F0B90B]/10 rounded-lg mb-2">
+                                  <p className={`text-[10px] ${textMuted} mb-1`}>Code will be available in</p>
+                                  <p className="text-[#F0B90B] font-bold text-xl">{formatCountdown(countdownToLive)}</p>
+                                </div>
+                                
+                                <p className={`text-[10px] ${textMuted} text-center`}>
+                                  Be ready at {code.slot_name} to copy & use the code
+                                </p>
+                              </div>
+                            );
+                          }
+                          
+                          // For LIVE, Used, or Expired codes - show full card
                           return (
                             <div 
                               key={code.code}
                               className={`p-3 rounded-xl ${
                                 isLive 
                                   ? 'bg-gradient-to-r from-[#0ECB81]/20 to-[#0ECB81]/5 border border-[#0ECB81]/40' 
-                                  : isScheduled
-                                    ? 'bg-gradient-to-r from-[#F0B90B]/20 to-[#F0B90B]/5 border border-[#F0B90B]/40'
-                                    : isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'
+                                  : isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'
                               } ${isUsed ? 'opacity-50' : ''}`}
                             >
-                              {/* LIVE or Scheduled Badge */}
-                              <div className="flex items-center justify-between mb-2">
-                                {isLive && (
+                              {/* LIVE Badge */}
+                              {isLive && (
+                                <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#0ECB81] text-white text-[10px] font-bold animate-pulse">
                                     <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
                                     LIVE
                                   </div>
-                                )}
-                                {isScheduled && (
-                                  <div className="flex items-center gap-1 text-[10px] text-[#F0B90B] font-medium">
-                                    <Clock size={12} />
-                                    <span>Starts in {formatCountdown(countdownToLive)}</span>
-                                  </div>
-                                )}
-                                {code.slot_name && (
                                   <span className={`text-[10px] ${textMuted}`}>{code.slot_name}</span>
-                                )}
-                                {code.profit_percent && (
-                                  <span className="text-[10px] text-[#0ECB81] font-bold">+{code.profit_percent}%</span>
-                                )}
-                              </div>
+                                </div>
+                              )}
                               
                               {/* Code with Copy - Full Width */}
                               <div className="mb-3">
@@ -425,18 +446,14 @@ const Dashboard = () => {
                                   className={`w-full flex items-center justify-center gap-2 ${
                                     isLive 
                                       ? 'bg-[#0ECB81]/30 hover:bg-[#0ECB81]/40' 
-                                      : isScheduled
-                                        ? 'bg-[#F0B90B]/30 hover:bg-[#F0B90B]/40'
-                                        : isDark ? 'bg-[#2B3139] hover:bg-[#3B4149]' : 'bg-gray-200 hover:bg-gray-300'
+                                      : isDark ? 'bg-[#2B3139] hover:bg-[#3B4149]' : 'bg-gray-200 hover:bg-gray-300'
                                   } rounded-lg px-4 py-2.5 transition-all`}
                                   data-testid={`copy-code-${code.code}`}
                                 >
-                                  <span className={`font-mono font-bold text-base tracking-wider ${
-                                    isLive ? 'text-[#0ECB81]' : isScheduled ? 'text-[#F0B90B]' : text
-                                  }`}>
+                                  <span className={`font-mono font-bold text-base tracking-wider ${isLive ? 'text-[#0ECB81]' : text}`}>
                                     {code.code}
                                   </span>
-                                  <Copy size={16} className={isLive ? 'text-[#0ECB81]' : isScheduled ? 'text-[#F0B90B]' : textMuted} />
+                                  <Copy size={16} className={isLive ? 'text-[#0ECB81]' : textMuted} />
                                 </button>
                               </div>
                               
@@ -448,9 +465,7 @@ const Dashboard = () => {
                                     ? 'bg-green-500/20 text-green-500' 
                                     : isExpired 
                                       ? 'bg-red-500/20 text-red-500' 
-                                      : isLive
-                                        ? 'bg-[#0ECB81]/20 text-[#0ECB81]'
-                                        : 'bg-[#F0B90B]/20 text-[#F0B90B]'
+                                      : 'bg-[#0ECB81]/20 text-[#0ECB81]'
                                 }`}>
                                   {isUsed ? (
                                     <>
@@ -462,42 +477,26 @@ const Dashboard = () => {
                                       <XCircle size={12} weight="fill" />
                                       <span>Expired</span>
                                     </>
-                                  ) : isLive ? (
+                                  ) : (
                                     <>
                                       <Clock size={12} weight="fill" />
                                       <span>{formatCountdown(remaining)} left</span>
                                     </>
-                                  ) : (
-                                    <>
-                                      <Clock size={12} weight="fill" />
-                                      <span>Waiting</span>
-                                    </>
                                   )}
                                 </div>
                                 
-                                {/* Fund Info */}
-                                {code.trade_fund > 0 && !isUsed && !isExpired && (
+                                {/* Fund Info - only for LIVE */}
+                                {isLive && code.trade_fund > 0 && (
                                   <span className={`text-[10px] ${textMuted}`}>
                                     Trade: ${code.trade_fund} (1%)
                                   </span>
                                 )}
                               </div>
                               
-                              {/* Trade Details + Instruction */}
-                              <div className={`text-xs ${textMuted} mt-2`}>
-                                <span className={code.trade_type === 'buy' ? 'text-[#0ECB81]' : 'text-red-500'}>
-                                  {code.trade_type?.toUpperCase()}
-                                </span>
-                                {' '}{code.coin?.toUpperCase()} @ ${code.price?.toLocaleString()}
-                              </div>
+                              {/* Instruction for LIVE */}
                               {isLive && (
-                                <p className={`text-[10px] ${textMuted} mt-1 italic`}>
+                                <p className={`text-[10px] ${textMuted} mt-2 italic`}>
                                   Copy code & paste in Futures → Trade Code
-                                </p>
-                              )}
-                              {isScheduled && (
-                                <p className={`text-[10px] text-[#F0B90B] mt-1`}>
-                                  Code will be LIVE at {code.slot_name}
                                 </p>
                               )}
                             </div>
