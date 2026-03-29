@@ -102,12 +102,12 @@ const Dashboard = () => {
 
   // Format countdown time
   const formatCountdown = (seconds) => {
-    if (seconds <= 0) return "00:00";
+    if (seconds <= 0) return "00:00:00";
     const hours = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     if (hours > 0) {
-      return `${hours}h ${mins}m`;
+      return `${hours}h ${mins}m ${secs}s`;
     }
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
