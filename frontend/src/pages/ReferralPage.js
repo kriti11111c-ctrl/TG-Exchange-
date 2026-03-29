@@ -165,7 +165,7 @@ const ReferralPage = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-black font-bold text-xl mb-2">Invite & Earn</h2>
-            <p className="text-black/70 text-sm">Earn up to 20% commission on every trade from your referrals!</p>
+            <p className="text-black/70 text-sm">Earn rewards on every trade from your referrals!</p>
           </div>
           <div className="text-5xl">🎁</div>
         </div>
@@ -235,9 +235,9 @@ const ReferralPage = () => {
         </div>
       )}
 
-      {/* 10 Level Commission Structure */}
+      {/* 10 Level Team Structure */}
       <div className={`${cardBg} mx-4 mt-4 rounded-xl p-4`}>
-        <h3 className={`font-bold mb-4 ${text}`}>10-Level Commission Structure</h3>
+        <h3 className={`font-bold mb-4 ${text}`}>10-Level Team Structure</h3>
         
         <div className="space-y-2">
           {stats?.level_stats?.map((level) => (
@@ -254,7 +254,7 @@ const ReferralPage = () => {
                   </div>
                   <div>
                     <p className={text}>Level {level.level}</p>
-                    <p className={`text-xs ${textMuted}`}>{level.commission_rate}% Commission</p>
+                    <p className={`text-xs ${textMuted}`}>Team</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -351,56 +351,12 @@ const ReferralPage = () => {
             </div>
             <div>
               <p className={text}>Earn commissions</p>
-              <p className={`text-sm ${textMuted}`}>Get up to 20% from their trading fees - 10 levels deep!</p>
+              <p className={`text-sm ${textMuted}`}>Get rewards from their trading - 10 levels deep!</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Commission Rates Table */}
-      <div className={`${cardBg} mx-4 mt-4 rounded-xl p-4 mb-4`}>
-        <h3 className={`font-bold mb-4 ${text}`}>Commission Rates</h3>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className={textMuted}>
-                <th className="text-left py-2">Level</th>
-                <th className="text-right py-2">Rate</th>
-                <th className="text-right py-2">Example (on $100 fee)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { level: 1, rate: "20%", example: "$20.00" },
-                { level: 2, rate: "10%", example: "$10.00" },
-                { level: 3, rate: "5%", example: "$5.00" },
-                { level: 4, rate: "3%", example: "$3.00" },
-                { level: 5, rate: "2%", example: "$2.00" },
-                { level: 6, rate: "1%", example: "$1.00" },
-                { level: 7, rate: "0.5%", example: "$0.50" },
-                { level: 8, rate: "0.3%", example: "$0.30" },
-                { level: 9, rate: "0.2%", example: "$0.20" },
-                { level: 10, rate: "0.1%", example: "$0.10" },
-              ].map((item) => (
-                <tr key={item.level} className={`border-t ${border}`}>
-                  <td className={`py-2 ${text}`}>
-                    <div className="flex items-center gap-2">
-                      <div className={`w-5 h-5 rounded-full ${getLevelColor(item.level)} flex items-center justify-center`}>
-                        <span className="text-white text-xs font-bold">{item.level}</span>
-                      </div>
-                      Level {item.level}
-                    </div>
-                  </td>
-                  <td className={`text-right py-2 ${text} font-medium`}>{item.rate}</td>
-                  <td className="text-right py-2 text-[#0ECB81]">{item.example}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      
       {/* Bottom Navigation */}
       <BottomNav />
     </div>
