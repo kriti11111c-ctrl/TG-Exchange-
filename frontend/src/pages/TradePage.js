@@ -44,7 +44,7 @@ const DashboardNav = () => {
           
           <div className="hidden md:flex items-center gap-4 text-sm">
             <Link to="/dashboard" className={`${isDark ? 'text-[#848E9C] hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>Dashboard</Link>
-            <Link to="/trade" className="text-[#F0B90B]">Trade</Link>
+            <Link to="/trade" className="text-[#00E5FF]">Trade</Link>
             <Link to="/wallet" className={`${isDark ? 'text-[#848E9C] hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>Wallet</Link>
             <Link to="/transactions" className={`${isDark ? 'text-[#848E9C] hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>History</Link>
           </div>
@@ -54,7 +54,7 @@ const DashboardNav = () => {
           {/* Theme Toggle Button */}
           <button
             onClick={toggleTheme}
-            className={`p-2 rounded-full transition-colors ${isDark ? 'bg-[#2B3139] hover:bg-[#3B4149] text-[#F0B90B]' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+            className={`p-2 rounded-full transition-colors ${isDark ? 'bg-[#2B3139] hover:bg-[#3B4149] text-[#00E5FF]' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
             data-testid="theme-toggle"
           >
             {isDark ? <Sun size={20} weight="fill" /> : <Moon size={20} weight="fill" />}
@@ -65,7 +65,7 @@ const DashboardNav = () => {
             variant="ghost" 
             size="sm" 
             onClick={logout}
-            className={`${isDark ? 'text-[#848E9C] hover:text-[#F0B90B]' : 'text-gray-600 hover:text-red-500'} hover:bg-transparent`}
+            className={`${isDark ? 'text-[#848E9C] hover:text-[#00E5FF]' : 'text-gray-600 hover:text-red-500'} hover:bg-transparent`}
             data-testid="logout-btn"
           >
             <SignOut size={18} />
@@ -634,7 +634,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
       const ma25 = calculateMA(candleData, 25);
       
       // MA7 - Yellow line
-      ctx.strokeStyle = '#F0B90B';
+      ctx.strokeStyle = '#00E5FF';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       let started = false;
@@ -676,7 +676,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
     if (currentPrice && currentPrice >= adjustedMin && currentPrice <= adjustedMax) {
       const priceY = padding.top + ((adjustedMax - currentPrice) / priceRange) * chartHeight;
       
-      ctx.strokeStyle = '#F0B90B';
+      ctx.strokeStyle = '#00E5FF';
       ctx.lineWidth = 1;
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
@@ -686,7 +686,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
       ctx.setLineDash([]);
       
       // Price label
-      ctx.fillStyle = '#F0B90B';
+      ctx.fillStyle = '#00E5FF';
       ctx.fillRect(width - padding.right, priceY - 8, 53, 16);
       ctx.fillStyle = '#000';
       ctx.font = 'bold 9px Arial';
@@ -748,7 +748,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
       });
       
       // Draw Volume MA(5) line - Yellow
-      ctx.strokeStyle = '#F0B90B';
+      ctx.strokeStyle = '#00E5FF';
       ctx.lineWidth = 1;
       ctx.beginPath();
       let maStarted = false;
@@ -789,7 +789,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
       const lastMA5 = volMA5.filter(v => v !== null).pop() || 0;
       const lastMA10 = volMA10.filter(v => v !== null).pop() || 0;
       ctx.font = '8px Arial';
-      ctx.fillStyle = '#F0B90B';
+      ctx.fillStyle = '#00E5FF';
       ctx.fillText(`MA(5): ${lastMA5.toFixed(2)}`, padding.left + 60, volumeTop + 12);
       ctx.fillStyle = '#9B59B6';
       ctx.fillText(`MA(10): ${lastMA10.toFixed(2)}`, padding.left + 140, volumeTop + 12);
@@ -998,7 +998,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
                 onClick={() => handleTimeframeChange(tf)}
                 className={`px-2 py-1 rounded ${
                   timeframe === tf 
-                    ? 'bg-[#F0B90B] text-black font-bold' 
+                    ? 'bg-[#00E5FF] text-black font-bold' 
                     : `${textMuted} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-200'}`
                 }`}
               >
@@ -1025,7 +1025,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
                     onClick={() => toggleIndicator('MA')}
                     className={`w-full text-left px-2 py-1.5 text-[11px] rounded flex items-center justify-between ${
                       activeIndicators.includes('MA') 
-                        ? 'bg-[#F0B90B]/20 text-[#F0B90B]' 
+                        ? 'bg-[#00E5FF]/20 text-[#00E5FF]' 
                         : `${text} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'}`
                     }`}
                     data-testid="indicator-ma"
@@ -1084,7 +1084,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
           {activeIndicators.includes('MA') && (
             <>
               <span className="flex items-center gap-1">
-                <span className="w-3 h-0.5 bg-[#F0B90B]"></span>
+                <span className="w-3 h-0.5 bg-[#00E5FF]"></span>
                 <span className={textMuted}>MA(7)</span>
               </span>
               <span className="flex items-center gap-1">
@@ -1100,7 +1100,7 @@ const CandlestickChart = ({ currentPrice, priceChange, selectedCoin, isDark }) =
                 <span className={textMuted}>Vol</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="w-3 h-0.5 bg-[#F0B90B]"></span>
+                <span className="w-3 h-0.5 bg-[#00E5FF]"></span>
                 <span className={textMuted}>MA(5)</span>
               </span>
               <span className="flex items-center gap-1">
@@ -1239,7 +1239,7 @@ const OrdersPanel = ({ wallet, selectedCoin, prices, isDark }) => {
             >
               {tab.label} {tab.count !== null && `(${tab.count})`}
               {activeTab === tab.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F0B90B]"></div>
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00E5FF]"></div>
               )}
             </button>
           ))}
@@ -1265,7 +1265,7 @@ const OrdersPanel = ({ wallet, selectedCoin, prices, isDark }) => {
             </div>
             <p className={text}>Available Funds: {wallet?.balances?.usdt?.toFixed(2) || '0.00'} USDT</p>
             <p className={`text-sm ${textMuted} mt-1`}>Transfer funds to your Spot wallet to trade</p>
-            <button className={`mt-4 px-6 py-2 rounded-lg border ${border} ${text} font-medium text-sm hover:bg-[#F0B90B]/10`}>
+            <button className={`mt-4 px-6 py-2 rounded-lg border ${border} ${text} font-medium text-sm hover:bg-[#00E5FF]/10`}>
               Increase Balance
             </button>
           </div>
@@ -1324,8 +1324,8 @@ const OrdersPanel = ({ wallet, selectedCoin, prices, isDark }) => {
         {/* Spot Grid Tab */}
         {activeTab === "spotgrid" && (
           <div className="flex flex-col items-center justify-center py-8">
-            <div className={`w-16 h-16 rounded-full bg-[#F0B90B]/20 flex items-center justify-center mb-3`}>
-              <Clock size={32} className="text-[#F0B90B]" />
+            <div className={`w-16 h-16 rounded-full bg-[#00E5FF]/20 flex items-center justify-center mb-3`}>
+              <Clock size={32} className="text-[#00E5FF]" />
             </div>
             <p className={`text-lg font-medium ${text}`}>Coming Soon</p>
             <p className={`text-sm ${textMuted} mt-1 text-center`}>Spot Grid trading bot will be available soon</p>
@@ -1337,7 +1337,7 @@ const OrdersPanel = ({ wallet, selectedCoin, prices, isDark }) => {
           <div>
             {loadingTrades ? (
               <div className="flex justify-center py-8">
-                <div className="w-8 h-8 border-2 border-[#F0B90B] border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-8 h-8 border-2 border-[#00E5FF] border-t-transparent rounded-full animate-spin"></div>
               </div>
             ) : trades.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8">

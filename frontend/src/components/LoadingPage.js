@@ -84,7 +84,7 @@ const LoadingPage = ({ onComplete, minimal = false }) => {
         <h1 className="text-3xl font-bold text-white" style={{ fontFamily: 'Unbounded' }}>
           TG Exchange
         </h1>
-        <p className="text-[#F0B90B] text-sm mt-2 tracking-widest">CRYPTOCURRENCY INVESTMENT</p>
+        <p className="text-[#00E5FF] text-sm mt-2 tracking-widest">CRYPTOCURRENCY INVESTMENT</p>
       </div>
 
       {/* Animated Candle Chart */}
@@ -126,7 +126,7 @@ const LoadingPage = ({ onComplete, minimal = false }) => {
       <div className="w-72 mb-4">
         <div className="h-1.5 bg-[#2B3139] rounded-full overflow-hidden">
           <div 
-            className="h-full bg-gradient-to-r from-[#F0B90B] via-[#0ECB81] to-[#F0B90B] rounded-full transition-all duration-100"
+            className="h-full bg-gradient-to-r from-[#00E5FF] via-[#0ECB81] to-[#00E5FF] rounded-full transition-all duration-100"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -134,7 +134,7 @@ const LoadingPage = ({ onComplete, minimal = false }) => {
 
       {/* Loading Text */}
       <div className="flex items-center gap-3">
-        <span className="text-[#F0B90B] font-bold text-xl">{progress}%</span>
+        <span className="text-[#00E5FF] font-bold text-xl">{progress}%</span>
         <span className="text-[#848E9C]">Loading market data...</span>
       </div>
 
@@ -164,7 +164,7 @@ const LoadingPage = ({ onComplete, minimal = false }) => {
       </div>
 
       {/* Bottom glow */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#F0B90B]/10 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#00E5FF]/10 to-transparent" />
     </div>
   );
 };

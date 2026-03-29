@@ -108,7 +108,7 @@ const TeamRankPage = () => {
   if (loading) {
     return (
       <div className={`min-h-screen ${bg} flex items-center justify-center`}>
-        <div className="animate-spin w-8 h-8 border-2 border-[#F0B90B] border-t-transparent rounded-full"></div>
+        <div className="animate-spin w-8 h-8 border-2 border-[#00E5FF] border-t-transparent rounded-full"></div>
       </div>
     );
   }
@@ -172,7 +172,7 @@ const TeamRankPage = () => {
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className={`${cardBg} rounded-xl p-3`}>
                 <div className="flex items-center gap-2 mb-1">
-                  <UserPlus size={18} className="text-[#F0B90B]" />
+                  <UserPlus size={18} className="text-[#00E5FF]" />
                   <span className={`text-xs ${textMuted}`}>Direct Referrals</span>
                 </div>
                 <p className={`text-lg font-bold ${text}`}>{rankInfo?.direct_referrals || 0}</p>
@@ -191,7 +191,7 @@ const TeamRankPage = () => {
               <div className="mb-4">
                 <div className="flex justify-between text-xs mb-1">
                   <span className={textMuted}>Next: {rankInfo.next_rank.name}</span>
-                  <span className="text-[#F0B90B]">{rankInfo.progress?.toFixed(0)}%</span>
+                  <span className="text-[#00E5FF]">{rankInfo.progress?.toFixed(0)}%</span>
                 </div>
                 <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
                   <div 
@@ -207,7 +207,7 @@ const TeamRankPage = () => {
             
             {/* No rank yet - show first rank requirements */}
             {!rankInfo?.current_rank && (
-              <div className={`p-3 rounded-xl ${isDark ? 'bg-[#F0B90B]/10' : 'bg-yellow-50'} border border-[#F0B90B]/30 mb-4`}>
+              <div className={`p-3 rounded-xl ${isDark ? 'bg-[#00E5FF]/10' : 'bg-yellow-50'} border border-[#00E5FF]/30 mb-4`}>
                 <p className={`text-sm ${text} font-medium`}>🎯 Get your first rank!</p>
                 <p className={`text-xs ${textMuted} mt-1`}>
                   Invite 6 members who deposit minimum $50 each to unlock Bronze rank
@@ -224,7 +224,7 @@ const TeamRankPage = () => {
                 </div>
                 <div className="text-center">
                   <p className={`text-xs ${textMuted}`}>Bonus Rate</p>
-                  <p className="text-[#F0B90B] font-bold">{rankInfo?.bonus_percent || 0}%</p>
+                  <p className="text-[#00E5FF] font-bold">{rankInfo?.bonus_percent || 0}%</p>
                 </div>
                 <div className="text-right">
                   <p className={`text-xs ${textMuted}`}>Bonus Income</p>
@@ -238,7 +238,7 @@ const TeamRankPage = () => {
               <Button 
                 onClick={handleClaimSalary}
                 disabled={claiming}
-                className="w-full bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black font-semibold py-3"
+                className="w-full bg-[#00E5FF] hover:bg-[#00E5FF]/90 text-black font-semibold py-3"
               >
                 <Wallet size={20} className="mr-2" />
                 {claiming ? "Processing..." : `Claim Salary (${formatMoney((rankInfo.monthly_salary || 0) / 3)})`}
@@ -254,7 +254,7 @@ const TeamRankPage = () => {
           onClick={() => setActiveTab("overview")}
           className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
             activeTab === "overview" 
-              ? 'bg-[#F0B90B] text-black' 
+              ? 'bg-[#00E5FF] text-black' 
               : `${cardBg} ${text}`
           }`}
         >
@@ -264,7 +264,7 @@ const TeamRankPage = () => {
           onClick={() => setActiveTab("history")}
           className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
             activeTab === "history" 
-              ? 'bg-[#F0B90B] text-black' 
+              ? 'bg-[#00E5FF] text-black' 
               : `${cardBg} ${text}`
           }`}
         >
@@ -284,7 +284,7 @@ const TeamRankPage = () => {
                 <div 
                   key={rank.level}
                   className={`flex items-center justify-between p-4 border-b last:border-0 ${isDark ? 'border-[#2B3139]' : 'border-gray-100'} ${
-                    isCurrentRank ? (isDark ? 'bg-[#F0B90B]/10' : 'bg-yellow-50') : ''
+                    isCurrentRank ? (isDark ? 'bg-[#00E5FF]/10' : 'bg-yellow-50') : ''
                   }`}
                 >
                   {/* Name */}
@@ -315,11 +315,11 @@ const TeamRankPage = () => {
                   <div key={index} className="p-4 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        item.type === 'levelup_reward' ? 'bg-[#F0B90B]/20' :
+                        item.type === 'levelup_reward' ? 'bg-[#00E5FF]/20' :
                         item.type === 'monthly_salary' ? 'bg-[#0ECB81]/20' : 'bg-[#3498DB]/20'
                       }`}>
                         {item.type === 'levelup_reward' ? (
-                          <Gift size={20} className="text-[#F0B90B]" />
+                          <Gift size={20} className="text-[#00E5FF]" />
                         ) : item.type === 'monthly_salary' ? (
                           <Money size={20} className="text-[#0ECB81]" />
                         ) : (
@@ -360,7 +360,7 @@ const TeamRankPage = () => {
           <h3 className={`font-semibold mb-3 ${text}`}>How It Works</h3>
           <div className="space-y-3 text-sm">
             <div className="flex gap-3">
-              <div className="w-6 h-6 rounded-full bg-[#F0B90B] flex items-center justify-center flex-shrink-0">
+              <div className="w-6 h-6 rounded-full bg-[#00E5FF] flex items-center justify-center flex-shrink-0">
                 <span className="text-black text-xs font-bold">1</span>
               </div>
               <div>

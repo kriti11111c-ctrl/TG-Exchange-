@@ -283,7 +283,7 @@ const AdminDashboard = () => {
         {/* Trade Code Generator */}
         <div className="bg-[#111111] border border-[#222] rounded-2xl overflow-hidden">
           <div className="px-6 py-4 border-b border-[#222] flex items-center gap-2">
-            <Ticket size={20} className="text-[#F0B90B]" />
+            <Ticket size={20} className="text-[#00E5FF]" />
             <h2 className="text-lg font-bold text-white">Generate Trade Code</h2>
           </div>
           
@@ -348,7 +348,7 @@ const AdminDashboard = () => {
                 <Button
                   onClick={handleGenerateTradeCode}
                   disabled={generatingCode}
-                  className="w-full bg-[#F0B90B] hover:bg-[#E5AF0A] text-black font-medium"
+                  className="w-full bg-[#00E5FF] hover:bg-[#E5AF0A] text-black font-medium"
                 >
                   {generatingCode ? "Generating..." : "Generate Code"}
                 </Button>
@@ -356,13 +356,13 @@ const AdminDashboard = () => {
             </div>
             
             {generatedCode && (
-              <div className="mt-4 p-4 bg-[#0A0A0A] border border-[#F0B90B]/50 rounded-lg">
+              <div className="mt-4 p-4 bg-[#0A0A0A] border border-[#00E5FF]/50 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Generated Trade Code:</p>
-                    <p className="text-2xl font-mono font-bold text-[#F0B90B]">{generatedCode}</p>
+                    <p className="text-2xl font-mono font-bold text-[#00E5FF]">{generatedCode}</p>
                   </div>
-                  <Button onClick={copyCode} variant="outline" className="border-[#F0B90B] text-[#F0B90B]">
+                  <Button onClick={copyCode} variant="outline" className="border-[#00E5FF] text-[#00E5FF]">
                     <Copy size={16} className="mr-1" />
                     Copy
                   </Button>
@@ -444,10 +444,10 @@ const AdminDashboard = () => {
         <div className="bg-[#111111] border border-[#222] rounded-2xl overflow-hidden">
           <div className="px-6 py-4 border-b border-[#222] flex items-center justify-between">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Users size={20} className="text-[#F0B90B]" />
+              <Users size={20} className="text-[#00E5FF]" />
               Pending KYC Verifications
             </h2>
-            <span className="px-3 py-1 bg-[#F0B90B]/20 text-[#F0B90B] rounded-full text-sm font-medium">
+            <span className="px-3 py-1 bg-[#00E5FF]/20 text-[#00E5FF] rounded-full text-sm font-medium">
               {pendingKYC.length} pending
             </span>
           </div>
@@ -467,7 +467,7 @@ const AdminDashboard = () => {
                         <span className="text-white font-semibold text-lg">
                           {kyc.user_name}
                         </span>
-                        <span className="px-2 py-0.5 bg-[#F0B90B]/20 text-[#F0B90B] rounded text-xs">
+                        <span className="px-2 py-0.5 bg-[#00E5FF]/20 text-[#00E5FF] rounded text-xs">
                           KYC
                         </span>
                       </div>

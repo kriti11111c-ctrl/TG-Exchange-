@@ -399,7 +399,7 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     });
 
     // Draw MA7 (yellow)
-    ctx.strokeStyle = '#F0B90B';
+    ctx.strokeStyle = '#00E5FF';
     ctx.lineWidth = 1;
     ctx.beginPath();
     let started = false;
@@ -430,7 +430,7 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
 
     // Current price line
     const currentPriceY = priceToY(lastPrice);
-    ctx.strokeStyle = '#F0B90B';
+    ctx.strokeStyle = '#00E5FF';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
     ctx.beginPath();
@@ -440,7 +440,7 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     ctx.setLineDash([]);
 
     // Price label
-    ctx.fillStyle = '#F0B90B';
+    ctx.fillStyle = '#00E5FF';
     ctx.fillRect(width - padding.right + 2, currentPriceY - 8, 50, 16);
     ctx.fillStyle = '#000';
     ctx.font = '10px sans-serif';
@@ -498,7 +498,7 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
       // Show current RSI value
       const lastRSI = rsi.filter(v => v !== null).pop();
       if (lastRSI) {
-        ctx.fillStyle = lastRSI > 70 ? '#F6465D' : lastRSI < 30 ? '#0ECB81' : '#F0B90B';
+        ctx.fillStyle = lastRSI > 70 ? '#F6465D' : lastRSI < 30 ? '#0ECB81' : '#00E5FF';
         ctx.fillText(lastRSI.toFixed(1), padding.left + 50, subChartTop + 10);
       }
     }
@@ -572,7 +572,7 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
       {/* Header */}
       <div className={`flex items-center justify-between px-2 py-1 text-xs ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
         <div className="flex items-center gap-2">
-          <span className="text-[#F0B90B]">MA(7)</span>
+          <span className="text-[#00E5FF]">MA(7)</span>
           <span className="text-[#9B59B6]">MA(25)</span>
           <button 
             onClick={() => setShowBollinger(!showBollinger)}
@@ -595,7 +595,7 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
               onClick={() => setTimeframe(tf)}
               className={`px-2 py-0.5 text-[10px] rounded transition-colors whitespace-nowrap ${
                 timeframe === tf 
-                  ? 'bg-[#F0B90B] text-black font-medium' 
+                  ? 'bg-[#00E5FF] text-black font-medium' 
                   : `${isDark ? 'text-gray-400 bg-[#1E2329]' : 'text-gray-600 bg-gray-200'}`
               }`}
             >
@@ -610,7 +610,7 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
               onClick={() => setActiveIndicator(ind.id)}
               className={`px-2 py-0.5 text-[10px] rounded transition-colors ${
                 activeIndicator === ind.id 
-                  ? 'bg-[#F0B90B] text-black font-medium' 
+                  ? 'bg-[#00E5FF] text-black font-medium' 
                   : `${isDark ? 'text-gray-400 bg-[#1E2329]' : 'text-gray-600 bg-gray-200'}`
               }`}
             >

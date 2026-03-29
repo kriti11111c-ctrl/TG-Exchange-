@@ -22,7 +22,7 @@ const NETWORKS = [
     shortName: "BSC",
     address: "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
     icon: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
-    color: "#F0B90B"
+    color: "#00E5FF"
   },
   { 
     id: "trc20", 
@@ -225,8 +225,8 @@ const DepositPage = () => {
                   onClick={() => handleAmountSelect(amount)}
                   className={`py-4 rounded-xl font-bold text-lg transition-all border-2 ${
                     selectedAmount === amount
-                      ? 'bg-[#F0B90B] border-[#F0B90B] text-black'
-                      : `${isDark ? 'bg-[#2B3139] border-[#2B3139] hover:border-[#F0B90B]' : 'bg-gray-100 border-gray-200 hover:border-[#F0B90B]'} ${text}`
+                      ? 'bg-[#00E5FF] border-[#00E5FF] text-black'
+                      : `${isDark ? 'bg-[#2B3139] border-[#2B3139] hover:border-[#00E5FF]' : 'bg-gray-100 border-gray-200 hover:border-[#00E5FF]'} ${text}`
                   }`}
                 >
                   ${amount}
@@ -243,10 +243,10 @@ const DepositPage = () => {
         {step === 2 && selectedAmount && (
           <>
             {/* Selected Amount */}
-            <div className={`${cardBg} rounded-xl p-4 border-2 border-[#F0B90B]`}>
+            <div className={`${cardBg} rounded-xl p-4 border-2 border-[#00E5FF]`}>
               <div className="text-center">
                 <p className={`text-sm ${textMuted}`}>Deposit Amount</p>
-                <p className="text-3xl font-bold text-[#F0B90B]">${selectedAmount} USDT</p>
+                <p className="text-3xl font-bold text-[#00E5FF]">${selectedAmount} USDT</p>
               </div>
             </div>
 
@@ -315,7 +315,7 @@ const DepositPage = () => {
               disabled={submitting || !txHash.trim()}
               className={`w-full py-6 font-bold text-lg ${
                 txHash.trim() 
-                  ? 'bg-[#F0B90B] hover:bg-[#E5AF0A] text-black' 
+                  ? 'bg-[#00E5FF] hover:bg-[#E5AF0A] text-black' 
                   : 'bg-gray-600 text-gray-400 cursor-not-allowed'
               }`}
               data-testid="submit-deposit-btn"

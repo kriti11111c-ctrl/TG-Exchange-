@@ -125,7 +125,7 @@ const ReferralPage = () => {
   // Level colors for visual distinction
   const getLevelColor = (level) => {
     const colors = [
-      "bg-[#F0B90B]", // Level 1 - Gold
+      "bg-[#00E5FF]", // Level 1 - Gold
       "bg-[#0ECB81]", // Level 2 - Green
       "bg-[#3498DB]", // Level 3 - Blue
       "bg-[#9B59B6]", // Level 4 - Purple
@@ -155,13 +155,13 @@ const ReferralPage = () => {
           <CaretLeft size={24} />
         </button>
         <span className={`font-medium ${text}`}>Referral Program</span>
-        <button onClick={shareReferral} className="text-[#F0B90B]">
+        <button onClick={shareReferral} className="text-[#00E5FF]">
           <Share size={24} />
         </button>
       </div>
 
       {/* Banner */}
-      <div className="mx-4 mt-4 rounded-xl overflow-hidden bg-gradient-to-r from-[#F0B90B] to-[#F8D12F] p-6">
+      <div className="mx-4 mt-4 rounded-xl overflow-hidden bg-gradient-to-r from-[#00E5FF] to-[#F8D12F] p-6">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-black font-bold text-xl mb-2">Invite & Earn</h2>
@@ -177,7 +177,7 @@ const ReferralPage = () => {
           <span className={textMuted}>Your Referral Code</span>
           <div className="flex items-center gap-2">
             <span className={`font-bold text-lg ${text}`}>{stats?.referral_code}</span>
-            <button onClick={copyReferralCode} className="text-[#F0B90B]">
+            <button onClick={copyReferralCode} className="text-[#00E5FF]">
               {copied ? <CheckCircle size={20} /> : <Copy size={20} />}
             </button>
           </div>
@@ -186,7 +186,7 @@ const ReferralPage = () => {
         <div className="flex gap-3">
           <Button 
             onClick={copyReferralLink}
-            className="flex-1 bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black font-medium"
+            className="flex-1 bg-[#00E5FF] hover:bg-[#00E5FF]/90 text-black font-medium"
           >
             <Copy size={18} className="mr-2" />
             Copy Link
@@ -206,7 +206,7 @@ const ReferralPage = () => {
       <div className="grid grid-cols-2 gap-3 mx-4 mt-4">
         <div className={`${cardBg} rounded-xl p-4`}>
           <div className="flex items-center gap-2 mb-2">
-            <Users size={20} className="text-[#F0B90B]" />
+            <Users size={20} className="text-[#00E5FF]" />
             <span className={textMuted}>Total Referrals</span>
           </div>
           <p className={`text-2xl font-bold ${text}`}>{stats?.total_referrals || 0}</p>
@@ -285,8 +285,8 @@ const ReferralPage = () => {
                       >
                         {/* Serial Number + Avatar + Masked Name + Email */}
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <span className={`text-xs font-bold text-[#F0B90B] w-5`}>{index + 1}.</span>
-                          <div className={`w-7 h-7 rounded-full bg-gradient-to-br from-[#F0B90B] to-[#0ECB81] flex items-center justify-center flex-shrink-0`}>
+                          <span className={`text-xs font-bold text-[#00E5FF] w-5`}>{index + 1}.</span>
+                          <div className={`w-7 h-7 rounded-full bg-gradient-to-br from-[#00E5FF] to-[#0ECB81] flex items-center justify-center flex-shrink-0`}>
                             <span className="text-white font-bold text-xs">{member.name?.charAt(0)?.toUpperCase() || 'U'}</span>
                           </div>
                           <div className="min-w-0">
@@ -326,7 +326,7 @@ const ReferralPage = () => {
         
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#F0B90B] flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#00E5FF] flex items-center justify-center flex-shrink-0">
               <span className="text-black font-bold">1</span>
             </div>
             <div>

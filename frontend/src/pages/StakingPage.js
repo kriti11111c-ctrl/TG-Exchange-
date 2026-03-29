@@ -39,7 +39,7 @@ const StakingPage = () => {
 
         {/* Coming Soon Text */}
         <div className="flex items-center gap-2 mb-4">
-          <Clock size={24} className="text-[#F0B90B]" weight="fill" />
+          <Clock size={24} className="text-[#00E5FF]" weight="fill" />
           <h2 className={`text-2xl font-bold ${text}`}>Coming Soon</h2>
         </div>
 
@@ -57,7 +57,7 @@ const StakingPage = () => {
               <span className={textMuted}>Flexible & Locked Staking</span>
             </div>
             <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-[#F0B90B]"></div>
+              <div className="w-2 h-2 rounded-full bg-[#00E5FF]"></div>
               <span className={textMuted}>Up to 25% APY Rewards</span>
             </div>
             <div className="flex items-center gap-3">

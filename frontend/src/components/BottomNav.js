@@ -41,7 +41,7 @@ const BottomNav = () => {
         if (item.isCenter) {
           return (
             <Link key={index} to={item.path} className="flex flex-col items-center py-1">
-              <div className="w-12 h-12 rounded-full bg-[#F0B90B] flex items-center justify-center -mt-6 shadow-lg">
+              <div className="w-12 h-12 rounded-full bg-[#00E5FF] flex items-center justify-center -mt-6 shadow-lg">
                 <item.icon size={24} className="text-black" weight="bold" />
               </div>
               <span className={`text-[10px] ${textMuted} mt-0.5`}>{item.label}</span>
@@ -53,10 +53,10 @@ const BottomNav = () => {
           <Link key={index} to={item.path} className="flex flex-col items-center py-1">
             <item.icon 
               size={22} 
-              className={active ? "text-[#F0B90B]" : textMuted} 
+              className={active ? "text-[#00E5FF]" : textMuted} 
               weight={active ? "fill" : "regular"} 
             />
-            <span className={`text-[10px] mt-0.5 ${active ? "text-[#F0B90B]" : textMuted}`}>
+            <span className={`text-[10px] mt-0.5 ${active ? "text-[#00E5FF]" : textMuted}`}>
               {item.label}
             </span>
           </Link>

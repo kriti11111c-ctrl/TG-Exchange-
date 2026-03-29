@@ -71,7 +71,7 @@ const LoginPage = () => {
               onClick={toggleTheme}
               className={`p-2 rounded-lg ${isDark ? 'bg-[#12121A] hover:bg-[#1E1E2A]' : 'bg-white hover:bg-gray-100'} border ${isDark ? 'border-white/10' : 'border-gray-200'}`}
             >
-              {isDark ? <Sun size={20} className="text-[#F0B90B]" /> : <Moon size={20} className="text-gray-600" />}
+              {isDark ? <Sun size={20} className="text-[#00E5FF]" /> : <Moon size={20} className="text-gray-600" />}
             </button>
           </div>
           

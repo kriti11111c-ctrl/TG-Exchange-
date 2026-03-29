@@ -111,13 +111,13 @@ const ProfilePage = () => {
 
   // Recommend items (merged with shortcuts)
   const recommendItems = [
-    { icon: UserPlus, label: "Referral", path: "/referral", color: "#F0B90B" },
-    { icon: UsersThree, label: "Team Building", path: "/team-rank", color: "#F0B90B" },
-    { icon: Coins, label: "Earn", path: "/wallet", color: "#F0B90B" },
+    { icon: UserPlus, label: "Referral", path: "/referral", color: "#00E5FF" },
+    { icon: UsersThree, label: "Team Building", path: "/team-rank", color: "#00E5FF" },
+    { icon: Coins, label: "Earn", path: "/wallet", color: "#00E5FF" },
     { icon: Robot, label: "Trading Bots", path: "/trade", color: "#848E9C" },
     { icon: CurrencyBtc, label: "Bitcoin", path: "/trade/bitcoin", color: "#F7931A" },
-    { icon: Star, label: "VIP Rank", path: "/rank", color: "#F0B90B" },
-    { icon: PlusCircle, label: "Add Funds", path: "/wallet", color: "#F0B90B" },
+    { icon: Star, label: "VIP Rank", path: "/rank", color: "#00E5FF" },
+    { icon: PlusCircle, label: "Add Funds", path: "/wallet", color: "#00E5FF" },
     { icon: ChartLineUp, label: "Markets", path: "/trade", color: "#0ECB81" },
   ];
 
@@ -140,7 +140,7 @@ const ProfilePage = () => {
             onClick={toggleTheme}
             className={`p-2 rounded-full ${iconBg}`}
           >
-            {isDark ? <Sun size={20} className="text-[#F0B90B]" /> : <Moon size={20} className="text-gray-600" />}
+            {isDark ? <Sun size={20} className="text-[#00E5FF]" /> : <Moon size={20} className="text-gray-600" />}
           </button>
           <Headset size={22} className={textMuted} />
           <Gear size={22} className={textMuted} />
@@ -153,7 +153,7 @@ const ProfilePage = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {/* Avatar */}
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#F0B90B] to-[#F7931A] flex items-center justify-center overflow-hidden">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#00E5FF] to-[#F7931A] flex items-center justify-center overflow-hidden">
                 {user?.picture ? (
                   <img src={user.picture} alt="avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -171,7 +171,7 @@ const ProfilePage = () => {
                 </div>
                 <h2 className={`text-lg font-bold ${text}`}>{user?.name || "User"}</h2>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs px-2 py-0.5 rounded bg-[#F0B90B]/20 text-[#F0B90B] font-medium">
+                  <span className="text-xs px-2 py-0.5 rounded bg-[#00E5FF]/20 text-[#00E5FF] font-medium">
                     {getRankName(rankInfo?.rank?.level || 1)}
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded bg-[#0ECB81]/20 text-[#0ECB81] font-medium">
@@ -220,11 +220,11 @@ const ProfilePage = () => {
           {/* KYC Verification - New */}
           <Link to="/kyc" className={`flex items-center justify-between p-4 ${hoverBg}`}>
             <div className="flex items-center gap-3">
-              <Fingerprint size={22} className="text-[#F0B90B]" />
+              <Fingerprint size={22} className="text-[#00E5FF]" />
               <span className={text}>KYC Verification</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs px-2 py-1 rounded-full bg-[#F0B90B]/20 text-[#F0B90B] font-medium">
+              <span className="text-xs px-2 py-1 rounded-full bg-[#00E5FF]/20 text-[#00E5FF] font-medium">
                 Verify Now
               </span>
               <CaretRight size={18} className={textMuted} />
@@ -241,7 +241,7 @@ const ProfilePage = () => {
           <div className={`h-px ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} mx-4`}></div>
           <Link to="/referral" className={`flex items-center justify-between p-4 ${hoverBg}`}>
             <div className="flex items-center gap-3">
-              <Users size={22} className="text-[#F0B90B]" />
+              <Users size={22} className="text-[#00E5FF]" />
               <span className={text}>Referral Program</span>
             </div>
             <CaretRight size={18} className={textMuted} />
@@ -249,7 +249,7 @@ const ProfilePage = () => {
           <div className={`h-px ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} mx-4`}></div>
           <Link to="/rank" className={`flex items-center justify-between p-4 ${hoverBg}`}>
             <div className="flex items-center gap-3">
-              <Crown size={22} className="text-[#F0B90B]" />
+              <Crown size={22} className="text-[#00E5FF]" />
               <span className={text}>VIP Rank</span>
             </div>
             <CaretRight size={18} className={textMuted} />

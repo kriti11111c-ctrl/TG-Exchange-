@@ -107,7 +107,7 @@ const KYCPage = () => {
   const getStatusColor = (status) => {
     switch(status) {
       case "verified": return "text-[#0ECB81]";
-      case "pending": return "text-[#F0B90B]";
+      case "pending": return "text-[#00E5FF]";
       case "rejected": return "text-[#F6465D]";
       default: return textMuted;
     }
@@ -116,7 +116,7 @@ const KYCPage = () => {
   const getStatusIcon = (status) => {
     switch(status) {
       case "verified": return <CheckCircle size={48} className="text-[#0ECB81]" weight="fill" />;
-      case "pending": return <Clock size={48} className="text-[#F0B90B]" weight="fill" />;
+      case "pending": return <Clock size={48} className="text-[#00E5FF]" weight="fill" />;
       case "rejected": return <XCircle size={48} className="text-[#F6465D]" weight="fill" />;
       default: return <ShieldCheck size={48} className={textMuted} />;
     }
@@ -293,7 +293,7 @@ const KYCPage = () => {
             <Button
               type="submit"
               disabled={submitting}
-              className="w-full py-6 bg-[#F0B90B] hover:bg-[#E5AF0A] text-black font-bold text-lg"
+              className="w-full py-6 bg-[#00E5FF] hover:bg-[#E5AF0A] text-black font-bold text-lg"
               data-testid="kyc-submit-btn"
             >
               {submitting ? "Submitting..." : "Submit for Verification"}

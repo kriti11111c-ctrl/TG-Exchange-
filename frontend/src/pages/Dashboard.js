@@ -216,7 +216,7 @@ const Dashboard = () => {
   const quickActions = [
     { icon: Vault, label: "Staking", path: "/staking", color: "text-[#0ECB81]" },
     { icon: Trophy, label: "VIP Rank", path: "/rank", color: "text-[#9B59B6]" },
-    { icon: Users, label: "Referral", path: "/referral", color: "text-[#F0B90B]" },
+    { icon: Users, label: "Referral", path: "/referral", color: "text-[#00E5FF]" },
     { icon: Robot, label: "Trading Bots", path: "/trade", color: "text-[#3498DB]" },
     { icon: DotsThree, label: "More", path: "/profile", color: "text-[#848E9C]" }
   ];
@@ -284,7 +284,7 @@ const Dashboard = () => {
     return (
       <div className={`min-h-screen ${bg} flex items-center justify-center`}>
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#F0B90B] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-4 border-[#00E5FF] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className={textMuted}>Loading...</p>
         </div>
       </div>
@@ -306,8 +306,8 @@ const Dashboard = () => {
         {/* Background Gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#0B0E11] via-[#1E2329] to-[#0B0E11]">
           {/* Animated Glow Effects */}
-          <div className="absolute top-0 left-1/4 w-32 h-32 bg-[#F0B90B]/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-0 right-1/4 w-40 h-40 bg-[#F0B90B]/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+          <div className="absolute top-0 left-1/4 w-32 h-32 bg-[#00E5FF]/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-0 right-1/4 w-40 h-40 bg-[#00E5FF]/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
           {/* Grid Pattern */}
           <div className="absolute inset-0 opacity-5" style={{
             backgroundImage: 'linear-gradient(rgba(240,185,11,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(240,185,11,0.3) 1px, transparent 1px)',
@@ -322,8 +322,8 @@ const Dashboard = () => {
             <div className="flex items-center gap-3">
               {/* Animated Logo - Full Round */}
               <div className="relative">
-                <div className="absolute inset-0 bg-[#F0B90B] rounded-full blur-md opacity-50 animate-pulse"></div>
-                <div className="w-12 h-12 rounded-full overflow-hidden relative z-10 ring-2 ring-[#F0B90B]/50 bg-black">
+                <div className="absolute inset-0 bg-[#00E5FF] rounded-full blur-md opacity-50 animate-pulse"></div>
+                <div className="w-12 h-12 rounded-full overflow-hidden relative z-10 ring-2 ring-[#00E5FF]/50 bg-black">
                   <img src="/images/tg-logo.png" alt="TG Exchange" className="w-full h-full object-cover" />
                 </div>
               </div>
@@ -331,7 +331,7 @@ const Dashboard = () => {
                 <span className="font-bold text-xl text-white" style={{ fontFamily: 'Unbounded' }}>
                   TG Exchange
                 </span>
-                <p className="text-[10px] text-[#F0B90B]">Trade • Earn • Grow</p>
+                <p className="text-[10px] text-[#00E5FF]">Trade • Earn • Grow</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -339,7 +339,7 @@ const Dashboard = () => {
                 onClick={toggleTheme}
                 className="p-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
               >
-                {isDark ? <Sun size={18} className="text-[#F0B90B]" /> : <Moon size={18} className="text-white" />}
+                {isDark ? <Sun size={18} className="text-[#00E5FF]" /> : <Moon size={18} className="text-white" />}
               </button>
               
               {/* Bell Icon with Notification Dropdown */}
@@ -562,7 +562,7 @@ const Dashboard = () => {
             </div>
             
             <Link to="/profile">
-              <div className="w-9 h-9 rounded-full bg-[#F0B90B] flex items-center justify-center ring-2 ring-[#F0B90B]/30">
+              <div className="w-9 h-9 rounded-full bg-[#00E5FF] flex items-center justify-center ring-2 ring-[#00E5FF]/30">
                 <User size={18} className="text-black" weight="fill" />
               </div>
             </Link>
@@ -586,7 +586,7 @@ const Dashboard = () => {
             </div>
           </div>
           <Link to="/deposit">
-            <Button className="bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black font-semibold px-5 py-2 rounded-xl shadow-lg shadow-[#F0B90B]/20">
+            <Button className="bg-[#00E5FF] hover:bg-[#00E5FF]/90 text-black font-semibold px-5 py-2 rounded-xl shadow-lg shadow-[#00E5FF]/20">
               <Plus size={18} className="mr-1" />
               Add Funds
             </Button>
@@ -611,7 +611,7 @@ const Dashboard = () => {
 
       {/* Discover Banner */}
       <div className="px-4 py-3">
-        <div className="bg-gradient-to-r from-[#F0B90B] to-[#FCD535] rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-[#00E5FF] to-[#FCD535] rounded-xl p-4 flex items-center justify-between">
           <div>
             <p className="text-black font-bold text-sm">Discover personalized home</p>
             <p className="text-black font-bold text-sm">experiences!</p>
@@ -631,7 +631,7 @@ const Dashboard = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                   activeTab === tab.id 
-                    ? 'bg-[#F0B90B]/20 text-[#F0B90B]' 
+                    ? 'bg-[#00E5FF]/20 text-[#00E5FF]' 
                     : `${textMuted} hover:bg-white/5`
                 }`}
               >
@@ -653,7 +653,7 @@ const Dashboard = () => {
               }`}
             >
               {tab}
-              {subTab === tab && <div className="h-0.5 bg-[#F0B90B] mt-1 rounded-full"></div>}
+              {subTab === tab && <div className="h-0.5 bg-[#00E5FF] mt-1 rounded-full"></div>}
             </button>
           ))}
         </div>
@@ -699,17 +699,17 @@ const Dashboard = () => {
                         className="w-8 h-8 object-contain"
                         onError={(e) => {
                           e.target.onerror = null;
-                          e.target.src = `https://ui-avatars.com/api/?name=${coin.symbol}&background=F0B90B&color=000&size=32&bold=true`;
+                          e.target.src = `https://ui-avatars.com/api/?name=${coin.symbol}&background=00E5FF&color=000&size=32&bold=true`;
                         }}
                       />
                     ) : (
-                      <span className="text-[#F0B90B] font-bold text-sm">{coin.symbol?.charAt(0)}</span>
+                      <span className="text-[#00E5FF] font-bold text-sm">{coin.symbol?.charAt(0)}</span>
                     )}
                   </div>
                   <div>
                     <div className="flex items-center gap-1">
                       <span className={`font-medium ${text}`}>{coin.symbol?.toUpperCase()}</span>
-                      <span className="text-[10px] px-1 py-0.5 rounded bg-[#F0B90B]/20 text-[#F0B90B]">3x</span>
+                      <span className="text-[10px] px-1 py-0.5 rounded bg-[#00E5FF]/20 text-[#00E5FF]">3x</span>
                     </div>
                     <span className={`text-xs ${textMuted}`}>/USDT</span>
                   </div>

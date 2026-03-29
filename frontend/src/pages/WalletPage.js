@@ -66,14 +66,14 @@ const WalletHeader = ({ user, logout, isDark, toggleTheme }) => {
         {/* Theme Toggle Button */}
         <button
           onClick={toggleTheme}
-          className={`p-2 rounded-full transition-colors ${isDark ? 'bg-[#2B3139] hover:bg-[#3B4149] text-[#F0B90B]' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+          className={`p-2 rounded-full transition-colors ${isDark ? 'bg-[#2B3139] hover:bg-[#3B4149] text-[#00E5FF]' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
           data-testid="wallet-theme-toggle"
         >
           {isDark ? <Sun size={20} weight="fill" /> : <Moon size={20} weight="fill" />}
         </button>
         {/* Profile Link */}
         <Link to="/profile">
-          <div className="w-8 h-8 rounded-full bg-[#F0B90B] flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-[#00E5FF] flex items-center justify-center">
             <User size={18} className="text-black" weight="fill" />
           </div>
         </Link>
@@ -128,7 +128,7 @@ const WalletPage = () => {
     { id: "btc", name: "Bitcoin", symbol: "BTC", color: "#F7931A", apy: "1.0047", logo: "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png" },
     { id: "eth", name: "Ethereum", symbol: "ETH", color: "#627EEA", apy: "2.15", logo: "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png" },
     { id: "usdt", name: "Tether", symbol: "USDT", color: "#26A17B", apy: "5.25", logo: "https://coin-images.coingecko.com/coins/images/325/large/Tether.png" },
-    { id: "bnb", name: "BNB", symbol: "BNB", color: "#F0B90B", apy: "0.85", logo: "https://coin-images.coingecko.com/coins/images/825/large/bnb-icon2_2x.png" },
+    { id: "bnb", name: "BNB", symbol: "BNB", color: "#00E5FF", apy: "0.85", logo: "https://coin-images.coingecko.com/coins/images/825/large/bnb-icon2_2x.png" },
     { id: "xrp", name: "XRP", symbol: "XRP", color: "#23292F", apy: "3.50", logo: "https://coin-images.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png" },
     { id: "sol", name: "Solana", symbol: "SOL", color: "#9945FF", apy: "4.20", logo: "https://coin-images.coingecko.com/coins/images/4128/large/solana.png" },
   ];
@@ -365,7 +365,7 @@ const WalletPage = () => {
               onClick={() => setActiveTab(tab.toLowerCase())}
               className={`px-4 py-3 text-sm font-medium whitespace-nowrap ${
                 activeTab === tab.toLowerCase() 
-                  ? `${text} border-b-2 border-[#F0B90B]` 
+                  ? `${text} border-b-2 border-[#00E5FF]` 
                   : textMuted
               }`}
             >
@@ -379,21 +379,21 @@ const WalletPage = () => {
       <div className={`px-4 py-6 ${cardBg}`}>
         {/* Welcome Bonus Banner */}
         {wallet?.welcome_bonus && (
-          <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-[#F0B90B]/20 to-[#F0B90B]/10 border border-[#F0B90B]/30">
+          <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-[#00E5FF]/20 to-[#00E5FF]/10 border border-[#00E5FF]/30">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[#F0B90B] flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-[#00E5FF] flex items-center justify-center">
                   <Coins size={18} className="text-black" />
                 </div>
                 <div>
-                  <p className="text-[#F0B90B] font-semibold text-sm">Welcome Bonus</p>
+                  <p className="text-[#00E5FF] font-semibold text-sm">Welcome Bonus</p>
                   <p className={`text-xs ${textMuted}`}>
                     {wallet.welcome_bonus.days_remaining}d {wallet.welcome_bonus.hours_remaining}h remaining
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-[#F0B90B] font-bold text-lg">${wallet.welcome_bonus.amount}</p>
+                <p className="text-[#00E5FF] font-bold text-lg">${wallet.welcome_bonus.amount}</p>
                 <p className={`text-[10px] ${textMuted}`}>Not withdrawable</p>
               </div>
             </div>
@@ -525,7 +525,7 @@ const WalletPage = () => {
                   <div className="flex items-center justify-between mb-1">
                     <Label className={textMuted}>Amount (USDT)</Label>
                     <span className={`text-xs ${textMuted}`}>
-                      Available: <span className="text-[#F0B90B] font-semibold">${getTransferFromBalance().toFixed(2)}</span>
+                      Available: <span className="text-[#00E5FF] font-semibold">${getTransferFromBalance().toFixed(2)}</span>
                     </span>
                   </div>
                   <div className="relative">
@@ -542,7 +542,7 @@ const WalletPage = () => {
                     <button
                       type="button"
                       onClick={handleMaxAmount}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 text-xs font-semibold text-[#F0B90B] bg-[#F0B90B]/20 rounded hover:bg-[#F0B90B]/30 transition-colors"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 text-xs font-semibold text-[#00E5FF] bg-[#00E5FF]/20 rounded hover:bg-[#00E5FF]/30 transition-colors"
                       data-testid="max-amount-btn"
                     >
                       Max
@@ -570,7 +570,7 @@ const WalletPage = () => {
                 
                 <Button 
                   type="submit" 
-                  className="w-full bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black font-semibold h-12"
+                  className="w-full bg-[#00E5FF] hover:bg-[#00E5FF]/90 text-black font-semibold h-12"
                   disabled={submitting || !amount || parseFloat(amount) <= 0 || transferFrom === transferTo}
                   data-testid="confirm-transfer-btn"
                 >
@@ -639,7 +639,7 @@ const WalletPage = () => {
                     <div className="w-2 h-2 rounded-full bg-[#10B981]" />
                     <span className={text}>Futures</span>
                     {wallet?.welcome_bonus && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F0B90B]/20 text-[#F0B90B]">Bonus</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#00E5FF]/20 text-[#00E5FF]">Bonus</span>
                     )}
                   </div>
                   <div className="text-right">
@@ -683,7 +683,7 @@ const WalletPage = () => {
             return (
               <div 
                 key={coin.id}
-                className={`flex items-center justify-between p-4 ${index !== filteredCoins.length - 1 ? `border-b ${border}` : ''} cursor-pointer hover:bg-[#F0B90B]/5 transition-colors`}
+                className={`flex items-center justify-between p-4 ${index !== filteredCoins.length - 1 ? `border-b ${border}` : ''} cursor-pointer hover:bg-[#00E5FF]/5 transition-colors`}
                 onClick={() => navigate(`/trade?coin=${coin.id}`)}
               >
                 {/* Left: Logo + Name */}

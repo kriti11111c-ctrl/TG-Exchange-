@@ -186,7 +186,7 @@ const RankPage = () => {
   if (loading) {
     return (
       <div className={`min-h-screen ${bg} flex items-center justify-center`}>
-        <div className="animate-spin w-8 h-8 border-2 border-[#F0B90B] border-t-transparent rounded-full"></div>
+        <div className="animate-spin w-8 h-8 border-2 border-[#00E5FF] border-t-transparent rounded-full"></div>
       </div>
     );
   }
@@ -249,7 +249,7 @@ const RankPage = () => {
                 <span className={`text-xs ${textMuted}`}>
                   Next Rank Reward ({rankInfo?.next_rank ? rankNames[rankInfo.next_rank.level] : rankNames[1]}):
                 </span>
-                <span className="text-sm text-[#F0B90B] font-bold">
+                <span className="text-sm text-[#00E5FF] font-bold">
                   ${rankBenefits[rankInfo?.next_rank?.level || 1]?.reward || 20}
                 </span>
               </div>
@@ -263,7 +263,7 @@ const RankPage = () => {
                 <span className={textMuted}>
                   Next: {rankInfo?.next_rank ? rankNames[rankInfo.next_rank.level] : rankNames[1]}
                 </span>
-                <span className="text-[#F0B90B] font-medium">{(rankInfo?.progress || 0).toFixed(0)}%</span>
+                <span className="text-[#00E5FF] font-medium">{(rankInfo?.progress || 0).toFixed(0)}%</span>
               </div>
               <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} overflow-hidden`}>
                 <div 
@@ -362,7 +362,7 @@ const RankPage = () => {
           onClick={() => setActiveTab("myRank")}
           className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
             activeTab === "myRank" 
-              ? 'bg-[#F0B90B] text-black' 
+              ? 'bg-[#00E5FF] text-black' 
               : `${cardBg} ${text}`
           }`}
         >
@@ -372,7 +372,7 @@ const RankPage = () => {
           onClick={() => setActiveTab("leaderboard")}
           className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
             activeTab === "leaderboard" 
-              ? 'bg-[#F0B90B] text-black' 
+              ? 'bg-[#00E5FF] text-black' 
               : `${cardBg} ${text}`
           }`}
         >
@@ -405,7 +405,7 @@ const RankPage = () => {
                             : 'linear-gradient(135deg, rgba(240, 185, 11, 0.2) 0%, rgba(255, 250, 230, 1) 100%)')
                         : (isDark ? '#1E2329' : 'white'),
                       border: isCurrentRank 
-                        ? '3px solid #F0B90B'
+                        ? '3px solid #00E5FF'
                         : `2px solid ${isDark ? '#3B4149' : '#D1D5DB'}`,
                       boxShadow: isCurrentRank 
                         ? '0 0 20px rgba(240, 185, 11, 0.4), inset 0 0 20px rgba(240, 185, 11, 0.05)'
@@ -435,7 +435,7 @@ const RankPage = () => {
                             <span 
                               className="text-[10px] px-2 py-0.5 rounded font-bold flex-shrink-0"
                               style={{
-                                background: 'linear-gradient(135deg, #F0B90B, #FFD700)',
+                                background: 'linear-gradient(135deg, #00E5FF, #FFD700)',
                                 color: '#000'
                               }}
                             >
@@ -444,7 +444,7 @@ const RankPage = () => {
                           )}
                         </div>
                         {/* Requirements on second line */}
-                        <p className={`text-sm ${isCurrentRank ? 'text-[#F0B90B]' : textMuted}`}>
+                        <p className={`text-sm ${isCurrentRank ? 'text-[#00E5FF]' : textMuted}`}>
                           {formatRequirement(rank.level)}
                         </p>
                         {/* One-time Reward */}
@@ -481,8 +481,8 @@ const RankPage = () => {
                           <div>
                             <div className="flex justify-between items-center mb-2">
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-[#F0B90B]/20 flex items-center justify-center">
-                                  <span className="text-[#F0B90B] text-xs font-bold">{requirements?.type === 'direct' ? 'D' : 'B'}</span>
+                                <div className="w-6 h-6 rounded-full bg-[#00E5FF]/20 flex items-center justify-center">
+                                  <span className="text-[#00E5FF] text-xs font-bold">{requirements?.type === 'direct' ? 'D' : 'B'}</span>
                                 </div>
                                 <span className={`text-sm ${text}`}>
                                   {requirements?.type === 'direct' ? 'Direct Referrals' : 'Bronze Members'}
@@ -559,7 +559,7 @@ const RankPage = () => {
                               border: '1px solid rgba(240, 185, 11, 0.2)'
                             }}
                           >
-                            <p className="text-[#F0B90B] text-xl font-bold">{benefits?.bonus}%</p>
+                            <p className="text-[#00E5FF] text-xl font-bold">{benefits?.bonus}%</p>
                             <p className={`text-[10px] ${textMuted} mt-1`}>Bonus</p>
                           </div>
                           <div 

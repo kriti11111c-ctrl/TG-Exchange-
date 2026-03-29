@@ -138,7 +138,7 @@ const MarketsPage = () => {
   if (loading) {
     return (
       <div className={`min-h-screen ${bg} flex items-center justify-center`}>
-        <div className="w-10 h-10 border-4 border-[#F0B90B] border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-10 h-10 border-4 border-[#00E5FF] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -170,7 +170,7 @@ const MarketsPage = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap flex items-center gap-1 ${
                   activeTab === tab.id 
-                    ? 'bg-[#F0B90B]/20 text-[#F0B90B]' 
+                    ? 'bg-[#00E5FF]/20 text-[#00E5FF]' 
                     : `${textMuted}`
                 }`}
               >
@@ -210,13 +210,13 @@ const MarketsPage = () => {
           >
             Pairs
             <div className="flex flex-col">
-              <CaretUp size={8} className={sortBy === "name" && sortOrder === "asc" ? "text-[#F0B90B]" : ""} />
-              <CaretDown size={8} className={sortBy === "name" && sortOrder === "desc" ? "text-[#F0B90B]" : ""} />
+              <CaretUp size={8} className={sortBy === "name" && sortOrder === "asc" ? "text-[#00E5FF]" : ""} />
+              <CaretDown size={8} className={sortBy === "name" && sortOrder === "desc" ? "text-[#00E5FF]" : ""} />
             </div>
             <span className="ml-1">24h Vol</span>
             <div className="flex flex-col">
-              <CaretUp size={8} className={sortBy === "volume" && sortOrder === "asc" ? "text-[#F0B90B]" : ""} />
-              <CaretDown size={8} className={sortBy === "volume" && sortOrder === "desc" ? "text-[#F0B90B]" : ""} />
+              <CaretUp size={8} className={sortBy === "volume" && sortOrder === "asc" ? "text-[#00E5FF]" : ""} />
+              <CaretDown size={8} className={sortBy === "volume" && sortOrder === "desc" ? "text-[#00E5FF]" : ""} />
             </div>
           </div>
           <div 
@@ -225,8 +225,8 @@ const MarketsPage = () => {
           >
             Last Price
             <div className="flex flex-col">
-              <CaretUp size={8} className={sortBy === "price" && sortOrder === "asc" ? "text-[#F0B90B]" : ""} />
-              <CaretDown size={8} className={sortBy === "price" && sortOrder === "desc" ? "text-[#F0B90B]" : ""} />
+              <CaretUp size={8} className={sortBy === "price" && sortOrder === "asc" ? "text-[#00E5FF]" : ""} />
+              <CaretDown size={8} className={sortBy === "price" && sortOrder === "desc" ? "text-[#00E5FF]" : ""} />
             </div>
           </div>
           <div 
@@ -235,8 +235,8 @@ const MarketsPage = () => {
           >
             Change
             <div className="flex flex-col">
-              <CaretUp size={8} className={sortBy === "change" && sortOrder === "asc" ? "text-[#F0B90B]" : ""} />
-              <CaretDown size={8} className={sortBy === "change" && sortOrder === "desc" ? "text-[#F0B90B]" : ""} />
+              <CaretUp size={8} className={sortBy === "change" && sortOrder === "asc" ? "text-[#00E5FF]" : ""} />
+              <CaretDown size={8} className={sortBy === "change" && sortOrder === "desc" ? "text-[#00E5FF]" : ""} />
             </div>
           </div>
         </div>
@@ -269,18 +269,18 @@ const MarketsPage = () => {
                         className="w-8 h-8 rounded-full object-cover"
                         onError={(e) => {
                           e.target.style.display = 'none';
-                          e.target.parentElement.innerHTML = `<div class="w-8 h-8 rounded-full bg-[#F0B90B] flex items-center justify-center"><span class="text-black font-bold">${coin.symbol?.charAt(0).toUpperCase()}</span></div>`;
+                          e.target.parentElement.innerHTML = `<div class="w-8 h-8 rounded-full bg-[#00E5FF] flex items-center justify-center"><span class="text-black font-bold">${coin.symbol?.charAt(0).toUpperCase()}</span></div>`;
                         }}
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-[#F0B90B] flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-[#00E5FF] flex items-center justify-center">
                         <span className="text-black font-bold">{coin.symbol?.charAt(0).toUpperCase()}</span>
                       </div>
                     )}
                     <div>
                       <div className="flex items-center gap-1">
                         <span className={`font-semibold ${text}`}>{coin.symbol?.toUpperCase()}</span>
-                        <span className="text-[10px] px-1 py-0.5 rounded bg-[#F0B90B]/20 text-[#F0B90B]">3x</span>
+                        <span className="text-[10px] px-1 py-0.5 rounded bg-[#00E5FF]/20 text-[#00E5FF]">3x</span>
                       </div>
                       <span className={`text-xs ${textMuted}`}>{formatVolume(coin.total_volume)}M</span>
                     </div>

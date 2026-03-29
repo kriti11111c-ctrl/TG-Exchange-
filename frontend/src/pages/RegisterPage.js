@@ -86,7 +86,7 @@ const RegisterPage = () => {
             onClick={toggleTheme}
             className={`p-2 rounded-lg ${isDark ? 'bg-[#1E2329] hover:bg-[#2B3139]' : 'bg-white hover:bg-gray-100'} border ${isDark ? 'border-[#2B3139]' : 'border-gray-200'}`}
           >
-            {isDark ? <Sun size={20} className="text-[#F0B90B]" /> : <Moon size={20} className="text-gray-600" />}
+            {isDark ? <Sun size={20} className="text-[#00E5FF]" /> : <Moon size={20} className="text-gray-600" />}
           </button>
         </div>
 
@@ -97,7 +97,7 @@ const RegisterPage = () => {
             <h1 className={`text-2xl font-bold ${text}`}>TG Exchange</h1>
           </div>
           <p className={`${textMuted} text-sm`}>Create your account</p>
-          <div className="h-1 w-32 bg-gradient-to-r from-[#F0B90B] to-[#F0B90B]/50 rounded mt-2"></div>
+          <div className="h-1 w-32 bg-gradient-to-r from-[#00E5FF] to-[#00E5FF]/50 rounded mt-2"></div>
         </div>
 
         {/* Email/Phone Tabs */}
@@ -106,7 +106,7 @@ const RegisterPage = () => {
             onClick={() => setActiveTab("email")}
             className={`text-lg font-medium pb-2 border-b-2 transition-colors ${
               activeTab === "email" 
-                ? `${text} border-[#F0B90B]` 
+                ? `${text} border-[#00E5FF]` 
                 : `${textSubtle} border-transparent hover:${isDark ? 'text-gray-300' : 'text-gray-600'}`
             }`}
           >
@@ -116,7 +116,7 @@ const RegisterPage = () => {
             onClick={() => setActiveTab("phone")}
             className={`text-lg font-medium pb-2 border-b-2 transition-colors ${
               activeTab === "phone" 
-                ? `${text} border-[#F0B90B]` 
+                ? `${text} border-[#00E5FF]` 
                 : `${textSubtle} border-transparent hover:${isDark ? 'text-gray-300' : 'text-gray-600'}`
             }`}
           >
@@ -133,7 +133,7 @@ const RegisterPage = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter email"
-                className={`w-full py-4 px-4 bg-transparent border-0 border-b ${inputBorder} rounded-none ${inputText} ${inputPlaceholder} focus:border-[#F0B90B] focus:ring-0`}
+                className={`w-full py-4 px-4 bg-transparent border-0 border-b ${inputBorder} rounded-none ${inputText} ${inputPlaceholder} focus:border-[#00E5FF] focus:ring-0`}
                 required
                 data-testid="register-email-input"
               />
@@ -145,7 +145,7 @@ const RegisterPage = () => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Enter phone number"
-                className={`w-full py-4 px-4 bg-transparent border-0 border-b ${inputBorder} rounded-none ${inputText} ${inputPlaceholder} focus:border-[#F0B90B] focus:ring-0`}
+                className={`w-full py-4 px-4 bg-transparent border-0 border-b ${inputBorder} rounded-none ${inputText} ${inputPlaceholder} focus:border-[#00E5FF] focus:ring-0`}
                 required
                 data-testid="register-phone-input"
               />
@@ -161,7 +161,7 @@ const RegisterPage = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Password"
-                className={`w-full py-4 px-4 pr-12 bg-transparent border-0 border-b ${inputBorder} rounded-none ${inputText} ${inputPlaceholder} focus:border-[#F0B90B] focus:ring-0`}
+                className={`w-full py-4 px-4 pr-12 bg-transparent border-0 border-b ${inputBorder} rounded-none ${inputText} ${inputPlaceholder} focus:border-[#00E5FF] focus:ring-0`}
                 required
                 minLength={8}
                 data-testid="register-password-input"
@@ -188,7 +188,7 @@ const RegisterPage = () => {
                 className={`w-full py-4 px-4 pr-12 bg-transparent border-0 border-b rounded-none ${inputText} ${inputPlaceholder} focus:ring-0 ${
                   confirmPassword && password !== confirmPassword 
                     ? "border-red-500 focus:border-red-500" 
-                    : `${inputBorder} focus:border-[#F0B90B]`
+                    : `${inputBorder} focus:border-[#00E5FF]`
                 }`}
                 required
                 minLength={8}
@@ -217,7 +217,7 @@ const RegisterPage = () => {
               value={referralCode}
               onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
               placeholder="Enter referral code (Required)"
-              className={`w-full py-4 px-4 bg-transparent border-0 border-b ${inputBorder} rounded-none ${inputText} ${inputPlaceholder} focus:border-[#F0B90B] focus:ring-0 uppercase`}
+              className={`w-full py-4 px-4 bg-transparent border-0 border-b ${inputBorder} rounded-none ${inputText} ${inputPlaceholder} focus:border-[#00E5FF] focus:ring-0 uppercase`}
               required
               data-testid="register-referral-input"
             />
@@ -232,7 +232,7 @@ const RegisterPage = () => {
             disabled={loading || !referralCode.trim() || !password || password !== confirmPassword}
             className={`w-full py-6 font-semibold text-lg transition-all ${
               referralCode.trim() && password && password === confirmPassword
-                ? "bg-[#F0B90B] hover:bg-[#E5AF0A] text-black"
+                ? "bg-[#00E5FF] hover:bg-[#E5AF0A] text-black"
                 : `${isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-300 text-gray-500'} cursor-not-allowed`
             }`}
             data-testid="register-submit-btn"
@@ -245,7 +245,7 @@ const RegisterPage = () => {
         <div className="mt-6 text-center">
           <p className={`${textMuted} text-sm`}>
             It only takes 1 minute to register and receive a new user gift worth{" "}
-            <span className="text-[#F0B90B] font-bold">200 USDT</span>!
+            <span className="text-[#00E5FF] font-bold">200 USDT</span>!
           </p>
         </div>
 
@@ -253,7 +253,7 @@ const RegisterPage = () => {
         <div className="mt-8 text-center">
           <p className={textMuted}>
             Already have an account?{" "}
-            <Link to="/login" className={`${text} hover:text-[#F0B90B] font-medium`}>
+            <Link to="/login" className={`${text} hover:text-[#00E5FF] font-medium`}>
               Log in
             </Link>
           </p>
@@ -279,7 +279,7 @@ const RegisterPage = () => {
         {/* Terms */}
         <p className={`mt-8 text-center ${textSubtle} text-xs`}>
           By clicking the button, you agree to{" "}
-          <Link to="#" className={`${text} hover:text-[#F0B90B]`}>
+          <Link to="#" className={`${text} hover:text-[#00E5FF]`}>
             TG Exchange Service Agreement
           </Link>
         </p>

@@ -183,7 +183,7 @@ const FuturesPage = () => {
             <div>
               <div className="flex items-center gap-2">
                 <span className={`font-bold ${text}`}>{selectedCoin}USDT</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#F0B90B]/20 text-[#F0B90B]">Perp</span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#00E5FF]/20 text-[#00E5FF]">Perp</span>
               </div>
               <div className="flex items-center gap-2 text-xs">
                 <span className={currentPrice > 67800 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}>
@@ -229,7 +229,7 @@ const FuturesPage = () => {
         <div className="mb-3">
           <div className="flex items-center justify-between mb-2">
             <span className={`text-xs ${textMuted}`}>Leverage</span>
-            <span className={`text-xs font-bold text-[#F0B90B]`}>{leverage}x</span>
+            <span className={`text-xs font-bold text-[#00E5FF]`}>{leverage}x</span>
           </div>
           <div className="flex gap-1 overflow-x-auto pb-1">
             {leverageOptions.map(lev => (
@@ -238,7 +238,7 @@ const FuturesPage = () => {
                 onClick={() => setLeverage(lev)}
                 className={`px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap ${
                   leverage === lev 
-                    ? 'bg-[#F0B90B] text-black' 
+                    ? 'bg-[#00E5FF] text-black' 
                     : `${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} ${textMuted} opacity-50 cursor-not-allowed`
                 }`}
                 disabled={true}
@@ -459,7 +459,7 @@ const FuturesPage = () => {
               >
                 {tab.label} {tab.count !== null && `(${tab.count})`}
                 {activeTab === tab.id && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#F0B90B]"></div>
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#00E5FF]"></div>
                 )}
               </button>
             ))}
@@ -495,7 +495,7 @@ const FuturesPage = () => {
                 </div>
                 <div>
                   <p className={`text-[10px] ${textMuted}`}>Win Rate</p>
-                  <p className={`font-bold text-[#F0B90B]`}>{futuresAccount.win_rate?.toFixed(1) || '0'}%</p>
+                  <p className={`font-bold text-[#00E5FF]`}>{futuresAccount.win_rate?.toFixed(1) || '0'}%</p>
                 </div>
                 <div>
                   <p className={`text-[10px] ${textMuted}`}>Total Trades</p>
@@ -588,8 +588,8 @@ const FuturesPage = () => {
         {/* Bots Tab */}
         {activeTab === "bots" && (
           <div className="flex flex-col items-center justify-center py-8">
-            <div className={`w-16 h-16 rounded-xl bg-[#F0B90B]/20 flex items-center justify-center mb-3`}>
-              <Robot size={32} className="text-[#F0B90B]" />
+            <div className={`w-16 h-16 rounded-xl bg-[#00E5FF]/20 flex items-center justify-center mb-3`}>
+              <Robot size={32} className="text-[#00E5FF]" />
             </div>
             <p className={text}>Trading Bots</p>
             <p className={`text-xs ${textMuted} mt-1`}>Automated trading coming soon</p>

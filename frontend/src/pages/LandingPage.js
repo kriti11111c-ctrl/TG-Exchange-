@@ -130,7 +130,7 @@ const LandingPage = () => {
               <span className="font-mono text-xs text-[#00E599]">+1.89%</span>
             </div>
             <div className="flex items-center gap-3 whitespace-nowrap">
-              <div className="w-6 h-6 rounded-full bg-[#F0B90B] flex items-center justify-center text-xs font-bold text-black">B</div>
+              <div className="w-6 h-6 rounded-full bg-[#00E5FF] flex items-center justify-center text-xs font-bold text-black">B</div>
               <span className="font-mono font-medium">BNB</span>
               <span className="font-mono text-[#00E599]">$654.32</span>
               <span className="font-mono text-xs text-[#FF3B30]">-0.45%</span>

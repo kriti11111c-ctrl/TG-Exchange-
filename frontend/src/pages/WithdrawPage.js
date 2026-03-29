@@ -16,7 +16,7 @@ import { Button } from "../components/ui/button";
 import { toast } from "sonner";
 
 const NETWORKS = [
-  { id: "bep20", name: "BNB Smart Chain", shortName: "BSC (BEP20)", icon: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png", color: "#F0B90B" },
+  { id: "bep20", name: "BNB Smart Chain", shortName: "BSC (BEP20)", icon: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png", color: "#00E5FF" },
   { id: "trc20", name: "Tron Network", shortName: "TRC20", icon: "https://assets.coingecko.com/coins/images/1094/small/tron-logo.png", color: "#FF0013" },
   { id: "erc20", name: "Ethereum", shortName: "ERC20", icon: "https://assets.coingecko.com/coins/images/279/small/ethereum.png", color: "#627EEA" },
   { id: "solana", name: "Solana", shortName: "SOL", icon: "https://assets.coingecko.com/coins/images/4128/small/solana.png", color: "#00FFA3" },
@@ -200,7 +200,7 @@ const WithdrawPage = () => {
               <button 
                 type="button"
                 onClick={setMaxAmount}
-                className="text-[#F0B90B] text-sm font-medium"
+                className="text-[#00E5FF] text-sm font-medium"
               >
                 MAX
               </button>

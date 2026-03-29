@@ -121,7 +121,7 @@ const TwoFactorSettings = () => {
             disabled={loading}
             className={status.enabled 
               ? 'bg-red-500 hover:bg-red-600 text-white' 
-              : 'bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black'
+              : 'bg-[#00E5FF] hover:bg-[#00E5FF]/90 text-black'
             }
           >
             {loading ? 'Loading...' : status.enabled ? 'Disable' : 'Enable 2FA'}

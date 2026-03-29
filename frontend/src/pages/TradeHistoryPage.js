@@ -138,7 +138,7 @@ const TradeHistoryPage = () => {
               onClick={() => setActiveFilter(filter.id)}
               className={`px-4 py-1.5 rounded-full text-sm font-medium ${
                 activeFilter === filter.id 
-                  ? 'bg-[#F0B90B] text-black' 
+                  ? 'bg-[#00E5FF] text-black' 
                   : `${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} ${textMuted}`
               }`}
             >
@@ -152,7 +152,7 @@ const TradeHistoryPage = () => {
       <div className="p-4">
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-10 h-10 border-4 border-[#F0B90B] border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-10 h-10 border-4 border-[#00E5FF] border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : filteredTrades.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
