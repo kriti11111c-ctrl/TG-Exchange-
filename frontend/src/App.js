@@ -236,15 +236,35 @@ const AuthCallback = () => {
 // App Router
 function AppRouter() {
   const location = useLocation();
+  const { user } = useAuth();
   
   // Check URL fragment for session_id (OAuth callback)
   if (location.hash?.includes('session_id=')) {
     return <AuthCallback />;
   }
 
+  // Check for referral code in URL - redirect to register
+  const searchParams = new URLSearchParams(location.search);
+  const refCode = searchParams.get('ref');
+  
+  // If "/" route and has referral code, redirect to register with ref code
+  if (location.pathname === '/' && refCode) {
+    return <Navigate to={`/register?ref=${refCode}`} replace />;
+  }
+  
+  // If "/" route and no user, redirect to login
+  if (location.pathname === '/' && !user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  // If "/" route and user is logged in, redirect to dashboard
+  if (location.pathname === '/' && user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/dashboard" element={
