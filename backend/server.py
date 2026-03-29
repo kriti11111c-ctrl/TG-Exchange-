@@ -4322,6 +4322,67 @@ async def get_futures_account(request: Request):
         "win_rate": win_rate
     }
 
+
+
+# ================= SETUP ADMIN (ONE-TIME) =================
+@api_router.post("/setup/admin")
+async def setup_admin(secret_key: str = "TG_SETUP_2024"):
+    """One-time admin setup endpoint - use secret key to create admin"""
+    
+    # Security check - only allow with correct secret key
+    if secret_key != "TG_SETUP_SECRET_KEY_2024":
+        raise HTTPException(status_code=403, detail="Invalid setup key")
+    
+    # Check if admin already exists
+    existing = await db.users.find_one({"email": "admin@tgxchange.com"})
+    
+    # Admin credentials
+    admin_email = "admin@tgxchange.com"
+    admin_password = "Admin@TG2024"
+    
+    # Hash password
+    password_hash = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    
+    if existing:
+        # Update to admin
+        await db.users.update_one(
+            {"email": admin_email},
+            {"$set": {
+                "password_hash": password_hash,
+                "role": "admin",
+                "is_active": True
+            }}
+        )
+        return {"message": "Admin user updated", "email": admin_email}
+    else:
+        # Create admin
+        admin_id = f"admin_{uuid.uuid4().hex[:8]}"
+        admin_doc = {
+            "user_id": admin_id,
+            "email": admin_email,
+            "password_hash": password_hash,
+            "name": "Admin",
+            "role": "admin",
+            "referral_code": f"ADMIN{uuid.uuid4().hex[:6].upper()}",
+            "referred_by": None,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "is_active": True,
+            "kyc_status": "approved"
+        }
+        
+        await db.users.insert_one(admin_doc)
+        
+        # Create wallet for admin
+        wallet_doc = {
+            "user_id": admin_id,
+            "balances": {"btc": 0.0, "eth": 0.0, "usdt": 10000.0, "bnb": 0.0, "xrp": 0.0, "sol": 0.0},
+            "futures_balance": 0.0,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.wallets.insert_one(wallet_doc)
+        
+        return {"message": "Admin user created", "email": admin_email, "password": admin_password}
+
 # Include router
 app.include_router(api_router)
 
