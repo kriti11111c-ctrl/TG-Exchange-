@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth, API, useTheme } from "../App";
 import axios from "axios";
@@ -32,7 +32,9 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  CaretUp
+  CaretUp,
+  Bell,
+  X
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import BottomNav from "../components/BottomNav";
@@ -52,6 +54,8 @@ const Dashboard = () => {
   const [tradeCodes, setTradeCodes] = useState([]);
   const [showCodeHistory, setShowCodeHistory] = useState(false);
   const [countdowns, setCountdowns] = useState({});
+  const [showNotifications, setShowNotifications] = useState(false);
+  const notificationRef = useRef(null);
   
   // WebSocket for real-time prices
   const { prices: wsPrices, isConnected } = useWebSocket(true);
@@ -129,6 +133,7 @@ const Dashboard = () => {
       const res = await axios.post(`${API}/trade/apply-code`, { code }, { withCredentials: true });
       toast.success(res.data.message);
       fetchTradeCodes();
+      setShowNotifications(false);
       // Refresh wallet
       const walletRes = await axios.get(`${API}/wallet`, { withCredentials: true });
       setWallet(walletRes.data);
@@ -136,6 +141,17 @@ const Dashboard = () => {
       toast.error(error.response?.data?.detail || "Failed to apply code");
     }
   };
+
+  // Close notification dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -271,153 +287,6 @@ const Dashboard = () => {
 
   return (
     <div className={`min-h-screen ${bg} pb-20`}>
-      {/* Trade Code Notification Bar */}
-      {activeCodes.length > 0 && (
-        <div className="bg-gradient-to-r from-[#F0B90B] to-[#FCD535] px-4 py-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Ticket size={18} className="text-black" weight="fill" />
-              <span className="text-black text-sm font-semibold">New Trade Code!</span>
-            </div>
-            <button 
-              onClick={() => setShowCodeHistory(!showCodeHistory)}
-              className="text-black text-xs underline"
-            >
-              {showCodeHistory ? 'Hide' : 'View All'}
-            </button>
-          </div>
-          
-          {/* Active Code Display */}
-          <div className="mt-2 space-y-2">
-            {activeCodes.slice(0, showCodeHistory ? activeCodes.length : 1).map((code) => {
-              const remaining = countdowns[code.code] !== undefined 
-                ? countdowns[code.code] 
-                : code.time_remaining;
-              const isExpired = remaining <= 0;
-              
-              return (
-                <div 
-                  key={code.code}
-                  className="bg-black/10 rounded-lg p-2 flex items-center justify-between"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => copyCode(code.code)}
-                        className="flex items-center gap-1 bg-black/20 hover:bg-black/30 rounded px-2 py-1 transition-all"
-                        data-testid={`copy-code-${code.code}`}
-                      >
-                        <span className="text-black font-mono font-bold text-sm">{code.code}</span>
-                        <Copy size={14} className="text-black" />
-                      </button>
-                      
-                      {/* Countdown Timer */}
-                      <div className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-                        isExpired ? 'bg-red-500/20 text-red-700' : 'bg-green-500/20 text-green-700'
-                      }`}>
-                        <Clock size={12} />
-                        <span>{isExpired ? 'Expired' : formatCountdown(remaining)}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="text-[10px] text-black/70 mt-1">
-                      {code.trade_type?.toUpperCase()} {code.amount} {code.coin?.toUpperCase()} @ ${code.price}
-                    </div>
-                  </div>
-                  
-                  {!isExpired && (
-                    <Button
-                      onClick={() => applyTradeCode(code.code)}
-                      size="sm"
-                      className="bg-black hover:bg-black/80 text-[#F0B90B] font-bold text-xs px-3"
-                      data-testid={`apply-code-${code.code}`}
-                    >
-                      Apply
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      
-      {/* Code History Section */}
-      {showCodeHistory && tradeCodes.length > 0 && (
-        <div className={`${cardBg} border-b ${border} px-4 py-3`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className={`text-sm font-semibold ${text}`}>Code History</span>
-            <button onClick={() => setShowCodeHistory(false)}>
-              <CaretUp size={16} className={textMuted} />
-            </button>
-          </div>
-          
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {tradeCodes.map((code) => {
-              const remaining = countdowns[code.code] !== undefined 
-                ? countdowns[code.code] 
-                : code.time_remaining;
-              const isExpired = code.is_expired || remaining <= 0;
-              const isUsed = code.status === "used";
-              
-              return (
-                <div 
-                  key={code.code}
-                  className={`p-2 rounded-lg border ${border} flex items-center justify-between ${
-                    isUsed ? 'opacity-60' : ''
-                  }`}
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => copyCode(code.code)}
-                        className={`flex items-center gap-1 ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} rounded px-2 py-0.5`}
-                      >
-                        <span className={`font-mono text-xs ${text}`}>{code.code}</span>
-                        <Copy size={12} className={textMuted} />
-                      </button>
-                      
-                      {/* Status Badge */}
-                      {isUsed ? (
-                        <span className="flex items-center gap-1 text-[10px] text-green-500">
-                          <CheckCircle size={12} />
-                          Used
-                        </span>
-                      ) : isExpired ? (
-                        <span className="flex items-center gap-1 text-[10px] text-red-500">
-                          <XCircle size={12} />
-                          Expired
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-1 text-[10px] text-[#F0B90B]">
-                          <Clock size={12} />
-                          {formatCountdown(remaining)}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className={`text-[10px] ${textMuted} mt-1`}>
-                      {code.trade_type?.toUpperCase()} {code.amount} {code.coin?.toUpperCase()} @ ${code.price}
-                    </div>
-                  </div>
-                  
-                  {!isUsed && !isExpired && (
-                    <Button
-                      onClick={() => applyTradeCode(code.code)}
-                      size="sm"
-                      variant="outline"
-                      className="text-[#F0B90B] border-[#F0B90B] text-xs h-7"
-                    >
-                      Apply
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className={`${cardBg} px-4 pt-4 pb-2`}>
         {/* Top Bar */}
@@ -435,6 +304,137 @@ const Dashboard = () => {
             >
               {isDark ? <Sun size={18} className="text-[#F0B90B]" /> : <Moon size={18} className="text-gray-600" />}
             </button>
+            
+            {/* Bell Icon with Notification Dropdown */}
+            <div className="relative" ref={notificationRef}>
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className={`p-2 rounded-full relative ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}
+                data-testid="notification-bell"
+              >
+                <Bell size={18} className={isDark ? 'text-white' : 'text-gray-600'} />
+                {/* Notification Badge */}
+                {activeCodes.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center font-bold">
+                    {activeCodes.length}
+                  </span>
+                )}
+              </button>
+              
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <div className={`absolute right-0 top-full mt-2 w-80 ${isDark ? 'bg-[#1E2329]' : 'bg-white'} rounded-xl shadow-2xl border ${border} z-50 overflow-hidden`}>
+                  {/* Dropdown Header */}
+                  <div className={`flex items-center justify-between px-4 py-3 border-b ${border}`}>
+                    <div className="flex items-center gap-2">
+                      <Bell size={18} className="text-[#F0B90B]" weight="fill" />
+                      <span className={`font-semibold ${text}`}>Trade Codes</span>
+                    </div>
+                    <button onClick={() => setShowNotifications(false)}>
+                      <X size={18} className={textMuted} />
+                    </button>
+                  </div>
+                  
+                  {/* Codes List */}
+                  <div className="max-h-80 overflow-y-auto">
+                    {tradeCodes.length === 0 ? (
+                      <div className="p-6 text-center">
+                        <Bell size={40} className={`${textMuted} mx-auto mb-2`} />
+                        <p className={textMuted}>No trade codes yet</p>
+                      </div>
+                    ) : (
+                      <div className="p-2 space-y-2">
+                        {tradeCodes.map((code) => {
+                          const remaining = countdowns[code.code] !== undefined 
+                            ? countdowns[code.code] 
+                            : code.time_remaining;
+                          const isExpired = code.is_expired || remaining <= 0;
+                          const isUsed = code.status === "used";
+                          const isActive = !isUsed && !isExpired;
+                          
+                          return (
+                            <div 
+                              key={code.code}
+                              className={`p-3 rounded-lg ${
+                                isActive 
+                                  ? 'bg-gradient-to-r from-[#F0B90B]/20 to-[#FCD535]/10 border border-[#F0B90B]/30' 
+                                  : isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'
+                              } ${isUsed ? 'opacity-50' : ''}`}
+                            >
+                              {/* Code with Copy */}
+                              <div className="flex items-center justify-between mb-2">
+                                <button
+                                  onClick={() => copyCode(code.code)}
+                                  className={`flex items-center gap-2 ${
+                                    isActive 
+                                      ? 'bg-[#F0B90B]/30 hover:bg-[#F0B90B]/40' 
+                                      : isDark ? 'bg-[#2B3139] hover:bg-[#3B4149]' : 'bg-gray-200 hover:bg-gray-300'
+                                  } rounded-lg px-3 py-1.5 transition-all`}
+                                  data-testid={`copy-code-${code.code}`}
+                                >
+                                  <span className={`font-mono font-bold text-sm ${isActive ? 'text-[#F0B90B]' : text}`}>
+                                    {code.code}
+                                  </span>
+                                  <Copy size={14} className={isActive ? 'text-[#F0B90B]' : textMuted} />
+                                </button>
+                                
+                                {/* Timer Badge */}
+                                <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold ${
+                                  isUsed 
+                                    ? 'bg-green-500/20 text-green-500' 
+                                    : isExpired 
+                                      ? 'bg-red-500/20 text-red-500' 
+                                      : 'bg-[#F0B90B]/20 text-[#F0B90B]'
+                                }`}>
+                                  {isUsed ? (
+                                    <>
+                                      <CheckCircle size={12} weight="fill" />
+                                      <span>Used</span>
+                                    </>
+                                  ) : isExpired ? (
+                                    <>
+                                      <XCircle size={12} weight="fill" />
+                                      <span>Expired</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Clock size={12} weight="fill" />
+                                      <span>{formatCountdown(remaining)}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Trade Details */}
+                              <div className="flex items-center justify-between">
+                                <div className={`text-xs ${textMuted}`}>
+                                  <span className={code.trade_type === 'buy' ? 'text-green-500' : 'text-red-500'}>
+                                    {code.trade_type?.toUpperCase()}
+                                  </span>
+                                  {' '}{code.amount} {code.coin?.toUpperCase()} @ ${code.price?.toLocaleString()}
+                                </div>
+                                
+                                {isActive && (
+                                  <Button
+                                    onClick={() => applyTradeCode(code.code)}
+                                    size="sm"
+                                    className="bg-[#F0B90B] hover:bg-[#E5AF0A] text-black font-bold text-xs h-7 px-3"
+                                    data-testid={`apply-code-${code.code}`}
+                                  >
+                                    Apply
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            
             <Link to="/profile">
               <div className="w-8 h-8 rounded-full bg-[#F0B90B] flex items-center justify-center">
                 <User size={16} className="text-black" weight="fill" />
