@@ -320,10 +320,12 @@ const Dashboard = () => {
           {/* Top Bar */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              {/* Animated Logo */}
+              {/* Animated Logo - Full Round */}
               <div className="relative">
                 <div className="absolute inset-0 bg-[#F0B90B] rounded-full blur-md opacity-50 animate-pulse"></div>
-                <img src="/images/tg-logo.png" alt="TG Exchange" className="w-10 h-10 rounded-full relative z-10 ring-2 ring-[#F0B90B]/50" />
+                <div className="w-12 h-12 rounded-full overflow-hidden relative z-10 ring-2 ring-[#F0B90B]/50 bg-black">
+                  <img src="/images/tg-logo.png" alt="TG Exchange" className="w-full h-full object-cover" />
+                </div>
               </div>
               <div>
                 <span className="font-bold text-xl text-white" style={{ fontFamily: 'Unbounded' }}>
