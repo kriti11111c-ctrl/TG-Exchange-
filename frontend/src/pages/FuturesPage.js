@@ -38,15 +38,19 @@ const FuturesPage = () => {
   const [applyingCode, setApplyingCode] = useState(false);
   const [futuresAccount, setFuturesAccount] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [callPercent, setCallPercent] = useState(60.32);
-  const [putPercent, setPutPercent] = useState(64.68);
+  const [callPercent, setCallPercent] = useState("61.23");
+  const [putPercent, setPutPercent] = useState("63.45");
 
-  // Update percentages every 2 seconds for dynamic effect
+  // Update percentages every 1.5 seconds for dynamic effect - within 55-65% range
   useEffect(() => {
     const interval = setInterval(() => {
-      setCallPercent((50 + Math.random() * 20).toFixed(2));
-      setPutPercent((50 + Math.random() * 25).toFixed(2));
-    }, 2000);
+      // CALL percent between 58-65%
+      const newCall = (58 + Math.random() * 7).toFixed(2);
+      // PUT percent between 60-68% (slightly different range)
+      const newPut = (60 + Math.random() * 8).toFixed(2);
+      setCallPercent(newCall);
+      setPutPercent(newPut);
+    }, 1500);
     return () => clearInterval(interval);
   }, []);
 
@@ -361,32 +365,43 @@ const FuturesPage = () => {
       {/* CALL/PUT Buttons - Fixed at bottom above nav */}
       <div className="fixed bottom-16 left-0 right-0 px-3 pb-2 z-30" style={{ background: isDark ? '#0B0E11' : '#f9fafb' }}>
         <div className="flex gap-2">
+          {/* CALL Button */}
           <button
             onClick={() => handleTrade('long')}
-            disabled={loading || !amount}
-            className="flex-1 py-4 rounded-xl bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white font-bold flex items-center justify-between px-5 disabled:opacity-50 transition-all shadow-lg"
+            disabled={loading}
+            className="flex-1 py-5 rounded-xl bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white font-bold disabled:opacity-50 transition-all shadow-lg relative overflow-hidden"
           >
-            <div className="flex items-center gap-2">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M12 19V5"/>
-                <path d="M5 12l7-7 7 7"/>
-              </svg>
-              <span className="text-lg font-bold">CALL</span>
+            <div className="flex items-center justify-between px-4">
+              <div className="flex items-center gap-3">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M7 17l5-5 5 5"/>
+                  <path d="M7 12l5-5 5 5"/>
+                </svg>
+                <span className="text-xl font-bold">CALL</span>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-2xl font-bold">{callPercent}%</span>
+              </div>
             </div>
-            <span className="text-xl font-bold">{callPercent}%</span>
           </button>
+          
+          {/* PUT Button */}
           <button
             onClick={() => handleTrade('short')}
-            disabled={loading || !amount}
-            className="flex-1 py-4 rounded-xl bg-[#F6465D] hover:bg-[#F6465D]/90 text-white font-bold flex items-center justify-between px-5 disabled:opacity-50 transition-all shadow-lg"
+            disabled={loading}
+            className="flex-1 py-5 rounded-xl bg-[#F6465D] hover:bg-[#F6465D]/90 text-white font-bold disabled:opacity-50 transition-all shadow-lg relative overflow-hidden"
           >
-            <span className="text-xl font-bold">{putPercent}%</span>
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-bold">PUT</span>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M12 5v14"/>
-                <path d="M19 12l-7 7-7-7"/>
-              </svg>
+            <div className="flex items-center justify-between px-4">
+              <div className="flex flex-col items-start">
+                <span className="text-2xl font-bold">{putPercent}%</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-xl font-bold">PUT</span>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M7 7l5 5 5-5"/>
+                  <path d="M7 12l5 5 5-5"/>
+                </svg>
+              </div>
             </div>
           </button>
         </div>
