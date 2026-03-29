@@ -3375,6 +3375,7 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
     """Admin generates a trade code for a user"""
     import random
     import string
+    from datetime import timedelta
     
     # Find user
     user = await db.users.find_one({"email": data.user_email})
@@ -3383,6 +3384,10 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
     
     # Generate unique code
     code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
+    
+    # Code expires in 1 hour
+    created_at = datetime.now(timezone.utc)
+    expires_at = created_at + timedelta(hours=1)
     
     # Store trade code
     trade_code_doc = {
@@ -3395,7 +3400,8 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
         "price": data.price,
         "status": "active",
         "created_by": admin["email"],
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": created_at.isoformat(),
+        "expires_at": expires_at.isoformat(),
         "used_at": None
     }
     
@@ -3404,6 +3410,7 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
     return {
         "success": True,
         "code": code,
+        "expires_at": expires_at.isoformat(),
         "message": f"Trade code generated for {data.user_email}"
     }
 
@@ -3413,9 +3420,51 @@ async def get_trade_codes(admin: dict = Depends(get_current_admin)):
     codes = await db.trade_codes.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
     return codes
 
+@api_router.get("/user/trade-codes")
+async def get_user_trade_codes(user: dict = Depends(get_current_user)):
+    """Get all trade codes for current user with expiry status"""
+    from datetime import timedelta
+    
+    codes = await db.trade_codes.find(
+        {"user_id": user["user_id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    now = datetime.now(timezone.utc)
+    
+    # Process codes to add expiry status
+    processed_codes = []
+    for code in codes:
+        code_data = dict(code)
+        
+        # Check if expired (1 hour from creation)
+        if code_data.get("expires_at"):
+            expires_at = datetime.fromisoformat(code_data["expires_at"].replace('Z', '+00:00'))
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+            code_data["is_expired"] = now > expires_at
+            code_data["time_remaining"] = max(0, int((expires_at - now).total_seconds()))
+        else:
+            # Legacy codes without expires_at - check 1 hour from creation
+            created_at = datetime.fromisoformat(code_data["created_at"].replace('Z', '+00:00'))
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            expires_at = created_at + timedelta(hours=1)
+            code_data["expires_at"] = expires_at.isoformat()
+            code_data["is_expired"] = now > expires_at
+            code_data["time_remaining"] = max(0, int((expires_at - now).total_seconds()))
+        
+        processed_codes.append(code_data)
+    
+    return {
+        "codes": processed_codes,
+        "active_count": len([c for c in processed_codes if c["status"] == "active" and not c["is_expired"]])
+    }
+
 @api_router.post("/trade/apply-code")
 async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_current_user)):
     """User applies a trade code to execute trade"""
+    from datetime import timedelta
     
     # Find the trade code
     trade_code = await db.trade_codes.find_one({
@@ -3429,6 +3478,26 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     # Check if code is for this user
     if trade_code["user_id"] != user["user_id"]:
         raise HTTPException(status_code=403, detail="This code is not for your account")
+    
+    # Check if code has expired (1 hour validity)
+    now = datetime.now(timezone.utc)
+    if trade_code.get("expires_at"):
+        expires_at = datetime.fromisoformat(trade_code["expires_at"].replace('Z', '+00:00'))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+    else:
+        created_at = datetime.fromisoformat(trade_code["created_at"].replace('Z', '+00:00'))
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        expires_at = created_at + timedelta(hours=1)
+    
+    if now > expires_at:
+        # Mark as expired
+        await db.trade_codes.update_one(
+            {"code": data.code.upper()},
+            {"$set": {"status": "expired"}}
+        )
+        raise HTTPException(status_code=400, detail="Trade code has expired")
     
     # Get user's wallet
     wallet = await db.wallets.find_one({"user_id": user["user_id"]})
