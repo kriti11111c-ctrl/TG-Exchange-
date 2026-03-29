@@ -301,39 +301,59 @@ const Dashboard = () => {
 
   return (
     <div className={`min-h-screen ${bg} pb-20`}>
-      {/* Header */}
-      <div className={`${cardBg} px-4 pt-4 pb-2`}>
-        {/* Top Bar */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <img src="/images/tg-logo.png" alt="TG Exchange" className="w-8 h-8 rounded-full" />
-            <span className={`font-bold text-lg ${text}`} style={{ fontFamily: 'Unbounded' }}>
-              TG Exchange
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleTheme}
-              className={`p-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}
-            >
-              {isDark ? <Sun size={18} className="text-[#F0B90B]" /> : <Moon size={18} className="text-gray-600" />}
-            </button>
-            
-            {/* Bell Icon with Notification Dropdown */}
-            <div className="relative" ref={notificationRef}>
+      {/* Cinematic Header Banner */}
+      <div className="relative overflow-hidden">
+        {/* Background Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0B0E11] via-[#1E2329] to-[#0B0E11]">
+          {/* Animated Glow Effects */}
+          <div className="absolute top-0 left-1/4 w-32 h-32 bg-[#F0B90B]/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-0 right-1/4 w-40 h-40 bg-[#F0B90B]/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+          {/* Grid Pattern */}
+          <div className="absolute inset-0 opacity-5" style={{
+            backgroundImage: 'linear-gradient(rgba(240,185,11,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(240,185,11,0.3) 1px, transparent 1px)',
+            backgroundSize: '40px 40px'
+          }}></div>
+        </div>
+        
+        {/* Content */}
+        <div className="relative px-4 pt-4 pb-6">
+          {/* Top Bar */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              {/* Animated Logo */}
+              <div className="relative">
+                <div className="absolute inset-0 bg-[#F0B90B] rounded-full blur-md opacity-50 animate-pulse"></div>
+                <img src="/images/tg-logo.png" alt="TG Exchange" className="w-10 h-10 rounded-full relative z-10 ring-2 ring-[#F0B90B]/50" />
+              </div>
+              <div>
+                <span className="font-bold text-xl text-white" style={{ fontFamily: 'Unbounded' }}>
+                  TG Exchange
+                </span>
+                <p className="text-[10px] text-[#F0B90B]">Trade • Earn • Grow</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className={`p-2 rounded-full relative ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}
-                data-testid="notification-bell"
+                onClick={toggleTheme}
+                className="p-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
               >
-                <Bell size={18} className={isDark ? 'text-white' : 'text-gray-600'} />
-                {/* Notification Badge */}
-                {activeOrScheduledCodes.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center font-bold">
-                    {activeOrScheduledCodes.length}
-                  </span>
-                )}
+                {isDark ? <Sun size={18} className="text-[#F0B90B]" /> : <Moon size={18} className="text-white" />}
               </button>
+              
+              {/* Bell Icon with Notification Dropdown */}
+              <div className="relative" ref={notificationRef}>
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="p-2 rounded-full bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors relative"
+                  data-testid="notification-bell"
+                >
+                  <Bell size={18} className="text-white" />
+                  {activeOrScheduledCodes.length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center font-bold animate-pulse">
+                      {activeOrScheduledCodes.length}
+                    </span>
+                  )}
+                </button>
               
               {/* Notification Dropdown - Fixed Center */}
               {showNotifications && (
@@ -540,40 +560,41 @@ const Dashboard = () => {
             </div>
             
             <Link to="/profile">
-              <div className="w-8 h-8 rounded-full bg-[#F0B90B] flex items-center justify-center">
-                <User size={16} className="text-black" weight="fill" />
+              <div className="w-9 h-9 rounded-full bg-[#F0B90B] flex items-center justify-center ring-2 ring-[#F0B90B]/30">
+                <User size={18} className="text-black" weight="fill" />
               </div>
             </Link>
           </div>
         </div>
 
-        {/* Est. Total Value */}
-        <div className="flex items-center justify-between mb-4">
+        {/* Est. Total Value - Inside Banner */}
+        <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className={`text-sm ${textMuted}`}>Est. Total Value (USD)</span>
+              <span className="text-sm text-white/60">Est. Total Value (USD)</span>
               <button onClick={() => setShowBalance(!showBalance)}>
-                {showBalance ? <Eye size={16} className={textMuted} /> : <EyeSlash size={16} className={textMuted} />}
+                {showBalance ? <Eye size={16} className="text-white/60" /> : <EyeSlash size={16} className="text-white/60" />}
               </button>
-              <CaretDown size={14} className={textMuted} />
+              <CaretDown size={14} className="text-white/60" />
             </div>
             <div className="flex items-baseline gap-2">
-              <span className={`text-2xl font-bold ${text}`}>
+              <span className="text-3xl font-bold text-white">
                 {showBalance ? `$${portfolioValue.toFixed(2)}` : '****'}
               </span>
             </div>
           </div>
-          <Link to="/wallet">
-            <Button className="bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black font-medium px-4 rounded-lg">
-              <Plus size={16} className="mr-1" />
+          <Link to="/deposit">
+            <Button className="bg-[#F0B90B] hover:bg-[#F0B90B]/90 text-black font-semibold px-5 py-2 rounded-xl shadow-lg shadow-[#F0B90B]/20">
+              <Plus size={18} className="mr-1" />
               Add Funds
             </Button>
           </Link>
         </div>
+        </div>
       </div>
 
       {/* Quick Actions */}
-      <div className={`${cardBg} px-4 py-4 border-t ${border}`}>
+      <div className={`${cardBg} px-4 py-4`}>
         <div className="flex justify-between">
           {quickActions.map((action, index) => (
             <Link key={index} to={action.path} className="flex flex-col items-center gap-1">
