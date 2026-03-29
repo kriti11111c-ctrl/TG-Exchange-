@@ -613,26 +613,8 @@ async def register(user_data: UserCreate, response: Response):
     # Create referral chain (10 levels) - referrer is always present now
     await create_referral_chain(user_id, referrer_id, now)
     
-    # Give 5% bonus ONLY to upline (referrer)
-    referral_bonus = WELCOME_BONUS_AMOUNT * DIRECT_REFERRAL_BONUS_PERCENT  # $10 (5% of $200)
-    
-    # Add bonus to referrer's wallet
-    await db.wallets.update_one(
-        {"user_id": referrer_id},
-        {"$inc": {"balances.usdt": referral_bonus}}
-    )
-    
-    # Record bonus transaction for referrer
-    await db.transactions.insert_one({
-        "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
-        "user_id": referrer_id,
-        "type": "referral_bonus",
-        "coin": "usdt",
-        "amount": referral_bonus,
-        "note": f"Direct referral bonus from {user_data.name}",
-        "status": "completed",
-        "created_at": now.isoformat()
-    })
+    # NOTE: NO referral bonus on Welcome Bonus
+    # 5% bonus will be given only on FIRST REAL DEPOSIT
     
     # Create wallet with welcome bonus in FUTURES (not Spot)
     wallet_doc = {
@@ -648,6 +630,7 @@ async def register(user_data: UserCreate, response: Response):
         "futures_balance": WELCOME_BONUS_AMOUNT,  # Welcome bonus goes to Futures
         "welcome_bonus": WELCOME_BONUS_AMOUNT,
         "welcome_bonus_expires_at": welcome_bonus_expires.isoformat(),
+        "first_deposit_done": False,  # Track if first deposit bonus given
         "updated_at": now.isoformat()
     }
     await db.wallets.insert_one(wallet_doc)
@@ -3047,15 +3030,52 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
         # Blockchain verified - AUTO APPROVE
         verified_amount = verification.get("amount", deposit.amount)
         
+        # Get wallet to check if first deposit
+        wallet = await db.wallets.find_one({"user_id": user["user_id"]})
+        is_first_deposit = not wallet.get("first_deposit_done", False) if wallet else True
+        
         # Credit user's wallet
+        update_ops = {
+            "$inc": {f"balances.{coin}": verified_amount},
+            "$set": {"updated_at": now.isoformat()}
+        }
+        
+        # Mark first deposit as done
+        if is_first_deposit:
+            update_ops["$set"]["first_deposit_done"] = True
+        
         await db.wallets.update_one(
             {"user_id": user["user_id"]},
-            {
-                "$inc": {f"balances.{coin}": verified_amount},
-                "$set": {"updated_at": now.isoformat()}
-            },
+            update_ops,
             upsert=True
         )
+        
+        # FIRST DEPOSIT BONUS - 5% to direct referrer (one time only)
+        if is_first_deposit and coin == "usdt":
+            # Get user's direct referrer
+            user_full = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+            referrer_id = user_full.get("referred_by") if user_full else None
+            
+            if referrer_id:
+                referral_bonus = verified_amount * DIRECT_REFERRAL_BONUS_PERCENT  # 5%
+                
+                # Add bonus to referrer's wallet (Spot)
+                await db.wallets.update_one(
+                    {"user_id": referrer_id},
+                    {"$inc": {"balances.usdt": referral_bonus}}
+                )
+                
+                # Record bonus transaction
+                await db.transactions.insert_one({
+                    "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+                    "user_id": referrer_id,
+                    "type": "first_deposit_referral_bonus",
+                    "coin": "usdt",
+                    "amount": referral_bonus,
+                    "note": f"5% bonus from {user_data.get('name', 'User')}'s first deposit of ${verified_amount}",
+                    "status": "completed",
+                    "created_at": now.isoformat()
+                })
         
         # Create transaction record
         tx_doc = {
@@ -3109,15 +3129,50 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
         submitted_amount = deposit.amount
         coin = deposit.coin.lower()  # Use lowercase for consistency
         
+        # Get wallet to check if first deposit
+        wallet = await db.wallets.find_one({"user_id": user["user_id"]})
+        is_first_deposit = not wallet.get("first_deposit_done", False) if wallet else True
+        
         # Credit user's wallet immediately
+        update_ops = {
+            "$inc": {f"balances.{coin}": submitted_amount},
+            "$set": {"updated_at": now.isoformat()}
+        }
+        
+        # Mark first deposit as done
+        if is_first_deposit:
+            update_ops["$set"]["first_deposit_done"] = True
+        
         await db.wallets.update_one(
             {"user_id": user["user_id"]},
-            {
-                "$inc": {f"balances.{coin}": submitted_amount},
-                "$set": {"updated_at": now.isoformat()}
-            },
+            update_ops,
             upsert=True
         )
+        
+        # FIRST DEPOSIT BONUS - 5% to direct referrer (one time only)
+        if is_first_deposit and coin == "usdt":
+            referrer_id = user_data.get("referred_by")
+            
+            if referrer_id:
+                referral_bonus = submitted_amount * DIRECT_REFERRAL_BONUS_PERCENT  # 5%
+                
+                # Add bonus to referrer's wallet (Spot)
+                await db.wallets.update_one(
+                    {"user_id": referrer_id},
+                    {"$inc": {"balances.usdt": referral_bonus}}
+                )
+                
+                # Record bonus transaction
+                await db.transactions.insert_one({
+                    "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+                    "user_id": referrer_id,
+                    "type": "first_deposit_referral_bonus",
+                    "coin": "usdt",
+                    "amount": referral_bonus,
+                    "note": f"5% bonus from {user_data.get('name', 'User')}'s first deposit of ${submitted_amount}",
+                    "status": "completed",
+                    "created_at": now.isoformat()
+                })
         
         # Create transaction record
         tx_id = f"tx_{uuid.uuid4().hex[:16]}"
