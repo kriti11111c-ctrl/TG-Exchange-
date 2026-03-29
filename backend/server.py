@@ -4388,17 +4388,36 @@ async def setup_admin(secret_key: str = "TG_SETUP_2024"):
     # Hash password
     password_hash = bcrypt.hashpw(admin_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     
+    # Generate proper referral code
+    new_referral_code = f"ADMIN{uuid.uuid4().hex[:6].upper()}"
+    
     if existing:
-        # Update to admin
+        # Update to admin with proper referral code
+        update_fields = {
+            "password_hash": password_hash,
+            "role": "admin",
+            "is_active": True
+        }
+        # Only set referral_code if it doesn't exist or is just "ADMIN"
+        current_ref = existing.get("referral_code", "")
+        if not current_ref or current_ref == "ADMIN" or len(current_ref) < 8:
+            update_fields["referral_code"] = new_referral_code
+        
         await db.users.update_one(
             {"email": admin_email},
-            {"$set": {
-                "password_hash": password_hash,
-                "role": "admin",
-                "is_active": True
-            }}
+            {"$set": update_fields}
         )
-        return {"message": "Admin user updated", "email": admin_email}
+        
+        # Get updated referral code
+        updated_admin = await db.users.find_one({"email": admin_email})
+        final_ref_code = updated_admin.get("referral_code", new_referral_code)
+        
+        return {
+            "message": "Admin user updated", 
+            "email": admin_email,
+            "referral_code": final_ref_code,
+            "referral_link": f"/?ref={final_ref_code}"
+        }
     else:
         # Create admin
         admin_id = f"admin_{uuid.uuid4().hex[:8]}"
@@ -4426,7 +4445,13 @@ async def setup_admin(secret_key: str = "TG_SETUP_2024"):
         }
         await db.wallets.insert_one(wallet_doc)
         
-        return {"message": "Admin user created", "email": admin_email, "password": admin_password}
+        return {
+            "message": "Admin user created", 
+            "email": admin_email, 
+            "password": admin_password,
+            "referral_code": admin_doc["referral_code"],
+            "referral_link": f"/?ref={admin_doc['referral_code']}"
+        }
 
 # Include router
 app.include_router(api_router)
