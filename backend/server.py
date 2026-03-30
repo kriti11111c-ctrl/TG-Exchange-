@@ -4034,10 +4034,10 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     from datetime import timedelta
     import random
     
-    # Find the trade code (can be active or scheduled that's now live)
+    # Find the trade code (can be live, active, or scheduled)
     trade_code = await db.trade_codes.find_one({
         "code": data.code.upper(),
-        "status": {"$in": ["active", "scheduled"]}
+        "status": {"$in": ["active", "scheduled", "live"]}  # Added "live" status
     })
     
     if not trade_code:
@@ -4154,6 +4154,10 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     }
     await db.transactions.insert_one(transaction)
     
+    # Get updated futures balance
+    updated_wallet = await db.wallets.find_one({"user_id": user["user_id"]})
+    new_futures_balance = updated_wallet.get("futures_balance", 0) if updated_wallet else futures_balance + profit_usdt
+    
     return {
         "success": True,
         "trade_type": trade_type,
@@ -4162,7 +4166,7 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         "multiplier": multiplier,
         "profit_percent": profit_percent,
         "profit_usdt": round(profit_usdt, 2),
-        "new_balance": round(usdt_balance + profit_usdt, 2),
+        "new_balance": round(new_futures_balance, 2),
         "message": f"Trade completed! +${round(profit_usdt, 2)} ({profit_percent}% profit)",
         "trade_details": {
             "trade_type": trade_type,
