@@ -4373,18 +4373,160 @@ async def get_futures_positions(request: Request):
     return {"positions": positions, "count": len(positions)}
 
 @api_router.get("/futures/history")
-async def get_futures_history(request: Request):
-    """Get user's futures trading history"""
+async def get_futures_history(
+    request: Request,
+    start_date: str = None,
+    end_date: str = None
+):
+    """Get user's complete trading history (futures positions + trade codes)"""
     user = await get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    history = await db.futures_positions.find(
-        {"user_id": user["user_id"], "status": {"$ne": "open"}},
+    user_id = user["user_id"]
+    
+    # Build date filter
+    date_filter = {"user_id": user_id}
+    
+    if start_date:
+        date_filter["timestamp"] = {"$gte": start_date}
+    if end_date:
+        if "timestamp" not in date_filter:
+            date_filter["timestamp"] = {}
+        date_filter["timestamp"]["$lte"] = end_date + "T23:59:59"
+    
+    # Get trade code transactions (successful trades)
+    trade_codes_used = await db.trade_codes.find(
+        {"user_id": user_id, "status": "used"},
+        {"_id": 0}
+    ).sort("used_at", -1).to_list(length=100)
+    
+    # Get futures positions history
+    futures_history = await db.futures_positions.find(
+        {"user_id": user_id, "status": {"$ne": "open"}},
         {"_id": 0}
     ).sort("closed_at", -1).to_list(length=100)
     
-    return {"history": history, "count": len(history)}
+    # Get transactions for more details
+    transactions = await db.transactions.find(
+        {"user_id": user_id, "type": "trade_code"},
+        {"_id": 0}
+    ).sort("timestamp", -1).to_list(length=100)
+    
+    # Format history items
+    history = []
+    
+    # Add trade code based trades
+    for tc in trade_codes_used:
+        # Find matching transaction for more details
+        tx = next((t for t in transactions if t.get("trade_code") == tc.get("code")), None)
+        
+        # Parse timestamp
+        used_at = tc.get("used_at", tc.get("created_at", ""))
+        try:
+            if used_at:
+                dt = datetime.fromisoformat(used_at.replace('Z', '+00:00'))
+                # Convert to IST
+                ist_dt = dt + timedelta(hours=5, minutes=30)
+                formatted_date = ist_dt.strftime("%Y-%m-%d")
+                formatted_time = ist_dt.strftime("%H:%M:%S")
+                time_period_start = ist_dt.strftime("%H:%M")
+                time_period_end = (ist_dt + timedelta(seconds=60)).strftime("%H:%M")
+            else:
+                formatted_date = "N/A"
+                formatted_time = "N/A"
+                time_period_start = "00:00"
+                time_period_end = "00:01"
+        except:
+            formatted_date = "N/A"
+            formatted_time = "N/A"
+            time_period_start = "00:00"
+            time_period_end = "00:01"
+        
+        coin = tc.get("coin", "BTC").upper()
+        trade_type = tc.get("trade_type", "call").upper()
+        
+        # Calculate settlement price (slightly different from open)
+        open_price = tc.get("price", 0)
+        profit = tc.get("actual_profit", tx.get("profit_usdt", 0) if tx else 0)
+        amount = tc.get("actual_trade_amount", tx.get("trade_amount_usdt", 0) if tx else 0)
+        
+        # Settlement price calculation
+        if trade_type == "CALL":
+            settlement_price = open_price * 1.001 if profit > 0 else open_price * 0.999
+        else:
+            settlement_price = open_price * 0.999 if profit > 0 else open_price * 1.001
+        
+        profit_percent = tc.get("profit_percent", tx.get("profit_percent", 60) if tx else 60)
+        
+        history.append({
+            "id": tc.get("code"),
+            "type": "trade_code",
+            "status": "Opened",
+            "product": f"{coin}USDT",
+            "direction": trade_type,
+            "time_period": f"60s({time_period_start}~{time_period_end})",
+            "amount": round(amount, 2),
+            "open_position_time": f"{formatted_date} {formatted_time}",
+            "open_price": round(open_price, 2),
+            "settlement_price": round(settlement_price, 2),
+            "turnover": round(amount, 2),
+            "profit_loss": round(profit, 2),
+            "rate_of_return": round(profit_percent, 2),
+            "is_profit": profit > 0,
+            "timestamp": used_at,
+            "date": formatted_date
+        })
+    
+    # Add futures positions
+    for pos in futures_history:
+        closed_at = pos.get("closed_at", "")
+        try:
+            if closed_at:
+                dt = datetime.fromisoformat(closed_at.replace('Z', '+00:00'))
+                ist_dt = dt + timedelta(hours=5, minutes=30)
+                formatted_date = ist_dt.strftime("%Y-%m-%d")
+                formatted_time = ist_dt.strftime("%H:%M:%S")
+            else:
+                formatted_date = "N/A"
+                formatted_time = "N/A"
+        except:
+            formatted_date = "N/A"
+            formatted_time = "N/A"
+        
+        pnl = pos.get("pnl", 0)
+        entry_price = pos.get("entry_price", 0)
+        exit_price = pos.get("exit_price", entry_price)
+        amount = pos.get("margin", 0) * pos.get("leverage", 1)
+        
+        history.append({
+            "id": pos.get("position_id"),
+            "type": "futures",
+            "status": "Closed",
+            "product": f"{pos.get('coin', 'BTC')}USDT",
+            "direction": pos.get("side", "long").upper(),
+            "time_period": f"{pos.get('leverage', 1)}x Leverage",
+            "amount": round(amount, 2),
+            "open_position_time": f"{formatted_date} {formatted_time}",
+            "open_price": round(entry_price, 2),
+            "settlement_price": round(exit_price, 2),
+            "turnover": round(amount, 2),
+            "profit_loss": round(pnl, 2),
+            "rate_of_return": round((pnl / amount * 100) if amount > 0 else 0, 2),
+            "is_profit": pnl > 0,
+            "timestamp": closed_at,
+            "date": formatted_date
+        })
+    
+    # Sort by timestamp descending
+    history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    
+    return {
+        "history": history,
+        "count": len(history),
+        "start_date": start_date,
+        "end_date": end_date
+    }
 
 @api_router.post("/futures/open")
 async def open_futures_position(data: MarginPosition, request: Request):

@@ -43,6 +43,16 @@ const FuturesPage = () => {
   const [loading, setLoading] = useState(false);
   const [callPercent, setCallPercent] = useState("61.23");
   const [putPercent, setPutPercent] = useState("63.45");
+  
+  // History states
+  const [tradeHistory, setTradeHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   // Update percentages every 1.5 seconds for dynamic effect - within 55-65% range
   useEffect(() => {
@@ -109,6 +119,22 @@ const FuturesPage = () => {
     }
   };
 
+  // Fetch trade history
+  const fetchTradeHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await axios.get(`${API}/futures/history`, {
+        params: { start_date: startDate, end_date: endDate },
+        withCredentials: true
+      });
+      setTradeHistory(res.data.history || []);
+    } catch (error) {
+      console.error("Error fetching history:", error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchFuturesData();
     fetchRealPrice();
@@ -118,10 +144,17 @@ const FuturesPage = () => {
     return () => clearInterval(interval);
   }, [selectedCoin]);
 
+  // Fetch history when tab changes or dates change
+  useEffect(() => {
+    if (activeTab === "history") {
+      fetchTradeHistory();
+    }
+  }, [activeTab, startDate, endDate]);
+
   const tabs = [
-    { id: "positions", label: "Positions", count: positions.length },
-    { id: "orders", label: "Open Orders", count: 0 },
-    { id: "bots", label: "Bots", count: null }
+    { id: "positions", label: "Position order", count: null },
+    { id: "history", label: "Historical orders", count: null },
+    { id: "orders", label: "Open Orders", count: 0 }
   ];
 
   const leverageOptions = [1, 2, 5, 10, 20, 50, 75, 100, 125];
@@ -585,14 +618,116 @@ const FuturesPage = () => {
           </div>
         )}
 
-        {/* Bots Tab */}
-        {activeTab === "bots" && (
-          <div className="flex flex-col items-center justify-center py-8">
-            <div className={`w-16 h-16 rounded-xl bg-[#00E5FF]/20 flex items-center justify-center mb-3`}>
-              <Robot size={32} className="text-[#00E5FF]" />
+        {/* Historical Orders Tab */}
+        {activeTab === "history" && (
+          <div className="space-y-3">
+            {/* Date Range Filter */}
+            <div className="flex gap-2 mb-4">
+              <div className="flex-1">
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-lg text-sm ${inputBg} ${text} border ${border}`}
+                  data-testid="history-start-date"
+                />
+              </div>
+              <div className="flex-1">
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-lg text-sm ${inputBg} ${text} border ${border}`}
+                  data-testid="history-end-date"
+                />
+              </div>
             </div>
-            <p className={text}>Trading Bots</p>
-            <p className={`text-xs ${textMuted} mt-1`}>Automated trading coming soon</p>
+
+            {historyLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#00E5FF]"></div>
+              </div>
+            ) : tradeHistory.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <ClockCounterClockwise size={48} className={textMuted} />
+                <p className={`${text} mt-3`}>No trade history</p>
+                <p className={`text-xs ${textMuted}`}>Your completed trades will appear here</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {tradeHistory.map((trade, index) => (
+                  <div 
+                    key={trade.id || index} 
+                    className={`${cardBg} rounded-xl border ${border} p-4`}
+                    data-testid={`history-item-${index}`}
+                  >
+                    {/* Status Badge */}
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        trade.is_profit 
+                          ? 'bg-[#0ECB81]/20 text-[#0ECB81]' 
+                          : 'bg-[#F6465D]/20 text-[#F6465D]'
+                      }`}>
+                        {trade.status}
+                      </span>
+                      <span className={`text-xs ${textMuted}`}>{trade.date}</span>
+                    </div>
+
+                    {/* Trade Details Grid */}
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className={textMuted}>Product</span>
+                        <span className={`${text} font-semibold`}>{trade.product}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={textMuted}>Direction</span>
+                        <span className={trade.direction === 'CALL' ? 'text-[#0ECB81] font-bold' : 'text-[#F6465D] font-bold'}>
+                          {trade.direction}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={textMuted}>Time Period</span>
+                        <span className={text}>{trade.time_period}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={textMuted}>Amount</span>
+                        <span className={text}>{trade.amount}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={textMuted}>Open Position Time</span>
+                        <span className={text}>{trade.open_position_time}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={textMuted}>Open Price</span>
+                        <span className={text}>{trade.open_price?.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={textMuted}>Settlement price</span>
+                        <span className={text}>{trade.settlement_price?.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={textMuted}>Turnover</span>
+                        <span className={text}>{trade.turnover}</span>
+                      </div>
+                      
+                      {/* Profit/Loss - Highlighted */}
+                      <div className="flex justify-between pt-2 border-t border-dashed border-gray-600">
+                        <span className={textMuted}>Profit/Loss</span>
+                        <span className={`font-bold text-lg ${trade.is_profit ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+                          {trade.is_profit ? '+' : ''}{trade.profit_loss?.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={textMuted}>Rate of return</span>
+                        <span className={`font-bold ${trade.is_profit ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+                          {trade.rate_of_return?.toFixed(2)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
