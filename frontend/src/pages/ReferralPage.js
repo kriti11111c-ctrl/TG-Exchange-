@@ -273,24 +273,22 @@ const ReferralPage = () => {
               {selectedLevel === level.level && team.length > 0 && (
                 <div className={`mt-2 ml-4 space-y-1 border-l-2 ${isDark ? 'border-[#2B3139]' : 'border-gray-200'} pl-3`}>
                   {team.map((member, index) => {
-                    // Mask name - show first 3 chars + ****
-                    const maskedName = member.name?.length > 3 
-                      ? member.name.substring(0, 3) + '****' 
-                      : member.name || 'User';
+                    // Full name displayed, email remains masked
+                    const fullName = member.name || 'User';
                     
                     return (
                       <div 
                         key={index} 
                         className={`flex items-center justify-between p-2 rounded-lg ${isDark ? 'bg-[#181C21]' : 'bg-gray-50'} border ${border}`}
                       >
-                        {/* Serial Number + Avatar + Masked Name + Email */}
+                        {/* Serial Number + Avatar + Full Name + Masked Email */}
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <span className={`text-xs font-bold text-[#00E5FF] w-5`}>{index + 1}.</span>
                           <div className={`w-7 h-7 rounded-full bg-gradient-to-br from-[#00E5FF] to-[#0ECB81] flex items-center justify-center flex-shrink-0`}>
                             <span className="text-white font-bold text-xs">{member.name?.charAt(0)?.toUpperCase() || 'U'}</span>
                           </div>
                           <div className="min-w-0">
-                            <p className={`font-medium ${text} text-sm`}>{maskedName}</p>
+                            <p className={`font-medium ${text} text-sm`}>{fullName}</p>
                             <p className={`text-xs ${textMuted} truncate`}>{member.email}</p>
                           </div>
                         </div>
