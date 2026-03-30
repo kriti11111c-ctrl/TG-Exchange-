@@ -95,12 +95,25 @@ const AuthProvider = ({ children }) => {
     }
 
     try {
-      const response = await axios.get(`${API}/auth/me`, {
+      // Check for auth_token in localStorage (for admin impersonation)
+      const authToken = localStorage.getItem('auth_token');
+      const config = {
         withCredentials: true
-      });
+      };
+      
+      // If auth_token exists, add Authorization header
+      if (authToken) {
+        config.headers = {
+          Authorization: `Bearer ${authToken}`
+        };
+      }
+      
+      const response = await axios.get(`${API}/auth/me`, config);
       setUser(response.data);
     } catch (error) {
       setUser(null);
+      // Clear invalid auth_token if exists
+      localStorage.removeItem('auth_token');
     } finally {
       setLoading(false);
     }

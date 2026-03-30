@@ -3403,19 +3403,69 @@ async def process_deposit_request(approval: DepositApproval, admin: dict = Depen
 
 @api_router.get("/admin/users")
 async def get_all_users(admin: dict = Depends(get_current_admin)):
-    """Admin: Get all users with their wallet balances"""
-    users = await db.users.find({}, {"_id": 0, "password": 0}).sort("created_at", -1).to_list(1000)
+    """Admin: Get all users with their wallet balances and credentials"""
+    users = await db.users.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
     # Get wallet info for each user
     for user in users:
         wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
         user["wallet"] = wallet if wallet else {"balances": {}}
+        # Include password hash for admin view (masked display in frontend)
+        user["has_password"] = bool(user.get("password_hash") or user.get("password"))
     
     total_users = len(users)
     
     return {
         "users": users,
         "total": total_users
+    }
+
+@api_router.post("/admin/login-as-user")
+async def admin_login_as_user(data: dict, response: Response, admin: dict = Depends(get_current_admin)):
+    """Admin: Login as any user (impersonation) - Sets cookie for seamless login"""
+    user_id = data.get("user_id")
+    
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID required")
+    
+    # Find the user
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Generate JWT token for this user (same format as regular login)
+    token_data = {
+        "sub": user["user_id"],  # IMPORTANT: Must use "sub" for get_current_user to work
+        "user_id": user["user_id"],
+        "email": user["email"],
+        "type": "user",
+        "impersonated_by": admin.get("admin_id") or admin.get("email"),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRATION_HOURS)
+    }
+    token = jwt.encode(token_data, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    
+    # Set cookie for seamless authentication (same as normal login)
+    response.set_cookie(
+        key="session_token",
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=JWT_EXPIRATION_HOURS * 3600,
+        path="/"
+    )
+    
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "user_id": user["user_id"],
+            "email": user["email"],
+            "name": user.get("name", "User"),
+            "picture": user.get("picture"),
+            "created_at": user.get("created_at")
+        },
+        "message": f"Logged in as {user['email']}"
     }
 
 @api_router.get("/admin/stats")

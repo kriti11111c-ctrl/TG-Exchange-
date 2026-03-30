@@ -7,7 +7,11 @@ import {
   MagnifyingGlass,
   ArrowsClockwise,
   User,
-  Wallet
+  Wallet,
+  Eye,
+  EyeSlash,
+  UserSwitch,
+  Copy
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -19,6 +23,8 @@ const AdminUsersPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({});
+  const [loggingInAs, setLoggingInAs] = useState(null);
 
   const adminToken = localStorage.getItem("admin_token");
 
@@ -52,6 +58,45 @@ const AdminUsersPage = () => {
     toast.success("Data refreshed");
   };
 
+  // Login as User function
+  const handleLoginAsUser = async (userId, userEmail) => {
+    setLoggingInAs(userId);
+    try {
+      const res = await axios.post(
+        `${API}/admin/login-as-user`, 
+        { user_id: userId }, 
+        { 
+          headers: { Authorization: `Bearer ${adminToken}` },
+          withCredentials: true  // Important: Allow cookie to be set
+        }
+      );
+      
+      // Clear admin session
+      localStorage.removeItem("admin_token");
+      localStorage.removeItem("admin_data");
+      
+      toast.success(`Logged in as ${userEmail}`);
+      
+      // Redirect to user dashboard - cookie will authenticate
+      window.location.href = "/";
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to login as user");
+    } finally {
+      setLoggingInAs(null);
+    }
+  };
+
+  // Toggle password visibility
+  const togglePasswordVisibility = (userId) => {
+    setShowPasswords(prev => ({ ...prev, [userId]: !prev[userId] }));
+  };
+
+  // Copy to clipboard
+  const copyToClipboard = (text, label) => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied!`);
+  };
+
   const formatDate = (dateStr) => {
     return new Date(dateStr).toLocaleString('en-IN', {
       day: '2-digit',
@@ -63,6 +108,10 @@ const AdminUsersPage = () => {
   const getTotalBalance = (wallet) => {
     if (!wallet?.balances) return 0;
     return wallet.balances.usdt || 0;
+  };
+
+  const getFuturesBalance = (wallet) => {
+    return wallet?.futures_balance || 0;
   };
 
   const filteredUsers = users.filter(u => {
@@ -78,7 +127,7 @@ const AdminUsersPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00E5FF]"></div>
       </div>
     );
   }
@@ -93,7 +142,7 @@ const AdminUsersPage = () => {
               <CaretLeft size={24} className="text-white" />
             </Link>
             <h1 className="text-lg font-bold text-white">All Users</h1>
-            <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm">
+            <span className="px-2 py-1 bg-[#00E5FF]/20 text-[#00E5FF] rounded-full text-sm">
               {users.length} total
             </span>
           </div>
@@ -121,6 +170,7 @@ const AdminUsersPage = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by email, name, or user ID..."
             className="pl-10 bg-[#111] border-[#333] text-white"
+            data-testid="user-search-input"
           />
         </div>
 
@@ -135,46 +185,130 @@ const AdminUsersPage = () => {
               <table className="w-full">
                 <thead className="bg-[#0A0A0A]">
                   <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">#</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">User</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Email</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Password</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">User ID</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">USDT Balance</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Referral Code</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Balance</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Joined</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#222]">
-                  {filteredUsers.map((user) => (
+                  {filteredUsers.map((user, index) => (
                     <tr key={user.user_id} className="hover:bg-[#1a1a1a]">
+                      {/* Serial Number */}
+                      <td className="px-4 py-4 text-[#00E5FF] font-bold">
+                        {index + 1}
+                      </td>
+                      
+                      {/* User Name */}
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00E5FF] to-[#0ECB81] flex items-center justify-center">
                             <User size={20} className="text-white" />
                           </div>
-                          <span className="text-white font-medium">{user.name}</span>
+                          <div>
+                            <span className="text-white font-medium block">{user.name || 'No Name'}</span>
+                            {user.role === 'admin' && (
+                              <span className="text-xs px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded">Admin</span>
+                            )}
+                          </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-gray-400">
-                        {user.email}
-                      </td>
-                      <td className="px-4 py-4 text-gray-500 font-mono text-xs">
-                        {user.user_id}
-                      </td>
+                      
+                      {/* Email */}
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-2">
-                          <Wallet size={16} className="text-green-400" />
-                          <span className="text-green-400 font-semibold">
-                            ${getTotalBalance(user.wallet).toFixed(2)}
-                          </span>
+                          <span className="text-gray-300 text-sm">{user.email}</span>
+                          <button 
+                            onClick={() => copyToClipboard(user.email, "Email")}
+                            className="text-gray-500 hover:text-[#00E5FF]"
+                          >
+                            <Copy size={14} />
+                          </button>
                         </div>
                       </td>
+                      
+                      {/* Password */}
                       <td className="px-4 py-4">
-                        <span className="px-2 py-1 bg-[#222] text-gray-400 rounded text-xs font-mono">
-                          {user.referral_code || "N/A"}
-                        </span>
+                        {user.password_hash || user.password ? (
+                          <div className="flex items-center gap-2">
+                            <code className="text-xs text-gray-400 bg-[#222] px-2 py-1 rounded max-w-[120px] truncate">
+                              {showPasswords[user.user_id] 
+                                ? (user.password_hash || user.password || '').slice(0, 15) + '...' 
+                                : '••••••••••'}
+                            </code>
+                            <button 
+                              onClick={() => togglePasswordVisibility(user.user_id)}
+                              className="text-gray-500 hover:text-[#00E5FF]"
+                            >
+                              {showPasswords[user.user_id] ? <EyeSlash size={16} /> : <Eye size={16} />}
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs px-2 py-1 bg-orange-500/20 text-orange-400 rounded">
+                            Google Auth
+                          </span>
+                        )}
                       </td>
+                      
+                      {/* User ID */}
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs text-gray-500 max-w-[100px] truncate">
+                            {user.user_id}
+                          </code>
+                          <button 
+                            onClick={() => copyToClipboard(user.user_id, "User ID")}
+                            className="text-gray-500 hover:text-[#00E5FF]"
+                          >
+                            <Copy size={14} />
+                          </button>
+                        </div>
+                      </td>
+                      
+                      {/* Balance */}
+                      <td className="px-4 py-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Wallet size={14} className="text-green-400" />
+                            <span className="text-green-400 font-semibold text-sm">
+                              ${getTotalBalance(user.wallet).toFixed(2)}
+                            </span>
+                            <span className="text-gray-500 text-xs">Spot</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[#00E5FF] font-semibold text-sm">
+                              ${getFuturesBalance(user.wallet).toFixed(2)}
+                            </span>
+                            <span className="text-gray-500 text-xs">Futures</span>
+                          </div>
+                        </div>
+                      </td>
+                      
+                      {/* Joined */}
                       <td className="px-4 py-4 text-sm text-gray-400">
                         {formatDate(user.created_at)}
+                      </td>
+                      
+                      {/* Login as User Button */}
+                      <td className="px-4 py-4">
+                        <Button
+                          onClick={() => handleLoginAsUser(user.user_id, user.email)}
+                          disabled={loggingInAs === user.user_id}
+                          size="sm"
+                          className="bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black font-semibold"
+                          data-testid={`login-as-${user.user_id}`}
+                        >
+                          {loggingInAs === user.user_id ? (
+                            <ArrowsClockwise size={16} className="animate-spin" />
+                          ) : (
+                            <UserSwitch size={16} />
+                          )}
+                          Login
+                        </Button>
                       </td>
                     </tr>
                   ))}

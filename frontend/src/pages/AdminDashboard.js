@@ -15,7 +15,11 @@ import {
   Wallet,
   TrendUp,
   Ticket,
-  Copy
+  Copy,
+  Eye,
+  EyeSlash,
+  UserSwitch,
+  MagnifyingGlass
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -28,6 +32,13 @@ const AdminDashboard = () => {
   const [pendingKYC, setPendingKYC] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // All Users State
+  const [allUsers, setAllUsers] = useState([]);
+  const [showAllUsers, setShowAllUsers] = useState(false);
+  const [userSearch, setUserSearch] = useState("");
+  const [showPasswords, setShowPasswords] = useState({});
+  const [loggingInAs, setLoggingInAs] = useState(null);
   
   // Trade Code State
   const [tradeCodeForm, setTradeCodeForm] = useState({
@@ -55,15 +66,17 @@ const AdminDashboard = () => {
     try {
       const headers = { Authorization: `Bearer ${adminToken}` };
       
-      const [statsRes, depositsRes, kycRes] = await Promise.all([
+      const [statsRes, depositsRes, kycRes, usersRes] = await Promise.all([
         axios.get(`${API}/admin/stats`, { headers }),
         axios.get(`${API}/admin/deposit-requests?status=pending`, { headers }),
-        axios.get(`${API}/admin/kyc/pending`, { headers })
+        axios.get(`${API}/admin/kyc/pending`, { headers }),
+        axios.get(`${API}/admin/users`, { headers })
       ]);
 
       setStats(statsRes.data);
       setPendingDeposits(depositsRes.data.requests || []);
       setPendingKYC(kycRes.data.requests || []);
+      setAllUsers(usersRes.data.users || []);
     } catch (error) {
       if (error.response?.status === 401) {
         localStorage.removeItem("admin_token");
@@ -75,6 +88,44 @@ const AdminDashboard = () => {
       setLoading(false);
     }
   };
+
+  // Login as User function
+  const handleLoginAsUser = async (userId, userEmail) => {
+    setLoggingInAs(userId);
+    try {
+      const headers = { Authorization: `Bearer ${adminToken}` };
+      const res = await axios.post(`${API}/admin/login-as-user`, { user_id: userId }, { headers });
+      
+      // Clear admin session and set user session
+      localStorage.removeItem("admin_token");
+      localStorage.removeItem("admin_data");
+      
+      // Set user token
+      localStorage.setItem("auth_token", res.data.access_token);
+      localStorage.setItem("user_data", JSON.stringify(res.data.user));
+      
+      toast.success(`Logged in as ${userEmail}`);
+      
+      // Redirect to user dashboard
+      window.location.href = "/";
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to login as user");
+    } finally {
+      setLoggingInAs(null);
+    }
+  };
+
+  // Toggle password visibility
+  const togglePasswordVisibility = (userId) => {
+    setShowPasswords(prev => ({ ...prev, [userId]: !prev[userId] }));
+  };
+
+  // Filter users by search
+  const filteredUsers = allUsers.filter(user => 
+    user.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
+    user.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
+    user.user_id?.toLowerCase().includes(userSearch.toLowerCase())
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -564,6 +615,148 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* ========== ALL USERS SECTION ========== */}
+        <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden" data-testid="all-users-section">
+          <div 
+            className="flex items-center justify-between p-4 md:p-6 cursor-pointer hover:bg-[#1a1a1a] transition-colors"
+            onClick={() => setShowAllUsers(!showAllUsers)}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#00E5FF]/20 flex items-center justify-center">
+                <Users size={20} className="text-[#00E5FF]" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">All Users</h2>
+                <p className="text-sm text-gray-400">{allUsers.length} registered users</p>
+              </div>
+            </div>
+            <CaretRight 
+              size={20} 
+              className={`text-gray-400 transition-transform ${showAllUsers ? 'rotate-90' : ''}`} 
+            />
+          </div>
+
+          {showAllUsers && (
+            <div className="border-t border-[#222]">
+              {/* Search Bar */}
+              <div className="p-4 border-b border-[#222]">
+                <div className="relative">
+                  <MagnifyingGlass size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search by name, email or ID..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    className="pl-10 bg-[#1a1a1a] border-[#333] text-white"
+                    data-testid="user-search-input"
+                  />
+                </div>
+              </div>
+
+              {/* Users List */}
+              <div className="max-h-[500px] overflow-y-auto">
+                {filteredUsers.length === 0 ? (
+                  <div className="p-6 text-center text-gray-400">
+                    No users found
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[#222]">
+                    {filteredUsers.map((user, index) => (
+                      <div key={user.user_id} className="p-4 hover:bg-[#1a1a1a] transition-colors">
+                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                          {/* User Info */}
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[#00E5FF] text-sm font-mono">#{index + 1}</span>
+                              <span className="text-white font-semibold">{user.name || 'No Name'}</span>
+                              {user.role === 'admin' && (
+                                <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded text-xs">Admin</span>
+                              )}
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                              {/* Email */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500 w-16">Email:</span>
+                                <span className="text-gray-300 font-mono text-xs">{user.email}</span>
+                              </div>
+                              
+                              {/* User ID */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500 w-16">ID:</span>
+                                <span className="text-gray-400 font-mono text-xs">{user.user_id}</span>
+                                <button 
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(user.user_id);
+                                    toast.success("User ID copied!");
+                                  }}
+                                  className="text-gray-500 hover:text-[#00E5FF]"
+                                >
+                                  <Copy size={14} />
+                                </button>
+                              </div>
+                              
+                              {/* Password */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500 w-16">Pass:</span>
+                                {user.password_hash || user.password ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-gray-400 font-mono text-xs">
+                                      {showPasswords[user.user_id] 
+                                        ? (user.password_hash || user.password || '').slice(0, 20) + '...' 
+                                        : '••••••••••'}
+                                    </span>
+                                    <button 
+                                      onClick={() => togglePasswordVisibility(user.user_id)}
+                                      className="text-gray-500 hover:text-[#00E5FF]"
+                                    >
+                                      {showPasswords[user.user_id] ? <EyeSlash size={14} /> : <Eye size={14} />}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="text-orange-400 text-xs">Google Auth</span>
+                                )}
+                              </div>
+                              
+                              {/* Balance */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-500 w-16">Balance:</span>
+                                <span className="text-green-400 font-bold">
+                                  ${(user.wallet?.balances?.usdt || 0).toFixed(2)}
+                                </span>
+                                <span className="text-gray-500 text-xs">
+                                  (F: ${(user.wallet?.futures_balance || 0).toFixed(2)})
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Login as User Button */}
+                          <div className="flex-shrink-0">
+                            <Button
+                              onClick={() => handleLoginAsUser(user.user_id, user.email)}
+                              disabled={loggingInAs === user.user_id}
+                              className="bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black font-semibold"
+                              data-testid={`login-as-${user.user_id}`}
+                            >
+                              {loggingInAs === user.user_id ? (
+                                <ArrowsClockwise size={18} className="animate-spin" />
+                              ) : (
+                                <UserSwitch size={18} />
+                              )}
+                              Login as User
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
