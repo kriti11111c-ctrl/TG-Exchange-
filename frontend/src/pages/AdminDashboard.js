@@ -372,13 +372,44 @@ const AdminDashboard = () => {
                   className="bg-[#0A0A0A] border-[#333] text-white"
                 />
               </div>
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <Button
                   onClick={handleGenerateTradeCode}
                   disabled={generatingCode}
-                  className="w-full bg-[#00E5FF] hover:bg-[#E5AF0A] text-black font-medium"
+                  className="flex-1 bg-[#00E5FF] hover:bg-[#00C8E0] text-black font-medium"
                 >
                   {generatingCode ? "Generating..." : "Generate Code"}
+                </Button>
+              </div>
+            </div>
+            
+            {/* Generate For All Users Button */}
+            <div className="mt-4 p-4 bg-gradient-to-r from-[#00E5FF]/10 to-[#00E5FF]/5 border border-[#00E5FF]/30 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white font-medium">Generate LIVE Code for All Users</p>
+                  <p className="text-xs text-gray-400">Creates trade code for all users with Futures balance</p>
+                </div>
+                <Button
+                  onClick={async () => {
+                    try {
+                      setGeneratingCode(true);
+                      const response = await axios.post(`${API}/admin/trade-codes/generate-all`, {}, {
+                        headers: { Authorization: `Bearer ${localStorage.getItem("admin_token")}` }
+                      });
+                      if (response.data.success) {
+                        toast.success(`Generated ${response.data.codes_created} codes for all users!`);
+                      }
+                    } catch (error) {
+                      toast.error(error.response?.data?.detail || "Failed to generate codes");
+                    } finally {
+                      setGeneratingCode(false);
+                    }
+                  }}
+                  disabled={generatingCode}
+                  className="bg-[#00E5FF] hover:bg-[#00C8E0] text-black font-bold px-6"
+                >
+                  {generatingCode ? "..." : "Generate For All"}
                 </Button>
               </div>
             </div>

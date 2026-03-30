@@ -3765,7 +3765,7 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
         "created_by": admin["email"],
         "created_at": datetime.now(timezone.utc).isoformat(),
         "used_at": None,
-        "result": None  # Will be "success" or "fail" after trade
+        "result": None
     }
     
     await db.trade_codes.insert_one(trade_code_doc)
@@ -3776,11 +3776,108 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
         "scheduled_slot": slot_name,
         "scheduled_start": scheduled_start.isoformat(),
         "expires_at": expires_at.isoformat(),
-        "multiplier": multiplier,
-        "fund_percent": fund_percent,
-        "will_fail": data.will_fail,
         "message": f"Trade code generated for {data.user_email} - Slot: {slot_name} - {multiplier}x"
     }
+
+# ================= AUTO GENERATE CODES FOR ALL USERS =================
+@api_router.post("/admin/trade-codes/generate-all")
+async def admin_generate_codes_for_all(admin: dict = Depends(get_current_admin)):
+    """Generate trade codes for ALL eligible users immediately (Admin only)"""
+    try:
+        now = datetime.now(timezone.utc)
+        
+        # Get all active users with positive futures balance
+        wallets = await db.wallets.find(
+            {"futures_balance": {"$gt": 0}},
+            {"user_id": 1, "futures_balance": 1, "_id": 0}
+        ).to_list(length=1000)
+        
+        if not wallets:
+            return {"success": False, "message": "No eligible users with futures balance"}
+        
+        # Get random coin data
+        coins = ["BTC", "ETH", "BNB", "SOL", "XRP"]
+        coin = random.choice(coins)
+        coin_map = {"BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin", "SOL": "solana", "XRP": "ripple"}
+        
+        # Get price
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"https://api.coingecko.com/api/v3/simple/price?ids={coin_map.get(coin, 'bitcoin')}&vs_currencies=usd",
+                    timeout=10.0
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    price = data.get(coin_map.get(coin, 'bitcoin'), {}).get('usd', 50000)
+                else:
+                    price = 50000
+        except:
+            price = 50000
+        
+        trade_type = random.choice(["call", "put"])
+        profit_percent = round(60 + random.random() * 5, 2)
+        
+        codes_created = 0
+        
+        for wallet in wallets:
+            user_id = wallet["user_id"]
+            
+            user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "email": 1, "name": 1})
+            if not user:
+                continue
+            
+            # Check multiplier (Martingale)
+            last_trade = await db.trade_codes.find_one(
+                {"user_id": user_id, "status": "used"},
+                sort=[("used_at", -1)]
+            )
+            
+            multiplier = 2 if (last_trade and last_trade.get("result") == "fail") else 1
+            fund_percent = 1.0 * multiplier
+            
+            # Generate code
+            code = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=12))
+            
+            trade_code_doc = {
+                "code": code,
+                "user_id": user_id,
+                "user_email": user.get("email", ""),
+                "coin": coin.lower(),
+                "amount": 100,
+                "trade_type": trade_type,
+                "price": price,
+                "status": "live",
+                "scheduled_slot": "instant",
+                "slot_name": "LIVE Now",
+                "scheduled_start": now.isoformat(),
+                "expires_at": (now + timedelta(minutes=5)).isoformat(),
+                "profit_percent": profit_percent,
+                "fund_percent": fund_percent,
+                "multiplier": multiplier,
+                "will_fail": False,
+                "created_by": admin["email"],
+                "created_at": now.isoformat(),
+                "used_at": None,
+                "result": None,
+                "auto_generated": False
+            }
+            
+            await db.trade_codes.insert_one(trade_code_doc)
+            codes_created += 1
+        
+        return {
+            "success": True,
+            "message": f"Generated {codes_created} trade codes for all eligible users",
+            "codes_created": codes_created,
+            "coin": coin,
+            "trade_type": trade_type,
+            "profit_percent": profit_percent
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @api_router.get("/admin/trade-codes")
 async def get_trade_codes(admin: dict = Depends(get_current_admin)):
@@ -4534,6 +4631,174 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ================= AUTO TRADE CODE GENERATOR =================
+
+# IST timezone offset (UTC+5:30)
+IST_OFFSET = timedelta(hours=5, minutes=30)
+
+# Trade slots configuration
+TRADE_SLOTS = [
+    {"slot": "morning", "hour": 10, "minute": 30, "name": "10:30 AM"},
+    {"slot": "evening", "hour": 20, "minute": 45, "name": "8:45 PM"}
+]
+
+async def get_random_coin_data():
+    """Get random coin for trade code"""
+    coins = ["BTC", "ETH", "BNB", "SOL", "XRP", "DOGE", "ADA", "AVAX"]
+    coin = random.choice(coins)
+    
+    # Get current price from CoinGecko
+    coin_map = {
+        "BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin",
+        "SOL": "solana", "XRP": "ripple", "DOGE": "dogecoin",
+        "ADA": "cardano", "AVAX": "avalanche-2"
+    }
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.coingecko.com/api/v3/simple/price?ids={coin_map.get(coin, 'bitcoin')}&vs_currencies=usd",
+                timeout=10.0
+            )
+            if response.status_code == 200:
+                data = response.json()
+                price = data.get(coin_map.get(coin, 'bitcoin'), {}).get('usd', 50000)
+            else:
+                price = 50000
+    except:
+        price = 50000
+    
+    return {
+        "coin": coin,
+        "price": price,
+        "trade_type": random.choice(["call", "put"])
+    }
+
+async def auto_generate_trade_codes_for_slot(slot_config: dict):
+    """Generate trade codes for all eligible users for a specific slot"""
+    try:
+        now = datetime.now(timezone.utc)
+        ist_now = now + IST_OFFSET
+        
+        # Get all active users with positive futures balance
+        wallets = await db.wallets.find(
+            {"futures_balance": {"$gt": 0}},
+            {"user_id": 1, "futures_balance": 1, "_id": 0}
+        ).to_list(length=1000)
+        
+        if not wallets:
+            logging.info(f"No eligible users for auto trade code generation")
+            return
+        
+        # Get random coin data
+        coin_data = await get_random_coin_data()
+        
+        # Profit percent between 60-65%
+        profit_percent = round(60 + random.random() * 5, 2)
+        
+        codes_created = 0
+        
+        for wallet in wallets:
+            user_id = wallet["user_id"]
+            
+            # Get user info
+            user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "email": 1, "name": 1})
+            if not user:
+                continue
+            
+            # Check last trade to determine multiplier (Martingale)
+            last_trade = await db.trade_codes.find_one(
+                {"user_id": user_id, "status": "used"},
+                sort=[("used_at", -1)]
+            )
+            
+            multiplier = 1
+            if last_trade and last_trade.get("result") == "fail":
+                multiplier = 2
+            
+            fund_percent = 1.0 * multiplier
+            
+            # Generate unique code
+            code = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=12))
+            
+            # Calculate scheduled times
+            scheduled_start = now
+            expires_at = now + timedelta(minutes=5)  # 5 minutes to use
+            
+            # Create trade code
+            trade_code_doc = {
+                "code": code,
+                "user_id": user_id,
+                "user_email": user.get("email", ""),
+                "coin": coin_data["coin"].lower(),
+                "amount": 100,  # Base amount
+                "trade_type": coin_data["trade_type"],
+                "price": coin_data["price"],
+                "status": "live",  # Immediately live
+                "scheduled_slot": slot_config["slot"],
+                "slot_name": slot_config["name"],
+                "scheduled_start": scheduled_start.isoformat(),
+                "expires_at": expires_at.isoformat(),
+                "profit_percent": profit_percent,
+                "fund_percent": fund_percent,
+                "multiplier": multiplier,
+                "will_fail": False,
+                "created_by": "AUTO_SYSTEM",
+                "created_at": now.isoformat(),
+                "used_at": None,
+                "result": None,
+                "auto_generated": True
+            }
+            
+            await db.trade_codes.insert_one(trade_code_doc)
+            codes_created += 1
+        
+        logging.info(f"Auto-generated {codes_created} trade codes for slot {slot_config['name']}")
+        
+    except Exception as e:
+        logging.error(f"Error in auto trade code generation: {e}")
+
+async def check_and_generate_scheduled_codes():
+    """Background task to check and generate trade codes at scheduled times"""
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            ist_now = now + IST_OFFSET
+            
+            current_hour = ist_now.hour
+            current_minute = ist_now.minute
+            
+            for slot in TRADE_SLOTS:
+                # Check if we're within 1 minute of scheduled time
+                if current_hour == slot["hour"] and current_minute == slot["minute"]:
+                    # Check if codes already generated for this slot today
+                    today_start_ist = ist_now.replace(hour=0, minute=0, second=0, microsecond=0)
+                    today_start_utc = today_start_ist - IST_OFFSET
+                    
+                    existing = await db.trade_codes.find_one({
+                        "scheduled_slot": slot["slot"],
+                        "auto_generated": True,
+                        "created_at": {"$gte": today_start_utc.isoformat()}
+                    })
+                    
+                    if not existing:
+                        logging.info(f"Triggering auto trade code generation for {slot['name']} IST")
+                        await auto_generate_trade_codes_for_slot(slot)
+            
+            # Check every 30 seconds
+            await asyncio.sleep(30)
+            
+        except Exception as e:
+            logging.error(f"Error in scheduled code checker: {e}")
+            await asyncio.sleep(60)
+
+@app.on_event("startup")
+async def startup_event():
+    """Start background tasks on startup"""
+    # Start the auto trade code generator
+    asyncio.create_task(check_and_generate_scheduled_codes())
+    logging.info("Auto trade code generator started")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
