@@ -3786,9 +3786,9 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
     is_instant_live = getattr(data, 'instant_live', False)
     
     if is_instant_live:
-        # Make code LIVE immediately for 5 minutes
+        # Make code LIVE immediately for 60 minutes
         scheduled_start = now - timedelta(seconds=10)  # Already started
-        expires_at = now + timedelta(minutes=5)  # Expires in 5 minutes
+        expires_at = now + timedelta(minutes=60)  # Expires in 60 minutes (1 hour)
         slot_name = "LIVE Now"
         status = "live"
     else:
@@ -3897,7 +3897,7 @@ async def admin_generate_codes_for_all(admin: dict = Depends(get_current_admin))
                 "scheduled_slot": "instant",
                 "slot_name": "LIVE Now",
                 "scheduled_start": now.isoformat(),
-                "expires_at": (now + timedelta(minutes=5)).isoformat(),
+                "expires_at": (now + timedelta(minutes=60)).isoformat(),
                 "profit_percent": profit_percent,
                 "fund_percent": fund_percent,
                 "multiplier": multiplier,
@@ -4766,7 +4766,7 @@ async def auto_generate_trade_codes_for_slot(slot_config: dict):
             
             # Calculate scheduled times
             scheduled_start = now
-            expires_at = now + timedelta(minutes=5)  # 5 minutes to use
+            expires_at = now + timedelta(minutes=60)  # 60 minutes (1 hour) to use
             
             # Create trade code
             trade_code_doc = {
