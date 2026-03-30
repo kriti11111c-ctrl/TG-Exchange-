@@ -12,12 +12,13 @@ import {
   TrendUp,
   ArrowsLeftRight,
   Clock,
-  CurrencyCircleDollar,
-  Funnel
+  FunnelSimple,
+  MagnifyingGlass,
+  CurrencyCircleDollar
 } from "@phosphor-icons/react";
 import BottomNav from "../components/BottomNav";
 
-const TransactionsPage = () => {
+const TransactionHistoryPage = () => {
   const { isDark } = useTheme();
   const navigate = useNavigate();
   const [history, setHistory] = useState([]);
@@ -157,18 +158,18 @@ const TransactionsPage = () => {
 
       {/* Stats Cards */}
       <div className="px-4 py-4 space-y-3">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-3">
           <div className={`${cardBg} rounded-xl p-3 border ${border}`}>
-            <p className={`text-[10px] ${textMuted}`}>Total Income</p>
-            <p className="text-[#0ECB81] font-bold text-sm">+${stats.total_income.toLocaleString()}</p>
+            <p className={`text-xs ${textMuted}`}>Total Income</p>
+            <p className="text-[#0ECB81] font-bold text-lg">+${stats.total_income.toLocaleString()}</p>
           </div>
           <div className={`${cardBg} rounded-xl p-3 border ${border}`}>
-            <p className={`text-[10px] ${textMuted}`}>Total Expense</p>
-            <p className="text-[#F6465D] font-bold text-sm">-${stats.total_expense.toLocaleString()}</p>
+            <p className={`text-xs ${textMuted}`}>Total Expense</p>
+            <p className="text-[#F6465D] font-bold text-lg">-${stats.total_expense.toLocaleString()}</p>
           </div>
           <div className={`${cardBg} rounded-xl p-3 border ${border}`}>
-            <p className={`text-[10px] ${textMuted}`}>Net Balance</p>
-            <p className={`font-bold text-sm ${stats.net_balance >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+            <p className={`text-xs ${textMuted}`}>Net Balance</p>
+            <p className={`font-bold text-lg ${stats.net_balance >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
               ${stats.net_balance.toLocaleString()}
             </p>
           </div>
@@ -182,7 +183,7 @@ const TransactionsPage = () => {
             <button
               key={f.id}
               onClick={() => setFilter(f.id)}
-              className={`px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                 filter === f.id
                   ? 'bg-[#00E5FF] text-black'
                   : `${isDark ? 'bg-[#2B3139] text-gray-300' : 'bg-gray-200 text-gray-700'}`
@@ -213,7 +214,7 @@ const TransactionsPage = () => {
               {/* Date Header */}
               <div className="flex items-center gap-2 py-2">
                 <div className={`h-px flex-1 ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}></div>
-                <span className={`text-xs font-medium ${textMuted} px-2`}>{date}</span>
+                <span className={`text-xs font-medium ${textMuted}`}>{date}</span>
                 <div className={`h-px flex-1 ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}></div>
               </div>
 
@@ -233,13 +234,19 @@ const TransactionsPage = () => {
                     {/* Details */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <p className={`font-medium ${text} text-sm truncate`}>{item.description}</p>
+                        <p className={`font-medium ${text} truncate`}>{item.description}</p>
                         <p className={`font-bold ${item.is_income ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
                           {item.is_income ? '+' : '-'}${item.amount?.toFixed(2)}
                         </p>
                       </div>
                       <div className="flex items-center justify-between mt-1">
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${getBgColor(item.type)} font-medium`}>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${getBgColor(item.type)} ${
+                          item.type.includes('deposit') || item.type.includes('trade') || item.type.includes('bonus') 
+                            ? 'text-[#0ECB81]' 
+                            : item.type.includes('withdrawal') 
+                              ? 'text-[#F6465D]' 
+                              : textMuted
+                        }`}>
                           {item.category}
                         </span>
                         <span className={`text-xs ${textMuted}`}>{item.time}</span>
@@ -247,9 +254,9 @@ const TransactionsPage = () => {
                     </div>
                   </div>
 
-                  {/* Additional Details */}
+                  {/* Additional Details (expandable) */}
                   {item.details && (item.details.profit_percent || item.details.trade_amount) && (
-                    <div className={`mt-3 pt-3 border-t border-dashed ${border} grid grid-cols-2 gap-2 text-xs`}>
+                    <div className={`mt-3 pt-3 border-t ${border} grid grid-cols-2 gap-2 text-xs`}>
                       {item.details.trade_amount && (
                         <div>
                           <span className={textMuted}>Trade Amount:</span>
@@ -259,7 +266,7 @@ const TransactionsPage = () => {
                       {item.details.profit_percent && (
                         <div>
                           <span className={textMuted}>Profit:</span>
-                          <span className="text-[#0ECB81] ml-1 font-bold">{item.details.profit_percent}%</span>
+                          <span className="text-[#0ECB81] ml-1">{item.details.profit_percent}%</span>
                         </div>
                       )}
                     </div>
@@ -277,4 +284,4 @@ const TransactionsPage = () => {
   );
 };
 
-export default TransactionsPage;
+export default TransactionHistoryPage;

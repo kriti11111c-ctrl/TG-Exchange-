@@ -1347,6 +1347,250 @@ async def get_transactions(limit: int = 50, user: dict = Depends(get_current_use
     
     return result
 
+@api_router.get("/wallet/all-history")
+async def get_all_wallet_history(request: Request, limit: int = 100):
+    """Get complete wallet history including deposits, withdrawals, bonuses, trades, referrals"""
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_id = user["user_id"]
+    history = []
+    
+    # 1. Get all transactions
+    transactions = await db.transactions.find(
+        {"user_id": user_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(limit)
+    
+    for tx in transactions:
+        created_at = tx.get("created_at") or tx.get("timestamp", "")
+        if isinstance(created_at, datetime):
+            created_at = created_at.isoformat()
+        
+        # Parse for IST display
+        try:
+            dt = datetime.fromisoformat(str(created_at).replace('Z', '+00:00'))
+            ist_dt = dt + timedelta(hours=5, minutes=30)
+            date_str = ist_dt.strftime("%Y-%m-%d")
+            time_str = ist_dt.strftime("%H:%M:%S")
+        except:
+            date_str = "N/A"
+            time_str = "N/A"
+        
+        tx_type = tx.get("type", "unknown")
+        amount = tx.get("amount", 0)
+        total_usd = tx.get("total_usd", tx.get("profit_usdt", amount))
+        
+        # Determine if income or expense
+        is_income = tx_type in ["deposit", "bonus", "welcome_bonus", "referral", "referral_bonus", 
+                                "salary", "trade_code", "trade_profit", "commission"]
+        
+        history.append({
+            "id": tx.get("tx_id") or tx.get("transaction_id", f"tx_{len(history)}"),
+            "type": tx_type,
+            "category": get_tx_category(tx_type),
+            "description": get_tx_description(tx_type, tx),
+            "amount": abs(float(total_usd or amount or 0)),
+            "coin": tx.get("coin", "USDT"),
+            "is_income": is_income,
+            "status": tx.get("status", "completed"),
+            "date": date_str,
+            "time": time_str,
+            "timestamp": created_at,
+            "details": tx
+        })
+    
+    # 2. Get deposit requests (approved)
+    deposits = await db.deposit_requests.find(
+        {"user_id": user_id, "status": "approved"},
+        {"_id": 0}
+    ).sort("approved_at", -1).to_list(limit)
+    
+    for dep in deposits:
+        created_at = dep.get("approved_at") or dep.get("created_at", "")
+        try:
+            dt = datetime.fromisoformat(str(created_at).replace('Z', '+00:00'))
+            ist_dt = dt + timedelta(hours=5, minutes=30)
+            date_str = ist_dt.strftime("%Y-%m-%d")
+            time_str = ist_dt.strftime("%H:%M:%S")
+        except:
+            date_str = "N/A"
+            time_str = "N/A"
+        
+        # Check if already in history
+        dep_id = dep.get("request_id", "")
+        if not any(h.get("id") == dep_id for h in history):
+            history.append({
+                "id": dep_id,
+                "type": "deposit",
+                "category": "Deposit",
+                "description": f"Deposit via {dep.get('payment_method', 'Bank Transfer')}",
+                "amount": float(dep.get("amount", 0)),
+                "coin": "USDT",
+                "is_income": True,
+                "status": "completed",
+                "date": date_str,
+                "time": time_str,
+                "timestamp": created_at,
+                "details": dep
+            })
+    
+    # 3. Get withdrawal requests (completed)
+    withdrawals = await db.withdrawal_requests.find(
+        {"user_id": user_id, "status": "completed"},
+        {"_id": 0}
+    ).sort("processed_at", -1).to_list(limit)
+    
+    for wd in withdrawals:
+        created_at = wd.get("processed_at") or wd.get("created_at", "")
+        try:
+            dt = datetime.fromisoformat(str(created_at).replace('Z', '+00:00'))
+            ist_dt = dt + timedelta(hours=5, minutes=30)
+            date_str = ist_dt.strftime("%Y-%m-%d")
+            time_str = ist_dt.strftime("%H:%M:%S")
+        except:
+            date_str = "N/A"
+            time_str = "N/A"
+        
+        wd_id = wd.get("request_id", "")
+        if not any(h.get("id") == wd_id for h in history):
+            history.append({
+                "id": wd_id,
+                "type": "withdrawal",
+                "category": "Withdrawal",
+                "description": f"Withdrawal to {wd.get('bank_name', 'Bank')}",
+                "amount": float(wd.get("amount", 0)),
+                "coin": "USDT",
+                "is_income": False,
+                "status": "completed",
+                "date": date_str,
+                "time": time_str,
+                "timestamp": created_at,
+                "details": wd
+            })
+    
+    # 4. Get trade codes (used)
+    trade_codes = await db.trade_codes.find(
+        {"user_id": user_id, "status": "used"},
+        {"_id": 0}
+    ).sort("used_at", -1).to_list(limit)
+    
+    for tc in trade_codes:
+        created_at = tc.get("used_at") or tc.get("created_at", "")
+        try:
+            dt = datetime.fromisoformat(str(created_at).replace('Z', '+00:00'))
+            ist_dt = dt + timedelta(hours=5, minutes=30)
+            date_str = ist_dt.strftime("%Y-%m-%d")
+            time_str = ist_dt.strftime("%H:%M:%S")
+        except:
+            date_str = "N/A"
+            time_str = "N/A"
+        
+        tc_id = tc.get("code", "")
+        if not any(h.get("id") == tc_id for h in history):
+            history.append({
+                "id": tc_id,
+                "type": "trade_profit",
+                "category": "Trade Profit",
+                "description": f"Trade {tc.get('trade_type', 'CALL').upper()} - {tc.get('coin', 'BTC').upper()}USDT",
+                "amount": float(tc.get("actual_profit", 0)),
+                "coin": tc.get("coin", "BTC").upper(),
+                "is_income": True,
+                "status": "completed",
+                "date": date_str,
+                "time": time_str,
+                "timestamp": created_at,
+                "details": {
+                    "profit_percent": tc.get("profit_percent"),
+                    "trade_amount": tc.get("actual_trade_amount"),
+                    "trade_type": tc.get("trade_type")
+                }
+            })
+    
+    # 5. Get welcome bonus from user record
+    user_record = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if user_record and user_record.get("welcome_bonus_received"):
+        bonus_date = user_record.get("welcome_bonus_date") or user_record.get("created_at", "")
+        try:
+            dt = datetime.fromisoformat(str(bonus_date).replace('Z', '+00:00'))
+            ist_dt = dt + timedelta(hours=5, minutes=30)
+            date_str = ist_dt.strftime("%Y-%m-%d")
+            time_str = ist_dt.strftime("%H:%M:%S")
+        except:
+            date_str = "N/A"
+            time_str = "N/A"
+        
+        if not any(h.get("type") == "welcome_bonus" for h in history):
+            history.append({
+                "id": f"welcome_{user_id}",
+                "type": "welcome_bonus",
+                "category": "Bonus",
+                "description": "Welcome Bonus",
+                "amount": 200.0,
+                "coin": "USDT",
+                "is_income": True,
+                "status": "completed",
+                "date": date_str,
+                "time": time_str,
+                "timestamp": bonus_date,
+                "details": {"note": "Welcome bonus credited to Futures wallet"}
+            })
+    
+    # Sort by timestamp descending
+    history.sort(key=lambda x: x.get("timestamp", "") or "", reverse=True)
+    
+    # Calculate totals
+    total_income = sum(h["amount"] for h in history if h["is_income"])
+    total_expense = sum(h["amount"] for h in history if not h["is_income"])
+    
+    return {
+        "history": history[:limit],
+        "count": len(history),
+        "total_income": round(total_income, 2),
+        "total_expense": round(total_expense, 2),
+        "net_balance": round(total_income - total_expense, 2)
+    }
+
+def get_tx_category(tx_type: str) -> str:
+    categories = {
+        "deposit": "Deposit",
+        "withdrawal": "Withdrawal",
+        "welcome_bonus": "Bonus",
+        "bonus": "Bonus",
+        "referral": "Referral Income",
+        "referral_bonus": "Referral Income",
+        "commission": "Referral Income",
+        "salary": "Salary Income",
+        "trade_code": "Trade Profit",
+        "trade_profit": "Trade Profit",
+        "trade": "Trade",
+        "transfer": "Transfer",
+        "spot_to_futures": "Transfer",
+        "futures_to_spot": "Transfer"
+    }
+    return categories.get(tx_type, "Other")
+
+def get_tx_description(tx_type: str, tx: dict) -> str:
+    if tx_type == "deposit":
+        return f"Deposit via {tx.get('method', 'Bank Transfer')}"
+    elif tx_type == "withdrawal":
+        return f"Withdrawal to Bank"
+    elif tx_type in ["welcome_bonus", "bonus"]:
+        return "Welcome Bonus"
+    elif tx_type in ["referral", "referral_bonus", "commission"]:
+        return f"Referral Commission - Level {tx.get('level', 1)}"
+    elif tx_type == "salary":
+        return f"Salary Income - Day {tx.get('day', 1)}"
+    elif tx_type in ["trade_code", "trade_profit"]:
+        return f"Trade Profit - {tx.get('coin', 'BTC').upper()}"
+    elif tx_type == "spot_to_futures":
+        return "Transfer: Spot → Futures"
+    elif tx_type == "futures_to_spot":
+        return "Transfer: Futures → Spot"
+    else:
+        return tx_type.replace("_", " ").title()
+
 # ================= MARKET DATA ROUTES =================
 
 async def fetch_coingecko_prices():
