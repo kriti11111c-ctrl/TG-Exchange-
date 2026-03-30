@@ -2633,7 +2633,7 @@ class TradeCodeCreate(BaseModel):
     amount: float
     trade_type: str  # "buy" or "sell"
     price: float
-    scheduled_slot: str = "morning"  # "morning" (10:30 AM) or "evening" (8:45 PM)
+    scheduled_slot: str = "morning"  # "morning" (10:45 AM) or "evening" (8:30 PM)
     will_fail: bool = False  # Admin can mark trade as intentional fail
     instant_live: bool = False  # Make code LIVE immediately
 
@@ -3740,18 +3740,18 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
     today = now.date()
     
     # IST is UTC+5:30, so we need to convert
-    # 10:30 AM IST = 05:00 UTC
-    # 8:45 PM IST = 15:15 UTC
+    # 10:45 AM IST = 05:15 UTC
+    # 8:30 PM IST = 15:00 UTC
     if data.scheduled_slot == "morning":
-        # 10:30 AM IST = 05:00 UTC
+        # 10:45 AM IST = 05:15 UTC
         scheduled_hour = 5
-        scheduled_minute = 0
-        slot_name = "10:30 AM"
-    else:  # evening
-        # 8:45 PM IST = 15:15 UTC
-        scheduled_hour = 15
         scheduled_minute = 15
-        slot_name = "8:45 PM"
+        slot_name = "10:45 AM"
+    else:  # evening
+        # 8:30 PM IST = 15:00 UTC
+        scheduled_hour = 15
+        scheduled_minute = 0
+        slot_name = "8:30 PM"
     
     # Create scheduled start time for today
     scheduled_start = datetime.combine(today, datetime.min.time().replace(
@@ -4683,10 +4683,10 @@ app.add_middleware(
 # IST timezone offset (UTC+5:30)
 IST_OFFSET = timedelta(hours=5, minutes=30)
 
-# Trade slots configuration
+# Trade slots configuration - IST Times
 TRADE_SLOTS = [
-    {"slot": "morning", "hour": 10, "minute": 30, "name": "10:30 AM"},
-    {"slot": "evening", "hour": 20, "minute": 45, "name": "8:45 PM"}
+    {"slot": "morning", "hour": 10, "minute": 45, "name": "10:45 AM"},
+    {"slot": "evening", "hour": 20, "minute": 30, "name": "8:30 PM"}
 ]
 
 async def get_random_coin_data():
