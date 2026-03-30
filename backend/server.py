@@ -3832,18 +3832,18 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
 # ================= AUTO GENERATE CODES FOR ALL USERS =================
 @api_router.post("/admin/trade-codes/generate-all")
 async def admin_generate_codes_for_all(admin: dict = Depends(get_current_admin)):
-    """Generate trade codes for ALL eligible users immediately (Admin only)"""
+    """Generate trade codes for ALL users immediately (Admin only)"""
     try:
         now = datetime.now(timezone.utc)
         
-        # Get all active users with positive futures balance
-        wallets = await db.wallets.find(
-            {"futures_balance": {"$gt": 0}},
-            {"user_id": 1, "futures_balance": 1, "_id": 0}
+        # Get ALL users (not just those with futures balance)
+        all_users = await db.users.find(
+            {},
+            {"user_id": 1, "email": 1, "name": 1, "_id": 0}
         ).to_list(length=1000)
         
-        if not wallets:
-            return {"success": False, "message": "No eligible users with futures balance"}
+        if not all_users:
+            return {"success": False, "message": "No users found"}
         
         # Get random coin data
         coins = ["BTC", "ETH", "BNB", "SOL", "XRP"]
@@ -3870,12 +3870,8 @@ async def admin_generate_codes_for_all(admin: dict = Depends(get_current_admin))
         
         codes_created = 0
         
-        for wallet in wallets:
-            user_id = wallet["user_id"]
-            
-            user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "email": 1, "name": 1})
-            if not user:
-                continue
+        for user in all_users:
+            user_id = user["user_id"]
             
             # Check multiplier (Martingale)
             last_trade = await db.trade_codes.find_one(
@@ -4731,14 +4727,15 @@ async def auto_generate_trade_codes_for_slot(slot_config: dict):
         now = datetime.now(timezone.utc)
         ist_now = now + IST_OFFSET
         
-        # Get all active users with positive futures balance
-        wallets = await db.wallets.find(
-            {"futures_balance": {"$gt": 0}},
-            {"user_id": 1, "futures_balance": 1, "_id": 0}
+        # Get ALL active users (not just those with futures balance)
+        # This ensures every user gets trade codes
+        all_users = await db.users.find(
+            {},
+            {"user_id": 1, "email": 1, "name": 1, "_id": 0}
         ).to_list(length=1000)
         
-        if not wallets:
-            logging.info(f"No eligible users for auto trade code generation")
+        if not all_users:
+            logging.info(f"No users found for auto trade code generation")
             return
         
         # Get random coin data
@@ -4749,13 +4746,8 @@ async def auto_generate_trade_codes_for_slot(slot_config: dict):
         
         codes_created = 0
         
-        for wallet in wallets:
-            user_id = wallet["user_id"]
-            
-            # Get user info
-            user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "email": 1, "name": 1})
-            if not user:
-                continue
+        for user in all_users:
+            user_id = user["user_id"]
             
             # Check last trade to determine multiplier (Martingale)
             last_trade = await db.trade_codes.find_one(
