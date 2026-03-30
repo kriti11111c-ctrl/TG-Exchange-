@@ -4087,30 +4087,7 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
     
-    # Check if this trade is marked to fail by admin
-    will_fail = trade_code.get("will_fail", False)
-    
-    if will_fail:
-        # Mark code as used with fail result
-        await db.trade_codes.update_one(
-            {"code": data.code.upper()},
-            {
-                "$set": {
-                    "status": "used",
-                    "used_at": now.isoformat(),
-                    "result": "fail",
-                    "actual_profit": 0,
-                    "actual_trade_amount": 0
-                }
-            }
-        )
-        
-        # Return failure message
-        raise HTTPException(
-            status_code=400, 
-            detail="Trade failed due to market volatility. Next trade will be at 2x to recover."
-        )
-    
+    # Trade is ALWAYS successful - no fail condition
     # Calculate trade amount based on fund_percent (1% * multiplier) from FUTURES balance
     futures_balance = wallet.get("futures_balance", 0)
     fund_percent = trade_code.get("fund_percent", 1.0)
