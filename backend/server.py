@@ -147,18 +147,19 @@ class ReferralUser(BaseModel):
     joined_at: datetime
     earnings_from: float
 
-# Referral commission rates per level (10 levels)
+# Referral commission rates per level (10 levels) - DISABLED (All set to 0)
+# Referral tracking is active but no commission is paid
 REFERRAL_COMMISSION_RATES = {
-    1: 0.20,   # 20% - Direct referral
-    2: 0.10,   # 10%
-    3: 0.05,   # 5%
-    4: 0.03,   # 3%
-    5: 0.02,   # 2%
-    6: 0.01,   # 1%
-    7: 0.005,  # 0.5%
-    8: 0.003,  # 0.3%
-    9: 0.002,  # 0.2%
-    10: 0.001  # 0.1%
+    1: 0.00,   # 0% - No commission
+    2: 0.00,   # 0%
+    3: 0.00,   # 0%
+    4: 0.00,   # 0%
+    5: 0.00,   # 0%
+    6: 0.00,   # 0%
+    7: 0.00,   # 0%
+    8: 0.00,   # 0%
+    9: 0.00,   # 0%
+    10: 0.00   # 0%
 }
 
 # ================= KYC MODELS (DISABLED) =================
@@ -184,7 +185,7 @@ LIQUIDATION_FEE_RATE = 0.005  # 0.5% liquidation fee
 # ================= BONUS & LIMITS CONFIG =================
 WELCOME_BONUS_AMOUNT = 200.0  # $200 welcome bonus
 WELCOME_BONUS_DAYS = 5  # Bonus valid for 5 days
-DIRECT_REFERRAL_BONUS_PERCENT = 0.05  # 5% bonus on direct referral
+DIRECT_REFERRAL_BONUS_PERCENT = 0.00  # 0% - No bonus on referral (DISABLED)
 
 # Deposit limits
 MIN_DEPOSIT = 50.0
@@ -209,9 +210,9 @@ TEAM_RANKS = [
         "bronze_required": 0,
         "team_required": 6,
         "type": "team",
-        "bonus_percent": 0.50,
-        "monthly_salary": 30,
-        "levelup_reward": 20,
+        "bonus_percent": 0.00,
+        "monthly_salary": 0,
+        "levelup_reward": 0,
         "color": "#9CA3AF"
     },
     {
@@ -222,9 +223,9 @@ TEAM_RANKS = [
         "bronze_required": 2,
         "team_required": 30,
         "type": "bronze",
-        "bonus_percent": 1.00,
-        "monthly_salary": 100,
-        "levelup_reward": 100,
+        "bonus_percent": 0.00,
+        "monthly_salary": 0,
+        "levelup_reward": 0,
         "color": "#60A5FA"
     },
     {
@@ -235,9 +236,9 @@ TEAM_RANKS = [
         "bronze_required": 3,
         "team_required": 75,
         "type": "bronze",
-        "bonus_percent": 1.50,
-        "monthly_salary": 250,
-        "levelup_reward": 240,
+        "bonus_percent": 0.00,
+        "monthly_salary": 0,
+        "levelup_reward": 0,
         "color": "#34D399"
     },
     {
@@ -248,9 +249,9 @@ TEAM_RANKS = [
         "bronze_required": 4,
         "team_required": 150,
         "type": "bronze",
-        "bonus_percent": 2.00,
-        "monthly_salary": 500,
-        "levelup_reward": 500,
+        "bonus_percent": 0.00,
+        "monthly_salary": 0,
+        "levelup_reward": 0,
         "color": "#FBBF24"
     },
     {
@@ -261,9 +262,9 @@ TEAM_RANKS = [
         "bronze_required": 5,
         "team_required": 300,
         "type": "bronze",
-        "bonus_percent": 2.50,
-        "monthly_salary": 1000,
-        "levelup_reward": 975,
+        "bonus_percent": 0.00,
+        "monthly_salary": 0,
+        "levelup_reward": 0,
         "color": "#F97316"
     },
     {
@@ -274,9 +275,9 @@ TEAM_RANKS = [
         "bronze_required": 6,
         "team_required": 600,
         "type": "bronze",
-        "bonus_percent": 3.00,
-        "monthly_salary": 2000,
-        "levelup_reward": 1950,
+        "bonus_percent": 0.00,
+        "monthly_salary": 0,
+        "levelup_reward": 0,
         "color": "#3B82F6"
     },
     {
@@ -287,9 +288,9 @@ TEAM_RANKS = [
         "bronze_required": 7,
         "team_required": 1000,
         "type": "bronze",
-        "bonus_percent": 3.50,
-        "monthly_salary": 4000,
-        "levelup_reward": 3250,
+        "bonus_percent": 0.00,
+        "monthly_salary": 0,
+        "levelup_reward": 0,
         "color": "#8B5CF6"
     },
     {
@@ -300,9 +301,9 @@ TEAM_RANKS = [
         "bronze_required": 8,
         "team_required": 2000,
         "type": "bronze",
-        "bonus_percent": 4.00,
-        "monthly_salary": 7000,
-        "levelup_reward": 6500,
+        "bonus_percent": 0.00,
+        "monthly_salary": 0,
+        "levelup_reward": 0,
         "color": "#EC4899"
     },
     {
@@ -313,9 +314,9 @@ TEAM_RANKS = [
         "bronze_required": 9,
         "team_required": 4000,
         "type": "bronze",
-        "bonus_percent": 4.50,
-        "monthly_salary": 12000,
-        "levelup_reward": 13000,
+        "bonus_percent": 0.00,
+        "monthly_salary": 0,
+        "levelup_reward": 0,
         "color": "#F59E0B"
     },
     {
@@ -326,9 +327,9 @@ TEAM_RANKS = [
         "bronze_required": 10,
         "team_required": 8000,
         "type": "bronze",
-        "bonus_percent": 5.00,
-        "monthly_salary": 20000,
-        "levelup_reward": 26000,
+        "bonus_percent": 0.00,
+        "monthly_salary": 0,
+        "levelup_reward": 0,
         "color": "#EF4444"
     }
 ]

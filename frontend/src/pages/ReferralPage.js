@@ -214,26 +214,12 @@ const ReferralPage = () => {
         
         <div className={`${cardBg} rounded-xl p-4`}>
           <div className="flex items-center gap-2 mb-2">
-            <Coins size={20} className="text-[#0ECB81]" />
-            <span className={textMuted}>Total Earnings</span>
+            <Users size={20} className="text-[#00E5FF]" />
+            <span className={textMuted}>Active Members</span>
           </div>
-          <p className="text-2xl font-bold text-[#0ECB81]">${stats?.total_earnings?.toFixed(2) || '0.00'}</p>
+          <p className={`text-2xl font-bold ${text}`}>{stats?.total_referrals || 0}</p>
         </div>
       </div>
-
-      {/* Claim Button */}
-      {stats?.total_earnings > 0 && (
-        <div className="mx-4 mt-4">
-          <Button 
-            onClick={claimCommission}
-            disabled={claiming}
-            className="w-full bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white font-medium py-6"
-          >
-            <Gift size={20} className="mr-2" />
-            {claiming ? "Claiming..." : `Claim $${stats?.total_earnings?.toFixed(2)} USDT`}
-          </Button>
-        </div>
-      )}
 
       {/* 10 Level Team Structure */}
       <div className={`${cardBg} mx-4 mt-4 rounded-xl p-4`}>
@@ -254,13 +240,11 @@ const ReferralPage = () => {
                   </div>
                   <div>
                     <p className={text}>Level {level.level}</p>
-                    <p className={`text-xs text-[#0ECB81]`}>0.6%</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
                     <p className={text}>{level.count} members</p>
-                    <p className={`text-xs text-[#0ECB81]`}>${level.earnings.toFixed(2)}</p>
                   </div>
                   <CaretRight 
                     size={16} 
@@ -348,8 +332,8 @@ const ReferralPage = () => {
               <span className="text-white font-bold">3</span>
             </div>
             <div>
-              <p className={text}>Earn commissions</p>
-              <p className={`text-sm ${textMuted}`}>Get rewards from their trading - 10 levels deep!</p>
+              <p className={text}>Build your team</p>
+              <p className={`text-sm ${textMuted}`}>Grow your network across 10 levels</p>
             </div>
           </div>
         </div>

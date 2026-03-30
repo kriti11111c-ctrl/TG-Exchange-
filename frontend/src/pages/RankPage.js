@@ -83,18 +83,18 @@ const RankPage = () => {
     return `${req.bronze} Bronze/${req.team}T`;
   };
 
-  // Rank benefits (Bonus %, Monthly Salary, Level-up Reward)
+  // Rank benefits (All rewards disabled - just tracking ranks)
   const rankBenefits = {
-    1: { bonus: 0.5, salary: 30, reward: 20 },
-    2: { bonus: 1.0, salary: 100, reward: 100 },
-    3: { bonus: 1.5, salary: 250, reward: 240 },
-    4: { bonus: 2.0, salary: 500, reward: 500 },
-    5: { bonus: 2.5, salary: 1000, reward: 975 },
-    6: { bonus: 3.0, salary: 2000, reward: 1950 },
-    7: { bonus: 3.5, salary: 4000, reward: 3250 },
-    8: { bonus: 4.0, salary: 7000, reward: 6500 },
-    9: { bonus: 4.5, salary: 12000, reward: 13000 },
-    10: { bonus: 5.0, salary: 20000, reward: 26000 }
+    1: { bonus: 0, salary: 0, reward: 0 },
+    2: { bonus: 0, salary: 0, reward: 0 },
+    3: { bonus: 0, salary: 0, reward: 0 },
+    4: { bonus: 0, salary: 0, reward: 0 },
+    5: { bonus: 0, salary: 0, reward: 0 },
+    6: { bonus: 0, salary: 0, reward: 0 },
+    7: { bonus: 0, salary: 0, reward: 0 },
+    8: { bonus: 0, salary: 0, reward: 0 },
+    9: { bonus: 0, salary: 0, reward: 0 },
+    10: { bonus: 0, salary: 0, reward: 0 }
   };
 
   // Calculate progress to a specific rank
