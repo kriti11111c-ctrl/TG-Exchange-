@@ -18,7 +18,8 @@ import {
   TrendDown,
   Ticket,
   CheckCircle,
-  Confetti
+  Confetti,
+  ArrowsLeftRight
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -480,15 +481,16 @@ const FuturesPage = () => {
 
       {/* Tabs Header */}
       <div className={`${cardBg} border-b ${border}`}>
-        <div className="flex items-center justify-between px-4">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-3 text-sm font-medium relative ${
+                className={`py-3 px-3 text-sm font-medium relative ${
                   activeTab === tab.id ? text : textMuted
                 }`}
+                data-testid={`tab-${tab.id}`}
               >
                 {tab.label} {tab.count !== null && `(${tab.count})`}
                 {activeTab === tab.id && (
@@ -498,13 +500,15 @@ const FuturesPage = () => {
             ))}
           </div>
           
-          <Link 
-            to="/trade-history"
-            className={`p-2 rounded-lg ${textMuted} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'}`}
-            title="History"
+          {/* History Icon - Always visible */}
+          <button 
+            onClick={() => setActiveTab("history")}
+            className={`p-2 rounded-lg ${activeTab === "history" ? 'text-[#00E5FF]' : textMuted} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'}`}
+            title="Trade History"
+            data-testid="history-icon-btn"
           >
-            <ClockCounterClockwise size={20} />
-          </Link>
+            <ClockCounterClockwise size={22} weight={activeTab === "history" ? "fill" : "regular"} />
+          </button>
         </div>
       </div>
 
@@ -620,24 +624,27 @@ const FuturesPage = () => {
 
         {/* Historical Orders Tab */}
         {activeTab === "history" && (
-          <div className="space-y-3">
-            {/* Date Range Filter */}
+          <div className="p-4 space-y-3">
+            {/* Date Range Filter - Styled like reference */}
             <div className="flex gap-2 mb-4">
-              <div className="flex-1">
+              <div className="flex-1 flex items-center gap-2">
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg text-sm ${inputBg} ${text} border ${border}`}
+                  className={`flex-1 px-3 py-2.5 rounded-lg text-sm ${inputBg} ${text} border ${border}`}
                   data-testid="history-start-date"
                 />
+                <span className={textMuted}>
+                  <ArrowsLeftRight size={16} />
+                </span>
               </div>
               <div className="flex-1">
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg text-sm ${inputBg} ${text} border ${border}`}
+                  className={`w-full px-3 py-2.5 rounded-lg text-sm ${inputBg} ${text} border ${border}`}
                   data-testid="history-end-date"
                 />
               </div>
@@ -654,74 +661,76 @@ const FuturesPage = () => {
                 <p className={`text-xs ${textMuted}`}>Your completed trades will appear here</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {tradeHistory.map((trade, index) => (
                   <div 
                     key={trade.id || index} 
-                    className={`${cardBg} rounded-xl border ${border} p-4`}
+                    className={`${cardBg} rounded-xl border ${border} overflow-hidden`}
                     data-testid={`history-item-${index}`}
                   >
-                    {/* Status Badge */}
-                    <div className="flex items-center justify-between mb-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        trade.is_profit 
-                          ? 'bg-[#0ECB81]/20 text-[#0ECB81]' 
-                          : 'bg-[#F6465D]/20 text-[#F6465D]'
-                      }`}>
-                        {trade.status}
+                    {/* Header with Status Badge */}
+                    <div className={`flex items-center justify-between px-4 py-2 ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold bg-[#0ECB81] text-white`}>
+                        Opened
                       </span>
                       <span className={`text-xs ${textMuted}`}>{trade.date}</span>
                     </div>
 
-                    {/* Trade Details Grid */}
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className={textMuted}>Product</span>
-                        <span className={`${text} font-semibold`}>{trade.product}</span>
+                    {/* Trade Details - Exact format like reference */}
+                    <div className="p-4 space-y-2.5">
+                      <div className="flex justify-between items-center">
+                        <span className={`text-sm ${textMuted}`}>Product</span>
+                        <span className={`text-sm font-semibold ${text}`}>{trade.product}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className={textMuted}>Direction</span>
-                        <span className={trade.direction === 'CALL' ? 'text-[#0ECB81] font-bold' : 'text-[#F6465D] font-bold'}>
+                      <div className="flex justify-between items-center">
+                        <span className={`text-sm ${textMuted}`}>Direction</span>
+                        <span className={`text-sm font-bold ${
+                          trade.direction === 'CALL' || trade.direction === 'BUY' 
+                            ? 'text-[#0ECB81]' 
+                            : 'text-[#F6465D]'
+                        }`}>
                           {trade.direction}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className={textMuted}>Time Period</span>
-                        <span className={text}>{trade.time_period}</span>
+                      <div className="flex justify-between items-center">
+                        <span className={`text-sm ${textMuted}`}>Time Period</span>
+                        <span className={`text-sm ${text}`}>{trade.time_period}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className={textMuted}>Amount</span>
-                        <span className={text}>{trade.amount}</span>
+                      <div className="flex justify-between items-center">
+                        <span className={`text-sm ${textMuted}`}>Amount</span>
+                        <span className={`text-sm ${text}`}>{trade.amount}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className={textMuted}>Open Position Time</span>
-                        <span className={text}>{trade.open_position_time}</span>
+                      <div className="flex justify-between items-center">
+                        <span className={`text-sm ${textMuted}`}>Open Position Time</span>
+                        <span className={`text-sm ${text}`}>{trade.open_position_time}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className={textMuted}>Open Price</span>
-                        <span className={text}>{trade.open_price?.toLocaleString()}</span>
+                      <div className="flex justify-between items-center">
+                        <span className={`text-sm ${textMuted}`}>Open Price</span>
+                        <span className={`text-sm ${text}`}>{trade.open_price?.toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className={textMuted}>Settlement price</span>
-                        <span className={text}>{trade.settlement_price?.toLocaleString()}</span>
+                      <div className="flex justify-between items-center">
+                        <span className={`text-sm ${textMuted}`}>Settlement price</span>
+                        <span className={`text-sm ${text}`}>{trade.settlement_price?.toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className={textMuted}>Turnover</span>
-                        <span className={text}>{trade.turnover}</span>
+                      <div className="flex justify-between items-center">
+                        <span className={`text-sm ${textMuted}`}>Turnover</span>
+                        <span className={`text-sm ${text}`}>{trade.turnover}</span>
                       </div>
                       
-                      {/* Profit/Loss - Highlighted */}
-                      <div className="flex justify-between pt-2 border-t border-dashed border-gray-600">
-                        <span className={textMuted}>Profit/Loss</span>
-                        <span className={`font-bold text-lg ${trade.is_profit ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
-                          {trade.is_profit ? '+' : ''}{trade.profit_loss?.toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className={textMuted}>Rate of return</span>
-                        <span className={`font-bold ${trade.is_profit ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
-                          {trade.rate_of_return?.toFixed(2)}%
-                        </span>
+                      {/* Profit Section - Highlighted */}
+                      <div className={`pt-2 mt-2 border-t border-dashed ${border}`}>
+                        <div className="flex justify-between items-center">
+                          <span className={`text-sm ${textMuted}`}>Profit/Loss</span>
+                          <span className={`text-lg font-bold ${trade.is_profit ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+                            {trade.is_profit ? '+' : ''}{trade.profit_loss?.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center mt-1">
+                          <span className={`text-sm ${textMuted}`}>Rate of return</span>
+                          <span className={`text-base font-bold ${trade.is_profit ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+                            {trade.rate_of_return?.toFixed(2)}%
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
