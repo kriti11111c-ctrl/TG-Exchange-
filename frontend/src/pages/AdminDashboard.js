@@ -29,7 +29,6 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [pendingDeposits, setPendingDeposits] = useState([]);
-  const [pendingKYC, setPendingKYC] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
@@ -66,16 +65,14 @@ const AdminDashboard = () => {
     try {
       const headers = { Authorization: `Bearer ${adminToken}` };
       
-      const [statsRes, depositsRes, kycRes, usersRes] = await Promise.all([
+      const [statsRes, depositsRes, usersRes] = await Promise.all([
         axios.get(`${API}/admin/stats`, { headers }),
         axios.get(`${API}/admin/deposit-requests?status=pending`, { headers }),
-        axios.get(`${API}/admin/kyc/pending`, { headers }),
         axios.get(`${API}/admin/users`, { headers })
       ]);
 
       setStats(statsRes.data);
       setPendingDeposits(depositsRes.data.requests || []);
-      setPendingKYC(kycRes.data.requests || []);
       setAllUsers(usersRes.data.users || []);
     } catch (error) {
       if (error.response?.status === 401) {
@@ -183,23 +180,6 @@ const AdminDashboard = () => {
       fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || `Failed to ${action} deposit`);
-    }
-  };
-
-  // KYC Action handler
-  const handleKYCAction = async (kycId, action, reason = null) => {
-    try {
-      const headers = { Authorization: `Bearer ${adminToken}` };
-      await axios.post(`${API}/admin/kyc/action`, {
-        kyc_id: kycId,
-        action: action,
-        rejection_reason: reason
-      }, { headers });
-
-      toast.success(`KYC ${action === 'approve' ? 'approved' : 'rejected'} successfully`);
-      fetchData();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || `Failed to ${action} KYC`);
     }
   };
 
@@ -538,75 +518,6 @@ const AdminDashboard = () => {
                         variant="outline"
                         className="border-red-500/50 text-red-400 hover:bg-red-500/10"
                         data-testid={`reject-${deposit.request_id}`}
-                      >
-                        <XCircle size={18} />
-                        Reject
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Pending KYC Verifications */}
-        <div className="bg-[#111111] border border-[#222] rounded-2xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-[#222] flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Users size={20} className="text-[#00E5FF]" />
-              Pending KYC Verifications
-            </h2>
-            <span className="px-3 py-1 bg-[#00E5FF]/20 text-[#00E5FF] rounded-full text-sm font-medium">
-              {pendingKYC.length} pending
-            </span>
-          </div>
-
-          {pendingKYC.length === 0 ? (
-            <div className="p-12 text-center">
-              <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
-              <p className="text-gray-400">No pending KYC verifications</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-[#222]">
-              {pendingKYC.map((kyc) => (
-                <div key={kyc.kyc_id} className="p-4 md:p-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-white font-semibold text-lg">
-                          {kyc.user_name}
-                        </span>
-                        <span className="px-2 py-0.5 bg-[#00E5FF]/20 text-[#00E5FF] rounded text-xs">
-                          KYC
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-400 space-y-1">
-                        <p>Email: <span className="text-gray-300">{kyc.user_email}</span></p>
-                        <p>Aadhar: <span className="text-gray-300 font-mono">{kyc.aadhar_number.slice(0,4)}****{kyc.aadhar_number.slice(-4)}</span></p>
-                        <p>Phone: <span className="text-gray-300">{kyc.phone_number}</span></p>
-                        <p>DOB: <span className="text-gray-300">{kyc.date_of_birth}</span> | Country: <span className="text-gray-300">{kyc.country}</span></p>
-                        <p>Submitted: {formatDate(kyc.submitted_at)}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        onClick={() => handleKYCAction(kyc.kyc_id, "approve")}
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                        data-testid={`kyc-approve-${kyc.kyc_id}`}
-                      >
-                        <CheckCircle size={18} />
-                        Verify
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          const reason = prompt("Enter rejection reason:");
-                          if (reason) handleKYCAction(kyc.kyc_id, "reject", reason);
-                        }}
-                        variant="outline"
-                        className="border-red-500/50 text-red-400 hover:bg-red-500/10"
-                        data-testid={`kyc-reject-${kyc.kyc_id}`}
                       >
                         <XCircle size={18} />
                         Reject
