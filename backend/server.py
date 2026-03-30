@@ -5024,6 +5024,20 @@ async def setup_admin(secret_key: str = "TG_SETUP_2024"):
             "referral_link": f"/?ref={FIXED_REFERRAL_CODE}"
         }
 
+# File download endpoint for deployment
+from fastapi.responses import FileResponse
+
+@api_router.get("/download/code")
+async def download_code():
+    file_path = "/app/tgexchange_code.tar.gz"
+    if os.path.exists(file_path):
+        return FileResponse(
+            path=file_path,
+            filename="tgexchange_code.tar.gz",
+            media_type="application/gzip"
+        )
+    raise HTTPException(status_code=404, detail="File not found")
+
 # Include router
 app.include_router(api_router)
 
@@ -5203,3 +5217,4 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
