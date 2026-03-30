@@ -351,52 +351,75 @@ TEAM_RANKS = [
 ]
 
 async def get_team_stats(user_id: str) -> dict:
-    """Get user's team statistics - counts users with $50+ CURRENT BALANCE (not deposits)"""
-    # Get all direct referrals (level 1)
-    direct_referrals = await db.referrals.find({"referrer_id": user_id, "level": 1}, {"_id": 0}).to_list(length=10000)
+    """Get user's team statistics - counts users with $50+ CURRENT BALANCE (not deposits)
+    Optimized with MongoDB aggregation to avoid N+1 queries"""
     
-    # Count valid direct (with min $50 CURRENT balance) and Bronze rank members
-    valid_direct_count = 0
-    bronze_members_count = 0
+    # Get direct referrals count with balance check using aggregation
+    direct_pipeline = [
+        {"$match": {"referrer_id": user_id, "level": 1}},
+        {"$lookup": {
+            "from": "wallets",
+            "localField": "referred_id",
+            "foreignField": "user_id",
+            "as": "wallet"
+        }},
+        {"$lookup": {
+            "from": "users",
+            "localField": "referred_id",
+            "foreignField": "user_id",
+            "as": "user"
+        }},
+        {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
+        {"$unwind": {"path": "$user", "preserveNullAndEmptyArrays": True}},
+        {"$addFields": {
+            "current_balance": {"$ifNull": ["$wallet.balances.usdt", 0]},
+            "rank_level": {"$ifNull": ["$user.team_rank_level", 0]}
+        }},
+        {"$group": {
+            "_id": None,
+            "total_direct": {"$sum": 1},
+            "valid_direct": {"$sum": {"$cond": [{"$gte": ["$current_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}},
+            "bronze_members": {"$sum": {"$cond": [
+                {"$and": [
+                    {"$gte": ["$current_balance", MIN_DEPOSIT_FOR_RANK]},
+                    {"$gte": ["$rank_level", 1]}
+                ]}, 1, 0
+            ]}}
+        }}
+    ]
     
-    for ref in direct_referrals:
-        referred_id = ref["referred_id"]
-        
-        # Check CURRENT wallet balance (not deposit history)
-        wallet = await db.wallets.find_one({"user_id": referred_id}, {"_id": 0})
-        current_balance = wallet["balances"].get("usdt", 0) if wallet else 0
-        
-        # Only count if current balance >= $50
-        if current_balance >= MIN_DEPOSIT_FOR_RANK:
-            valid_direct_count += 1
-            
-            # Check if this user has Bronze rank (level 1+)
-            referred_user = await db.users.find_one({"user_id": referred_id}, {"_id": 0})
-            if referred_user:
-                referred_rank_level = referred_user.get("team_rank_level", 0)
-                if referred_rank_level >= 1:
-                    bronze_members_count += 1
+    direct_result = await db.referrals.aggregate(direct_pipeline).to_list(length=1)
+    direct_stats = direct_result[0] if direct_result else {"total_direct": 0, "valid_direct": 0, "bronze_members": 0}
     
-    # Count total team (all levels) - only those with $50+ CURRENT balance
-    all_referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=10000)
-    valid_team_count = 0
+    # Get all team count with balance check
+    team_pipeline = [
+        {"$match": {"referrer_id": user_id}},
+        {"$lookup": {
+            "from": "wallets",
+            "localField": "referred_id",
+            "foreignField": "user_id",
+            "as": "wallet"
+        }},
+        {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
+        {"$addFields": {
+            "current_balance": {"$ifNull": ["$wallet.balances.usdt", 0]}
+        }},
+        {"$group": {
+            "_id": None,
+            "total_team": {"$sum": 1},
+            "valid_team": {"$sum": {"$cond": [{"$gte": ["$current_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}}
+        }}
+    ]
     
-    for ref in all_referrals:
-        referred_id = ref["referred_id"]
-        
-        # Check CURRENT wallet balance
-        wallet = await db.wallets.find_one({"user_id": referred_id}, {"_id": 0})
-        current_balance = wallet["balances"].get("usdt", 0) if wallet else 0
-        
-        if current_balance >= MIN_DEPOSIT_FOR_RANK:
-            valid_team_count += 1
+    team_result = await db.referrals.aggregate(team_pipeline).to_list(length=1)
+    team_stats = team_result[0] if team_result else {"total_team": 0, "valid_team": 0}
     
     return {
-        "direct_referrals": valid_direct_count,
-        "bronze_members": bronze_members_count,
-        "total_team": valid_team_count,
-        "total_direct_all": len(direct_referrals),
-        "total_team_all": len(all_referrals)
+        "direct_referrals": direct_stats.get("valid_direct", 0),
+        "bronze_members": direct_stats.get("bronze_members", 0),
+        "total_team": team_stats.get("valid_team", 0),
+        "total_direct_all": direct_stats.get("total_direct", 0),
+        "total_team_all": team_stats.get("total_team", 0)
     }
 
 def get_team_rank(direct_referrals: int, bronze_members: int, total_team: int) -> dict:

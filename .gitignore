@@ -1,5 +1,10 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# Credentials - IMPORTANT: Never deploy these
+memory/test_credentials.md
+/app/memory/test_credentials.md
+test_credentials.md
+
 # IDE and editors
 .idea/
 .vscode/
