@@ -2938,6 +2938,46 @@ async def get_current_admin(request: Request):
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid admin token")
 
+@api_router.post("/create-admin")
+async def create_admin_endpoint():
+    """Create admin user - direct endpoint"""
+    admin = await db.admins.find_one({"email": ADMIN_EMAIL})
+    if admin:
+        return {"message": "Admin already exists", "email": ADMIN_EMAIL}
+    
+    hashed_password = bcrypt.hashpw(ADMIN_PASSWORD.encode('utf-8'), bcrypt.gensalt())
+    await db.admins.insert_one({
+        "admin_id": f"admin_{uuid.uuid4().hex[:8]}",
+        "email": ADMIN_EMAIL,
+        "password": hashed_password.decode('utf-8'),
+        "name": "TG Exchange Admin",
+        "referral_code": "TGADMIN2024",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    # Also create admin as a regular user for referral system
+    existing_user = await db.users.find_one({"email": ADMIN_EMAIL})
+    if not existing_user:
+        admin_user_id = f"user_{uuid.uuid4().hex[:12]}"
+        await db.users.insert_one({
+            "user_id": admin_user_id,
+            "email": ADMIN_EMAIL,
+            "password_hash": hashed_password.decode('utf-8'),
+            "name": "TG Exchange Admin",
+            "referral_code": "TGADMIN2024",
+            "role": "admin",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        # Create wallet for admin
+        await db.wallets.insert_one({
+            "user_id": admin_user_id,
+            "balances": {"btc": 0.0, "eth": 0.0, "usdt": 10000.0, "bnb": 0.0, "xrp": 0.0, "sol": 0.0},
+            "futures_balance": 10000.0,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        })
+    
+    return {"message": "Admin created successfully", "email": ADMIN_EMAIL, "password": ADMIN_PASSWORD}
+
 @api_router.post("/admin/login")
 async def admin_login(credentials: AdminLogin):
     """Admin login - checks both admins collection and users collection"""
