@@ -30,6 +30,7 @@ import {
   Bell,
   Eye,
   Lock,
+  Fingerprint,
   UserPlus,
   Wallet,
   Robot,
@@ -51,9 +52,11 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [rankInfo, setRankInfo] = useState(null);
+  const [kycStatus, setKycStatus] = useState("unverified");
 
   useEffect(() => {
     fetchRankInfo();
+    fetchKycStatus();
   }, []);
 
   const fetchRankInfo = async () => {
@@ -62,6 +65,15 @@ const ProfilePage = () => {
       setRankInfo(response.data);
     } catch (error) {
       console.error("Error fetching rank:", error);
+    }
+  };
+
+  const fetchKycStatus = async () => {
+    try {
+      const response = await axios.get(`${API}/user/kyc/status`, { withCredentials: true });
+      setKycStatus(response.data.status || "unverified");
+    } catch (error) {
+      setKycStatus("unverified");
     }
   };
 
@@ -173,6 +185,19 @@ const ProfilePage = () => {
                   <span className="text-xs px-2 py-0.5 rounded bg-[#00E5FF]/20 text-[#00E5FF] font-medium">
                     {getRankName(rankInfo?.rank?.level || 1)}
                   </span>
+                  {kycStatus === "verified" ? (
+                    <span className="text-xs px-2 py-0.5 rounded bg-[#0ECB81]/20 text-[#0ECB81] font-medium">
+                      Verified
+                    </span>
+                  ) : kycStatus === "pending" ? (
+                    <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-500 font-medium">
+                      Pending
+                    </span>
+                  ) : (
+                    <span className="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-500 font-medium">
+                      Unverified
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -213,6 +238,22 @@ const ProfilePage = () => {
       <div className="mx-4 mt-6">
         <h3 className={`font-semibold mb-3 ${text}`}>Account</h3>
         <div className={`${cardBg} rounded-2xl overflow-hidden`}>
+          {/* KYC Verification */}
+          <Link to="/kyc" className={`flex items-center justify-between p-4 ${hoverBg}`}>
+            <div className="flex items-center gap-3">
+              <Fingerprint size={22} className="text-[#00E5FF]" />
+              <span className={text}>KYC Verification</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {kycStatus === "verified" ? (
+                <span className="text-xs px-2 py-1 rounded-full bg-[#0ECB81]/20 text-[#0ECB81] font-medium">Verified</span>
+              ) : (
+                <span className="text-xs px-2 py-1 rounded-full bg-[#00E5FF]/20 text-[#00E5FF] font-medium">Verify Now</span>
+              )}
+              <CaretRight size={18} className={textMuted} />
+            </div>
+          </Link>
+          <div className={`h-px ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} mx-4`}></div>
           <Link to="/profile/security" className={`flex items-center justify-between p-4 ${hoverBg}`}>
             <div className="flex items-center gap-3">
               <Shield size={22} className="text-[#3498DB]" />

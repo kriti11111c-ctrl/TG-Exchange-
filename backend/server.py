@@ -147,23 +147,32 @@ class ReferralUser(BaseModel):
     joined_at: datetime
     earnings_from: float
 
-# Referral commission rates per level (10 levels) - DISABLED (All set to 0)
-# Referral tracking is active but no commission is paid
+# Referral commission rates per level (10 levels) - Active
 REFERRAL_COMMISSION_RATES = {
-    1: 0.00,   # 0% - No commission
-    2: 0.00,   # 0%
-    3: 0.00,   # 0%
-    4: 0.00,   # 0%
-    5: 0.00,   # 0%
-    6: 0.00,   # 0%
-    7: 0.00,   # 0%
-    8: 0.00,   # 0%
-    9: 0.00,   # 0%
-    10: 0.00   # 0%
+    1: 0.006,   # 0.6%
+    2: 0.006,   # 0.6%
+    3: 0.006,   # 0.6%
+    4: 0.006,   # 0.6%
+    5: 0.006,   # 0.6%
+    6: 0.006,   # 0.6%
+    7: 0.006,   # 0.6%
+    8: 0.006,   # 0.6%
+    9: 0.006,   # 0.6%
+    10: 0.006   # 0.6%
 }
 
-# ================= KYC MODELS (DISABLED) =================
-# KYC functionality has been removed from the app
+# ================= KYC MODELS =================
+
+class KYCSubmit(BaseModel):
+    aadhar_number: str = Field(..., min_length=12, max_length=12)
+    phone_number: str = Field(..., min_length=10, max_length=15)
+    date_of_birth: str  # Format: YYYY-MM-DD
+    country: str
+
+class KYCAction(BaseModel):
+    kyc_id: str
+    action: str  # "approve" or "reject"
+    rejection_reason: Optional[str] = None
 
 # ================= MARGIN TRADING MODELS =================
 
@@ -185,7 +194,7 @@ LIQUIDATION_FEE_RATE = 0.005  # 0.5% liquidation fee
 # ================= BONUS & LIMITS CONFIG =================
 WELCOME_BONUS_AMOUNT = 200.0  # $200 welcome bonus
 WELCOME_BONUS_DAYS = 5  # Bonus valid for 5 days
-DIRECT_REFERRAL_BONUS_PERCENT = 0.00  # 0% - No bonus on referral (DISABLED)
+DIRECT_REFERRAL_BONUS_PERCENT = 0.05  # 5% bonus on direct referral first deposit
 
 # Deposit limits
 MIN_DEPOSIT = 50.0
@@ -210,9 +219,9 @@ TEAM_RANKS = [
         "bronze_required": 0,
         "team_required": 6,
         "type": "team",
-        "bonus_percent": 0.00,
-        "monthly_salary": 0,
-        "levelup_reward": 0,
+        "bonus_percent": 0.50,
+        "monthly_salary": 30,
+        "levelup_reward": 20,
         "color": "#9CA3AF"
     },
     {
@@ -223,9 +232,9 @@ TEAM_RANKS = [
         "bronze_required": 2,
         "team_required": 30,
         "type": "bronze",
-        "bonus_percent": 0.00,
-        "monthly_salary": 0,
-        "levelup_reward": 0,
+        "bonus_percent": 1.00,
+        "monthly_salary": 100,
+        "levelup_reward": 100,
         "color": "#60A5FA"
     },
     {
@@ -236,9 +245,9 @@ TEAM_RANKS = [
         "bronze_required": 3,
         "team_required": 75,
         "type": "bronze",
-        "bonus_percent": 0.00,
-        "monthly_salary": 0,
-        "levelup_reward": 0,
+        "bonus_percent": 1.50,
+        "monthly_salary": 250,
+        "levelup_reward": 240,
         "color": "#34D399"
     },
     {
@@ -249,9 +258,9 @@ TEAM_RANKS = [
         "bronze_required": 4,
         "team_required": 150,
         "type": "bronze",
-        "bonus_percent": 0.00,
-        "monthly_salary": 0,
-        "levelup_reward": 0,
+        "bonus_percent": 2.00,
+        "monthly_salary": 500,
+        "levelup_reward": 500,
         "color": "#FBBF24"
     },
     {
@@ -262,9 +271,9 @@ TEAM_RANKS = [
         "bronze_required": 5,
         "team_required": 300,
         "type": "bronze",
-        "bonus_percent": 0.00,
-        "monthly_salary": 0,
-        "levelup_reward": 0,
+        "bonus_percent": 2.50,
+        "monthly_salary": 1000,
+        "levelup_reward": 975,
         "color": "#F97316"
     },
     {
@@ -275,9 +284,9 @@ TEAM_RANKS = [
         "bronze_required": 6,
         "team_required": 600,
         "type": "bronze",
-        "bonus_percent": 0.00,
-        "monthly_salary": 0,
-        "levelup_reward": 0,
+        "bonus_percent": 3.00,
+        "monthly_salary": 2000,
+        "levelup_reward": 1950,
         "color": "#3B82F6"
     },
     {
@@ -288,9 +297,9 @@ TEAM_RANKS = [
         "bronze_required": 7,
         "team_required": 1000,
         "type": "bronze",
-        "bonus_percent": 0.00,
-        "monthly_salary": 0,
-        "levelup_reward": 0,
+        "bonus_percent": 3.50,
+        "monthly_salary": 4000,
+        "levelup_reward": 3250,
         "color": "#8B5CF6"
     },
     {
@@ -301,9 +310,9 @@ TEAM_RANKS = [
         "bronze_required": 8,
         "team_required": 2000,
         "type": "bronze",
-        "bonus_percent": 0.00,
-        "monthly_salary": 0,
-        "levelup_reward": 0,
+        "bonus_percent": 4.00,
+        "monthly_salary": 7000,
+        "levelup_reward": 6500,
         "color": "#EC4899"
     },
     {
@@ -314,9 +323,9 @@ TEAM_RANKS = [
         "bronze_required": 9,
         "team_required": 4000,
         "type": "bronze",
-        "bonus_percent": 0.00,
-        "monthly_salary": 0,
-        "levelup_reward": 0,
+        "bonus_percent": 4.50,
+        "monthly_salary": 12000,
+        "levelup_reward": 13000,
         "color": "#F59E0B"
     },
     {
@@ -327,9 +336,9 @@ TEAM_RANKS = [
         "bronze_required": 10,
         "team_required": 8000,
         "type": "bronze",
-        "bonus_percent": 0.00,
-        "monthly_salary": 0,
-        "levelup_reward": 0,
+        "bonus_percent": 5.00,
+        "monthly_salary": 20000,
+        "levelup_reward": 26000,
         "color": "#EF4444"
     }
 ]
@@ -4431,32 +4440,155 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         }
     }
 
-# ==================== KYC VERIFICATION SYSTEM (DISABLED) ====================
+# ==================== KYC VERIFICATION SYSTEM ====================
 
 @api_router.post("/user/kyc/submit")
-async def submit_kyc_disabled(request: Request):
-    """KYC functionality has been disabled"""
-    raise HTTPException(status_code=403, detail="KYC verification is currently disabled")
+async def submit_kyc(data: KYCSubmit, request: Request):
+    """Submit KYC verification request"""
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    user_id = user["user_id"]
+    
+    # Check if KYC already submitted
+    existing_kyc = await db.kyc_requests.find_one({"user_id": user_id}, {"_id": 0})
+    if existing_kyc:
+        if existing_kyc["status"] == "verified":
+            raise HTTPException(status_code=400, detail="KYC already verified")
+        elif existing_kyc["status"] == "pending":
+            raise HTTPException(status_code=400, detail="KYC already under verification")
+    
+    # Validate Aadhar (should be 12 digits)
+    if not data.aadhar_number.isdigit() or len(data.aadhar_number) != 12:
+        raise HTTPException(status_code=400, detail="Invalid Aadhar number. Must be 12 digits.")
+    
+    # Validate phone number
+    phone_clean = data.phone_number.replace("+", "").replace(" ", "").replace("-", "")
+    if not phone_clean.isdigit() or len(phone_clean) < 10:
+        raise HTTPException(status_code=400, detail="Invalid phone number")
+    
+    # Validate date of birth format
+    try:
+        dob = datetime.strptime(data.date_of_birth, "%Y-%m-%d")
+        age = (datetime.now() - dob).days // 365
+        if age < 18:
+            raise HTTPException(status_code=400, detail="User must be 18 years or older")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    
+    kyc_id = f"kyc_{uuid.uuid4().hex[:12]}"
+    now = datetime.now(timezone.utc)
+    
+    kyc_record = {
+        "kyc_id": kyc_id,
+        "user_id": user_id,
+        "user_email": user.get("email", ""),
+        "user_name": user.get("name", "User"),
+        "aadhar_number": data.aadhar_number,
+        "phone_number": data.phone_number,
+        "date_of_birth": data.date_of_birth,
+        "country": data.country,
+        "status": "pending",
+        "submitted_at": now.isoformat(),
+        "reviewed_at": None,
+        "rejection_reason": None
+    }
+    
+    await db.kyc_requests.insert_one(kyc_record)
+    
+    # Update user's KYC status
+    await db.users.update_one(
+        {"user_id": user_id},
+        {"$set": {"kyc_status": "pending"}}
+    )
+    
+    return {
+        "success": True,
+        "message": "KYC submitted successfully. Please wait for verification.",
+        "kyc_id": kyc_id
+    }
 
 @api_router.get("/user/kyc/status")
-async def get_kyc_status_disabled(request: Request):
-    """KYC functionality has been disabled"""
-    return {"status": "disabled", "kyc": None, "message": "KYC verification is not available"}
+async def get_kyc_status(request: Request):
+    """Get user's KYC status"""
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    kyc = await db.kyc_requests.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    if not kyc:
+        return {"status": "unverified", "kyc": None}
+    
+    return {
+        "status": kyc["status"],
+        "kyc": {
+            "kyc_id": kyc["kyc_id"],
+            "submitted_at": kyc["submitted_at"],
+            "reviewed_at": kyc.get("reviewed_at"),
+            "rejection_reason": kyc.get("rejection_reason")
+        }
+    }
 
 @api_router.get("/admin/kyc/pending")
-async def get_pending_kyc_disabled(admin: dict = Depends(get_current_admin)):
-    """KYC functionality has been disabled"""
-    return {"requests": [], "count": 0, "message": "KYC verification is disabled"}
+async def get_pending_kyc(admin: dict = Depends(get_current_admin)):
+    """Admin: Get all pending KYC requests"""
+    pending = await db.kyc_requests.find(
+        {"status": "pending"},
+        {"_id": 0}
+    ).sort("submitted_at", -1).to_list(length=100)
+    
+    return {"requests": pending, "count": len(pending)}
 
 @api_router.get("/admin/kyc/all")
-async def get_all_kyc_disabled(admin: dict = Depends(get_current_admin)):
-    """KYC functionality has been disabled"""
-    return {"requests": [], "count": 0, "message": "KYC verification is disabled"}
+async def get_all_kyc(admin: dict = Depends(get_current_admin)):
+    """Admin: Get all KYC requests"""
+    all_kyc = await db.kyc_requests.find(
+        {},
+        {"_id": 0}
+    ).sort("submitted_at", -1).to_list(length=500)
+    
+    return {"requests": all_kyc, "count": len(all_kyc)}
 
 @api_router.post("/admin/kyc/action")
-async def kyc_action_disabled(data: dict, admin: dict = Depends(get_current_admin)):
-    """KYC functionality has been disabled"""
-    raise HTTPException(status_code=403, detail="KYC verification is currently disabled")
+async def kyc_action(data: KYCAction, admin: dict = Depends(get_current_admin)):
+    """Admin: Approve or reject KYC request"""
+    kyc_id = data.kyc_id
+    action = data.action
+    rejection_reason = data.rejection_reason
+    
+    if not kyc_id or action not in ["approve", "reject"]:
+        raise HTTPException(status_code=400, detail="Invalid request")
+    
+    kyc = await db.kyc_requests.find_one({"kyc_id": kyc_id}, {"_id": 0})
+    if not kyc:
+        raise HTTPException(status_code=404, detail="KYC request not found")
+    
+    new_status = "verified" if action == "approve" else "rejected"
+    now = datetime.now(timezone.utc)
+    
+    update_data = {
+        "status": new_status,
+        "reviewed_at": now.isoformat()
+    }
+    if action == "reject":
+        update_data["rejection_reason"] = rejection_reason
+    
+    await db.kyc_requests.update_one(
+        {"kyc_id": kyc_id},
+        {"$set": update_data}
+    )
+    
+    await db.users.update_one(
+        {"user_id": kyc["user_id"]},
+        {"$set": {"kyc_status": new_status, "kyc_verified": new_status == "verified"}}
+    )
+    
+    return {
+        "success": True,
+        "message": f"KYC {new_status}",
+        "kyc_id": kyc_id
+    }
 
 # ==================== MARGIN/FUTURES TRADING ====================
 # ==================== MARGIN/FUTURES TRADING ====================
