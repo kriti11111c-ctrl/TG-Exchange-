@@ -669,8 +669,8 @@ async def register(user_data: UserCreate, response: Response):
         key="session_token",
         value=token,
         httponly=True,
-        secure=True,
-        samesite="none",
+        secure=False,
+        samesite="lax",
         max_age=JWT_EXPIRATION_HOURS * 3600,
         path="/"
     )
@@ -740,8 +740,8 @@ async def login(credentials: UserLogin, response: Response):
         key="session_token",
         value=token,
         httponly=True,
-        secure=True,
-        samesite="none",
+        secure=False,
+        samesite="lax",
         max_age=JWT_EXPIRATION_HOURS * 3600,
         path="/"
     )
@@ -846,8 +846,8 @@ async def process_google_session(request: Request, response: Response):
         key="session_token",
         value=session_token,
         httponly=True,
-        secure=True,
-        samesite="none",
+        secure=False,
+        samesite="lax",
         max_age=7 * 24 * 3600,
         path="/"
     )
@@ -3750,8 +3750,8 @@ async def admin_login_as_user(data: dict, response: Response, admin: dict = Depe
         key="session_token",
         value=token,
         httponly=True,
-        secure=True,
-        samesite="none",
+        secure=False,
+        samesite="lax",
         max_age=JWT_EXPIRATION_HOURS * 3600,
         path="/"
     )
