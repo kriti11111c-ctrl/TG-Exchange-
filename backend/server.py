@@ -5086,7 +5086,7 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=["http://72.61.117.69", "http://tradegenius.exchange", "http://www.tradegenius.exchange", "https://tradegenius.exchange", "https://www.tradegenius.exchange"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
