@@ -859,19 +859,20 @@ async def process_google_session(request: Request, response: Response):
         "picture": picture
     }
 
-@api_router.get("/auth/me", response_model=UserResponse)
+@api_router.get("/auth/me")
 async def get_me(user: dict = Depends(get_current_user)):
     created_at = user.get("created_at")
     if isinstance(created_at, str):
         created_at = datetime.fromisoformat(created_at)
     
-    return UserResponse(
-        user_id=user["user_id"],
-        email=user["email"],
-        name=user["name"],
-        picture=user.get("picture"),
-        created_at=created_at
-    )
+    return {
+        "user_id": user["user_id"],
+        "email": user["email"],
+        "name": user["name"],
+        "picture": user.get("picture"),
+        "referral_code": user.get("referral_code", ""),
+        "created_at": created_at.isoformat() if created_at else None
+    }
 
 @api_router.post("/auth/logout")
 async def logout(response: Response, user: dict = Depends(get_current_user)):
