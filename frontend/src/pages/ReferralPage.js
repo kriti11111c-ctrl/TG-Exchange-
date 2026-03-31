@@ -50,9 +50,17 @@ const ReferralPage = () => {
   const fetchStats = async () => {
     try {
       const response = await axios.get(`${API}/referral/stats`, { withCredentials: true });
+      console.log("Referral stats response:", response.data);
       setStats(response.data);
     } catch (error) {
       console.error("Error fetching referral stats:", error);
+      // Set a fallback to show something if API fails
+      setStats({
+        referral_code: "Loading...",
+        total_referrals: 0,
+        total_earnings: 0,
+        level_stats: []
+      });
     } finally {
       setLoading(false);
     }
@@ -176,7 +184,7 @@ const ReferralPage = () => {
         <div className="flex items-center justify-between mb-4">
           <span className={textMuted}>Your Referral Code</span>
           <div className="flex items-center gap-2">
-            <span className={`font-bold text-lg ${text}`}>{stats?.referral_code}</span>
+            <span className={`font-bold text-xl text-[#00E5FF]`}>{stats?.referral_code || "LOADING..."}</span>
             <button onClick={copyReferralCode} className="text-[#00E5FF]">
               {copied ? <CheckCircle size={20} /> : <Copy size={20} />}
             </button>
