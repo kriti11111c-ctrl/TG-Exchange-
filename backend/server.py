@@ -962,8 +962,11 @@ async def get_wallet(user: dict = Depends(get_current_user)):
         if remaining.total_seconds() > 0:
             days_remaining = remaining.days
             hours_remaining = remaining.seconds // 3600
+            # Show actual futures balance (which decreases with losses), not original welcome_bonus
+            actual_bonus_remaining = min(wallet.get("futures_balance", 0), welcome_bonus)
             welcome_bonus_info = {
-                "amount": welcome_bonus,
+                "amount": round(actual_bonus_remaining, 2),
+                "original_amount": welcome_bonus,
                 "expires_at": expires_at_str,
                 "days_remaining": days_remaining,
                 "hours_remaining": hours_remaining
