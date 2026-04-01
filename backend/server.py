@@ -5262,3 +5262,12 @@ async def startup_event():
 async def shutdown_db_client():
     client.close()
 
+# Temporary file download endpoint for VPS deployment
+from fastapi.responses import PlainTextResponse
+
+@app.get("/api/download-server-file", response_class=PlainTextResponse)
+async def download_server_file():
+    """Download the server.py file as plain text"""
+    file_path = Path(__file__)
+    return file_path.read_text()
+
