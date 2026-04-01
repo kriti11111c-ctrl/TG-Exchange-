@@ -5271,3 +5271,6 @@ async def download_server_file():
     file_path = Path(__file__)
     return file_path.read_text()
 
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8001)
