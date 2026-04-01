@@ -193,7 +193,7 @@ LIQUIDATION_FEE_RATE = 0.005  # 0.5% liquidation fee
 
 # ================= BONUS & LIMITS CONFIG =================
 WELCOME_BONUS_AMOUNT = 200.0  # $200 welcome bonus
-WELCOME_BONUS_DAYS = 5  # Bonus valid for 5 days
+WELCOME_BONUS_DAYS = 3  # Bonus valid for 3 days
 DIRECT_REFERRAL_BONUS_PERCENT = 0.05  # 5% bonus on direct referral first deposit
 
 # Deposit limits
