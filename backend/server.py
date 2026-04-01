@@ -3708,7 +3708,7 @@ async def process_deposit_request(approval: DepositApproval, admin: dict = Depen
 @api_router.get("/admin/users")
 async def get_all_users(admin: dict = Depends(get_current_admin)):
     """Admin: Get all users with their wallet balances and credentials"""
-    users = await db.users.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    users = await db.users.find({}, {"_id": 0}).sort("created_at", 1).to_list(1000)
     
     # Get wallet info for each user
     for user in users:
