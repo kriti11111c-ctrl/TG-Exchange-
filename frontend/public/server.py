@@ -193,7 +193,7 @@ LIQUIDATION_FEE_RATE = 0.005  # 0.5% liquidation fee
 
 # ================= BONUS & LIMITS CONFIG =================
 WELCOME_BONUS_AMOUNT = 200.0  # $200 welcome bonus
-WELCOME_BONUS_DAYS = 5  # Bonus valid for 5 days
+WELCOME_BONUS_DAYS = 3  # Bonus valid for 3 days
 DIRECT_REFERRAL_BONUS_PERCENT = 0.05  # 5% bonus on direct referral first deposit
 
 # Deposit limits
@@ -962,8 +962,11 @@ async def get_wallet(user: dict = Depends(get_current_user)):
         if remaining.total_seconds() > 0:
             days_remaining = remaining.days
             hours_remaining = remaining.seconds // 3600
+            # Show actual futures balance (which decreases with losses), not original welcome_bonus
+            actual_bonus_remaining = min(wallet.get("futures_balance", 0), welcome_bonus)
             welcome_bonus_info = {
-                "amount": welcome_bonus,
+                "amount": round(actual_bonus_remaining, 2),
+                "original_amount": welcome_bonus,
                 "expires_at": expires_at_str,
                 "days_remaining": days_remaining,
                 "hours_remaining": hours_remaining
@@ -5086,7 +5089,7 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=["http://72.61.117.69", "http://tradegenius.exchange", "http://www.tradegenius.exchange", "https://tradegenius.exchange", "https://www.tradegenius.exchange"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
