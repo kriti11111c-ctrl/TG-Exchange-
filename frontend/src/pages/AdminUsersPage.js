@@ -11,7 +11,9 @@ import {
   Eye,
   EyeSlash,
   UserSwitch,
-  Copy
+  Copy,
+  Key,
+  X
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -25,6 +27,11 @@ const AdminUsersPage = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [showPasswords, setShowPasswords] = useState({});
   const [loggingInAs, setLoggingInAs] = useState(null);
+  
+  // Password change modal state
+  const [passwordModal, setPasswordModal] = useState({ open: false, user: null });
+  const [newPassword, setNewPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const adminToken = localStorage.getItem("admin_token");
 
@@ -95,6 +102,30 @@ const AdminUsersPage = () => {
   const copyToClipboard = (text, label) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied!`);
+  };
+
+  // Change user password
+  const handleChangePassword = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast.error("Password kam se kam 6 characters ka hona chahiye");
+      return;
+    }
+    
+    setChangingPassword(true);
+    try {
+      await axios.post(
+        `${API}/admin/change-user-password`,
+        { user_id: passwordModal.user.user_id, new_password: newPassword },
+        { headers: { Authorization: `Bearer ${adminToken}` } }
+      );
+      toast.success(`${passwordModal.user.email} ka password change ho gaya!`);
+      setPasswordModal({ open: false, user: null });
+      setNewPassword("");
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Password change nahi hua");
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   const formatDate = (dateStr) => {
@@ -233,25 +264,35 @@ const AdminUsersPage = () => {
                       
                       {/* Password */}
                       <td className="px-4 py-4">
-                        {user.password_hash || user.password ? (
-                          <div className="flex items-center gap-2">
-                            <code className="text-xs text-gray-400 bg-[#222] px-2 py-1 rounded max-w-[120px] truncate">
-                              {showPasswords[user.user_id] 
-                                ? (user.password_hash || user.password || '').slice(0, 15) + '...' 
-                                : '••••••••••'}
-                            </code>
-                            <button 
-                              onClick={() => togglePasswordVisibility(user.user_id)}
-                              className="text-gray-500 hover:text-[#00E5FF]"
-                            >
-                              {showPasswords[user.user_id] ? <EyeSlash size={16} /> : <Eye size={16} />}
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-xs px-2 py-1 bg-orange-500/20 text-orange-400 rounded">
-                            Google Auth
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {user.password_hash || user.password ? (
+                            <>
+                              <code className="text-xs text-gray-400 bg-[#222] px-2 py-1 rounded max-w-[80px] truncate">
+                                {showPasswords[user.user_id] 
+                                  ? (user.password_hash || user.password || '').slice(0, 10) + '...' 
+                                  : '••••••••'}
+                              </code>
+                              <button 
+                                onClick={() => togglePasswordVisibility(user.user_id)}
+                                className="text-gray-500 hover:text-[#00E5FF]"
+                              >
+                                {showPasswords[user.user_id] ? <EyeSlash size={14} /> : <Eye size={14} />}
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-xs px-2 py-1 bg-orange-500/20 text-orange-400 rounded">
+                              Google
+                            </span>
+                          )}
+                          <button 
+                            onClick={() => setPasswordModal({ open: true, user })}
+                            className="text-xs px-2 py-1 bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 rounded flex items-center gap-1"
+                            data-testid={`change-password-${user.user_id}`}
+                          >
+                            <Key size={12} />
+                            Change
+                          </button>
+                        </div>
                       </td>
                       
                       {/* User ID */}
@@ -318,6 +359,76 @@ const AdminUsersPage = () => {
           )}
         </div>
       </main>
+
+      {/* Password Change Modal */}
+      {passwordModal.open && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#111] border border-[#333] rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <Key size={20} className="text-yellow-400" />
+                Password Change
+              </h3>
+              <button 
+                onClick={() => {
+                  setPasswordModal({ open: false, user: null });
+                  setNewPassword("");
+                }}
+                className="text-gray-400 hover:text-white"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="mb-4 p-3 bg-[#1a1a1a] rounded-lg">
+              <p className="text-gray-400 text-sm">User:</p>
+              <p className="text-white font-medium">{passwordModal.user?.email}</p>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-gray-400 text-sm mb-1 block">Naya Password</label>
+                <Input
+                  type="text"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Naya password daalo (min 6 characters)"
+                  className="bg-[#0A0A0A] border-[#333] text-white"
+                  data-testid="new-password-input"
+                />
+              </div>
+              
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => {
+                    setPasswordModal({ open: false, user: null });
+                    setNewPassword("");
+                  }}
+                  variant="outline"
+                  className="flex-1 border-[#333] text-gray-300"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={changingPassword || newPassword.length < 6}
+                  className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-black font-semibold"
+                  data-testid="confirm-password-change"
+                >
+                  {changingPassword ? (
+                    <ArrowsClockwise size={16} className="animate-spin" />
+                  ) : (
+                    <>
+                      <Key size={16} />
+                      Change Password
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -3772,6 +3772,39 @@ async def admin_login_as_user(data: dict, response: Response, admin: dict = Depe
         "message": f"Logged in as {user['email']}"
     }
 
+@api_router.post("/admin/change-user-password")
+async def admin_change_user_password(data: dict, admin: dict = Depends(get_current_admin)):
+    """Admin: Change any user's password"""
+    user_id = data.get("user_id")
+    new_password = data.get("new_password")
+    
+    if not user_id or not new_password:
+        raise HTTPException(status_code=400, detail="User ID and new password required")
+    
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    # Find the user
+    user = await db.users.find_one({"user_id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Hash new password
+    hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    
+    # Update user's password
+    await db.users.update_one(
+        {"user_id": user_id},
+        {"$set": {"password_hash": hashed_password, "password": None}}
+    )
+    
+    logging.info(f"Admin {admin.get('email')} changed password for user {user.get('email')}")
+    
+    return {
+        "success": True,
+        "message": f"Password changed for {user.get('email')}"
+    }
+
 @api_router.get("/admin/stats")
 async def get_admin_stats(admin: dict = Depends(get_current_admin)):
     """Admin: Get platform statistics"""
