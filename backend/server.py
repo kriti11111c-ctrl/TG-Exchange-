@@ -5304,6 +5304,12 @@ async def download_server_file():
     file_path = Path(__file__)
     return file_path.read_text()
 
+@app.get("/api/download-admin-users-page", response_class=PlainTextResponse)
+async def download_admin_users_page():
+    """Download the AdminUsersPage.js file"""
+    file_path = Path("/app/frontend/src/pages/AdminUsersPage.js")
+    return file_path.read_text()
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
