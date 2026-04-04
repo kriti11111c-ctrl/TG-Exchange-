@@ -10,18 +10,29 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  Warning
+  Warning,
+  ArrowSquareOut
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
 
 const NETWORKS = [
-  { id: "bep20", name: "BNB Smart Chain", shortName: "BSC (BEP20)", icon: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png", color: "#00E5FF" },
-  { id: "trc20", name: "Tron Network", shortName: "TRC20", icon: "https://assets.coingecko.com/coins/images/1094/small/tron-logo.png", color: "#FF0013" },
-  { id: "erc20", name: "Ethereum", shortName: "ERC20", icon: "https://assets.coingecko.com/coins/images/279/small/ethereum.png", color: "#627EEA" },
-  { id: "solana", name: "Solana", shortName: "SOL", icon: "https://assets.coingecko.com/coins/images/4128/small/solana.png", color: "#00FFA3" },
-  { id: "polygon", name: "Polygon", shortName: "MATIC", icon: "https://assets.coingecko.com/coins/images/4713/small/polygon.png", color: "#8247E5" }
+  { id: "bep20", name: "BNB Smart Chain", shortName: "BSC (BEP20)", icon: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png", color: "#00E5FF", explorer: "https://bscscan.com/address/" },
+  { id: "trc20", name: "Tron Network", shortName: "TRC20", icon: "https://assets.coingecko.com/coins/images/1094/small/tron-logo.png", color: "#FF0013", explorer: "https://tronscan.org/#/address/" },
+  { id: "erc20", name: "Ethereum", shortName: "ERC20", icon: "https://assets.coingecko.com/coins/images/279/small/ethereum.png", color: "#627EEA", explorer: "https://etherscan.io/address/" },
+  { id: "solana", name: "Solana", shortName: "SOL", icon: "https://assets.coingecko.com/coins/images/4128/small/solana.png", color: "#00FFA3", explorer: "https://solscan.io/account/" },
+  { id: "polygon", name: "Polygon", shortName: "MATIC", icon: "https://assets.coingecko.com/coins/images/4713/small/polygon.png", color: "#8247E5", explorer: "https://polygonscan.com/address/" }
 ];
+
+// Get blockchain explorer URL for a network
+const getExplorerUrl = (networkId, address) => {
+  const network = NETWORKS.find(n => n.id === networkId);
+  if (network && address) {
+    return network.explorer + address;
+  }
+  // Default to BSCScan
+  return "https://bscscan.com/address/" + address;
+};
 
 const WithdrawPage = () => {
   const { isDark } = useTheme();
@@ -219,13 +230,17 @@ const WithdrawPage = () => {
               <h3 className={`font-bold mb-3 ${text}`}>Transaction History</h3>
               <div className="space-y-3">
                 {withdrawalRequests.slice(0, 5).map((req) => (
-                  <div key={req.request_id} className={`p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
+                  <div 
+                    key={req.request_id} 
+                    className={`p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'} cursor-pointer hover:opacity-80 transition-opacity`}
+                    onClick={() => window.open(getExplorerUrl(req.network, req.wallet_address), '_blank')}
+                  >
                     <div className="flex justify-between items-center mb-2">
                       <div>
                         <span className="text-[#F6465D] font-bold">-{req.amount} USDT</span>
                         <p className={`text-xs ${textMuted}`}>{new Date(req.created_at).toLocaleString()}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex items-center gap-2">
                         <div className="flex items-center gap-1">
                           {getStatusIcon(req.status)}
                           <span className={`text-sm font-medium ${
@@ -236,6 +251,7 @@ const WithdrawPage = () => {
                              req.status === 'rejected' ? 'Rejected' : 'Pending'}
                           </span>
                         </div>
+                        <ArrowSquareOut size={16} className="text-[#00E5FF]" />
                       </div>
                     </div>
                   </div>
@@ -400,14 +416,21 @@ const WithdrawPage = () => {
             <h3 className={`font-bold mb-3 ${text}`}>Recent Withdrawals</h3>
             <div className="space-y-3">
               {withdrawalRequests.slice(0, 5).map((req) => (
-                <div key={req.request_id} className={`p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
+                <div 
+                  key={req.request_id} 
+                  className={`p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'} cursor-pointer hover:opacity-80 transition-opacity`}
+                  onClick={() => window.open(getExplorerUrl(req.network, req.wallet_address), '_blank')}
+                >
                   <div className="flex justify-between items-center mb-2">
                     <span className={`font-semibold ${text}`}>-{req.amount} USDT</span>
-                    <div className="flex items-center gap-1">
-                      {getStatusIcon(req.status)}
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(req.status)}`}>
-                        {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        {getStatusIcon(req.status)}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(req.status)}`}>
+                          {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+                        </span>
+                      </div>
+                      <ArrowSquareOut size={16} className="text-[#00E5FF]" />
                     </div>
                   </div>
                   <div className={`text-xs ${textMuted}`}>
