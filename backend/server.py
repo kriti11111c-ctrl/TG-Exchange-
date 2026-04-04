@@ -3881,15 +3881,28 @@ async def create_withdrawal_request(withdrawal: WithdrawalRequestModel, user: di
     current_balance = wallet.get("balances", {}).get(coin, 0)
     welcome_bonus = wallet.get("welcome_bonus", 0) if coin == "usdt" else 0
     
-    # Withdrawable = Total - Welcome Bonus (locked for 5 days)
-    withdrawable_balance = current_balance - welcome_bonus
+    # Check pending withdrawal requests for this user and coin
+    pending_withdrawals = await db.withdrawal_requests.find({
+        "user_id": user["user_id"],
+        "coin": coin.upper(),
+        "status": "pending"
+    }).to_list(1000)
+    pending_amount = sum(w.get("amount", 0) for w in pending_withdrawals)
+    
+    # Withdrawable = Total - Welcome Bonus (locked) - Pending Withdrawals
+    withdrawable_balance = current_balance - welcome_bonus - pending_amount
     
     # Check if user has enough WITHDRAWABLE balance
     if withdrawable_balance < withdrawal.amount:
-        if welcome_bonus > 0:
+        if pending_amount > 0:
             raise HTTPException(
                 status_code=400, 
-                detail=f"Insufficient balance. Withdrawable: ${withdrawable_balance:.2f} (Welcome bonus ${welcome_bonus:.2f} is locked for 5 days)"
+                detail=f"Insufficient balance. Available: ${withdrawable_balance:.2f} (Pending withdrawals: ${pending_amount:.2f})"
+            )
+        elif welcome_bonus > 0:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Insufficient balance. Withdrawable: ${withdrawable_balance:.2f} (Welcome bonus ${welcome_bonus:.2f} is locked)"
             )
         else:
             raise HTTPException(status_code=400, detail=f"Insufficient balance. Available: {current_balance} {coin.upper()}")
