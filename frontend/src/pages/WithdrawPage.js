@@ -212,6 +212,37 @@ const WithdrawPage = () => {
               Done
             </Button>
           </div>
+
+          {/* Transaction History */}
+          {withdrawalRequests.length > 0 && (
+            <div className={`${cardBg} rounded-2xl p-4 border ${border} mt-4`}>
+              <h3 className={`font-bold mb-3 ${text}`}>Transaction History</h3>
+              <div className="space-y-3">
+                {withdrawalRequests.slice(0, 5).map((req) => (
+                  <div key={req.request_id} className={`p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
+                    <div className="flex justify-between items-center mb-2">
+                      <div>
+                        <span className="text-[#F6465D] font-bold">-{req.amount} USDT</span>
+                        <p className={`text-xs ${textMuted}`}>{new Date(req.created_at).toLocaleString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center gap-1">
+                          {getStatusIcon(req.status)}
+                          <span className={`text-sm font-medium ${
+                            req.status === 'approved' ? 'text-[#0ECB81]' : 
+                            req.status === 'rejected' ? 'text-[#F6465D]' : 'text-yellow-400'
+                          }`}>
+                            {req.status === 'approved' ? 'Completed' : 
+                             req.status === 'rejected' ? 'Rejected' : 'Pending'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <BottomNav />
