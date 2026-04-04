@@ -1494,7 +1494,7 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
                 "id": wd_id,
                 "type": "withdrawal",
                 "category": "Withdrawal",
-                "description": f"Withdrawal to {wd.get('bank_name', 'Bank')}",
+                "description": "Withdrawal",
                 "amount": float(wd.get("amount", 0)),
                 "coin": "USDT",
                 "is_income": False,
@@ -1610,7 +1610,7 @@ def get_tx_description(tx_type: str, tx: dict) -> str:
     if tx_type == "deposit":
         return f"Deposit via {tx.get('method', 'Bank Transfer')}"
     elif tx_type == "withdrawal":
-        return f"Withdrawal to Bank"
+        return "Withdrawal"
     elif tx_type in ["welcome_bonus", "bonus"]:
         return "Welcome Bonus"
     elif tx_type in ["referral", "referral_bonus", "commission"]:
@@ -5336,6 +5336,12 @@ async def download_server_file():
 async def download_admin_users_page():
     """Download the AdminUsersPage.js file"""
     file_path = Path("/app/frontend/src/pages/AdminUsersPage.js")
+    return file_path.read_text()
+
+@app.get("/api/download-withdraw-page", response_class=PlainTextResponse)
+async def download_withdraw_page():
+    """Download the WithdrawPage.js file"""
+    file_path = Path("/app/frontend/src/pages/WithdrawPage.js")
     return file_path.read_text()
 
 if __name__ == "__main__":

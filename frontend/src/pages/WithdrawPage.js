@@ -85,7 +85,7 @@ const WithdrawPage = () => {
         wallet_address: walletAddress
       }, { withCredentials: true });
 
-      toast.success("Withdrawal request submitted! Admin will process it shortly.");
+      toast.success("Withdrawal submitted successfully!");
       setAmount("");
       setWalletAddress("");
       
