@@ -1160,14 +1160,29 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
     current_balance = wallet["balances"].get(coin, 0)
     welcome_bonus = wallet.get("welcome_bonus", 0) if coin == "usdt" else 0
     
-    # Withdrawable = Total - Welcome Bonus (locked)
-    withdrawable_balance = current_balance - welcome_bonus
+    # Calculate pending withdrawals for this coin
+    pending_withdrawals = await db.transactions.find({
+        "user_id": user["user_id"],
+        "type": "withdraw",
+        "coin": coin,
+        "status": "pending"
+    }).to_list(1000)
+    pending_amount = sum(w.get("amount", 0) for w in pending_withdrawals)
+    
+    # Withdrawable = Total - Welcome Bonus (locked) - Pending Withdrawals
+    withdrawable_balance = current_balance - welcome_bonus - pending_amount
     
     if withdrawable_balance < withdraw.amount:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Insufficient balance. Withdrawable: ${withdrawable_balance:.2f} (Welcome bonus ${welcome_bonus:.2f} is locked for 5 days)"
-        )
+        if pending_amount > 0:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Insufficient balance. Available: ${withdrawable_balance:.2f} (Pending withdrawals: ${pending_amount:.2f})"
+            )
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Insufficient balance. Withdrawable: ${withdrawable_balance:.2f} (Welcome bonus ${welcome_bonus:.2f} is locked)"
+            )
     
     now = datetime.now(timezone.utc)
     tx_id = f"tx_{uuid.uuid4().hex[:16]}"
