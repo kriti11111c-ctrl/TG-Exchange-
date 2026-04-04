@@ -33,6 +33,10 @@ const WithdrawPage = () => {
   const [walletAddress, setWalletAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [withdrawalRequests, setWithdrawalRequests] = useState([]);
+  
+  // Success screen state
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successData, setSuccessData] = useState(null);
 
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
   const cardBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
@@ -78,14 +82,25 @@ const WithdrawPage = () => {
 
     setSubmitting(true);
     try {
-      await axios.post(`${API}/user/withdraw-request`, {
+      const response = await axios.post(`${API}/user/withdraw-request`, {
         network: selectedNetwork.id,
         coin: "USDT",
         amount: parseFloat(amount),
         wallet_address: walletAddress
       }, { withCredentials: true });
 
-      toast.success("Withdrawal submitted successfully!");
+      // Show success screen with data
+      setSuccessData({
+        amount: parseFloat(amount),
+        fee: parseFloat(amount) * 0.10,
+        netAmount: parseFloat(amount) * 0.90,
+        network: selectedNetwork.shortName,
+        address: walletAddress,
+        date: new Date().toLocaleString(),
+        requestId: response.data.request_id || `WD${Date.now()}`
+      });
+      setShowSuccess(true);
+      
       setAmount("");
       setWalletAddress("");
       
@@ -117,6 +132,92 @@ const WithdrawPage = () => {
     if (status === "rejected") return <XCircle size={16} className="text-red-400" />;
     return <Clock size={16} className="text-yellow-400" />;
   };
+
+  // Withdrawal Success Screen (Binance style)
+  if (showSuccess && successData) {
+    return (
+      <div className={`min-h-screen ${bg} pb-20`}>
+        {/* Header */}
+        <div className={`${cardBg} border-b ${border} sticky top-0 z-40`}>
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <button onClick={() => setShowSuccess(false)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'}`}>
+                <ArrowLeft size={24} className={text} />
+              </button>
+              <h1 className={`text-xl font-bold ${text}`}>Withdrawal</h1>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-lg mx-auto p-4">
+          {/* Success Card */}
+          <div className={`${cardBg} rounded-2xl p-6 border ${border} text-center`}>
+            {/* Amount */}
+            <p className="text-[#F6465D] text-3xl font-bold mb-2">
+              -{successData.amount.toFixed(2)} USDT
+            </p>
+            
+            {/* Status */}
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <CheckCircle size={24} weight="fill" className="text-[#0ECB81]" />
+              <span className="text-[#0ECB81] font-semibold text-lg">Successful</span>
+            </div>
+
+            {/* Divider */}
+            <div className={`border-t ${border} my-4`}></div>
+
+            {/* Transaction Details */}
+            <div className="space-y-3 text-left">
+              <div className="flex justify-between">
+                <span className={textMuted}>Network</span>
+                <span className={`font-medium ${text}`}>{successData.network}</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className={textMuted}>Address</span>
+                <span className={`font-mono text-sm ${text} max-w-[180px] truncate`}>{successData.address}</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className={textMuted}>Amount</span>
+                <span className={`font-medium ${text}`}>{successData.amount.toFixed(2)} USDT</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className={textMuted}>Fee (10%)</span>
+                <span className="text-[#F6465D] font-medium">{successData.fee.toFixed(2)} USDT</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className={textMuted}>You Receive</span>
+                <span className="text-[#0ECB81] font-bold">{successData.netAmount.toFixed(2)} USDT</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className={textMuted}>Date</span>
+                <span className={`text-sm ${text}`}>{successData.date}</span>
+              </div>
+              
+              <div className="flex justify-between">
+                <span className={textMuted}>Request ID</span>
+                <span className={`font-mono text-xs ${text}`}>{successData.requestId}</span>
+              </div>
+            </div>
+
+            {/* Done Button */}
+            <Button
+              onClick={() => setShowSuccess(false)}
+              className="w-full mt-6 py-4 bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black font-bold"
+            >
+              Done
+            </Button>
+          </div>
+        </div>
+
+        <BottomNav />
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen ${bg} pb-20`}>
