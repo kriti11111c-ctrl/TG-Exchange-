@@ -3801,9 +3801,28 @@ async def check_and_claim_deposit(request: Request, user: dict = Depends(get_cur
             "network": network
         }
     else:
+        # Check if there are already processed deposits for this user
+        recent_deposits = await db.processed_deposits.find({
+            "user_id": user_id,
+            "network": network,
+            "status": "credited"
+        }).sort("detected_at", -1).to_list(5)
+        
+        if recent_deposits:
+            # Return success with the most recent credited deposit
+            total_credited = sum(d.get("amount", 0) for d in recent_deposits)
+            return {
+                "success": True,
+                "message": "Deposit already credited!",
+                "credited_amount": total_credited,
+                "credited_count": len(recent_deposits),
+                "network": network,
+                "already_processed": True
+            }
+        
         return {
             "success": False,
-            "message": "Deposits already credited or below minimum ($10)",
+            "message": "No deposits found yet. Please wait a few minutes after sending.",
             "address": address,
             "network": network
         }
