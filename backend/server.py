@@ -2148,16 +2148,12 @@ async def get_referral_team(user: dict = Depends(get_current_user), level: int =
     for ref in referrals:
         referred_user = await db.users.find_one({"user_id": ref["referred_id"]}, {"_id": 0})
         if referred_user:
-            # Get wallet balance
+            # Get wallet - use FUTURES BALANCE instead of spot
             wallet = await db.wallets.find_one({"user_id": ref["referred_id"]}, {"_id": 0})
-            total_balance = 0
+            futures_balance = 0
             if wallet:
-                for coin, balance in wallet.get("balances", {}).items():
-                    if coin == "usdt":
-                        total_balance += balance
-                    else:
-                        # Convert to USDT using simple price estimation
-                        total_balance += balance * 50000 if coin == "btc" else balance * 3000 if coin == "eth" else balance
+                # Get futures_balance directly
+                futures_balance = wallet.get("futures_balance", 0)
             
             # Mask email
             email = referred_user.get("email", "")
@@ -2171,7 +2167,7 @@ async def get_referral_team(user: dict = Depends(get_current_user), level: int =
                 "level": ref.get("level", 1),
                 "joined_at": ref.get("created_at"),
                 "earnings_from": ref.get("total_earnings", 0),
-                "fund": round(total_balance, 2)
+                "fund": round(futures_balance, 2)
             })
     
     return {
