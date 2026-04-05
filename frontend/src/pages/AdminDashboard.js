@@ -55,17 +55,22 @@ const AdminDashboard = () => {
 
   // Load admin data on mount
   useEffect(() => {
-    const token = localStorage.getItem("admin_token");
-    const data = JSON.parse(localStorage.getItem("admin_data") || "{}");
+    // Small delay to ensure localStorage is updated after login redirect
+    const timer = setTimeout(() => {
+      const token = localStorage.getItem("admin_token");
+      const data = JSON.parse(localStorage.getItem("admin_data") || "{}");
+      
+      if (!token) {
+        navigate("/admin");
+        return;
+      }
+      
+      setAdminToken(token);
+      setAdminData(data);
+      setIsReady(true);
+    }, 100);
     
-    if (!token) {
-      navigate("/admin");
-      return;
-    }
-    
-    setAdminToken(token);
-    setAdminData(data);
-    setIsReady(true);
+    return () => clearTimeout(timer);
   }, [navigate]);
 
   useEffect(() => {
