@@ -344,8 +344,8 @@ TEAM_RANKS = [
 ]
 
 async def get_team_stats(user_id: str) -> dict:
-    """Get user's team statistics - counts users with $50+ FUTURES BALANCE (excluding welcome bonus)
-    Only fresh deposits transferred to Futures count. Withdrawals will affect rank.
+    """Get user's team statistics - counts users with $50+ FRESH DEPOSIT in Futures
+    Welcome bonus doesn't count, only real deposits that user transferred to Futures.
     Optimized with MongoDB aggregation to avoid N+1 queries"""
     
     # Get direct referrals count with balance check using aggregation
@@ -366,22 +366,30 @@ async def get_team_stats(user_id: str) -> dict:
         {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
         {"$unwind": {"path": "$user", "preserveNullAndEmptyArrays": True}},
         {"$addFields": {
-            # Futures balance minus welcome bonus (from wallet)
+            # Calculate fresh deposit = futures_balance - welcome_bonus
+            # But if negative, use 0. Also check total_deposited field if available
             "futures_balance": {"$ifNull": ["$wallet.futures_balance", 0]},
             "welcome_bonus": {"$ifNull": ["$wallet.welcome_bonus", 0]},
-            "effective_balance": {"$subtract": [
-                {"$ifNull": ["$wallet.futures_balance", 0]},
-                {"$ifNull": ["$wallet.welcome_bonus", 0]}
+            "total_deposited": {"$ifNull": ["$wallet.total_deposited", 0]},
+            # Fresh deposit is either tracked total_deposited or (futures - welcome_bonus) if positive
+            "fresh_deposit": {"$max": [
+                0,
+                {"$ifNull": ["$wallet.total_deposited", 
+                    {"$subtract": [
+                        {"$ifNull": ["$wallet.futures_balance", 0]},
+                        {"$ifNull": ["$wallet.welcome_bonus", 0]}
+                    ]}
+                ]}
             ]},
             "rank_level": {"$ifNull": ["$user.team_rank_level", 0]}
         }},
         {"$group": {
             "_id": None,
             "total_direct": {"$sum": 1},
-            "valid_direct": {"$sum": {"$cond": [{"$gte": ["$effective_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}},
+            "valid_direct": {"$sum": {"$cond": [{"$gte": ["$fresh_deposit", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}},
             "bronze_members": {"$sum": {"$cond": [
                 {"$and": [
-                    {"$gte": ["$effective_balance", MIN_DEPOSIT_FOR_RANK]},
+                    {"$gte": ["$fresh_deposit", MIN_DEPOSIT_FOR_RANK]},
                     {"$gte": ["$rank_level", 1]}
                 ]}, 1, 0
             ]}}
@@ -402,16 +410,21 @@ async def get_team_stats(user_id: str) -> dict:
         }},
         {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
         {"$addFields": {
-            # Futures balance minus welcome bonus (from wallet)
-            "effective_balance": {"$subtract": [
-                {"$ifNull": ["$wallet.futures_balance", 0]},
-                {"$ifNull": ["$wallet.welcome_bonus", 0]}
+            # Fresh deposit calculation
+            "fresh_deposit": {"$max": [
+                0,
+                {"$ifNull": ["$wallet.total_deposited", 
+                    {"$subtract": [
+                        {"$ifNull": ["$wallet.futures_balance", 0]},
+                        {"$ifNull": ["$wallet.welcome_bonus", 0]}
+                    ]}
+                ]}
             ]}
         }},
         {"$group": {
             "_id": None,
             "total_team": {"$sum": 1},
-            "valid_team": {"$sum": {"$cond": [{"$gte": ["$effective_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}}
+            "valid_team": {"$sum": {"$cond": [{"$gte": ["$fresh_deposit", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}}
         }}
     ]
     
@@ -3806,9 +3819,15 @@ async def check_and_claim_deposit(request: Request, user: dict = Depends(get_cur
             {"$set": {"status": "credited", "credited_at": now}}
         )
         
-        # Update total deposited
+        # Update total deposited in deposit_addresses
         await db.deposit_addresses.update_one(
             {"_id": addr_doc["_id"]},
+            {"$inc": {"total_deposited": amount}}
+        )
+        
+        # Also track total_deposited in user's wallet for rank calculation
+        await db.wallets.update_one(
+            {"user_id": user_id},
             {"$inc": {"total_deposited": amount}}
         )
         
