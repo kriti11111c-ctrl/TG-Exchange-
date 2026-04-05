@@ -49,17 +49,30 @@ const AdminDashboard = () => {
   });
   const [generatedCode, setGeneratedCode] = useState("");
   const [generatingCode, setGeneratingCode] = useState(false);
+  const [adminToken, setAdminToken] = useState(null);
+  const [adminData, setAdminData] = useState({});
+  const [isReady, setIsReady] = useState(false);
 
-  const adminToken = localStorage.getItem("admin_token");
-  const adminData = JSON.parse(localStorage.getItem("admin_data") || "{}");
-
+  // Load admin data on mount
   useEffect(() => {
-    if (!adminToken) {
+    const token = localStorage.getItem("admin_token");
+    const data = JSON.parse(localStorage.getItem("admin_data") || "{}");
+    
+    if (!token) {
       navigate("/admin");
       return;
     }
-    fetchData();
-  }, [adminToken, navigate]);
+    
+    setAdminToken(token);
+    setAdminData(data);
+    setIsReady(true);
+  }, [navigate]);
+
+  useEffect(() => {
+    if (isReady && adminToken) {
+      fetchData();
+    }
+  }, [isReady, adminToken]);
 
   const fetchData = async () => {
     try {
