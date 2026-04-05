@@ -371,15 +371,17 @@ async def get_team_stats(user_id: str) -> dict:
             "futures_balance": {"$ifNull": ["$wallet.futures_balance", 0]},
             "welcome_bonus": {"$ifNull": ["$wallet.welcome_bonus", 0]},
             "total_deposited": {"$ifNull": ["$wallet.total_deposited", 0]},
-            # Fresh deposit is either tracked total_deposited or (futures - welcome_bonus) if positive
+            # Fresh deposit: Use total_deposited if > 0, otherwise calculate (futures - welcome)
             "fresh_deposit": {"$max": [
                 0,
-                {"$ifNull": ["$wallet.total_deposited", 
-                    {"$subtract": [
+                {"$cond": {
+                    "if": {"$gt": [{"$ifNull": ["$wallet.total_deposited", 0]}, 0]},
+                    "then": {"$ifNull": ["$wallet.total_deposited", 0]},
+                    "else": {"$subtract": [
                         {"$ifNull": ["$wallet.futures_balance", 0]},
                         {"$ifNull": ["$wallet.welcome_bonus", 0]}
                     ]}
-                ]}
+                }}
             ]},
             "rank_level": {"$ifNull": ["$user.team_rank_level", 0]}
         }},
@@ -410,15 +412,17 @@ async def get_team_stats(user_id: str) -> dict:
         }},
         {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
         {"$addFields": {
-            # Fresh deposit calculation
+            # Fresh deposit: Use total_deposited if > 0, otherwise calculate (futures - welcome)
             "fresh_deposit": {"$max": [
                 0,
-                {"$ifNull": ["$wallet.total_deposited", 
-                    {"$subtract": [
+                {"$cond": {
+                    "if": {"$gt": [{"$ifNull": ["$wallet.total_deposited", 0]}, 0]},
+                    "then": {"$ifNull": ["$wallet.total_deposited", 0]},
+                    "else": {"$subtract": [
                         {"$ifNull": ["$wallet.futures_balance", 0]},
                         {"$ifNull": ["$wallet.welcome_bonus", 0]}
                     ]}
-                ]}
+                }}
             ]}
         }},
         {"$group": {
