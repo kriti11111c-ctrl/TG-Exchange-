@@ -3547,58 +3547,52 @@ async def get_user_deposit_requests(user: dict = Depends(get_current_user)):
     return {"requests": requests}
 
 @api_router.get("/user/deposit-address")
-async def get_user_deposit_address(user: dict = Depends(get_current_user)):
-    """Get user's unique deposit addresses with their deposit ID"""
+async def get_user_deposit_address(user: dict = Depends(get_current_user), network: str = None):
+    """Get user's unique deposit addresses - each user gets their own address per network"""
+    from deposit_system import get_or_create_deposit_address, NETWORKS
+    
     user_data = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    user_id = user["user_id"]
     
-    # Generate deposit_id if not exists (for old users)
-    deposit_id = user_data.get("deposit_id")
-    if not deposit_id:
-        deposit_id = f"TGX{uuid.uuid4().hex[:6].upper()}"
-        await db.users.update_one(
-            {"user_id": user["user_id"]},
-            {"$set": {"deposit_id": deposit_id}}
-        )
+    # If specific network requested
+    if network:
+        network = network.lower().replace("bep20", "bsc").replace("erc20", "eth").replace("trc20", "tron")
+        addr_data = await get_or_create_deposit_address(db, user_id, network)
+        if addr_data:
+            return {
+                "network": network,
+                "address": addr_data["address"],
+                "network_name": addr_data.get("network_name", network.upper()),
+                "memo_required": False,  # No memo needed - unique address!
+                "note": "Send ONLY USDT to this address. Your deposit will be automatically credited."
+            }
+        return {"error": "Failed to generate address"}
     
-    # Admin wallet addresses (same for all, but user has unique deposit_id)
-    networks = [
-        {
-            "id": "bep20",
-            "name": "BNB Smart Chain (BEP20)",
-            "address": "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
-            "memo_required": True
-        },
-        {
-            "id": "trc20", 
-            "name": "TRON (TRC20)",
-            "address": "TDqncKUgq4PpCpfZwsXeupQ5SnRKEsG9qV",
-            "memo_required": True
-        },
-        {
-            "id": "erc20",
-            "name": "Ethereum (ERC20)", 
-            "address": "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
-            "memo_required": True
-        },
-        {
-            "id": "solana",
-            "name": "Solana",
-            "address": "6FQY4KqjyBUELJynQZXfgcC2zseURQQASBY5rJsSUHmR",
-            "memo_required": True
-        },
-        {
-            "id": "polygon",
-            "name": "Polygon",
-            "address": "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
-            "memo_required": True
-        }
-    ]
+    # Get/Generate addresses for all networks
+    networks_list = []
+    for net_id in ["bsc", "eth", "tron", "solana", "polygon"]:
+        addr_data = await get_or_create_deposit_address(db, user_id, net_id)
+        if addr_data:
+            # Map network ids to user-friendly names
+            name_map = {
+                "bsc": "BNB Smart Chain (BEP20)",
+                "eth": "Ethereum (ERC20)",
+                "tron": "TRON (TRC20)",
+                "solana": "Solana",
+                "polygon": "Polygon"
+            }
+            networks_list.append({
+                "id": net_id,
+                "name": name_map.get(net_id, net_id.upper()),
+                "address": addr_data["address"],
+                "memo_required": False  # No memo needed - unique address per user!
+            })
     
     return {
-        "deposit_id": deposit_id,
+        "user_id": user_id,
         "user_name": user_data.get("name", ""),
-        "networks": networks,
-        "instructions": f"IMPORTANT: Include your Deposit ID '{deposit_id}' in the transaction memo/note when sending funds."
+        "networks": networks_list,
+        "note": "Each network has YOUR unique deposit address. Deposits are automatically credited - no transaction hash needed!"
     }
 
 @api_router.get("/admin/deposit-requests")
@@ -5314,6 +5308,23 @@ async def startup_event():
     # Start the auto trade code generator
     asyncio.create_task(check_and_generate_scheduled_codes())
     logging.info("Auto trade code generator started")
+    
+    # Start deposit monitoring task
+    asyncio.create_task(deposit_monitor_task())
+    logging.info("Deposit monitor started")
+
+async def deposit_monitor_task():
+    """Background task to monitor and auto-credit deposits"""
+    from deposit_system import check_and_process_deposits
+    
+    while True:
+        try:
+            await check_and_process_deposits(db)
+        except Exception as e:
+            logging.error(f"Deposit monitor error: {e}")
+        
+        # Check every 30 seconds
+        await asyncio.sleep(30)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
@@ -5350,6 +5361,12 @@ async def download_admin_dashboard():
 async def download_admin_login():
     """Download the AdminLoginPage.js file"""
     file_path = Path("/app/frontend/src/pages/AdminLoginPage.js")
+    return file_path.read_text()
+
+@app.get("/api/download-deposit-system", response_class=PlainTextResponse)
+async def download_deposit_system():
+    """Download the deposit_system.py file"""
+    file_path = Path("/app/backend/deposit_system.py")
     return file_path.read_text()
 
 if __name__ == "__main__":
