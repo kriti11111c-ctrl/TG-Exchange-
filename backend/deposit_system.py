@@ -84,7 +84,8 @@ NETWORKS = {
         "scanner_api": "https://apilist.tronscanapi.com/api",
         "usdt_contract": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
         "decimals": 6,
-        "gas_amount": 15  # TRX for energy - TRON needs bandwidth/energy
+        "gas_amount": 5,  # TRX - minimal amount (stake TRX for free energy)
+        "min_gas_required": 2  # Minimum TRX needed
     },
     "solana": {
         "name": "Solana",
