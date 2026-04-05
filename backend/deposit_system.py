@@ -362,9 +362,12 @@ class BlockchainMonitor:
             logger.info(f"Direct balance check for {address} on {network}: {amount} USDT")
             
             # If balance > 0, return as a deposit
+            # Use address + network + balance as unique identifier (NO timestamp!)
             if amount >= 10:  # Minimum $10
+                # Create a consistent tx_hash that won't change for same balance
+                balance_int = int(balance)  # Use raw balance for uniqueness
                 return [{
-                    "tx_hash": f"balance_check_{address}_{int(datetime.now().timestamp())}",
+                    "tx_hash": f"balance_{address}_{network}_{balance_int}",
                     "from": "direct_balance",
                     "to": address,
                     "amount": amount,
