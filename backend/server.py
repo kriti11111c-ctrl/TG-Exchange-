@@ -2381,11 +2381,16 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
                     levelup_reward += rank["levelup_reward"]
                     claimed_rewards.append(rank["level"])
         
+        # Start salary cycle when user first achieves a rank
+        salary_update = {"team_rank_level": current_level}
+        if not user_doc.get("salary_cycle_start"):
+            salary_update["salary_cycle_start"] = now.isoformat()
+        
         # Update user's rank level and claimed rewards
         await db.users.update_one(
             {"user_id": user_id},
             {
-                "$set": {"team_rank_level": current_level},
+                "$set": salary_update,
                 "$addToSet": {"claimed_rank_rewards": {"$each": claimed_rewards}}
             }
         )
@@ -2421,28 +2426,40 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
     accumulated_salary = user_doc.get("accumulated_salary", 0)
     last_claim_date = user_doc.get("last_salary_claim_date")
     salary_cycle_start = user_doc.get("salary_cycle_start")
+    last_accumulation_date = user_doc.get("last_salary_accumulation_date")
     
     # Calculate days remaining for claim
     days_in_cycle = 0
     days_remaining = 10
     can_claim_salary = False
     
-    if salary_cycle_start:
-        cycle_start = datetime.fromisoformat(salary_cycle_start.replace('Z', '+00:00'))
-        if cycle_start.tzinfo is None:
-            cycle_start = cycle_start.replace(tzinfo=timezone.utc)
-        days_in_cycle = (now - cycle_start).days
-        days_remaining = max(0, 10 - days_in_cycle)
-        can_claim_salary = days_in_cycle >= 10
-    elif last_claim_date:
-        last_claim = datetime.fromisoformat(last_claim_date.replace('Z', '+00:00'))
-        if last_claim.tzinfo is None:
-            last_claim = last_claim.replace(tzinfo=timezone.utc)
-        days_in_cycle = (now - last_claim).days
-        days_remaining = max(0, 10 - days_in_cycle)
-        can_claim_salary = days_in_cycle >= 10
-    else:
-        can_claim_salary = accumulated_salary > 0
+    # Auto-accumulate daily salary if user has a rank
+    if current_level > 0 and monthly_salary > 0:
+        daily_salary = monthly_salary / 30  # Daily rate
+        
+        if salary_cycle_start:
+            cycle_start = datetime.fromisoformat(salary_cycle_start.replace('Z', '+00:00'))
+            if cycle_start.tzinfo is None:
+                cycle_start = cycle_start.replace(tzinfo=timezone.utc)
+            days_in_cycle = (now - cycle_start).days
+            days_remaining = max(0, 10 - days_in_cycle)
+            can_claim_salary = days_in_cycle >= 10
+            
+            # Calculate accumulated salary based on days
+            # Only count up to 10 days per cycle
+            accumulation_days = min(days_in_cycle, 10)
+            accumulated_salary = round(daily_salary * accumulation_days, 2)
+            
+        elif last_claim_date:
+            last_claim = datetime.fromisoformat(last_claim_date.replace('Z', '+00:00'))
+            if last_claim.tzinfo is None:
+                last_claim = last_claim.replace(tzinfo=timezone.utc)
+            days_in_cycle = (now - last_claim).days
+            days_remaining = max(0, 10 - days_in_cycle)
+            can_claim_salary = days_in_cycle >= 10
+            
+            accumulation_days = min(days_in_cycle, 10)
+            accumulated_salary = round(daily_salary * accumulation_days, 2)
     
     return {
         "user_id": user_id,
