@@ -3596,6 +3596,70 @@ async def get_user_deposit_address(user: dict = Depends(get_current_user), netwo
     }
 
 
+@api_router.post("/user/send-gas-now")
+async def send_gas_immediately(request: Request, user: dict = Depends(get_current_user)):
+    """Send gas to user's deposit address immediately when they click 'I've Sent'"""
+    from deposit_system import gas_station, NETWORKS
+    
+    body = await request.json()
+    network = body.get("network", "").lower()
+    
+    if not network:
+        raise HTTPException(status_code=400, detail="Network required")
+    
+    # Map network names
+    network = network.replace("bep20", "bsc").replace("erc20", "eth").replace("trc20", "tron")
+    
+    user_id = user["user_id"]
+    
+    # Get user's deposit address for this network
+    addr_doc = await db.deposit_addresses.find_one({
+        "user_id": user_id,
+        "network": network,
+        "is_active": True
+    })
+    
+    if not addr_doc:
+        raise HTTPException(status_code=404, detail="No deposit address found")
+    
+    address = addr_doc["address"]
+    
+    # Send gas immediately for EVM chains
+    if network in ["bsc", "eth", "polygon"]:
+        try:
+            gas_sent = await gas_station.send_gas_evm(address, network)
+            if gas_sent:
+                logging.info(f"Gas sent immediately to {address} on {network}")
+                return {
+                    "success": True,
+                    "message": "Gas sent to your deposit address!",
+                    "address": address,
+                    "network": network
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "Gas station may be low or address already has gas",
+                    "address": address,
+                    "network": network
+                }
+        except Exception as e:
+            logging.error(f"Error sending gas: {e}")
+            return {
+                "success": False,
+                "message": f"Error: {str(e)}",
+                "address": address,
+                "network": network
+            }
+    else:
+        return {
+            "success": True,
+            "message": "Gas will be sent when deposit is detected",
+            "address": address,
+            "network": network
+        }
+
+
 @api_router.post("/user/check-deposit")
 async def check_and_claim_deposit(request: Request, user: dict = Depends(get_current_user)):
     """User clicks to check and claim their deposit from unique address"""

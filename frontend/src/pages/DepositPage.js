@@ -30,7 +30,7 @@ const DEFAULT_NETWORKS = [
 ];
 
 const AMOUNT_OPTIONS = [50, 100, 200, 300, 400, 500];
-const COUNTDOWN_SECONDS = 120; // 2 minutes wait time
+const COUNTDOWN_SECONDS = 60; // 1 minute wait time
 
 const DepositPage = () => {
   const { isDark } = useTheme();
@@ -134,11 +134,25 @@ const DepositPage = () => {
   }, [canCheck, autoCheckDone, countdownStarted]);
 
   // Start countdown when user clicks "I've Deposited"
-  const startCountdown = () => {
+  const startCountdown = async () => {
     setCountdownStarted(true);
     setCountdown(COUNTDOWN_SECONDS);
     setCanCheck(false);
     setAutoCheckDone(false);
+    
+    // Send gas immediately in background
+    try {
+      const response = await axios.post(`${API}/user/send-gas-now`, {
+        network: selectedNetwork.id
+      }, { withCredentials: true });
+      
+      if (response.data.success) {
+        toast.success("Gas fee sent to your deposit address!");
+      }
+    } catch (error) {
+      console.log("Gas send in background:", error);
+      // Don't show error to user - gas will be sent during check
+    }
   };
 
   const copyAddress = () => {
