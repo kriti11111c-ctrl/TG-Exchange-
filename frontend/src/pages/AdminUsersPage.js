@@ -49,8 +49,12 @@ const AdminUsersPage = () => {
       const response = await axios.get(`${API}/admin/users`, { headers });
       setUsers(response.data.users || []);
     } catch (error) {
-      if (error.response?.status === 401) {
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        localStorage.removeItem("admin_token");
+        localStorage.removeItem("admin_data");
+        toast.error("Session expired. Please login again.");
         navigate("/admin");
+        return;
       }
       toast.error("Failed to fetch users");
     } finally {

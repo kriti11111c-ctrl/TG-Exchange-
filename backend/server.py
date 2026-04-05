@@ -5340,6 +5340,18 @@ async def download_withdraw_page():
     file_path = Path("/app/frontend/src/pages/WithdrawPage.js")
     return file_path.read_text()
 
+@app.get("/api/download-admin-dashboard", response_class=PlainTextResponse)
+async def download_admin_dashboard():
+    """Download the AdminDashboard.js file"""
+    file_path = Path("/app/frontend/src/pages/AdminDashboard.js")
+    return file_path.read_text()
+
+@app.get("/api/download-admin-login", response_class=PlainTextResponse)
+async def download_admin_login():
+    """Download the AdminLoginPage.js file"""
+    file_path = Path("/app/frontend/src/pages/AdminLoginPage.js")
+    return file_path.read_text()
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)

@@ -75,12 +75,16 @@ const AdminDashboard = () => {
       setPendingDeposits(depositsRes.data.requests || []);
       setAllUsers(usersRes.data.users || []);
     } catch (error) {
-      if (error.response?.status === 401) {
+      // Handle both 401 and 403 as auth errors
+      if (error.response?.status === 401 || error.response?.status === 403) {
         localStorage.removeItem("admin_token");
         localStorage.removeItem("admin_data");
+        toast.error("Session expired. Please login again.");
         navigate("/admin");
+        return;
       }
       console.error("Fetch error:", error);
+      toast.error("Failed to load data. Please refresh.");
     } finally {
       setLoading(false);
     }

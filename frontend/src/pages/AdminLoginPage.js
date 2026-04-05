@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { API } from "../App";
 import axios from "axios";
@@ -14,9 +14,31 @@ const AdminLoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Clear any old admin tokens on login page load
+  useEffect(() => {
+    // Don't auto-clear, just check if valid token exists and redirect
+    const token = localStorage.getItem("admin_token");
+    if (token) {
+      // Verify token is still valid
+      axios.get(`${API}/admin/stats`, { 
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(() => {
+        navigate("/admin/dashboard");
+      }).catch(() => {
+        // Token invalid, clear it
+        localStorage.removeItem("admin_token");
+        localStorage.removeItem("admin_data");
+      });
+    }
+  }, [navigate]);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
+
+    // Clear old tokens before new login
+    localStorage.removeItem("admin_token");
+    localStorage.removeItem("admin_data");
 
     try {
       const response = await axios.post(`${API}/admin/login`, {
