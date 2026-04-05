@@ -344,7 +344,7 @@ TEAM_RANKS = [
 ]
 
 async def get_team_stats(user_id: str) -> dict:
-    """Get user's team statistics - counts users with $50+ CURRENT BALANCE (not deposits)
+    """Get user's team statistics - counts users with $50+ TOTAL BALANCE (Spot + Futures)
     Optimized with MongoDB aggregation to avoid N+1 queries"""
     
     # Get direct referrals count with balance check using aggregation
@@ -365,16 +365,21 @@ async def get_team_stats(user_id: str) -> dict:
         {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
         {"$unwind": {"path": "$user", "preserveNullAndEmptyArrays": True}},
         {"$addFields": {
-            "current_balance": {"$ifNull": ["$wallet.balances.usdt", 0]},
+            "spot_balance": {"$ifNull": ["$wallet.balances.usdt", 0]},
+            "futures_balance": {"$ifNull": ["$wallet.futures_balance", 0]},
+            "total_balance": {"$add": [
+                {"$ifNull": ["$wallet.balances.usdt", 0]},
+                {"$ifNull": ["$wallet.futures_balance", 0]}
+            ]},
             "rank_level": {"$ifNull": ["$user.team_rank_level", 0]}
         }},
         {"$group": {
             "_id": None,
             "total_direct": {"$sum": 1},
-            "valid_direct": {"$sum": {"$cond": [{"$gte": ["$current_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}},
+            "valid_direct": {"$sum": {"$cond": [{"$gte": ["$total_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}},
             "bronze_members": {"$sum": {"$cond": [
                 {"$and": [
-                    {"$gte": ["$current_balance", MIN_DEPOSIT_FOR_RANK]},
+                    {"$gte": ["$total_balance", MIN_DEPOSIT_FOR_RANK]},
                     {"$gte": ["$rank_level", 1]}
                 ]}, 1, 0
             ]}}
@@ -395,12 +400,15 @@ async def get_team_stats(user_id: str) -> dict:
         }},
         {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
         {"$addFields": {
-            "current_balance": {"$ifNull": ["$wallet.balances.usdt", 0]}
+            "total_balance": {"$add": [
+                {"$ifNull": ["$wallet.balances.usdt", 0]},
+                {"$ifNull": ["$wallet.futures_balance", 0]}
+            ]}
         }},
         {"$group": {
             "_id": None,
             "total_team": {"$sum": 1},
-            "valid_team": {"$sum": {"$cond": [{"$gte": ["$current_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}}
+            "valid_team": {"$sum": {"$cond": [{"$gte": ["$total_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}}
         }}
     ]
     
