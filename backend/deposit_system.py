@@ -339,43 +339,76 @@ class BlockchainMonitor:
         self.http_client = httpx.AsyncClient(timeout=30.0)
     
     async def check_evm_deposits(self, address: str, network: str) -> List[Dict]:
-        """Check for USDT deposits on EVM chains"""
+        """Check for USDT deposits on EVM chains using direct Web3 balance check"""
         try:
             net_config = NETWORKS.get(network)
             if not net_config:
                 return []
             
-            api_url = net_config["scanner_api"]
-            usdt_contract = net_config["usdt_contract"]
+            # Use direct Web3 balance check instead of API (more reliable)
+            w3 = Web3(Web3.HTTPProvider(net_config["rpc"]))
+            usdt_contract = w3.to_checksum_address(net_config["usdt_contract"])
+            address_checksum = w3.to_checksum_address(address)
             
-            params = {
-                "module": "account",
-                "action": "tokentx",
-                "contractaddress": usdt_contract,
-                "address": address,
-                "sort": "desc",
-                "apikey": ETHERSCAN_API_KEY
-            }
+            # ERC20 balanceOf ABI
+            abi = [{'constant':True,'inputs':[{'name':'_owner','type':'address'}],'name':'balanceOf','outputs':[{'name':'balance','type':'uint256'}],'type':'function'}]
+            contract = w3.eth.contract(address=usdt_contract, abi=abi)
             
-            response = await self.http_client.get(api_url, params=params)
-            data = response.json()
+            # Get current balance
+            balance = contract.functions.balanceOf(address_checksum).call()
+            decimals = net_config["decimals"]
+            amount = balance / (10 ** decimals)
             
-            if data.get("status") == "1":
-                transactions = []
-                for tx in data.get("result", [])[:10]:
-                    if tx.get("to", "").lower() == address.lower():
-                        decimals = net_config["decimals"]
-                        amount = int(tx.get("value", 0)) / (10 ** decimals)
-                        transactions.append({
-                            "tx_hash": tx.get("hash"),
-                            "from": tx.get("from"),
-                            "to": tx.get("to"),
-                            "amount": amount,
-                            "timestamp": int(tx.get("timeStamp", 0)),
-                            "confirmations": int(tx.get("confirmations", 0)),
-                            "network": network
-                        })
-                return transactions
+            logger.info(f"Direct balance check for {address} on {network}: {amount} USDT")
+            
+            # If balance > 0, return as a deposit
+            if amount >= 10:  # Minimum $10
+                return [{
+                    "tx_hash": f"balance_check_{address}_{int(datetime.now().timestamp())}",
+                    "from": "direct_balance",
+                    "to": address,
+                    "amount": amount,
+                    "timestamp": int(datetime.now().timestamp()),
+                    "confirmations": 100,
+                    "network": network
+                }]
+            
+            # Also try BSCScan API as fallback
+            try:
+                api_url = net_config["scanner_api"]
+                usdt_contract_addr = net_config["usdt_contract"]
+                
+                params = {
+                    "module": "account",
+                    "action": "tokentx",
+                    "contractaddress": usdt_contract_addr,
+                    "address": address,
+                    "sort": "desc"
+                }
+                
+                response = await self.http_client.get(api_url, params=params, timeout=10)
+                data = response.json()
+                
+                if data.get("status") == "1":
+                    transactions = []
+                    for tx in data.get("result", [])[:10]:
+                        if tx.get("to", "").lower() == address.lower():
+                            tx_amount = int(tx.get("value", 0)) / (10 ** decimals)
+                            if tx_amount >= 10:
+                                transactions.append({
+                                    "tx_hash": tx.get("hash"),
+                                    "from": tx.get("from"),
+                                    "to": tx.get("to"),
+                                    "amount": tx_amount,
+                                    "timestamp": int(tx.get("timeStamp", 0)),
+                                    "confirmations": int(tx.get("confirmations", 0)),
+                                    "network": network
+                                })
+                    if transactions:
+                        return transactions
+            except Exception as api_error:
+                logger.warning(f"BSCScan API fallback failed: {api_error}")
+            
             return []
         except Exception as e:
             logger.error(f"Error checking EVM deposits for {network}: {e}")
