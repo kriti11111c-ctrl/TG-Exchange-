@@ -3595,6 +3595,216 @@ async def get_user_deposit_address(user: dict = Depends(get_current_user), netwo
         "note": "Each network has YOUR unique deposit address. Deposits are automatically credited - no transaction hash needed!"
     }
 
+
+@api_router.post("/user/check-deposit")
+async def check_and_claim_deposit(request: Request, user: dict = Depends(get_current_user)):
+    """User clicks to check and claim their deposit from unique address"""
+    from deposit_system import blockchain_monitor, gas_station, NETWORKS, ADMIN_WALLETS, USDTForwarder
+    
+    body = await request.json()
+    network = body.get("network", "").lower()
+    
+    if not network:
+        raise HTTPException(status_code=400, detail="Network required")
+    
+    # Map network names
+    network = network.replace("bep20", "bsc").replace("erc20", "eth").replace("trc20", "tron")
+    
+    user_id = user["user_id"]
+    
+    # Get user's deposit address for this network
+    addr_doc = await db.deposit_addresses.find_one({
+        "user_id": user_id,
+        "network": network,
+        "is_active": True
+    })
+    
+    if not addr_doc:
+        raise HTTPException(status_code=404, detail="No deposit address found for this network")
+    
+    address = addr_doc["address"]
+    private_key = addr_doc.get("private_key_encrypted", "")
+    
+    # Check blockchain for deposits
+    deposits = await blockchain_monitor.check_deposits(address, network)
+    
+    if not deposits:
+        return {
+            "success": False,
+            "message": "No deposits found yet. Please wait a few minutes after sending.",
+            "address": address,
+            "network": network
+        }
+    
+    # Process new deposits
+    credited_amount = 0
+    credited_count = 0
+    
+    for deposit in deposits:
+        tx_hash = deposit["tx_hash"]
+        amount = deposit["amount"]
+        
+        # Check if already processed
+        existing = await db.processed_deposits.find_one({"tx_hash": tx_hash})
+        if existing:
+            continue
+        
+        # Minimum deposit check
+        if amount < 10:
+            continue
+        
+        # Record deposit
+        now = datetime.now(timezone.utc)
+        deposit_record = {
+            "tx_hash": tx_hash,
+            "user_id": user_id,
+            "network": network,
+            "amount": amount,
+            "from_address": deposit.get("from", ""),
+            "to_address": address,
+            "timestamp": deposit.get("timestamp", 0),
+            "detected_at": now,
+            "status": "detected",
+            "gas_sent": False,
+            "forwarded": False
+        }
+        await db.processed_deposits.insert_one(deposit_record)
+        
+        # Send gas and forward USDT (for EVM chains)
+        if network in ["bsc", "eth", "polygon"] and private_key:
+            try:
+                # Send gas
+                gas_sent = await gas_station.send_gas_evm(address, network)
+                if gas_sent:
+                    await db.processed_deposits.update_one(
+                        {"tx_hash": tx_hash},
+                        {"$set": {"gas_sent": True, "status": "gas_funded"}}
+                    )
+                    
+                    # Wait for gas
+                    await asyncio.sleep(3)
+                    
+                    # Forward USDT to admin wallet
+                    forwarded = await USDTForwarder.forward_evm_usdt(private_key, network, amount)
+                    if forwarded:
+                        await db.processed_deposits.update_one(
+                            {"tx_hash": tx_hash},
+                            {"$set": {"forwarded": True, "status": "forwarded"}}
+                        )
+            except Exception as e:
+                logging.error(f"Error in gas/forward: {e}")
+        
+        # Credit user's SPOT wallet
+        await db.wallets.update_one(
+            {"user_id": user_id},
+            {"$inc": {"balances.usdt": amount}},
+            upsert=True
+        )
+        
+        # Update deposit status
+        await db.processed_deposits.update_one(
+            {"tx_hash": tx_hash},
+            {"$set": {"status": "credited", "credited_at": now}}
+        )
+        
+        # Update total deposited
+        await db.deposit_addresses.update_one(
+            {"_id": addr_doc["_id"]},
+            {"$inc": {"total_deposited": amount}}
+        )
+        
+        # Add to deposit history
+        await db.deposit_history.insert_one({
+            "user_id": user_id,
+            "tx_hash": tx_hash,
+            "network": network,
+            "amount": amount,
+            "deposit_address": address,
+            "from_address": deposit.get("from", ""),
+            "status": "completed",
+            "created_at": now
+        })
+        
+        credited_amount += amount
+        credited_count += 1
+    
+    if credited_count > 0:
+        return {
+            "success": True,
+            "message": f"Deposit credited successfully!",
+            "credited_amount": credited_amount,
+            "credited_count": credited_count,
+            "network": network
+        }
+    else:
+        return {
+            "success": False,
+            "message": "Deposits already credited or below minimum ($10)",
+            "address": address,
+            "network": network
+        }
+
+
+@api_router.get("/user/deposit-history")
+async def get_user_deposit_history(user: dict = Depends(get_current_user)):
+    """Get user's deposit history from unique addresses"""
+    user_id = user["user_id"]
+    
+    # Get from deposit_history collection
+    history = await db.deposit_history.find(
+        {"user_id": user_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    # Also get from processed_deposits as backup
+    processed = await db.processed_deposits.find(
+        {"user_id": user_id, "status": "credited"},
+        {"_id": 0}
+    ).sort("detected_at", -1).to_list(100)
+    
+    # Combine and dedupe by tx_hash
+    seen_hashes = set()
+    combined = []
+    
+    for h in history:
+        if h.get("tx_hash") not in seen_hashes:
+            seen_hashes.add(h.get("tx_hash"))
+            combined.append({
+                "tx_hash": h.get("tx_hash"),
+                "network": h.get("network"),
+                "amount": h.get("amount"),
+                "deposit_address": h.get("deposit_address"),
+                "from_address": h.get("from_address"),
+                "status": h.get("status", "completed"),
+                "created_at": h.get("created_at").isoformat() if hasattr(h.get("created_at"), "isoformat") else str(h.get("created_at"))
+            })
+    
+    for p in processed:
+        if p.get("tx_hash") not in seen_hashes:
+            seen_hashes.add(p.get("tx_hash"))
+            combined.append({
+                "tx_hash": p.get("tx_hash"),
+                "network": p.get("network"),
+                "amount": p.get("amount"),
+                "deposit_address": p.get("to_address"),
+                "from_address": p.get("from_address"),
+                "status": "completed",
+                "created_at": p.get("detected_at").isoformat() if hasattr(p.get("detected_at"), "isoformat") else str(p.get("detected_at"))
+            })
+    
+    # Get user's deposit addresses
+    addresses = await db.deposit_addresses.find(
+        {"user_id": user_id, "is_active": True},
+        {"_id": 0, "private_key_encrypted": 0}
+    ).to_list(10)
+    
+    return {
+        "history": combined,
+        "addresses": addresses,
+        "total_deposits": len(combined)
+    }
+
+
 @api_router.get("/admin/deposit-requests")
 async def get_all_deposit_requests(
     status: Optional[str] = None,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme, API } from "../App";
 import axios from "axios";
@@ -10,7 +10,11 @@ import {
   CaretDown,
   Wallet,
   ShieldCheck,
-  Lightning
+  Lightning,
+  Clock,
+  ArrowsClockwise,
+  CurrencyDollar,
+  ArrowSquareOut
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
@@ -18,14 +22,15 @@ import BottomNav from "../components/BottomNav";
 
 // Default network info (will be updated from API)
 const DEFAULT_NETWORKS = [
-  { id: "bsc", name: "BNB Smart Chain (BEP20)", shortName: "BSC", icon: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png", color: "#00E5FF" },
-  { id: "eth", name: "Ethereum (ERC20)", shortName: "ERC20", icon: "https://assets.coingecko.com/coins/images/279/small/ethereum.png", color: "#627EEA" },
-  { id: "tron", name: "TRON (TRC20)", shortName: "TRC20", icon: "https://assets.coingecko.com/coins/images/1094/small/tron-logo.png", color: "#FF0013" },
-  { id: "solana", name: "Solana", shortName: "SOL", icon: "https://assets.coingecko.com/coins/images/4128/small/solana.png", color: "#00FFA3" },
-  { id: "polygon", name: "Polygon", shortName: "MATIC", icon: "https://assets.coingecko.com/coins/images/4713/small/polygon.png", color: "#8247E5" }
+  { id: "bsc", name: "BNB Smart Chain (BEP20)", shortName: "BSC", icon: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png", color: "#F0B90B", explorer: "https://bscscan.com/tx/" },
+  { id: "eth", name: "Ethereum (ERC20)", shortName: "ERC20", icon: "https://assets.coingecko.com/coins/images/279/small/ethereum.png", color: "#627EEA", explorer: "https://etherscan.io/tx/" },
+  { id: "tron", name: "TRON (TRC20)", shortName: "TRC20", icon: "https://assets.coingecko.com/coins/images/1094/small/tron-logo.png", color: "#FF0013", explorer: "https://tronscan.org/#/transaction/" },
+  { id: "solana", name: "Solana", shortName: "SOL", icon: "https://assets.coingecko.com/coins/images/4128/small/solana.png", color: "#00FFA3", explorer: "https://solscan.io/tx/" },
+  { id: "polygon", name: "Polygon", shortName: "MATIC", icon: "https://assets.coingecko.com/coins/images/4713/small/polygon.png", color: "#8247E5", explorer: "https://polygonscan.com/tx/" }
 ];
 
 const AMOUNT_OPTIONS = [50, 100, 200, 300, 400, 500];
+const COUNTDOWN_SECONDS = 120; // 2 minutes wait time
 
 const DepositPage = () => {
   const { isDark } = useTheme();
@@ -41,6 +46,13 @@ const DepositPage = () => {
   // Unique deposit addresses from API
   const [userAddresses, setUserAddresses] = useState({});
   const [currentAddress, setCurrentAddress] = useState("");
+  
+  // Countdown and check deposit state
+  const [countdown, setCountdown] = useState(0);
+  const [canCheck, setCanCheck] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [depositHistory, setDepositHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
   const cardBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
@@ -73,6 +85,12 @@ const DepositPage = () => {
             setCurrentAddress(addrMap[netId]);
           }
         }
+        
+        // Fetch deposit history
+        const historyRes = await axios.get(`${API}/user/deposit-history`, { withCredentials: true });
+        if (historyRes.data.history) {
+          setDepositHistory(historyRes.data.history);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -88,6 +106,30 @@ const DepositPage = () => {
       setCurrentAddress(userAddresses[netId]);
     }
   }, [selectedNetwork, userAddresses]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (step === 2 && countdown > 0) {
+      const timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            setCanCheck(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [step, countdown]);
+
+  // Start countdown when entering step 2
+  useEffect(() => {
+    if (step === 2) {
+      setCountdown(COUNTDOWN_SECONDS);
+      setCanCheck(false);
+    }
+  }, [step]);
 
   const copyAddress = () => {
     if (currentAddress) {
@@ -111,6 +153,52 @@ const DepositPage = () => {
     setStep(2);
   };
 
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const checkDeposit = async () => {
+    setChecking(true);
+    try {
+      const response = await axios.post(`${API}/user/check-deposit`, {
+        network: selectedNetwork.id
+      }, { withCredentials: true });
+      
+      if (response.data.success) {
+        toast.success(`${response.data.credited_amount} USDT credited to your wallet!`);
+        // Refresh wallet balance
+        const walletRes = await axios.get(`${API}/wallet`, { withCredentials: true });
+        setWallet(walletRes.data);
+        // Refresh history
+        const historyRes = await axios.get(`${API}/user/deposit-history`, { withCredentials: true });
+        if (historyRes.data.history) {
+          setDepositHistory(historyRes.data.history);
+        }
+        // Show success and navigate
+        setTimeout(() => navigate("/wallet"), 2000);
+      } else {
+        toast.error(response.data.message || "No deposit found yet");
+        // Reset countdown for retry
+        setCountdown(60);
+        setCanCheck(false);
+      }
+    } catch (error) {
+      console.error("Check deposit error:", error);
+      toast.error(error.response?.data?.detail || "Error checking deposit");
+      setCountdown(30);
+      setCanCheck(false);
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  const getExplorerUrl = (network, txHash) => {
+    const net = DEFAULT_NETWORKS.find(n => n.id === network);
+    return net ? `${net.explorer}${txHash}` : '#';
+  };
+
   return (
     <div className={`min-h-screen ${bg} pb-20`}>
       {/* Header */}
@@ -122,11 +210,59 @@ const DepositPage = () => {
             </button>
             <h1 className={`text-xl font-bold ${text}`}>Deposit</h1>
           </div>
+          {/* History Toggle */}
+          <button 
+            onClick={() => setShowHistory(!showHistory)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium ${showHistory ? 'bg-[#00E5FF] text-black' : `${cardBg} ${text} border ${border}`}`}
+          >
+            {showHistory ? 'Hide History' : 'History'}
+          </button>
         </div>
       </div>
 
       <div className="max-w-lg mx-auto p-4">
         
+        {/* Deposit History Section */}
+        {showHistory && (
+          <div className={`${cardBg} rounded-xl p-4 border ${border} mb-4`}>
+            <h3 className={`font-bold ${text} mb-3 flex items-center gap-2`}>
+              <Clock size={20} className="text-[#00E5FF]" />
+              Deposit History
+            </h3>
+            {depositHistory.length === 0 ? (
+              <p className={`text-sm ${textMuted} text-center py-4`}>No deposits yet</p>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {depositHistory.map((dep, idx) => (
+                  <div key={idx} className={`p-3 rounded-lg ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'} border ${border}`}>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className={`font-bold text-green-400`}>+${dep.amount} USDT</p>
+                        <p className={`text-xs ${textMuted}`}>{dep.network?.toUpperCase()}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs px-2 py-0.5 rounded bg-green-500/20 text-green-400">
+                          {dep.status || 'Completed'}
+                        </span>
+                        <a 
+                          href={getExplorerUrl(dep.network, dep.tx_hash)} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="block mt-1"
+                        >
+                          <span className={`text-xs ${textMuted} flex items-center gap-1 justify-end hover:text-[#00E5FF]`}>
+                            View TX <ArrowSquareOut size={12} />
+                          </span>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Auto-Credit Banner */}
         <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-xl p-4 mb-4">
           <div className="flex items-center gap-3">
@@ -217,7 +353,7 @@ const DepositPage = () => {
             </Button>
           </div>
         ) : (
-          /* Step 2: Show Unique Address */
+          /* Step 2: Show Unique Address & Check Deposit */
           <div className="space-y-4">
             {/* Selected Amount & Network */}
             <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
@@ -263,6 +399,55 @@ const DepositPage = () => {
               </Button>
             </div>
 
+            {/* Countdown & Check Deposit Button */}
+            <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
+              {!canCheck ? (
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Clock size={24} className="text-yellow-400" />
+                    <span className={`text-2xl font-bold ${text}`}>{formatTime(countdown)}</span>
+                  </div>
+                  <p className={`text-sm ${textMuted}`}>
+                    Send your deposit now. Button will activate after countdown.
+                  </p>
+                  <Button
+                    disabled
+                    className="w-full mt-4 py-4 bg-gray-500 text-gray-300 cursor-not-allowed"
+                  >
+                    <Clock size={20} className="mr-2" />
+                    Wait {formatTime(countdown)}
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <CheckCircle size={24} className="text-green-400" />
+                    <span className={`font-bold ${text}`}>Ready to Check!</span>
+                  </div>
+                  <p className={`text-sm ${textMuted} mb-4`}>
+                    Click below to check and claim your deposit
+                  </p>
+                  <Button
+                    onClick={checkDeposit}
+                    disabled={checking}
+                    className="w-full py-4 bg-green-500 hover:bg-green-600 text-white font-bold"
+                  >
+                    {checking ? (
+                      <>
+                        <ArrowsClockwise size={20} className="mr-2 animate-spin" />
+                        Checking Blockchain...
+                      </>
+                    ) : (
+                      <>
+                        <CurrencyDollar size={20} className="mr-2" />
+                        Check & Claim Deposit
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
+
             {/* Important Notice */}
             <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
               <h3 className="text-yellow-400 font-bold mb-2 flex items-center gap-2">
@@ -271,16 +456,16 @@ const DepositPage = () => {
               </h3>
               <ul className={`text-sm ${textMuted} space-y-2`}>
                 <li className="flex items-start gap-2">
-                  <CheckCircle size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
+                  <span className="text-[#00E5FF] font-bold">1.</span>
                   Send exactly ${selectedAmount} USDT to the address above
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
-                  Your deposit will be automatically detected
+                  <span className="text-[#00E5FF] font-bold">2.</span>
+                  Wait for countdown (allows blockchain confirmation)
                 </li>
                 <li className="flex items-start gap-2">
-                  <CheckCircle size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
-                  Balance credited within seconds - No manual verification needed!
+                  <span className="text-[#00E5FF] font-bold">3.</span>
+                  Click "Check & Claim" to credit your wallet instantly!
                 </li>
               </ul>
             </div>
@@ -293,12 +478,14 @@ const DepositPage = () => {
               </p>
             </div>
 
-            {/* Done Button */}
+            {/* Back Button */}
             <Button
-              onClick={() => navigate("/wallet")}
-              className="w-full py-6 bg-green-500 hover:bg-green-600 text-white font-bold"
+              onClick={() => setStep(1)}
+              variant="outline"
+              className={`w-full py-4 ${border} ${text}`}
             >
-              I've Sent the Deposit
+              <ArrowLeft size={20} className="mr-2" />
+              Change Amount/Network
             </Button>
           </div>
         )}
