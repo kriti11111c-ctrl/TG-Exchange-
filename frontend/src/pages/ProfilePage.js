@@ -102,13 +102,14 @@ const ProfilePage = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Get rank display name
+  // Get VIP rank display name (Trading Volume based)
   const getRankName = (level) => {
+    if (!level || level === 0) return "1st ⭐";
     const names = {
-      1: "Bronze", 2: "Silver", 3: "Gold", 4: "Platinum", 5: "Diamond",
-      6: "Master", 7: "Grandmaster", 8: "Champion", 9: "Legend", 10: "Immortal"
+      1: "1st ⭐", 2: "2nd ⭐⭐", 3: "3rd ⭐⭐⭐", 4: "4th ⭐⭐⭐⭐", 5: "5th ⭐⭐⭐⭐⭐",
+      6: "6th 🌟", 7: "7th 🌟🌟", 8: "8th 🌟🌟🌟", 9: "9th 🌟🌟🌟🌟", 10: "10th 🌟🌟🌟🌟🌟"
     };
-    return names[level] || "Bronze";
+    return names[level] || "1st ⭐";
   };
 
   // Theme colors
@@ -183,7 +184,7 @@ const ProfilePage = () => {
                 <h2 className={`text-lg font-bold ${text}`}>{user?.name || "User"}</h2>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-xs px-2 py-0.5 rounded bg-[#00E5FF]/20 text-[#00E5FF] font-medium">
-                    {getRankName(rankInfo?.rank?.level || 1)}
+                    {getRankName(rankInfo?.rank?.level)}
                   </span>
                   {kycStatus === "verified" ? (
                     <span className="text-xs px-2 py-0.5 rounded bg-[#0ECB81]/20 text-[#0ECB81] font-medium">
