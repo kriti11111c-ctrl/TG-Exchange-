@@ -55,6 +55,8 @@ const DepositPage = () => {
   const [depositHistory, setDepositHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [autoCheckDone, setAutoCheckDone] = useState(false);
+  const [depositSuccess, setDepositSuccess] = useState(false);
+  const [creditedAmount, setCreditedAmount] = useState(0);
 
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
   const cardBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
@@ -190,6 +192,8 @@ const DepositPage = () => {
       }, { withCredentials: true });
       
       if (response.data.success) {
+        setCreditedAmount(response.data.credited_amount);
+        setDepositSuccess(true);
         toast.success(`${response.data.credited_amount} USDT credited to your wallet!`);
         // Refresh wallet balance
         const walletRes = await axios.get(`${API}/wallet`, { withCredentials: true });
@@ -199,19 +203,19 @@ const DepositPage = () => {
         if (historyRes.data.history) {
           setDepositHistory(historyRes.data.history);
         }
-        // Show success and navigate
-        setTimeout(() => navigate("/wallet"), 2000);
       } else {
         toast.error(response.data.message || "No deposit found yet");
         // Reset countdown for retry
         setCountdown(60);
         setCanCheck(false);
+        setAutoCheckDone(false);
       }
     } catch (error) {
       console.error("Check deposit error:", error);
       toast.error(error.response?.data?.detail || "Error checking deposit");
       setCountdown(30);
       setCanCheck(false);
+      setAutoCheckDone(false);
     } finally {
       setChecking(false);
     }
@@ -224,6 +228,30 @@ const DepositPage = () => {
 
   return (
     <div className={`min-h-screen ${bg} pb-20`}>
+      {/* Success Popup */}
+      {depositSuccess && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className={`${cardBg} rounded-2xl p-6 max-w-sm w-full text-center animate-in fade-in zoom-in duration-300`}>
+            <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle size={48} weight="fill" className="text-white" />
+            </div>
+            <h2 className="text-green-400 text-2xl font-bold mb-2">Deposit Successful!</h2>
+            <p className={`${textMuted} mb-4`}>Your deposit has been credited to your wallet</p>
+            <div className="bg-green-500/20 rounded-xl p-4 mb-4">
+              <p className={`text-sm ${textMuted}`}>Amount Credited</p>
+              <p className="text-3xl font-bold text-green-400">${creditedAmount} USDT</p>
+            </div>
+            <Button
+              onClick={() => navigate("/wallet")}
+              className="w-full py-4 bg-green-500 hover:bg-green-600 text-white font-bold"
+            >
+              <Wallet size={20} className="mr-2" />
+              Go to Wallet
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className={`${cardBg} border-b ${border} sticky top-0 z-40`}>
         <div className="flex items-center justify-between p-4">
