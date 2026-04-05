@@ -5668,6 +5668,12 @@ async def download_deposit_page():
     file_path = Path("/app/frontend/src/pages/DepositPage.js")
     return file_path.read_text()
 
+@app.get("/api/download-referral-page", response_class=PlainTextResponse)
+async def download_referral_page():
+    """Download the ReferralPage.js file"""
+    file_path = Path("/app/frontend/src/pages/ReferralPage.js")
+    return file_path.read_text()
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
