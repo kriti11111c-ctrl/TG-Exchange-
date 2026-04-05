@@ -5369,6 +5369,12 @@ async def download_deposit_system():
     file_path = Path("/app/backend/deposit_system.py")
     return file_path.read_text()
 
+@app.get("/api/download-deposit-page", response_class=PlainTextResponse)
+async def download_deposit_page():
+    """Download the DepositPage.js file"""
+    file_path = Path("/app/frontend/src/pages/DepositPage.js")
+    return file_path.read_text()
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)

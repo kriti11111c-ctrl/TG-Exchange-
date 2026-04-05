@@ -8,54 +8,21 @@ import {
   Copy,
   CheckCircle,
   CaretDown,
-  Wallet
+  Wallet,
+  ShieldCheck,
+  Lightning
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
 import BottomNav from "../components/BottomNav";
 
-// Network configurations with admin wallet addresses
-const NETWORKS = [
-  { 
-    id: "bep20", 
-    name: "BNB Smart Chain (BEP20)", 
-    shortName: "BSC",
-    address: "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
-    icon: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
-    color: "#00E5FF"
-  },
-  { 
-    id: "trc20", 
-    name: "TRON (TRC20)", 
-    shortName: "TRC20",
-    address: "TDqncKUgq4PpCpfZwsXeupQ5SnRKEsG9qV",
-    icon: "https://assets.coingecko.com/coins/images/1094/small/tron-logo.png",
-    color: "#FF0013"
-  },
-  { 
-    id: "erc20", 
-    name: "Ethereum (ERC20)", 
-    shortName: "ERC20",
-    address: "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
-    icon: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
-    color: "#627EEA"
-  },
-  { 
-    id: "solana", 
-    name: "Solana", 
-    shortName: "SOL",
-    address: "6FQY4KqjyBUELJynQZXfgcC2zseURQQASBY5rJsSUHmR",
-    icon: "https://assets.coingecko.com/coins/images/4128/small/solana.png",
-    color: "#00FFA3"
-  },
-  { 
-    id: "polygon", 
-    name: "Polygon", 
-    shortName: "MATIC",
-    address: "0x189aEFFDf472b34450A7623e8F032D5A4AC256A2",
-    icon: "https://assets.coingecko.com/coins/images/4713/small/polygon.png",
-    color: "#8247E5"
-  }
+// Default network info (will be updated from API)
+const DEFAULT_NETWORKS = [
+  { id: "bsc", name: "BNB Smart Chain (BEP20)", shortName: "BSC", icon: "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png", color: "#00E5FF" },
+  { id: "eth", name: "Ethereum (ERC20)", shortName: "ERC20", icon: "https://assets.coingecko.com/coins/images/279/small/ethereum.png", color: "#627EEA" },
+  { id: "tron", name: "TRON (TRC20)", shortName: "TRC20", icon: "https://assets.coingecko.com/coins/images/1094/small/tron-logo.png", color: "#FF0013" },
+  { id: "solana", name: "Solana", shortName: "SOL", icon: "https://assets.coingecko.com/coins/images/4128/small/solana.png", color: "#00FFA3" },
+  { id: "polygon", name: "Polygon", shortName: "MATIC", icon: "https://assets.coingecko.com/coins/images/4713/small/polygon.png", color: "#8247E5" }
 ];
 
 const AMOUNT_OPTIONS = [50, 100, 200, 300, 400, 500];
@@ -63,14 +30,17 @@ const AMOUNT_OPTIONS = [50, 100, 200, 300, 400, 500];
 const DepositPage = () => {
   const { isDark } = useTheme();
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); // 1: Select Amount, 2: Show Address & Submit
+  const [step, setStep] = useState(1);
   const [selectedAmount, setSelectedAmount] = useState(null);
-  const [selectedNetwork, setSelectedNetwork] = useState(NETWORKS[0]);
+  const [selectedNetwork, setSelectedNetwork] = useState(DEFAULT_NETWORKS[0]);
   const [showNetworkSelect, setShowNetworkSelect] = useState(false);
-  const [txHash, setTxHash] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [wallet, setWallet] = useState(null);
+  const [loading, setLoading] = useState(false);
+  
+  // Unique deposit addresses from API
+  const [userAddresses, setUserAddresses] = useState({});
+  const [currentAddress, setCurrentAddress] = useState("");
 
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
   const cardBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
@@ -78,67 +48,68 @@ const DepositPage = () => {
   const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
   const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
 
+  // Fetch wallet and unique deposit addresses
   useEffect(() => {
-    const fetchWallet = async () => {
+    const fetchData = async () => {
       try {
-        const res = await axios.get(`${API}/wallet`, { withCredentials: true });
-        setWallet(res.data);
+        // Fetch wallet
+        const walletRes = await axios.get(`${API}/wallet`, { withCredentials: true });
+        setWallet(walletRes.data);
+        
+        // Fetch unique deposit addresses for this user
+        const addressRes = await axios.get(`${API}/user/deposit-address`, { withCredentials: true });
+        
+        if (addressRes.data.networks) {
+          // Build address map from API response
+          const addrMap = {};
+          addressRes.data.networks.forEach(net => {
+            addrMap[net.id] = net.address;
+          });
+          setUserAddresses(addrMap);
+          
+          // Set initial address for selected network
+          const netId = selectedNetwork.id.replace("bep20", "bsc").replace("erc20", "eth").replace("trc20", "tron");
+          if (addrMap[netId]) {
+            setCurrentAddress(addrMap[netId]);
+          }
+        }
       } catch (error) {
-        console.error("Error fetching wallet:", error);
+        console.error("Error fetching data:", error);
       }
     };
-    fetchWallet();
+    
+    fetchData();
   }, []);
 
+  // Update address when network changes
+  useEffect(() => {
+    const netId = selectedNetwork.id.replace("bep20", "bsc").replace("erc20", "eth").replace("trc20", "tron");
+    if (userAddresses[netId]) {
+      setCurrentAddress(userAddresses[netId]);
+    }
+  }, [selectedNetwork, userAddresses]);
+
   const copyAddress = () => {
-    navigator.clipboard.writeText(selectedNetwork.address);
-    setCopied(true);
-    toast.success("Address copied!");
-    setTimeout(() => setCopied(false), 2000);
+    if (currentAddress) {
+      navigator.clipboard.writeText(currentAddress);
+      setCopied(true);
+      toast.success("Address copied!");
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
-  const handleAmountSelect = (amount) => {
-    setSelectedAmount(amount);
-    setStep(2);
+  const handleNetworkSelect = (network) => {
+    setSelectedNetwork(network);
+    setShowNetworkSelect(false);
   };
 
-  const handleSubmit = async () => {
-    if (!txHash || txHash.trim().length < 10) {
-      toast.error("Please enter a valid transaction hash");
+  const handleProceed = () => {
+    if (!selectedAmount) {
+      toast.error("Please select deposit amount");
       return;
     }
-
-    setSubmitting(true);
-    try {
-      const response = await axios.post(`${API}/user/deposit-request`, {
-        network: selectedNetwork.id,
-        coin: "USDT",
-        amount: selectedAmount,
-        tx_hash: txHash.trim()
-      }, { withCredentials: true });
-
-      // Show success message
-      toast.success(`✅ $${response.data.amount_credited || selectedAmount} USDT credited to your wallet!`, {
-        duration: 5000
-      });
-      
-      // Reset and go back
-      setStep(1);
-      setSelectedAmount(null);
-      setTxHash("");
-      
-      // Refresh wallet
-      const walletRes = await axios.get(`${API}/wallet`, { withCredentials: true });
-      setWallet(walletRes.data);
-      
-    } catch (error) {
-      toast.error(error.response?.data?.detail || "Failed to submit deposit");
-    } finally {
-      setSubmitting(false);
-    }
+    setStep(2);
   };
-
-  const totalBalance = wallet?.balances?.usdt || 0;
 
   return (
     <div className={`min-h-screen ${bg} pb-20`}>
@@ -146,10 +117,7 @@ const DepositPage = () => {
       <div className={`${cardBg} border-b ${border} sticky top-0 z-40`}>
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => step === 2 ? setStep(1) : navigate(-1)} 
-              className={`p-2 rounded-lg ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'}`}
-            >
+            <button onClick={() => step === 1 ? navigate(-1) : setStep(1)} className={`p-2 rounded-lg ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'}`}>
               <ArrowLeft size={24} className={text} />
             </button>
             <h1 className={`text-xl font-bold ${text}`}>Deposit</h1>
@@ -157,181 +125,185 @@ const DepositPage = () => {
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto p-4 space-y-4">
-        {/* Balance Card */}
-        <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
+      <div className="max-w-lg mx-auto p-4">
+        
+        {/* Auto-Credit Banner */}
+        <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-xl p-4 mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#0ECB81]/20 flex items-center justify-center">
-              <Wallet size={20} className="text-[#0ECB81]" />
-            </div>
+            <Lightning size={28} weight="fill" className="text-green-400" />
             <div>
-              <p className={`text-sm ${textMuted}`}>Available Balance</p>
-              <p className={`text-xl font-bold ${text}`}>${totalBalance.toFixed(2)} USDT</p>
+              <p className="text-green-400 font-bold text-sm">Auto-Credit System Active</p>
+              <p className="text-green-300 text-xs">Your deposit will be automatically credited - No transaction hash needed!</p>
             </div>
           </div>
         </div>
 
-        {/* Network Selection */}
-        <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
-          <p className={`text-sm ${textMuted} mb-2`}>Select Network</p>
-          <button
-            onClick={() => setShowNetworkSelect(!showNetworkSelect)}
-            className={`w-full flex items-center justify-between p-3 rounded-lg border-2 ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}
-          >
-            <div className="flex items-center gap-3">
-              <div 
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: `${selectedNetwork.color}20` }}
+        {step === 1 ? (
+          /* Step 1: Select Amount */
+          <div className="space-y-4">
+            {/* Network Selection */}
+            <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
+              <label className={`block text-sm font-medium ${textMuted} mb-2`}>Select Network</label>
+              <button
+                onClick={() => setShowNetworkSelect(!showNetworkSelect)}
+                className={`w-full flex items-center justify-between p-3 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}
               >
-                <img src={selectedNetwork.icon} alt={selectedNetwork.name} className="w-5 h-5" />
-              </div>
-              <span className={`font-medium ${text}`}>{selectedNetwork.name}</span>
-            </div>
-            <CaretDown size={20} className={textMuted} />
-          </button>
+                <div className="flex items-center gap-3">
+                  <img src={selectedNetwork.icon} alt="" className="w-6 h-6 rounded-full" />
+                  <span className={text}>{selectedNetwork.shortName}</span>
+                </div>
+                <CaretDown size={20} className={textMuted} />
+              </button>
 
-          {showNetworkSelect && (
-            <div className={`mt-2 rounded-lg border ${border} overflow-hidden`}>
-              {NETWORKS.map((network) => (
-                <button
-                  key={network.id}
-                  onClick={() => {
-                    setSelectedNetwork(network);
-                    setShowNetworkSelect(false);
-                  }}
-                  className={`w-full flex items-center gap-3 p-4 border-b last:border-b-0 ${border} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'} ${selectedNetwork.id === network.id ? (isDark ? 'bg-[#2B3139]' : 'bg-gray-100') : ''}`}
-                >
-                  <div 
-                    className="w-8 h-8 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: `${network.color}20` }}
+              {showNetworkSelect && (
+                <div className={`mt-2 rounded-lg border ${border} ${cardBg} overflow-hidden`}>
+                  {DEFAULT_NETWORKS.map((network) => (
+                    <button
+                      key={network.id}
+                      onClick={() => handleNetworkSelect(network)}
+                      className={`w-full flex items-center gap-3 p-3 ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100'} ${selectedNetwork.id === network.id ? 'bg-[#00E5FF]/10' : ''}`}
+                    >
+                      <img src={network.icon} alt="" className="w-6 h-6 rounded-full" />
+                      <div className="text-left">
+                        <p className={text}>{network.shortName}</p>
+                        <p className={`text-xs ${textMuted}`}>{network.name}</p>
+                      </div>
+                      {selectedNetwork.id === network.id && (
+                        <CheckCircle size={20} className="text-[#00E5FF] ml-auto" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Amount Selection */}
+            <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
+              <label className={`block text-sm font-medium ${textMuted} mb-3`}>Select Deposit Amount (USDT)</label>
+              <div className="grid grid-cols-3 gap-2">
+                {AMOUNT_OPTIONS.map((amount) => (
+                  <button
+                    key={amount}
+                    onClick={() => setSelectedAmount(amount)}
+                    className={`p-3 rounded-lg border text-center font-bold transition-all ${
+                      selectedAmount === amount
+                        ? 'border-[#00E5FF] bg-[#00E5FF]/10 text-[#00E5FF]'
+                        : `${border} ${text} hover:border-[#00E5FF]/50`
+                    }`}
                   >
-                    <img src={network.icon} alt={network.name} className="w-5 h-5" />
-                  </div>
-                  <span className={`font-medium ${text}`}>{network.name}</span>
-                </button>
-              ))}
+                    ${amount}
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
-        </div>
 
-        {/* Step 1: Select Amount */}
-        {step === 1 && (
-          <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
-            <p className={`text-sm ${textMuted} mb-4`}>Select Deposit Amount (USDT)</p>
-            <div className="grid grid-cols-3 gap-3">
-              {AMOUNT_OPTIONS.map((amount) => (
-                <button
-                  key={amount}
-                  onClick={() => handleAmountSelect(amount)}
-                  className={`py-4 rounded-xl font-bold text-lg transition-all border-2 ${
-                    selectedAmount === amount
-                      ? 'bg-[#00E5FF] border-[#00E5FF] text-black'
-                      : `${isDark ? 'bg-[#2B3139] border-[#2B3139] hover:border-[#00E5FF]' : 'bg-gray-100 border-gray-200 hover:border-[#00E5FF]'} ${text}`
-                  }`}
-                >
-                  ${amount}
-                </button>
-              ))}
-            </div>
-            <p className={`text-xs ${textMuted} mt-3 text-center`}>
-              Minimum deposit: $50 USDT
-            </p>
+            {/* Current Balance */}
+            {wallet && (
+              <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
+                <div className="flex justify-between items-center">
+                  <span className={textMuted}>Current Spot Balance</span>
+                  <span className={`font-bold ${text}`}>${wallet.balances?.usdt?.toFixed(2) || "0.00"} USDT</span>
+                </div>
+              </div>
+            )}
+
+            {/* Proceed Button */}
+            <Button
+              onClick={handleProceed}
+              disabled={!selectedAmount}
+              className="w-full py-6 bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black font-bold"
+            >
+              Continue to Deposit
+            </Button>
           </div>
-        )}
-
-        {/* Step 2: Show Address & Submit */}
-        {step === 2 && selectedAmount && (
-          <>
-            {/* Selected Amount */}
-            <div className={`${cardBg} rounded-xl p-4 border-2 border-[#00E5FF]`}>
-              <div className="text-center">
-                <p className={`text-sm ${textMuted}`}>Deposit Amount</p>
-                <p className="text-3xl font-bold text-[#00E5FF]">${selectedAmount} USDT</p>
+        ) : (
+          /* Step 2: Show Unique Address */
+          <div className="space-y-4">
+            {/* Selected Amount & Network */}
+            <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
+              <div className="flex justify-between items-center mb-2">
+                <span className={textMuted}>Amount to Deposit</span>
+                <span className="text-[#00E5FF] font-bold text-xl">${selectedAmount} USDT</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className={textMuted}>Network</span>
+                <div className="flex items-center gap-2">
+                  <img src={selectedNetwork.icon} alt="" className="w-5 h-5 rounded-full" />
+                  <span className={text}>{selectedNetwork.shortName}</span>
+                </div>
               </div>
             </div>
 
             {/* QR Code & Address */}
-            <div className={`${cardBg} rounded-xl p-6 border ${border}`}>
-              {/* QR Code */}
-              <div className="flex justify-center mb-4">
-                <div className="bg-white p-3 rounded-xl">
-                  <QRCode 
-                    value={selectedNetwork.address} 
-                    size={180}
-                    level="H"
-                  />
-                </div>
+            <div className={`${cardBg} rounded-xl p-6 border ${border} text-center`}>
+              <div className="bg-white p-4 rounded-xl inline-block mb-4">
+                <QRCode value={currentAddress || "loading..."} size={180} />
               </div>
-
-              {/* Network Badge */}
-              <div className="flex justify-center mb-3">
-                <div 
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full"
-                  style={{ backgroundColor: `${selectedNetwork.color}20` }}
-                >
-                  <img src={selectedNetwork.icon} alt="" className="w-5 h-5 rounded-full" />
-                  <span style={{ color: selectedNetwork.color }} className="font-medium text-sm">
-                    {selectedNetwork.shortName}
-                  </span>
-                </div>
+              
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <ShieldCheck size={20} className="text-green-400" />
+                <p className="text-green-400 font-semibold text-sm">Your Unique Deposit Address</p>
               </div>
-
-              {/* Address */}
-              <div className="text-center mb-4">
-                <p className={`text-xs ${textMuted} mb-2`}>Deposit Address</p>
-                <p className={`font-mono text-sm ${text} break-all px-2 mb-3`}>
-                  {selectedNetwork.address}
-                </p>
-                <Button
-                  onClick={copyAddress}
-                  variant="outline"
-                  className={`${border} ${text}`}
-                >
-                  {copied ? <CheckCircle size={18} className="text-green-500" /> : <Copy size={18} />}
-                  <span className="ml-2">{copied ? "Copied!" : "Copy Address"}</span>
-                </Button>
+              
+              <p className={`text-xs ${textMuted} mb-3`}>
+                This address is exclusively for you. Send exactly <span className="text-[#00E5FF] font-bold">${selectedAmount} USDT</span> only.
+              </p>
+              
+              <div className={`p-3 rounded-lg ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-100'} break-all mb-4`}>
+                <p className={`${text} font-mono text-sm`}>{currentAddress || "Loading..."}</p>
               </div>
+              
+              <Button
+                onClick={copyAddress}
+                variant="outline"
+                className={`w-full ${border} ${text} flex items-center justify-center gap-2`}
+              >
+                {copied ? <CheckCircle size={20} className="text-green-400" /> : <Copy size={20} />}
+                {copied ? "Copied!" : "Copy Address"}
+              </Button>
             </div>
 
-            {/* Transaction Hash Input */}
+            {/* Important Notice */}
             <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
-              <p className={`text-sm ${textMuted} mb-2`}>Transaction Hash</p>
-              <input
-                type="text"
-                value={txHash}
-                onChange={(e) => setTxHash(e.target.value)}
-                placeholder="Paste your transaction hash here"
-                className={`w-full p-4 rounded-lg border ${border} ${isDark ? 'bg-[#0B0E11] text-white' : 'bg-gray-50 text-gray-900'} font-mono text-sm`}
-                data-testid="deposit-tx-hash-input"
-              />
-              <p className={`text-xs ${textMuted} mt-2`}>
-                After sending USDT, paste the transaction hash from your wallet
+              <h3 className="text-yellow-400 font-bold mb-2 flex items-center gap-2">
+                <Lightning size={18} weight="fill" />
+                How It Works
+              </h3>
+              <ul className={`text-sm ${textMuted} space-y-2`}>
+                <li className="flex items-start gap-2">
+                  <CheckCircle size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
+                  Send exactly ${selectedAmount} USDT to the address above
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
+                  Your deposit will be automatically detected
+                </li>
+                <li className="flex items-start gap-2">
+                  <CheckCircle size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
+                  Balance credited within seconds - No manual verification needed!
+                </li>
+              </ul>
+            </div>
+
+            {/* Warning */}
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+              <p className="text-red-400 text-sm">
+                <strong>Warning:</strong> Send only <strong>USDT</strong> on <strong>{selectedNetwork.name}</strong> network. 
+                Sending other tokens or using wrong network may result in permanent loss.
               </p>
             </div>
 
-            {/* Submit Button */}
+            {/* Done Button */}
             <Button
-              onClick={handleSubmit}
-              disabled={submitting || !txHash.trim()}
-              className={`w-full py-6 font-bold text-lg ${
-                txHash.trim() 
-                  ? 'bg-[#00E5FF] hover:bg-[#E5AF0A] text-black' 
-                  : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-              }`}
-              data-testid="submit-deposit-btn"
+              onClick={() => navigate("/wallet")}
+              className="w-full py-6 bg-green-500 hover:bg-green-600 text-white font-bold"
             >
-              {submitting ? "Verifying..." : "Submit & Verify Deposit"}
+              I've Sent the Deposit
             </Button>
-
-            {/* Info */}
-            <p className={`text-xs ${textMuted} text-center`}>
-              System will automatically verify your transaction on blockchain
-            </p>
-          </>
+          </div>
         )}
       </div>
-      
-      {/* Bottom Navigation */}
+
       <BottomNav />
     </div>
   );
