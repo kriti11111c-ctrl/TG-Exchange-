@@ -45,9 +45,9 @@ const ReferralPage = () => {
 
   useEffect(() => {
     fetchStats();
-    fetchTeam();
     fetchUserProfile();
-  }, [selectedLevel]);
+    // Don't fetch team on initial load - only when level is selected
+  }, []);
 
   const fetchUserProfile = async () => {
     try {
@@ -90,15 +90,17 @@ const ReferralPage = () => {
     }
   };
 
-  const fetchTeam = async () => {
+  const fetchTeam = async (level = selectedLevel) => {
     try {
-      const url = selectedLevel > 0 
-        ? `${API}/referral/team?level=${selectedLevel}` 
+      const url = level > 0 
+        ? `${API}/referral/team?level=${level}` 
         : `${API}/referral/team`;
-      const response = await axios.get(url, { withCredentials: true });
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await axios.get(url, { withCredentials: true, headers });
       setTeam(response.data.team_members || []);
     } catch (error) {
       console.error("Error fetching team:", error);
+      setTeam([]);
     }
   };
 
@@ -336,7 +338,15 @@ const ReferralPage = () => {
           {stats?.level_stats?.map((level) => (
             <div key={level.level}>
               <div 
-                onClick={() => setSelectedLevel(selectedLevel === level.level ? 0 : level.level)}
+                onClick={() => {
+                  const newLevel = selectedLevel === level.level ? 0 : level.level;
+                  setSelectedLevel(newLevel);
+                  if (newLevel > 0) {
+                    fetchTeam(newLevel);
+                  } else {
+                    setTeam([]);
+                  }
+                }}
                 className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
                   selectedLevel === level.level ? (isDark ? 'bg-[#2B3139]' : 'bg-gray-100') : hoverBg
                 }`}
