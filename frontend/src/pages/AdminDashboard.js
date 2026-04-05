@@ -75,8 +75,15 @@ const AdminDashboard = () => {
   }, [isReady, adminToken]);
 
   const fetchData = async () => {
+    // Get token directly from localStorage to avoid state race condition
+    const token = localStorage.getItem("admin_token");
+    if (!token) {
+      navigate("/admin");
+      return;
+    }
+    
     try {
-      const headers = { Authorization: `Bearer ${adminToken}` };
+      const headers = { Authorization: `Bearer ${token}` };
       
       const [statsRes, depositsRes, usersRes] = await Promise.all([
         axios.get(`${API}/admin/stats`, { headers }),
@@ -88,7 +95,7 @@ const AdminDashboard = () => {
       setPendingDeposits(depositsRes.data.requests || []);
       setAllUsers(usersRes.data.users || []);
     } catch (error) {
-      // Handle auth errors - redirect to login without showing toast on initial load
+      // Handle auth errors - redirect to login
       if (error.response?.status === 401 || error.response?.status === 403) {
         localStorage.removeItem("admin_token");
         localStorage.removeItem("admin_data");
