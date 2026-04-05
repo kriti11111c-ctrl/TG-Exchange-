@@ -40,7 +40,7 @@ BSCSCAN_API_KEY = os.environ.get("ETHERSCAN_API_KEY", "")  # Using same key
 TRONSCAN_API_KEY = os.environ.get("TRONSCAN_API_KEY", "")
 SOLSCAN_API_KEY = os.environ.get("SOLSCAN_API_KEY", "")
 
-# Network configurations
+# Network configurations - OPTIMIZED GAS AMOUNTS (minimal for 1 token transfer)
 NETWORKS = {
     "bsc": {
         "name": "BNB Smart Chain",
@@ -50,7 +50,8 @@ NETWORKS = {
         "usdt_contract": "0x55d398326f99059fF775485246999027B3197955",
         "coin": Bip44Coins.ETHEREUM,
         "decimals": 18,
-        "gas_amount": 0.0005,  # BNB for gas
+        "gas_amount": 0.00015,  # ~$0.09 - enough for 1 USDT transfer
+        "min_gas_required": 0.00008,  # minimum BNB needed to do transfer
         "chain_id": 56
     },
     "eth": {
@@ -61,7 +62,8 @@ NETWORKS = {
         "usdt_contract": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
         "coin": Bip44Coins.ETHEREUM,
         "decimals": 6,
-        "gas_amount": 0.002,  # ETH for gas
+        "gas_amount": 0.0008,  # ~$2.50 - ETH gas is expensive
+        "min_gas_required": 0.0005,
         "chain_id": 1
     },
     "polygon": {
@@ -72,7 +74,8 @@ NETWORKS = {
         "usdt_contract": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
         "coin": Bip44Coins.ETHEREUM,
         "decimals": 6,
-        "gas_amount": 0.01,  # MATIC for gas
+        "gas_amount": 0.002,  # ~$0.002 - MATIC is very cheap
+        "min_gas_required": 0.001,
         "chain_id": 137
     },
     "tron": {
@@ -81,7 +84,7 @@ NETWORKS = {
         "scanner_api": "https://apilist.tronscanapi.com/api",
         "usdt_contract": "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t",
         "decimals": 6,
-        "gas_amount": 15  # TRX for energy
+        "gas_amount": 15  # TRX for energy - TRON needs bandwidth/energy
     },
     "solana": {
         "name": "Solana",
@@ -90,7 +93,7 @@ NETWORKS = {
         "scanner_api": "https://api.solscan.io",
         "usdt_contract": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
         "decimals": 6,
-        "gas_amount": 0.005  # SOL for fees
+        "gas_amount": 0.001  # ~$0.15 - SOL fees are low
     }
 }
 
@@ -149,7 +152,8 @@ class GasStationWallet:
             logger.error(f"Error initializing gas station wallets: {e}")
     
     async def send_gas_evm(self, to_address: str, network: str) -> bool:
-        """Send gas (native token) to an address on EVM chain"""
+        """Send gas (native token) to an address on EVM chain - SMART VERSION
+        Only sends gas if the address doesn't have enough already"""
         try:
             if not self._evm_account:
                 logger.error("EVM account not initialized")
@@ -160,13 +164,24 @@ class GasStationWallet:
                 return False
             
             w3 = Web3(Web3.HTTPProvider(net_config["rpc"]))
+            to_address_checksum = w3.to_checksum_address(to_address)
+            
+            # Check if deposit address already has enough gas
+            existing_balance = w3.eth.get_balance(to_address_checksum)
+            min_required = w3.to_wei(net_config.get("min_gas_required", 0.00008), 'ether')
+            
+            if existing_balance >= min_required:
+                logger.info(f"Address {to_address} already has enough gas: {w3.from_wei(existing_balance, 'ether')}")
+                return True  # No need to send more gas
+            
+            # Calculate how much gas to send (only what's needed)
+            gas_to_send = w3.to_wei(net_config["gas_amount"], 'ether')
             
             # Check gas station balance
-            gas_balance = w3.eth.get_balance(self._evm_account.address)
-            gas_amount_wei = w3.to_wei(net_config["gas_amount"], 'ether')
+            gas_station_balance = w3.eth.get_balance(self._evm_account.address)
             
-            if gas_balance < gas_amount_wei:
-                logger.warning(f"Gas station low on {network}: {w3.from_wei(gas_balance, 'ether')}")
+            if gas_station_balance < gas_to_send:
+                logger.warning(f"Gas station low on {network}: {w3.from_wei(gas_station_balance, 'ether')}")
                 return False
             
             # Build transaction
@@ -175,8 +190,8 @@ class GasStationWallet:
             
             tx = {
                 'nonce': nonce,
-                'to': to_address,
-                'value': gas_amount_wei,
+                'to': to_address_checksum,
+                'value': gas_to_send,
                 'gas': 21000,
                 'gasPrice': gas_price,
                 'chainId': net_config["chain_id"]
@@ -186,7 +201,7 @@ class GasStationWallet:
             signed_tx = w3.eth.account.sign_transaction(tx, self._evm_account.key)
             tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
             
-            logger.info(f"Gas sent to {to_address} on {network}: {tx_hash.hex()}")
+            logger.info(f"Gas sent to {to_address} on {network}: {tx_hash.hex()} Amount: {w3.from_wei(gas_to_send, 'ether')}")
             return True
             
         except Exception as e:
