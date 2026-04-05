@@ -715,6 +715,13 @@ async def login(credentials: UserLogin, response: Response):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
+    # Check if user is blocked
+    if user.get("is_blocked"):
+        raise HTTPException(
+            status_code=403, 
+            detail="Your account has been suspended. Please contact support."
+        )
+    
     if not verify_password(credentials.password, user.get("password_hash", "")):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
@@ -4014,12 +4021,60 @@ async def get_all_users(admin: dict = Depends(get_current_admin)):
         user["wallet"] = wallet if wallet else {"balances": {}}
         # Include password hash for admin view (masked display in frontend)
         user["has_password"] = bool(user.get("password_hash") or user.get("password"))
+        # Include blocked status
+        user["is_blocked"] = user.get("is_blocked", False)
     
     total_users = len(users)
     
     return {
         "users": users,
         "total": total_users
+    }
+
+@api_router.post("/admin/block-user")
+async def admin_block_user(data: dict, admin: dict = Depends(get_current_admin)):
+    """Admin: Block or unblock a user"""
+    user_id = data.get("user_id")
+    action = data.get("action", "block")  # "block" or "unblock"
+    reason = data.get("reason", "")
+    
+    if not user_id:
+        raise HTTPException(status_code=400, detail="User ID required")
+    
+    # Find the user
+    user = await db.users.find_one({"user_id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Update block status
+    is_blocked = action == "block"
+    await db.users.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "is_blocked": is_blocked,
+                "block_reason": reason if is_blocked else "",
+                "blocked_at": datetime.now(timezone.utc) if is_blocked else None,
+                "blocked_by": admin.get("email") if is_blocked else None
+            }
+        }
+    )
+    
+    # Log the action
+    await db.admin_logs.insert_one({
+        "action": f"user_{action}ed",
+        "user_id": user_id,
+        "user_email": user.get("email"),
+        "admin_email": admin.get("email"),
+        "reason": reason,
+        "timestamp": datetime.now(timezone.utc)
+    })
+    
+    return {
+        "success": True,
+        "message": f"User {user.get('email')} has been {action}ed",
+        "user_id": user_id,
+        "is_blocked": is_blocked
     }
 
 @api_router.post("/admin/login-as-user")

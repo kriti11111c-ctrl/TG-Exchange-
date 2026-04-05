@@ -19,7 +19,9 @@ import {
   Eye,
   EyeSlash,
   UserSwitch,
-  MagnifyingGlass
+  MagnifyingGlass,
+  Prohibit,
+  UserCircleCheck
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -150,6 +152,37 @@ const AdminDashboard = () => {
     user.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
     user.user_id?.toLowerCase().includes(userSearch.toLowerCase())
   );
+
+  // Block/Unblock user
+  const handleBlockUser = async (userId, userEmail, currentBlockStatus) => {
+    const action = currentBlockStatus ? "unblock" : "block";
+    const confirmMsg = currentBlockStatus 
+      ? `Unblock user ${userEmail}?` 
+      : `Block user ${userEmail}? They won't be able to login.`;
+    
+    if (!window.confirm(confirmMsg)) return;
+    
+    try {
+      const response = await axios.post(`${API}/admin/block-user`, {
+        user_id: userId,
+        action: action,
+        reason: action === "block" ? "Blocked by admin" : ""
+      }, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+        withCredentials: true
+      });
+      
+      if (response.data.success) {
+        toast.success(response.data.message);
+        // Update local state
+        setAllUsers(prev => prev.map(u => 
+          u.user_id === userId ? { ...u, is_blocked: !currentBlockStatus } : u
+        ));
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to update user status");
+    }
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -614,6 +647,11 @@ const AdminDashboard = () => {
                               {user.role === 'admin' && (
                                 <span className="px-2 py-0.5 bg-purple-500/20 text-purple-400 rounded text-xs">Admin</span>
                               )}
+                              {user.is_blocked && (
+                                <span className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-xs flex items-center gap-1">
+                                  <Prohibit size={12} /> Blocked
+                                </span>
+                              )}
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
@@ -673,11 +711,34 @@ const AdminDashboard = () => {
                             </div>
                           </div>
 
-                          {/* Login as User Button */}
-                          <div className="flex-shrink-0">
+                          {/* Login as User & Block Buttons */}
+                          <div className="flex-shrink-0 flex gap-2">
+                            {/* Block/Unblock Button */}
+                            <Button
+                              onClick={() => handleBlockUser(user.user_id, user.email, user.is_blocked)}
+                              className={user.is_blocked 
+                                ? "bg-green-500 hover:bg-green-600 text-white font-semibold"
+                                : "bg-red-500 hover:bg-red-600 text-white font-semibold"
+                              }
+                              data-testid={`block-${user.user_id}`}
+                            >
+                              {user.is_blocked ? (
+                                <>
+                                  <UserCircleCheck size={18} className="mr-1" />
+                                  Unblock
+                                </>
+                              ) : (
+                                <>
+                                  <Prohibit size={18} className="mr-1" />
+                                  Block
+                                </>
+                              )}
+                            </Button>
+                            
+                            {/* Login as User Button */}
                             <Button
                               onClick={() => handleLoginAsUser(user.user_id, user.email)}
-                              disabled={loggingInAs === user.user_id}
+                              disabled={loggingInAs === user.user_id || user.is_blocked}
                               className="bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black font-semibold"
                               data-testid={`login-as-${user.user_id}`}
                             >
@@ -686,7 +747,7 @@ const AdminDashboard = () => {
                               ) : (
                                 <UserSwitch size={18} />
                               )}
-                              Login as User
+                              Login
                             </Button>
                           </div>
                         </div>
