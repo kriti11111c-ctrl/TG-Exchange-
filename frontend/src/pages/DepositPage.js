@@ -49,10 +49,12 @@ const DepositPage = () => {
   
   // Countdown and check deposit state
   const [countdown, setCountdown] = useState(0);
+  const [countdownStarted, setCountdownStarted] = useState(false);
   const [canCheck, setCanCheck] = useState(false);
   const [checking, setChecking] = useState(false);
   const [depositHistory, setDepositHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [autoCheckDone, setAutoCheckDone] = useState(false);
 
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
   const cardBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
@@ -107,9 +109,9 @@ const DepositPage = () => {
     }
   }, [selectedNetwork, userAddresses]);
 
-  // Countdown timer
+  // Countdown timer - only runs when countdownStarted is true
   useEffect(() => {
-    if (step === 2 && countdown > 0) {
+    if (countdownStarted && countdown > 0) {
       const timer = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {
@@ -121,15 +123,23 @@ const DepositPage = () => {
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [step, countdown]);
+  }, [countdownStarted, countdown]);
 
-  // Start countdown when entering step 2
+  // Auto-check when countdown ends
   useEffect(() => {
-    if (step === 2) {
-      setCountdown(COUNTDOWN_SECONDS);
-      setCanCheck(false);
+    if (canCheck && !autoCheckDone && countdownStarted) {
+      setAutoCheckDone(true);
+      checkDeposit();
     }
-  }, [step]);
+  }, [canCheck, autoCheckDone, countdownStarted]);
+
+  // Start countdown when user clicks "I've Deposited"
+  const startCountdown = () => {
+    setCountdownStarted(true);
+    setCountdown(COUNTDOWN_SECONDS);
+    setCanCheck(false);
+    setAutoCheckDone(false);
+  };
 
   const copyAddress = () => {
     if (currentAddress) {
@@ -401,49 +411,78 @@ const DepositPage = () => {
 
             {/* Countdown & Check Deposit Button */}
             <div className={`${cardBg} rounded-xl p-4 border ${border}`}>
-              {!canCheck ? (
+              {!countdownStarted ? (
+                /* Before countdown - Show "I've Deposited" button */
+                <div className="text-center">
+                  <p className={`text-sm ${textMuted} mb-4`}>
+                    After sending your deposit, click the button below to start verification
+                  </p>
+                  <Button
+                    onClick={startCountdown}
+                    className="w-full py-4 bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black font-bold"
+                  >
+                    <CheckCircle size={20} className="mr-2" />
+                    I've Sent the Deposit
+                  </Button>
+                </div>
+              ) : !canCheck ? (
+                /* Countdown running */
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-2 mb-2">
                     <Clock size={24} className="text-yellow-400" />
                     <span className={`text-2xl font-bold ${text}`}>{formatTime(countdown)}</span>
                   </div>
                   <p className={`text-sm ${textMuted}`}>
-                    Send your deposit now. Button will activate after countdown.
+                    Verifying your deposit on blockchain...
                   </p>
                   <Button
                     disabled
                     className="w-full mt-4 py-4 bg-gray-500 text-gray-300 cursor-not-allowed"
                   >
                     <Clock size={20} className="mr-2" />
-                    Wait {formatTime(countdown)}
+                    Checking in {formatTime(countdown)}
                   </Button>
                 </div>
               ) : (
+                /* Countdown finished - checking or result */
                 <div className="text-center">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <CheckCircle size={24} className="text-green-400" />
-                    <span className={`font-bold ${text}`}>Ready to Check!</span>
-                  </div>
-                  <p className={`text-sm ${textMuted} mb-4`}>
-                    Click below to check and claim your deposit
-                  </p>
-                  <Button
-                    onClick={checkDeposit}
-                    disabled={checking}
-                    className="w-full py-4 bg-green-500 hover:bg-green-600 text-white font-bold"
-                  >
-                    {checking ? (
-                      <>
-                        <ArrowsClockwise size={20} className="mr-2 animate-spin" />
-                        Checking Blockchain...
-                      </>
-                    ) : (
-                      <>
-                        <CurrencyDollar size={20} className="mr-2" />
-                        Check & Claim Deposit
-                      </>
-                    )}
-                  </Button>
+                  {checking ? (
+                    <>
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <ArrowsClockwise size={24} className="text-[#00E5FF] animate-spin" />
+                        <span className={`font-bold ${text}`}>Checking Blockchain...</span>
+                      </div>
+                      <p className={`text-sm ${textMuted}`}>
+                        Please wait while we verify your deposit
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <CheckCircle size={24} className="text-green-400" />
+                        <span className={`font-bold ${text}`}>Verification Complete!</span>
+                      </div>
+                      <p className={`text-sm ${textMuted} mb-4`}>
+                        Click below to check again or go to wallet
+                      </p>
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={checkDeposit}
+                          className="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white font-bold"
+                        >
+                          <ArrowsClockwise size={18} className="mr-2" />
+                          Check Again
+                        </Button>
+                        <Button
+                          onClick={() => navigate("/wallet")}
+                          className="flex-1 py-3 bg-[#00E5FF] hover:bg-[#00E5FF]/80 text-black font-bold"
+                        >
+                          <Wallet size={18} className="mr-2" />
+                          Go to Wallet
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
