@@ -344,7 +344,8 @@ TEAM_RANKS = [
 ]
 
 async def get_team_stats(user_id: str) -> dict:
-    """Get user's team statistics - counts users with $50+ TOTAL BALANCE (Spot + Futures)
+    """Get user's team statistics - counts users with $50+ FUTURES BALANCE (excluding welcome bonus)
+    Only fresh deposits transferred to Futures count. Withdrawals will affect rank.
     Optimized with MongoDB aggregation to avoid N+1 queries"""
     
     # Get direct referrals count with balance check using aggregation
@@ -365,21 +366,22 @@ async def get_team_stats(user_id: str) -> dict:
         {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
         {"$unwind": {"path": "$user", "preserveNullAndEmptyArrays": True}},
         {"$addFields": {
-            "spot_balance": {"$ifNull": ["$wallet.balances.usdt", 0]},
+            # Futures balance minus welcome bonus (from wallet)
             "futures_balance": {"$ifNull": ["$wallet.futures_balance", 0]},
-            "total_balance": {"$add": [
-                {"$ifNull": ["$wallet.balances.usdt", 0]},
-                {"$ifNull": ["$wallet.futures_balance", 0]}
+            "welcome_bonus": {"$ifNull": ["$wallet.welcome_bonus", 0]},
+            "effective_balance": {"$subtract": [
+                {"$ifNull": ["$wallet.futures_balance", 0]},
+                {"$ifNull": ["$wallet.welcome_bonus", 0]}
             ]},
             "rank_level": {"$ifNull": ["$user.team_rank_level", 0]}
         }},
         {"$group": {
             "_id": None,
             "total_direct": {"$sum": 1},
-            "valid_direct": {"$sum": {"$cond": [{"$gte": ["$total_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}},
+            "valid_direct": {"$sum": {"$cond": [{"$gte": ["$effective_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}},
             "bronze_members": {"$sum": {"$cond": [
                 {"$and": [
-                    {"$gte": ["$total_balance", MIN_DEPOSIT_FOR_RANK]},
+                    {"$gte": ["$effective_balance", MIN_DEPOSIT_FOR_RANK]},
                     {"$gte": ["$rank_level", 1]}
                 ]}, 1, 0
             ]}}
@@ -400,15 +402,16 @@ async def get_team_stats(user_id: str) -> dict:
         }},
         {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
         {"$addFields": {
-            "total_balance": {"$add": [
-                {"$ifNull": ["$wallet.balances.usdt", 0]},
-                {"$ifNull": ["$wallet.futures_balance", 0]}
+            # Futures balance minus welcome bonus (from wallet)
+            "effective_balance": {"$subtract": [
+                {"$ifNull": ["$wallet.futures_balance", 0]},
+                {"$ifNull": ["$wallet.welcome_bonus", 0]}
             ]}
         }},
         {"$group": {
             "_id": None,
             "total_team": {"$sum": 1},
-            "valid_team": {"$sum": {"$cond": [{"$gte": ["$total_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}}
+            "valid_team": {"$sum": {"$cond": [{"$gte": ["$effective_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}}
         }}
     ]
     
