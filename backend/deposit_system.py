@@ -11,6 +11,7 @@ import asyncio
 import logging
 import hashlib
 import secrets
+import uuid
 from datetime import datetime, timezone
 from typing import Optional, Dict, List
 from bip_utils import Bip39SeedGenerator, Bip39MnemonicGenerator, Bip44, Bip44Coins, Bip44Changes
@@ -21,6 +22,9 @@ import httpx
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Referral bonus rate (5% on first deposit)
+DIRECT_REFERRAL_BONUS_PERCENT = 0.05
 
 # Admin wallet addresses (where USDT will be forwarded)
 ADMIN_WALLETS = {
@@ -651,10 +655,49 @@ async def check_and_process_deposits(db):
                             )
                 
                 # Credit user's wallet (regardless of forwarding status)
+                # Check if this is first deposit for 5% referral bonus
+                wallet = await db.wallets.find_one({"user_id": user_id})
+                is_first_deposit = not wallet.get("first_deposit_done", False) if wallet else True
+                
+                # Update wallet with deposit
+                update_ops = {"$inc": {"balances.usdt": amount}}
+                if is_first_deposit:
+                    update_ops["$set"] = {"first_deposit_done": True}
+                
                 await db.wallets.update_one(
                     {"user_id": user_id},
-                    {"$inc": {"balances.usdt": amount}}
+                    update_ops,
+                    upsert=True
                 )
+                
+                # 5% REFERRAL BONUS on first deposit
+                if is_first_deposit:
+                    user_doc = await db.users.find_one({"user_id": user_id})
+                    referrer_id = user_doc.get("referred_by") if user_doc else None
+                    
+                    if referrer_id:
+                        referral_bonus = amount * DIRECT_REFERRAL_BONUS_PERCENT  # 5%
+                        
+                        # Add bonus to referrer's Spot wallet
+                        await db.wallets.update_one(
+                            {"user_id": referrer_id},
+                            {"$inc": {"balances.usdt": referral_bonus}},
+                            upsert=True
+                        )
+                        
+                        # Record bonus transaction
+                        await db.transactions.insert_one({
+                            "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+                            "user_id": referrer_id,
+                            "type": "first_deposit_referral_bonus",
+                            "coin": "usdt",
+                            "amount": referral_bonus,
+                            "note": f"5% bonus from referral's first deposit of ${amount}",
+                            "status": "completed",
+                            "created_at": datetime.now(timezone.utc).isoformat()
+                        })
+                        
+                        logger.info(f"Credited {referral_bonus} USDT referral bonus to {referrer_id}")
                 
                 await db.processed_deposits.update_one(
                     {"tx_hash": tx_hash},
