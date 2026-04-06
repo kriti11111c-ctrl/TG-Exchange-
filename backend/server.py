@@ -6065,6 +6065,112 @@ async def verify_bronze_ranks(admin: dict = Depends(get_current_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/admin/fix-wrong-bronze-ranks")
+async def fix_wrong_bronze_ranks(admin: dict = Depends(get_current_admin)):
+    """
+    Fix wrongly assigned Bronze ranks:
+    1. Remove Bronze rank from users who don't qualify (< 6 direct referrals with $50+)
+    2. Deduct the 20 USDT reward from their wallet
+    3. Delete the levelup_reward transaction
+    """
+    try:
+        # Get all users with Bronze rank
+        bronze_users = await db.users.find(
+            {"team_rank_level": {"$gte": 1}},
+            {"_id": 0, "user_id": 1, "username": 1, "team_rank_level": 1}
+        ).to_list(length=1000)
+        
+        fixed_users = []
+        already_correct = []
+        
+        for user in bronze_users:
+            user_id = user["user_id"]
+            username = user.get("username", "Unknown")
+            
+            # Get actual team stats
+            team_stats = await get_team_stats(user_id)
+            direct_refs = team_stats.get("direct_referrals", 0)
+            
+            # Bronze check: 6 DIRECT referrals with $50+
+            qualifies = direct_refs >= 6
+            
+            if qualifies:
+                already_correct.append({
+                    "user_id": user_id,
+                    "username": username,
+                    "direct_referrals_50plus": direct_refs,
+                    "status": "Correctly qualified"
+                })
+                continue
+            
+            # User doesn't qualify - FIX IT
+            
+            # 1. Get the levelup_reward transaction to find amount
+            reward_tx = await db.transactions.find_one({
+                "user_id": user_id,
+                "type": "levelup_reward"
+            })
+            
+            reward_amount = reward_tx.get("amount", 20) if reward_tx else 20
+            
+            # 2. Deduct reward from wallet
+            wallet_result = await db.wallets.update_one(
+                {"user_id": user_id},
+                {"$inc": {"balances.usdt": -reward_amount}}
+            )
+            
+            # 3. Delete the levelup_reward transaction
+            if reward_tx:
+                await db.transactions.delete_one({
+                    "user_id": user_id,
+                    "type": "levelup_reward"
+                })
+            
+            # 4. Remove Bronze rank (set to 0)
+            await db.users.update_one(
+                {"user_id": user_id},
+                {
+                    "$set": {"team_rank_level": 0},
+                    "$unset": {"salary_cycle_start": "", "claimed_rank_rewards": ""}
+                }
+            )
+            
+            # 5. Record the correction transaction
+            await db.transactions.insert_one({
+                "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+                "user_id": user_id,
+                "type": "rank_correction",
+                "coin": "usdt",
+                "amount": -reward_amount,
+                "note": f"Bronze rank removed - did not qualify (had {direct_refs}/6 direct referrals with $50+)",
+                "status": "completed",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            
+            fixed_users.append({
+                "user_id": user_id,
+                "username": username,
+                "direct_referrals_50plus": direct_refs,
+                "reward_deducted": reward_amount,
+                "rank_removed": True
+            })
+        
+        return {
+            "success": True,
+            "total_bronze_users": len(bronze_users),
+            "fixed_count": len(fixed_users),
+            "already_correct_count": len(already_correct),
+            "fixed_users": fixed_users,
+            "already_correct_users": already_correct,
+            "summary": f"Removed Bronze rank and deducted rewards from {len(fixed_users)} users who didn't qualify"
+        }
+        
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
