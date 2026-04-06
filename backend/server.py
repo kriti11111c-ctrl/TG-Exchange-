@@ -444,7 +444,11 @@ async def get_team_stats(user_id: str) -> dict:
     }
 
 def get_team_rank(direct_referrals: int, bronze_members: int, total_team: int) -> dict:
-    """Get user's team rank based on direct referrals, bronze members, and team size"""
+    """Get user's team rank based on direct referrals, bronze members, and team size
+    
+    Bronze: Requires 6 DIRECT referrals (Level 1 only) with $50+ fresh deposit
+    Silver onwards: Requires Bronze members + total team
+    """
     current_rank = None
     next_rank = TEAM_RANKS[0]  # Default next rank is first rank
     
@@ -453,13 +457,13 @@ def get_team_rank(direct_referrals: int, bronze_members: int, total_team: int) -
         qualifies = False
         
         if rank["type"] == "team":
-            # Bronze rank - needs total team members
-            qualifies = total_team >= rank["team_required"]
+            # Bronze rank - needs 6 DIRECT referrals (Level 1 only) with $50+ deposit
+            qualifies = direct_referrals >= rank["team_required"]
         elif rank["type"] == "direct":
             # Needs direct referrals
             qualifies = direct_referrals >= rank["direct_required"] and total_team >= rank["team_required"]
         else:
-            # Silver onwards - needs Bronze rank members
+            # Silver onwards - needs Bronze rank members + total team
             qualifies = bronze_members >= rank["bronze_required"] and total_team >= rank["team_required"]
         
         if qualifies:
@@ -479,9 +483,9 @@ def get_team_rank(direct_referrals: int, bronze_members: int, total_team: int) -
             team_progress = total_team - current_rank["team_required"]
             progress = min(100, (team_progress / team_range) * 100) if team_range > 0 else 100
     elif not current_rank and next_rank:
-        # Progress to first rank (Bronze)
+        # Progress to first rank (Bronze) - based on DIRECT referrals
         if next_rank["type"] == "team":
-            progress = min(100, (total_team / next_rank["team_required"]) * 100) if next_rank["team_required"] > 0 else 100
+            progress = min(100, (direct_referrals / next_rank["team_required"]) * 100) if next_rank["team_required"] > 0 else 100
         elif next_rank["type"] == "direct":
             progress = min(100, (direct_referrals / next_rank["direct_required"]) * 100) if next_rank["direct_required"] > 0 else 100
     
@@ -6025,20 +6029,21 @@ async def verify_bronze_ranks(admin: dict = Depends(get_current_admin)):
             # Get actual team stats
             team_stats = await get_team_stats(user_id)
             
-            # Check if qualifies for Bronze (6 team members with $50+ fresh deposit)
-            valid_team = team_stats.get("total_team", 0)
+            # Bronze requires 6 DIRECT referrals (Level 1 only) with $50+ fresh deposit
             direct_refs = team_stats.get("direct_referrals", 0)
+            total_team = team_stats.get("total_team", 0)
             
-            # Bronze requires 6 team members with $50+ deposit
-            qualifies = valid_team >= 6
+            # Bronze check: 6 DIRECT referrals with $50+
+            qualifies = direct_refs >= 6
             
             user_info = {
                 "username": username,
                 "user_id": user_id,
-                "direct_referrals": direct_refs,
-                "valid_team_50plus": valid_team,
+                "direct_referrals_50plus": direct_refs,
+                "total_team_50plus": total_team,
                 "current_rank": user.get("team_rank_level"),
-                "qualifies_bronze": qualifies
+                "qualifies_bronze": qualifies,
+                "need_more": max(0, 6 - direct_refs) if not qualifies else 0
             }
             
             if qualifies:
@@ -6051,7 +6056,8 @@ async def verify_bronze_ranks(admin: dict = Depends(get_current_admin)):
             "actually_qualified": len(qualified),
             "not_qualified": len(not_qualified),
             "qualified_users": qualified,
-            "not_qualified_users": not_qualified
+            "not_qualified_users": not_qualified,
+            "bronze_requirement": "6 DIRECT referrals (Level 1 only) with $50+ fresh deposit"
         }
     except Exception as e:
         import traceback
