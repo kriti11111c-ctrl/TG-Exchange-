@@ -5787,6 +5787,26 @@ async def download_profile_page():
     return file_path.read_text()
 
 
+
+@app.get("/api/debug/team-stats/{user_id}")
+async def debug_team_stats(user_id: str):
+    """Debug endpoint to check team stats for any user"""
+    try:
+        team_stats = await get_team_stats(user_id)
+        rank_info = get_team_rank(
+            team_stats["direct_referrals"],
+            team_stats["bronze_members"],
+            team_stats["total_team"]
+        )
+        return {
+            "team_stats": team_stats,
+            "rank_info": rank_info,
+            "qualifies_bronze": team_stats["total_team"] >= 6
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
