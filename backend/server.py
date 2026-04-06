@@ -2356,6 +2356,7 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
     """Get user's team rank information with demotion support"""
     try:
         user_id = user["user_id"]
+        now = datetime.now(timezone.utc)
         
         # Get user's saved data FIRST
         user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
@@ -2364,155 +2365,154 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         
         # Get team stats
         team_stats = await get_team_stats(user_id)
-    
-    # Get team rank based on current stats
-    rank_info = get_team_rank(
-        team_stats["direct_referrals"], 
-        team_stats["bronze_members"],
-        team_stats["total_team"]
-    )
-    
-    # FORCE: If user has saved rank in database, ALWAYS use it
-    if saved_rank_level > 0:
-        for rank in TEAM_RANKS:
-            if rank["level"] == saved_rank_level:
-                rank_info["current_rank"] = rank
-                break
-    
-    # Current rank level
-    current_level = rank_info["current_rank"]["level"] if rank_info["current_rank"] else 0
-    
-    levelup_reward = 0
-    demotion_message = None
-    
-    # Check for demotion (current qualifications less than saved rank)
-    if current_level < saved_rank_level:
-        # User got demoted!
-        demotion_message = f"Rank demoted from level {saved_rank_level} to {current_level} due to team members below $50 balance"
         
-        # Update saved rank level to current (demoted)
-        await db.users.update_one(
-            {"user_id": user_id},
-            {"$set": {"team_rank_level": current_level}}
-        )
-    
-    # Check for level up (only give rewards for NEW levels not claimed before)
-    elif current_level > saved_rank_level:
-        # User leveled up! Calculate reward only for unclaimed levels
-        for rank in TEAM_RANKS:
-            if rank["level"] > saved_rank_level and rank["level"] <= current_level:
-                # Check if this reward was already claimed
-                if rank["level"] not in claimed_rewards:
-                    levelup_reward += rank["levelup_reward"]
-                    claimed_rewards.append(rank["level"])
-        
-        # Start salary cycle when user first achieves a rank
-        salary_update = {"team_rank_level": current_level}
-        if not user_doc.get("salary_cycle_start"):
-            salary_update["salary_cycle_start"] = now.isoformat()
-        
-        # Update user's rank level and claimed rewards
-        await db.users.update_one(
-            {"user_id": user_id},
-            {
-                "$set": salary_update,
-                "$addToSet": {"claimed_rank_rewards": {"$each": claimed_rewards}}
-            }
+        # Get team rank based on current stats
+        rank_info = get_team_rank(
+            team_stats["direct_referrals"], 
+            team_stats["bronze_members"],
+            team_stats["total_team"]
         )
         
-        # Add levelup reward to wallet (only for first-time claims)
-        if levelup_reward > 0:
-            await db.wallets.update_one(
+        # FORCE: If user has saved rank in database, ALWAYS use it
+        if saved_rank_level > 0:
+            for rank in TEAM_RANKS:
+                if rank["level"] == saved_rank_level:
+                    rank_info["current_rank"] = rank
+                    break
+        
+        # Current rank level
+        current_level = rank_info["current_rank"]["level"] if rank_info["current_rank"] else 0
+        
+        levelup_reward = 0
+        demotion_message = None
+        
+        # Check for demotion (current qualifications less than saved rank)
+        if current_level < saved_rank_level:
+            # User got demoted!
+            demotion_message = f"Rank demoted from level {saved_rank_level} to {current_level} due to team members below $50 balance"
+            
+            # Update saved rank level to current (demoted)
+            await db.users.update_one(
                 {"user_id": user_id},
-                {"$inc": {"balances.usdt": levelup_reward}}
+                {"$set": {"team_rank_level": current_level}}
+            )
+        
+        # Check for level up (only give rewards for NEW levels not claimed before)
+        elif current_level > saved_rank_level:
+            # User leveled up! Calculate reward only for unclaimed levels
+            for rank in TEAM_RANKS:
+                if rank["level"] > saved_rank_level and rank["level"] <= current_level:
+                    # Check if this reward was already claimed
+                    if rank["level"] not in claimed_rewards:
+                        levelup_reward += rank["levelup_reward"]
+                        claimed_rewards.append(rank["level"])
+            
+            # Start salary cycle when user first achieves a rank
+            salary_update = {"team_rank_level": current_level}
+            if not user_doc.get("salary_cycle_start"):
+                salary_update["salary_cycle_start"] = now.isoformat()
+            
+            # Update user's rank level and claimed rewards
+            await db.users.update_one(
+                {"user_id": user_id},
+                {
+                    "$set": salary_update,
+                    "$addToSet": {"claimed_rank_rewards": {"$each": claimed_rewards}}
+                }
             )
             
-            # Record transaction
-            await db.transactions.insert_one({
-                "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
-                "user_id": user_id,
-                "type": "levelup_reward",
-                "coin": "usdt",
-                "amount": levelup_reward,
-                "note": f"Team rank level up reward (first time only)",
-                "status": "completed",
-                "created_at": datetime.now(timezone.utc).isoformat()
-            })
-    
-    # Calculate team level income (total from all team members' trades)
-    team_income = await calculate_team_level_income(user_id)
-    
-    # Calculate monthly salary based on rank
-    monthly_salary = rank_info["current_rank"]["monthly_salary"] if rank_info["current_rank"] else 0
-    bonus_percent = rank_info["current_rank"]["bonus_percent"] if rank_info["current_rank"] else 0
-    bonus_income = team_income * (bonus_percent / 100)
-    
-    # Get salary accumulation info
-    accumulated_salary = user_doc.get("accumulated_salary", 0)
-    last_claim_date = user_doc.get("last_salary_claim_date")
-    salary_cycle_start = user_doc.get("salary_cycle_start")
-    last_accumulation_date = user_doc.get("last_salary_accumulation_date")
-    
-    # Calculate days remaining for claim
-    days_in_cycle = 0
-    days_remaining = 10
-    can_claim_salary = False
-    
-    # Auto-accumulate daily salary if user has a rank
-    if current_level > 0 and monthly_salary > 0:
-        daily_salary = monthly_salary / 30  # Daily rate
+            # Add levelup reward to wallet (only for first-time claims)
+            if levelup_reward > 0:
+                await db.wallets.update_one(
+                    {"user_id": user_id},
+                    {"$inc": {"balances.usdt": levelup_reward}}
+                )
+                
+                # Record transaction
+                await db.transactions.insert_one({
+                    "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+                    "user_id": user_id,
+                    "type": "levelup_reward",
+                    "coin": "usdt",
+                    "amount": levelup_reward,
+                    "note": f"Team rank level up reward (first time only)",
+                    "status": "completed",
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                })
         
-        if salary_cycle_start:
-            cycle_start = datetime.fromisoformat(salary_cycle_start.replace('Z', '+00:00'))
-            if cycle_start.tzinfo is None:
-                cycle_start = cycle_start.replace(tzinfo=timezone.utc)
-            days_in_cycle = (now - cycle_start).days
-            days_remaining = max(0, 10 - days_in_cycle)
-            can_claim_salary = days_in_cycle >= 10
+        # Calculate team level income (total from all team members' trades)
+        team_income = await calculate_team_level_income(user_id)
+        
+        # Calculate monthly salary based on rank
+        monthly_salary = rank_info["current_rank"]["monthly_salary"] if rank_info["current_rank"] else 0
+        bonus_percent = rank_info["current_rank"]["bonus_percent"] if rank_info["current_rank"] else 0
+        bonus_income = team_income * (bonus_percent / 100)
+        
+        # Get salary accumulation info
+        accumulated_salary = user_doc.get("accumulated_salary", 0) if user_doc else 0
+        last_claim_date = user_doc.get("last_salary_claim_date") if user_doc else None
+        salary_cycle_start = user_doc.get("salary_cycle_start") if user_doc else None
+        
+        # Calculate days remaining for claim
+        days_in_cycle = 0
+        days_remaining = 10
+        can_claim_salary = False
+        
+        # Auto-accumulate daily salary if user has a rank
+        if current_level > 0 and monthly_salary > 0:
+            daily_salary = monthly_salary / 30  # Daily rate
             
-            # Calculate accumulated salary based on days
-            # Only count up to 10 days per cycle
-            accumulation_days = min(days_in_cycle, 10)
-            accumulated_salary = round(daily_salary * accumulation_days, 2)
-            
-        elif last_claim_date:
-            last_claim = datetime.fromisoformat(last_claim_date.replace('Z', '+00:00'))
-            if last_claim.tzinfo is None:
-                last_claim = last_claim.replace(tzinfo=timezone.utc)
-            days_in_cycle = (now - last_claim).days
-            days_remaining = max(0, 10 - days_in_cycle)
-            can_claim_salary = days_in_cycle >= 10
-            
-            accumulation_days = min(days_in_cycle, 10)
-            accumulated_salary = round(daily_salary * accumulation_days, 2)
-    
-    # FINAL SAFETY CHECK: Ensure current_rank is never null if user has saved rank
-    if rank_info["current_rank"] is None and saved_rank_level > 0:
-        for rank in TEAM_RANKS:
-            if rank["level"] == saved_rank_level:
-                rank_info["current_rank"] = rank
-                break
-    
-    return {
-        "user_id": user_id,
-        "direct_referrals": team_stats["direct_referrals"],
-        "bronze_members": team_stats["bronze_members"],
-        "total_team": team_stats["total_team"],
-        "current_rank": rank_info["current_rank"],
-        "next_rank": rank_info["next_rank"],
-        "progress": rank_info["progress"],
-        "team_level_income": team_income,
-        "bonus_percent": bonus_percent,
-        "bonus_income": bonus_income,
-        "monthly_salary": monthly_salary,
-        "levelup_reward_received": levelup_reward if levelup_reward > 0 else None,
-        "demotion_message": demotion_message,
-        # Salary info
-        "accumulated_salary": accumulated_salary,
-        "days_in_cycle": days_in_cycle,
-        "days_remaining": days_remaining,
-        "can_claim_salary": can_claim_salary
-    }
+            if salary_cycle_start:
+                cycle_start = datetime.fromisoformat(salary_cycle_start.replace('Z', '+00:00'))
+                if cycle_start.tzinfo is None:
+                    cycle_start = cycle_start.replace(tzinfo=timezone.utc)
+                days_in_cycle = (now - cycle_start).days
+                days_remaining = max(0, 10 - days_in_cycle)
+                can_claim_salary = days_in_cycle >= 10
+                
+                # Calculate accumulated salary based on days
+                # Only count up to 10 days per cycle
+                accumulation_days = min(days_in_cycle, 10)
+                accumulated_salary = round(daily_salary * accumulation_days, 2)
+                
+            elif last_claim_date:
+                last_claim = datetime.fromisoformat(last_claim_date.replace('Z', '+00:00'))
+                if last_claim.tzinfo is None:
+                    last_claim = last_claim.replace(tzinfo=timezone.utc)
+                days_in_cycle = (now - last_claim).days
+                days_remaining = max(0, 10 - days_in_cycle)
+                can_claim_salary = days_in_cycle >= 10
+                
+                accumulation_days = min(days_in_cycle, 10)
+                accumulated_salary = round(daily_salary * accumulation_days, 2)
+        
+        # FINAL SAFETY CHECK: Ensure current_rank is never null if user has saved rank
+        if rank_info["current_rank"] is None and saved_rank_level > 0:
+            for rank in TEAM_RANKS:
+                if rank["level"] == saved_rank_level:
+                    rank_info["current_rank"] = rank
+                    break
+        
+        return {
+            "user_id": user_id,
+            "direct_referrals": team_stats["direct_referrals"],
+            "bronze_members": team_stats["bronze_members"],
+            "total_team": team_stats["total_team"],
+            "current_rank": rank_info["current_rank"],
+            "next_rank": rank_info["next_rank"],
+            "progress": rank_info["progress"],
+            "team_level_income": team_income,
+            "bonus_percent": bonus_percent,
+            "bonus_income": bonus_income,
+            "monthly_salary": monthly_salary,
+            "levelup_reward_received": levelup_reward if levelup_reward > 0 else None,
+            "demotion_message": demotion_message,
+            # Salary info
+            "accumulated_salary": accumulated_salary,
+            "days_in_cycle": days_in_cycle,
+            "days_remaining": days_remaining,
+            "can_claim_salary": can_claim_salary
+        }
     except Exception as e:
         import traceback
         print(f"TEAM-RANK ERROR: {str(e)}")
