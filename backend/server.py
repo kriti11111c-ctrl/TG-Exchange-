@@ -2371,8 +2371,16 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
     saved_rank_level = user_doc.get("team_rank_level", 0)
     claimed_rewards = user_doc.get("claimed_rank_rewards", [])  # Track which rewards already claimed
     
-    # Current rank level
-    current_level = rank_info["current_rank"]["level"] if rank_info["current_rank"] else 0
+    # Current rank level - USE THE HIGHER OF calculated or saved rank
+    calculated_level = rank_info["current_rank"]["level"] if rank_info["current_rank"] else 0
+    current_level = max(calculated_level, saved_rank_level)
+    
+    # If saved rank is higher, use the saved rank details
+    if saved_rank_level > calculated_level and saved_rank_level > 0:
+        for rank in TEAM_RANKS:
+            if rank["level"] == saved_rank_level:
+                rank_info["current_rank"] = rank
+                break
     
     levelup_reward = 0
     demotion_message = None
