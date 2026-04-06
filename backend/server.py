@@ -2354,15 +2354,16 @@ async def get_rank_leaderboard():
 @api_router.get("/team-rank/info")
 async def get_team_rank_info(user: dict = Depends(get_current_user)):
     """Get user's team rank information with demotion support"""
-    user_id = user["user_id"]
-    
-    # Get user's saved data FIRST
-    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
-    saved_rank_level = user_doc.get("team_rank_level", 0)
-    claimed_rewards = user_doc.get("claimed_rank_rewards", [])
-    
-    # Get team stats
-    team_stats = await get_team_stats(user_id)
+    try:
+        user_id = user["user_id"]
+        
+        # Get user's saved data FIRST
+        user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+        saved_rank_level = user_doc.get("team_rank_level", 0) if user_doc else 0
+        claimed_rewards = user_doc.get("claimed_rank_rewards", []) if user_doc else []
+        
+        # Get team stats
+        team_stats = await get_team_stats(user_id)
     
     # Get team rank based on current stats
     rank_info = get_team_rank(
@@ -2512,6 +2513,31 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         "days_remaining": days_remaining,
         "can_claim_salary": can_claim_salary
     }
+    except Exception as e:
+        import traceback
+        print(f"TEAM-RANK ERROR: {str(e)}")
+        print(traceback.format_exc())
+        # Return default response with error
+        return {
+            "user_id": user.get("user_id", ""),
+            "direct_referrals": 0,
+            "bronze_members": 0,
+            "total_team": 0,
+            "current_rank": None,
+            "next_rank": TEAM_RANKS[0] if TEAM_RANKS else None,
+            "progress": 0,
+            "team_level_income": 0,
+            "bonus_percent": 0,
+            "bonus_income": 0,
+            "monthly_salary": 0,
+            "levelup_reward_received": None,
+            "demotion_message": None,
+            "accumulated_salary": 0,
+            "days_in_cycle": 0,
+            "days_remaining": 10,
+            "can_claim_salary": False,
+            "error": str(e)
+        }
 
 async def calculate_team_level_income(user_id: str) -> float:
     """Calculate total trading income from team (all levels)"""
