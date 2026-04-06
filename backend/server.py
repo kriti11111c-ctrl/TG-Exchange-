@@ -6005,6 +6005,60 @@ async def check_missing_rewards(admin: dict = Depends(get_current_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/admin/verify-bronze-ranks")
+async def verify_bronze_ranks(admin: dict = Depends(get_current_admin)):
+    """Verify which users actually qualify for Bronze rank based on team stats"""
+    try:
+        # Get all users with Bronze rank
+        bronze_users = await db.users.find(
+            {"team_rank_level": {"$gte": 1}},
+            {"_id": 0, "user_id": 1, "username": 1, "team_rank_level": 1}
+        ).to_list(length=1000)
+        
+        qualified = []
+        not_qualified = []
+        
+        for user in bronze_users:
+            user_id = user["user_id"]
+            username = user.get("username", "Unknown")
+            
+            # Get actual team stats
+            team_stats = await get_team_stats(user_id)
+            
+            # Check if qualifies for Bronze (6 team members with $50+ fresh deposit)
+            valid_team = team_stats.get("total_team", 0)
+            direct_refs = team_stats.get("direct_referrals", 0)
+            
+            # Bronze requires 6 team members with $50+ deposit
+            qualifies = valid_team >= 6
+            
+            user_info = {
+                "username": username,
+                "user_id": user_id,
+                "direct_referrals": direct_refs,
+                "valid_team_50plus": valid_team,
+                "current_rank": user.get("team_rank_level"),
+                "qualifies_bronze": qualifies
+            }
+            
+            if qualifies:
+                qualified.append(user_info)
+            else:
+                not_qualified.append(user_info)
+        
+        return {
+            "total_bronze_users": len(bronze_users),
+            "actually_qualified": len(qualified),
+            "not_qualified": len(not_qualified),
+            "qualified_users": qualified,
+            "not_qualified_users": not_qualified
+        }
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
