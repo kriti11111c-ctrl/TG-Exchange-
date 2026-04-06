@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import { useState, useEffect, useCallback, createContext, useContext, lazy, Suspense } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate, Link } from "react-router-dom";
 import axios from "axios";
@@ -7,33 +7,34 @@ import { Toaster, toast } from "sonner";
 // Components
 import LoadingPage from "./components/LoadingPage";
 
-// Pages
-import LandingPage from "./pages/LandingPage";
+// Critical Pages (load immediately)
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import Dashboard from "./pages/Dashboard";
-import WalletPage from "./pages/WalletPage";
-import TradePage from "./pages/TradePage";
-import TransactionsPage from "./pages/TransactionsPage";
-import ProfilePage from "./pages/ProfilePage";
-import ReferralPage from "./pages/ReferralPage";
-import RankPage from "./pages/RankPage";
-import TeamRankPage from "./pages/TeamRankPage";
-import SecurityPage from "./pages/SecurityPage";
-import DepositPage from "./pages/DepositPage";
 
-// Admin Pages
-import AdminLoginPage from "./pages/AdminLoginPage";
-import AdminDashboard from "./pages/AdminDashboard";
-import AdminDepositsPage from "./pages/AdminDepositsPage";
-import AdminUsersPage from "./pages/AdminUsersPage";
-import AdminWithdrawalsPage from "./pages/AdminWithdrawalsPage";
-import WithdrawPage from "./pages/WithdrawPage";
-import StakingPage from "./pages/StakingPage";
-import FuturesPage from "./pages/FuturesPage";
-import MarketsPage from "./pages/MarketsPage";
-import TradeHistoryPage from "./pages/TradeHistoryPage";
-import KYCPage from "./pages/KYCPage";
+// Lazy loaded pages (load on demand)
+const WalletPage = lazy(() => import("./pages/WalletPage"));
+const TradePage = lazy(() => import("./pages/TradePage"));
+const TransactionsPage = lazy(() => import("./pages/TransactionsPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const ReferralPage = lazy(() => import("./pages/ReferralPage"));
+const RankPage = lazy(() => import("./pages/RankPage"));
+const TeamRankPage = lazy(() => import("./pages/TeamRankPage"));
+const SecurityPage = lazy(() => import("./pages/SecurityPage"));
+const DepositPage = lazy(() => import("./pages/DepositPage"));
+const WithdrawPage = lazy(() => import("./pages/WithdrawPage"));
+const StakingPage = lazy(() => import("./pages/StakingPage"));
+const FuturesPage = lazy(() => import("./pages/FuturesPage"));
+const MarketsPage = lazy(() => import("./pages/MarketsPage"));
+const TradeHistoryPage = lazy(() => import("./pages/TradeHistoryPage"));
+const KYCPage = lazy(() => import("./pages/KYCPage"));
+
+// Admin Pages (lazy loaded)
+const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminDepositsPage = lazy(() => import("./pages/AdminDepositsPage"));
+const AdminUsersPage = lazy(() => import("./pages/AdminUsersPage"));
+const AdminWithdrawalsPage = lazy(() => import("./pages/AdminWithdrawalsPage"));
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -213,6 +214,16 @@ const MiniCandleLoader = () => {
   );
 };
 
+// Mini Page Loader for lazy loading
+const PageLoader = () => (
+  <div className="fixed inset-0 bg-[#0B0E11] flex items-center justify-center z-50">
+    <div className="flex flex-col items-center">
+      <div className="w-8 h-8 border-2 border-[#F0B90B] border-t-transparent rounded-full animate-spin"></div>
+      <p className="text-[#848E9C] text-sm mt-2">Loading...</p>
+    </div>
+  </div>
+);
+
 // Protected Route
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -296,98 +307,100 @@ function AppRouter() {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/dashboard" element={
-        <ProtectedRoute>
-          <Dashboard />
-        </ProtectedRoute>
-      } />
-      <Route path="/wallet" element={
-        <ProtectedRoute>
-          <WalletPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/trade" element={
-        <ProtectedRoute>
-          <TradePage />
-        </ProtectedRoute>
-      } />
-      <Route path="/transactions" element={
-        <ProtectedRoute>
-          <TransactionsPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/profile/*" element={
-        <ProtectedRoute>
-          <ProfilePage />
-        </ProtectedRoute>
-      } />
-      <Route path="/profile/security" element={
-        <ProtectedRoute>
-          <SecurityPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/referral" element={
-        <ProtectedRoute>
-          <ReferralPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/rank" element={
-        <ProtectedRoute>
-          <RankPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/team-rank" element={
-        <ProtectedRoute>
-          <TeamRankPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/deposit" element={
-        <ProtectedRoute>
-          <DepositPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/withdraw" element={
-        <ProtectedRoute>
-          <WithdrawPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/staking" element={
-        <ProtectedRoute>
-          <StakingPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/futures" element={
-        <ProtectedRoute>
-          <FuturesPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/markets" element={
-        <ProtectedRoute>
-          <MarketsPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/trade-history" element={
-        <ProtectedRoute>
-          <TradeHistoryPage />
-        </ProtectedRoute>
-      } />
-      <Route path="/kyc" element={
-        <ProtectedRoute>
-          <KYCPage />
-        </ProtectedRoute>
-      } />
-      
-      {/* Admin Routes */}
-      <Route path="/admin" element={<AdminLoginPage />} />
-      <Route path="/admin/dashboard" element={<AdminDashboard />} />
-      <Route path="/admin/deposits" element={<AdminDepositsPage />} />
-      <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
-      <Route path="/admin/users" element={<AdminUsersPage />} />
-    </Routes>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/wallet" element={
+          <ProtectedRoute>
+            <WalletPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/trade" element={
+          <ProtectedRoute>
+            <TradePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/transactions" element={
+          <ProtectedRoute>
+            <TransactionsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile/*" element={
+          <ProtectedRoute>
+            <ProfilePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile/security" element={
+          <ProtectedRoute>
+            <SecurityPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/referral" element={
+          <ProtectedRoute>
+            <ReferralPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/rank" element={
+          <ProtectedRoute>
+            <RankPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/team-rank" element={
+          <ProtectedRoute>
+            <TeamRankPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/deposit" element={
+          <ProtectedRoute>
+            <DepositPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/withdraw" element={
+          <ProtectedRoute>
+            <WithdrawPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/staking" element={
+          <ProtectedRoute>
+            <StakingPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/futures" element={
+          <ProtectedRoute>
+            <FuturesPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/markets" element={
+          <ProtectedRoute>
+            <MarketsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/trade-history" element={
+          <ProtectedRoute>
+            <TradeHistoryPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/kyc" element={
+          <ProtectedRoute>
+            <KYCPage />
+          </ProtectedRoute>
+        } />
+        
+        {/* Admin Routes */}
+        <Route path="/admin" element={<AdminLoginPage />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/deposits" element={<AdminDepositsPage />} />
+        <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
+        <Route path="/admin/users" element={<AdminUsersPage />} />
+      </Routes>
+    </Suspense>
   );
 }
 

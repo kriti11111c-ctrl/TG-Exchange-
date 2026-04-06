@@ -5803,6 +5803,13 @@ async def debug_team_stats(user_id: str):
             "rank_info": rank_info,
             "qualifies_bronze": team_stats["total_team"] >= 6
         }
+
+@app.get("/api/download-app-js", response_class=PlainTextResponse)
+async def download_app_js():
+    """Download the App.js file"""
+    file_path = Path("/app/frontend/src/App.js")
+    return file_path.read_text()
+
     except Exception as e:
         return {"error": str(e)}
 
