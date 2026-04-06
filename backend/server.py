@@ -5860,7 +5860,7 @@ async def download_team_rank_page():
     return file_path.read_text()
 
 
-@api_router.post("/admin/backfill-bronze-rewards")
+@app.post("/api/admin/backfill-bronze-rewards")
 async def backfill_bronze_rewards(admin: dict = Depends(get_current_admin)):
     """
     Admin endpoint to credit Bronze reward (20 USDT) to users who:
