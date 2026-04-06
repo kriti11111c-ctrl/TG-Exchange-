@@ -5860,6 +5860,150 @@ async def download_team_rank_page():
     return file_path.read_text()
 
 
+@api_router.post("/admin/backfill-bronze-rewards")
+async def backfill_bronze_rewards(admin: dict = Depends(get_current_admin)):
+    """
+    Admin endpoint to credit Bronze reward (20 USDT) to users who:
+    - Have team_rank_level = 1 (Bronze)
+    - Don't have a levelup_reward transaction
+    """
+    try:
+        # Find all Bronze rank users
+        bronze_users = await db.users.find(
+            {"team_rank_level": {"$gte": 1}},
+            {"_id": 0, "user_id": 1, "username": 1, "team_rank_level": 1, "claimed_rank_rewards": 1}
+        ).to_list(length=1000)
+        
+        credited_users = []
+        already_credited = []
+        
+        for user in bronze_users:
+            user_id = user["user_id"]
+            username = user.get("username", "Unknown")
+            rank_level = user.get("team_rank_level", 1)
+            claimed = user.get("claimed_rank_rewards", [])
+            
+            # Check if levelup_reward transaction already exists
+            existing_reward = await db.transactions.find_one({
+                "user_id": user_id,
+                "type": "levelup_reward"
+            })
+            
+            if existing_reward:
+                already_credited.append({
+                    "user_id": user_id,
+                    "username": username,
+                    "amount": existing_reward.get("amount", 0)
+                })
+                continue
+            
+            # Calculate total reward based on rank level (all unclaimed levels)
+            total_reward = 0
+            new_claimed = list(claimed) if claimed else []
+            
+            for rank in TEAM_RANKS:
+                if rank["level"] <= rank_level and rank["level"] not in new_claimed:
+                    total_reward += rank["levelup_reward"]
+                    new_claimed.append(rank["level"])
+            
+            if total_reward > 0:
+                # Credit the reward
+                await db.wallets.update_one(
+                    {"user_id": user_id},
+                    {"$inc": {"balances.usdt": total_reward}}
+                )
+                
+                # Record transaction
+                await db.transactions.insert_one({
+                    "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+                    "user_id": user_id,
+                    "type": "levelup_reward",
+                    "coin": "usdt",
+                    "amount": total_reward,
+                    "note": f"Backfill: Team rank level up reward for level {rank_level}",
+                    "status": "completed",
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                })
+                
+                # Update claimed_rank_rewards
+                await db.users.update_one(
+                    {"user_id": user_id},
+                    {"$set": {"claimed_rank_rewards": new_claimed}}
+                )
+                
+                credited_users.append({
+                    "user_id": user_id,
+                    "username": username,
+                    "rank_level": rank_level,
+                    "amount_credited": total_reward
+                })
+        
+        return {
+            "success": True,
+            "total_bronze_users": len(bronze_users),
+            "newly_credited": len(credited_users),
+            "already_had_reward": len(already_credited),
+            "credited_users": credited_users,
+            "already_credited_users": already_credited
+        }
+        
+    except Exception as e:
+        import traceback
+        print(f"Backfill error: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/check-missing-rewards")
+async def check_missing_rewards(admin: dict = Depends(get_current_admin)):
+    """Check which Bronze users are missing their levelup reward"""
+    try:
+        bronze_users = await db.users.find(
+            {"team_rank_level": {"$gte": 1}},
+            {"_id": 0, "user_id": 1, "username": 1, "team_rank_level": 1, "claimed_rank_rewards": 1}
+        ).to_list(length=1000)
+        
+        missing_reward = []
+        has_reward = []
+        
+        for user in bronze_users:
+            user_id = user["user_id"]
+            username = user.get("username", "Unknown")
+            
+            reward_tx = await db.transactions.find_one({
+                "user_id": user_id,
+                "type": "levelup_reward"
+            })
+            
+            wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "balances": 1})
+            balance = wallet.get("balances", {}).get("usdt", 0) if wallet else 0
+            
+            if reward_tx:
+                has_reward.append({
+                    "username": username,
+                    "user_id": user_id[:12] + "...",
+                    "rank_level": user.get("team_rank_level"),
+                    "reward_amount": reward_tx.get("amount"),
+                    "current_balance": balance
+                })
+            else:
+                missing_reward.append({
+                    "username": username,
+                    "user_id": user_id[:12] + "...",
+                    "full_user_id": user_id,
+                    "rank_level": user.get("team_rank_level"),
+                    "current_balance": balance
+                })
+        
+        return {
+            "total_ranked_users": len(bronze_users),
+            "missing_reward_count": len(missing_reward),
+            "has_reward_count": len(has_reward),
+            "missing_reward_users": missing_reward,
+            "has_reward_users": has_reward
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn
