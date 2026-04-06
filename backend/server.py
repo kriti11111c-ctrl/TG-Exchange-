@@ -2486,6 +2486,13 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
             accumulation_days = min(days_in_cycle, 10)
             accumulated_salary = round(daily_salary * accumulation_days, 2)
     
+    # FINAL SAFETY CHECK: Ensure current_rank is never null if user has saved rank
+    if rank_info["current_rank"] is None and saved_rank_level > 0:
+        for rank in TEAM_RANKS:
+            if rank["level"] == saved_rank_level:
+                rank_info["current_rank"] = rank
+                break
+    
     return {
         "user_id": user_id,
         "direct_referrals": team_stats["direct_referrals"],
@@ -5819,6 +5826,14 @@ async def download_app_js():
     """Download the App.js file"""
     file_path = Path("/app/frontend/src/App.js")
     return file_path.read_text()
+
+
+@app.get("/api/download-team-rank-page", response_class=PlainTextResponse)
+async def download_team_rank_page():
+    """Download the TeamRankPage.js file"""
+    file_path = Path("/app/frontend/src/pages/TeamRankPage.js")
+    return file_path.read_text()
+
 
 
 if __name__ == "__main__":

@@ -49,6 +49,10 @@ const TeamRankPage = () => {
         axios.get(`${API}/team-rank/all-levels`, { withCredentials: true }),
         axios.get(`${API}/team-rank/salary-history`, { withCredentials: true })
       ]);
+      
+      // Debug: Log the actual response
+      console.log("RANK API RESPONSE:", JSON.stringify(rankRes.data));
+      
       setRankInfo(rankRes.data);
       setAllRanks(levelsRes.data.ranks || []);
       setSalaryHistory(historyRes.data.salaries || []);
