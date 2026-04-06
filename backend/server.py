@@ -2356,7 +2356,12 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
     """Get user's team rank information with demotion support"""
     user_id = user["user_id"]
     
-    # Get team stats (counts users with $50+ CURRENT balance)
+    # Get user's saved data FIRST
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    saved_rank_level = user_doc.get("team_rank_level", 0)
+    claimed_rewards = user_doc.get("claimed_rank_rewards", [])
+    
+    # Get team stats
     team_stats = await get_team_stats(user_id)
     
     # Get team rank based on current stats
@@ -2366,21 +2371,15 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         team_stats["total_team"]
     )
     
-    # Get user's saved data
-    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
-    saved_rank_level = user_doc.get("team_rank_level", 0)
-    claimed_rewards = user_doc.get("claimed_rank_rewards", [])  # Track which rewards already claimed
-    
-    # Current rank level - USE THE HIGHER OF calculated or saved rank
-    calculated_level = rank_info["current_rank"]["level"] if rank_info["current_rank"] else 0
-    current_level = max(calculated_level, saved_rank_level)
-    
-    # ALWAYS use saved rank from database if it exists and is >= calculated
-    if saved_rank_level > 0 and saved_rank_level >= calculated_level:
+    # FORCE: If user has saved rank in database, ALWAYS use it
+    if saved_rank_level > 0:
         for rank in TEAM_RANKS:
             if rank["level"] == saved_rank_level:
                 rank_info["current_rank"] = rank
                 break
+    
+    # Current rank level
+    current_level = rank_info["current_rank"]["level"] if rank_info["current_rank"] else 0
     
     levelup_reward = 0
     demotion_message = None
