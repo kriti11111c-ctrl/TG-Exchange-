@@ -2375,8 +2375,8 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
     calculated_level = rank_info["current_rank"]["level"] if rank_info["current_rank"] else 0
     current_level = max(calculated_level, saved_rank_level)
     
-    # If saved rank is higher, use the saved rank details
-    if saved_rank_level > calculated_level and saved_rank_level > 0:
+    # ALWAYS use saved rank from database if it exists and is >= calculated
+    if saved_rank_level > 0 and saved_rank_level >= calculated_level:
         for rank in TEAM_RANKS:
             if rank["level"] == saved_rank_level:
                 rank_info["current_rank"] = rank
