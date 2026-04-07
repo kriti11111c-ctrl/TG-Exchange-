@@ -6652,7 +6652,7 @@ async def find_and_forward_stuck(
         if not target_address:
             raise HTTPException(status_code=400, detail="Address required")
         
-        from deposit_system import NETWORKS, ADMIN_WALLETS, AddressGenerator
+        from deposit_system import NETWORKS, ADMIN_WALLETS, DepositAddressGenerator
         from web3 import Web3
         from eth_account import Account
         import os
@@ -6663,7 +6663,7 @@ async def find_and_forward_stuck(
             raise HTTPException(status_code=500, detail="DEPOSIT_MASTER_SEED not configured")
         
         # Initialize address generator
-        addr_gen = AddressGenerator(master_seed)
+        addr_gen = DepositAddressGenerator(master_seed)
         
         # Get all users and check their deposit addresses
         all_users = await db.users.find({}, {"_id": 0, "user_id": 1, "username": 1}).to_list(length=50000)
