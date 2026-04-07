@@ -6530,6 +6530,170 @@ async def trigger_rank_upgrade(admin: dict = Depends(get_current_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/admin/check-missing-referral-bonus")
+async def check_missing_referral_bonus(admin: dict = Depends(get_current_admin)):
+    """
+    Find users who deposited $50+ but their referrer didn't get 5% bonus
+    """
+    try:
+        missing_bonuses = []
+        
+        # Get all users with referrers who have done first deposit
+        users_with_referrers = await db.users.find({
+            "referred_by": {"$exists": True, "$ne": None}
+        }, {"_id": 0, "user_id": 1, "name": 1, "email": 1, "referred_by": 1}).to_list(2000)
+        
+        for user in users_with_referrers:
+            user_id = user.get("user_id")
+            referrer_id = user.get("referred_by")
+            
+            if not referrer_id:
+                continue
+            
+            # Check user's wallet for deposits
+            wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0})
+            if not wallet:
+                continue
+            
+            total_deposited = wallet.get("total_deposited", 0)
+            # Also check futures_balance minus welcome_bonus as deposit indicator
+            futures = wallet.get("futures_balance", 0) or 0
+            welcome_bonus = wallet.get("welcome_bonus", 0) or 0
+            fresh_deposit = max(total_deposited, futures - welcome_bonus)
+            
+            if fresh_deposit < 10:  # Minimum deposit
+                continue
+            
+            # Check if referrer got the 5% bonus
+            bonus_tx = await db.transactions.find_one({
+                "user_id": referrer_id,
+                "type": "first_deposit_referral_bonus",
+                "note": {"$regex": f"referral.*{user_id[:8]}", "$options": "i"}
+            })
+            
+            # Also check with simpler query
+            if not bonus_tx:
+                bonus_tx = await db.transactions.find_one({
+                    "user_id": referrer_id,
+                    "type": "first_deposit_referral_bonus",
+                    "amount": fresh_deposit * 0.05
+                })
+            
+            if not bonus_tx:
+                # Referrer didn't get bonus!
+                referrer = await db.users.find_one({"user_id": referrer_id}, {"_id": 0, "name": 1, "email": 1})
+                missing_bonuses.append({
+                    "depositor_id": user_id[:12] + "...",
+                    "depositor_name": user.get("name", "Unknown"),
+                    "depositor_email": user.get("email", ""),
+                    "deposit_amount": fresh_deposit,
+                    "expected_bonus": round(fresh_deposit * 0.05, 2),
+                    "referrer_id": referrer_id[:12] + "...",
+                    "referrer_name": referrer.get("name", "Unknown") if referrer else "Unknown",
+                    "referrer_email": referrer.get("email", "") if referrer else ""
+                })
+        
+        return {
+            "total_missing": len(missing_bonuses),
+            "missing_bonuses": missing_bonuses
+        }
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/admin/fix-missing-referral-bonus")
+async def fix_missing_referral_bonus(admin: dict = Depends(get_current_admin)):
+    """
+    Give 5% bonus to all referrers who didn't receive it
+    """
+    try:
+        fixed_count = 0
+        fixed_details = []
+        
+        # Get all users with referrers
+        users_with_referrers = await db.users.find({
+            "referred_by": {"$exists": True, "$ne": None}
+        }, {"_id": 0, "user_id": 1, "name": 1, "referred_by": 1}).to_list(2000)
+        
+        for user in users_with_referrers:
+            user_id = user.get("user_id")
+            referrer_id = user.get("referred_by")
+            
+            if not referrer_id:
+                continue
+            
+            # Check user's wallet for deposits
+            wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0})
+            if not wallet:
+                continue
+            
+            total_deposited = wallet.get("total_deposited", 0)
+            futures = wallet.get("futures_balance", 0) or 0
+            welcome_bonus = wallet.get("welcome_bonus", 0) or 0
+            fresh_deposit = max(total_deposited, futures - welcome_bonus)
+            
+            if fresh_deposit < 10:
+                continue
+            
+            # Check if bonus already given
+            existing_bonus = await db.transactions.find_one({
+                "user_id": referrer_id,
+                "type": {"$in": ["first_deposit_referral_bonus", "referral_bonus_fix"]},
+                "$or": [
+                    {"note": {"$regex": user_id[:8], "$options": "i"}},
+                    {"from_user_id": user_id}
+                ]
+            })
+            
+            if existing_bonus:
+                continue
+            
+            # Calculate and give bonus
+            bonus_amount = round(fresh_deposit * 0.05, 2)
+            
+            # Credit referrer's wallet
+            await db.wallets.update_one(
+                {"user_id": referrer_id},
+                {"$inc": {"balances.usdt": bonus_amount}},
+                upsert=True
+            )
+            
+            # Record transaction
+            await db.transactions.insert_one({
+                "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+                "user_id": referrer_id,
+                "from_user_id": user_id,
+                "type": "referral_bonus_fix",
+                "coin": "usdt",
+                "amount": bonus_amount,
+                "note": f"5% referral bonus fix - from {user.get('name', user_id[:8])}'s deposit of ${fresh_deposit}",
+                "status": "completed",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "fixed_by": admin.get("email")
+            })
+            
+            fixed_count += 1
+            fixed_details.append({
+                "referrer_id": referrer_id[:12] + "...",
+                "depositor": user.get("name", user_id[:8]),
+                "deposit": fresh_deposit,
+                "bonus_given": bonus_amount
+            })
+        
+        return {
+            "success": True,
+            "fixed_count": fixed_count,
+            "message": f"Fixed {fixed_count} missing referral bonuses",
+            "details": fixed_details
+        }
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/admin/forward-stuck-deposit")
 async def forward_stuck_deposit(
     request: Request,
