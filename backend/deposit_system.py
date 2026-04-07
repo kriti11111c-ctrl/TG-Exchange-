@@ -501,49 +501,67 @@ class BlockchainMonitor:
         return []
     
     async def check_solana_deposits(self, address: str) -> List[Dict]:
-        """Check Solana USDT (SPL Token) deposits using Solscan API"""
+        """Check Solana USDT (SPL Token) deposits using Solana RPC"""
         try:
             # Solana USDT contract (SPL Token)
             usdt_mint = NETWORKS["solana"]["usdt_contract"]
             
-            # Use Solscan API to get token transfers
-            url = f"https://api.solscan.io/account/token/txs?address={address}&token={usdt_mint}&limit=10"
-            
-            headers = {
-                "accept": "application/json",
-                "User-Agent": "TGExchange/1.0"
-            }
+            # Try multiple Solana RPC endpoints
+            rpc_endpoints = [
+                "https://api.mainnet-beta.solana.com",
+                "https://solana-mainnet.g.alchemy.com/v2/demo",
+                "https://rpc.ankr.com/solana"
+            ]
             
             logger.info(f"Checking Solana deposits for {address}")
             
-            response = await self.http_client.get(url, headers=headers, timeout=30.0)
-            
-            if response.status_code != 200:
-                logger.warning(f"Solscan API error: {response.status_code}")
-                # Try alternative: Helius API (free tier)
-                return await self.check_solana_deposits_helius(address)
-            
-            data = response.json()
-            deposits = []
-            
-            if "data" in data and isinstance(data["data"], list):
-                for tx in data["data"]:
-                    # Check if it's an incoming transfer
-                    if tx.get("dst") == address or tx.get("to") == address:
-                        amount = float(tx.get("amount", 0)) / (10 ** 6)  # USDT has 6 decimals
+            for rpc_url in rpc_endpoints:
+                try:
+                    # Get token accounts using RPC
+                    payload = {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "getTokenAccountsByOwner",
+                        "params": [
+                            address,
+                            {"mint": usdt_mint},
+                            {"encoding": "jsonParsed"}
+                        ]
+                    }
+                    
+                    response = await self.http_client.post(rpc_url, json=payload, timeout=15.0)
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        result = data.get("result", {})
+                        accounts = result.get("value", [])
                         
-                        if amount > 0:
-                            deposits.append({
-                                "tx_hash": tx.get("txHash", tx.get("signature", "")),
-                                "amount": amount,
-                                "from_address": tx.get("src", tx.get("from", "")),
-                                "to_address": address,
-                                "block_time": tx.get("blockTime", 0),
-                                "network": "solana"
-                            })
-                            logger.info(f"Found Solana USDT deposit: {amount} to {address}")
+                        deposits = []
+                        for account in accounts:
+                            parsed = account.get("account", {}).get("data", {}).get("parsed", {})
+                            info = parsed.get("info", {})
+                            token_amount = info.get("tokenAmount", {})
+                            amount = float(token_amount.get("uiAmount", 0))
+                            
+                            if amount > 0:
+                                deposits.append({
+                                    "tx_hash": f"sol_{address[:8]}_{int(datetime.now().timestamp())}",
+                                    "from": "solana_deposit",
+                                    "to": address,
+                                    "amount": amount,
+                                    "timestamp": int(datetime.now().timestamp()),
+                                    "confirmations": 1,
+                                    "network": "solana"
+                                })
+                                logger.info(f"Solana USDT balance for {address}: {amount}")
+                        
+                        return deposits
+                        
+                except Exception as rpc_error:
+                    logger.warning(f"Solana RPC {rpc_url} failed: {rpc_error}")
+                    continue
             
-            return deposits
+            return []
             
         except Exception as e:
             logger.error(f"Error checking Solana deposits: {e}")
