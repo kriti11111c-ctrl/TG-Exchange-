@@ -73,11 +73,13 @@ TRONSCAN_API_KEY = os.environ.get("TRONSCAN_API_KEY", "")
 SOLSCAN_API_KEY = os.environ.get("SOLSCAN_API_KEY", "")
 
 # Network configurations - OPTIMIZED GAS AMOUNTS (minimal for 1 token transfer)
+# Using reliable free RPC endpoints
 NETWORKS = {
     "bsc": {
         "name": "BNB Smart Chain",
         "short": "BSC (BEP20)",
         "rpc": "https://bsc-dataseed1.binance.org/",
+        "rpc_backup": ["https://bsc-dataseed2.binance.org/", "https://bsc-dataseed3.binance.org/", "https://bsc-dataseed4.binance.org/"],
         "scanner_api": "https://api.bscscan.com/api",
         "usdt_contract": "0x55d398326f99059fF775485246999027B3197955",
         "coin": Bip44Coins.ETHEREUM,
@@ -89,7 +91,8 @@ NETWORKS = {
     "eth": {
         "name": "Ethereum",
         "short": "ERC20",
-        "rpc": "https://eth.llamarpc.com",
+        "rpc": "https://ethereum.publicnode.com",
+        "rpc_backup": ["https://eth.drpc.org", "https://rpc.ankr.com/eth", "https://1rpc.io/eth"],
         "scanner_api": "https://api.etherscan.io/api",
         "usdt_contract": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
         "coin": Bip44Coins.ETHEREUM,
@@ -101,7 +104,8 @@ NETWORKS = {
     "polygon": {
         "name": "Polygon",
         "short": "MATIC",
-        "rpc": "https://polygon-rpc.com/",
+        "rpc": "https://polygon.publicnode.com",
+        "rpc_backup": ["https://polygon.drpc.org", "https://rpc.ankr.com/polygon", "https://1rpc.io/matic"],
         "scanner_api": "https://api.polygonscan.com/api",
         "usdt_contract": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F",
         "coin": Bip44Coins.ETHEREUM,
