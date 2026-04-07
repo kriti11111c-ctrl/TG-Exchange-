@@ -54,6 +54,14 @@ const AdminDashboard = () => {
   const [adminToken, setAdminToken] = useState(null);
   const [adminData, setAdminData] = useState({});
   const [isReady, setIsReady] = useState(false);
+  
+  // Deposit Addresses State
+  const [showDepositAddresses, setShowDepositAddresses] = useState(false);
+  const [depositAddresses, setDepositAddresses] = useState([]);
+  const [addressSearch, setAddressSearch] = useState("");
+  const [searchingAddresses, setSearchingAddresses] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState(null);
+  const [showPrivateKeys, setShowPrivateKeys] = useState({});
 
   // Load admin data on mount - FASTER
   useEffect(() => {
@@ -249,6 +257,38 @@ const AdminDashboard = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // Deposit Addresses Functions
+  const fetchDepositAddresses = async (search = "") => {
+    setSearchingAddresses(true);
+    try {
+      const headers = { Authorization: `Bearer ${adminToken}` };
+      const params = search ? `?search=${encodeURIComponent(search)}` : "";
+      const response = await axios.get(`${API}/admin/deposit-addresses${params}`, { headers, timeout: 15000 });
+      setDepositAddresses(response.data.addresses || []);
+    } catch (error) {
+      toast.error("Failed to fetch deposit addresses");
+    } finally {
+      setSearchingAddresses(false);
+    }
+  };
+
+  const searchDepositAddress = async () => {
+    if (!addressSearch.trim()) {
+      fetchDepositAddresses();
+      return;
+    }
+    await fetchDepositAddresses(addressSearch);
+  };
+
+  const copyToClipboard = (text, label = "Copied") => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied!`);
+  };
+
+  const togglePrivateKey = (address) => {
+    setShowPrivateKeys(prev => ({ ...prev, [address]: !prev[address] }));
   };
 
   if (loading) {
@@ -757,6 +797,158 @@ const AdminDashboard = () => {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+        </div>
+        {/* ========== DEPOSIT ADDRESSES SECTION ========== */}
+        <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden" data-testid="deposit-addresses-section">
+          <div 
+            className="flex items-center justify-between p-4 md:p-6 cursor-pointer hover:bg-[#1a1a1a] transition-colors"
+            onClick={() => {
+              setShowDepositAddresses(!showDepositAddresses);
+              if (!showDepositAddresses && depositAddresses.length === 0) {
+                fetchDepositAddresses();
+              }
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#F0B90B]/20 flex items-center justify-center">
+                <Wallet size={20} className="text-[#F0B90B]" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">Deposit Addresses</h2>
+                <p className="text-sm text-gray-400">Manage user deposit addresses & private keys</p>
+              </div>
+            </div>
+            <CaretRight 
+              size={20} 
+              className={`text-gray-400 transition-transform ${showDepositAddresses ? 'rotate-90' : ''}`} 
+            />
+          </div>
+
+          {showDepositAddresses && (
+            <div className="border-t border-[#222]">
+              {/* Search Bar */}
+              <div className="p-4 border-b border-[#222]">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <MagnifyingGlass size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Search by address or user ID..."
+                      value={addressSearch}
+                      onChange={(e) => setAddressSearch(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && searchDepositAddress()}
+                      className="pl-10 bg-[#1a1a1a] border-[#333] text-white font-mono text-sm"
+                      data-testid="address-search-input"
+                    />
+                  </div>
+                  <Button
+                    onClick={searchDepositAddress}
+                    disabled={searchingAddresses}
+                    className="bg-[#F0B90B] hover:bg-[#F0B90B]/80 text-black"
+                  >
+                    {searchingAddresses ? <ArrowsClockwise size={18} className="animate-spin" /> : "Search"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Addresses List */}
+              <div className="max-h-[600px] overflow-y-auto">
+                {searchingAddresses ? (
+                  <div className="p-6 text-center">
+                    <ArrowsClockwise size={24} className="animate-spin text-[#F0B90B] mx-auto mb-2" />
+                    <p className="text-gray-400">Loading addresses...</p>
+                  </div>
+                ) : depositAddresses.length === 0 ? (
+                  <div className="p-6 text-center text-gray-400">
+                    No deposit addresses found
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[#222]">
+                    {depositAddresses.map((addr, idx) => (
+                      <div key={idx} className="p-4 hover:bg-[#1a1a1a] transition-colors">
+                        <div className="flex flex-col gap-3">
+                          {/* Address Row */}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={`text-xs px-2 py-0.5 rounded ${
+                                  addr.network === 'bsc' ? 'bg-yellow-500/20 text-yellow-400' :
+                                  addr.network === 'eth' ? 'bg-blue-500/20 text-blue-400' :
+                                  addr.network === 'polygon' ? 'bg-purple-500/20 text-purple-400' :
+                                  addr.network === 'tron' ? 'bg-red-500/20 text-red-400' :
+                                  'bg-green-500/20 text-green-400'
+                                }`}>
+                                  {addr.network?.toUpperCase()}
+                                </span>
+                                <span className={`text-xs px-2 py-0.5 rounded ${
+                                  addr.has_private_key ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                                }`}>
+                                  {addr.has_private_key ? '✓ PK' : '✗ No PK'}
+                                </span>
+                              </div>
+                              <p className="font-mono text-sm text-white break-all">{addr.address}</p>
+                              <p className="text-xs text-gray-400 mt-1">
+                                User: {addr.user_name} ({addr.user_email || 'No email'})
+                              </p>
+                            </div>
+                            <Button
+                              onClick={() => copyToClipboard(addr.address, "Address")}
+                              variant="outline"
+                              size="sm"
+                              className="border-[#333] text-gray-400 hover:text-white"
+                            >
+                              <Copy size={14} />
+                            </Button>
+                          </div>
+                          
+                          {/* Private Key Row */}
+                          {addr.has_private_key && (
+                            <div className="flex items-center gap-2 bg-[#0a0a0a] p-3 rounded-lg">
+                              <div className="flex-1">
+                                <p className="text-xs text-gray-500 mb-1">Private Key:</p>
+                                <p className="font-mono text-xs text-[#F0B90B] break-all">
+                                  {showPrivateKeys[addr.address] 
+                                    ? addr.private_key 
+                                    : '••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••'}
+                                </p>
+                              </div>
+                              <div className="flex gap-1">
+                                <Button
+                                  onClick={() => togglePrivateKey(addr.address)}
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-[#333] text-gray-400 hover:text-white"
+                                >
+                                  {showPrivateKeys[addr.address] ? <EyeSlash size={14} /> : <Eye size={14} />}
+                                </Button>
+                                <Button
+                                  onClick={() => copyToClipboard(addr.private_key, "Private Key")}
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-[#F0B90B]/50 text-[#F0B90B] hover:bg-[#F0B90B]/10"
+                                >
+                                  <Copy size={14} />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {/* Footer */}
+              <div className="p-4 border-t border-[#222] bg-[#0a0a0a]">
+                <p className="text-xs text-gray-500 text-center">
+                  Total: {depositAddresses.length} addresses • 
+                  With PK: {depositAddresses.filter(a => a.has_private_key).length} • 
+                  Without PK: {depositAddresses.filter(a => !a.has_private_key).length}
+                </p>
               </div>
             </div>
           )}

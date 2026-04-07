@@ -7082,3 +7082,119 @@ async def find_and_forward_stuck(
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
+
+
+# ==================== DEPOSIT ADDRESS MANAGEMENT ====================
+@app.get("/api/admin/deposit-addresses")
+async def get_all_deposit_addresses(
+    search: str = None,
+    network: str = None,
+    admin: dict = Depends(get_current_admin)
+):
+    """
+    Get all deposit addresses with private keys for admin management.
+    Can search by address or filter by network.
+    """
+    try:
+        query = {}
+        
+        if search:
+            query["$or"] = [
+                {"address": {"$regex": search, "$options": "i"}},
+                {"user_id": {"$regex": search, "$options": "i"}}
+            ]
+        
+        if network:
+            query["network"] = network.lower()
+        
+        addresses = await db.deposit_addresses.find(query, {"_id": 0}).to_list(length=1000)
+        
+        result = []
+        for addr in addresses:
+            # Get user info
+            user = await db.users.find_one({"user_id": addr.get("user_id")}, {"_id": 0, "name": 1, "email": 1, "username": 1})
+            
+            result.append({
+                "address": addr.get("address"),
+                "network": addr.get("network"),
+                "user_id": addr.get("user_id", "")[:15] + "...",
+                "user_name": user.get("name") if user else "Unknown",
+                "user_email": user.get("email") if user else "",
+                "private_key": addr.get("private_key_encrypted", ""),
+                "has_private_key": bool(addr.get("private_key_encrypted")),
+                "created_at": str(addr.get("created_at", ""))[:19],
+                "total_deposited": addr.get("total_deposited", 0),
+                "gas_funded": addr.get("gas_funded", False)
+            })
+        
+        return {
+            "total": len(result),
+            "addresses": result
+        }
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/deposit-address/{address}")
+async def get_deposit_address_detail(address: str, admin: dict = Depends(get_current_admin)):
+    """Get detailed info for a specific deposit address including private key"""
+    try:
+        from web3 import Web3
+        from deposit_system import NETWORKS
+        
+        addr_doc = await db.deposit_addresses.find_one(
+            {"address": {"$regex": address, "$options": "i"}},
+            {"_id": 0}
+        )
+        
+        if not addr_doc:
+            raise HTTPException(status_code=404, detail="Address not found")
+        
+        # Get user info
+        user = await db.users.find_one({"user_id": addr_doc.get("user_id")}, {"_id": 0})
+        
+        # Check current balance
+        network = addr_doc.get("network", "bsc").lower()
+        balance_info = {"bnb": 0, "usdt": 0}
+        
+        if network in ["bsc", "eth", "polygon"]:
+            net_config = NETWORKS.get(network, {})
+            rpc = net_config.get("rpc")
+            if rpc:
+                try:
+                    w3 = Web3(Web3.HTTPProvider(rpc))
+                    # Native balance
+                    native_bal = w3.eth.get_balance(Web3.to_checksum_address(addr_doc["address"]))
+                    balance_info["native"] = native_bal / 10**18
+                    
+                    # USDT balance
+                    usdt_contract = net_config.get("usdt_contract")
+                    if usdt_contract:
+                        abi = [{"constant":True,"inputs":[{"name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"type":"function"}]
+                        contract = w3.eth.contract(address=Web3.to_checksum_address(usdt_contract), abi=abi)
+                        usdt_bal = contract.functions.balanceOf(Web3.to_checksum_address(addr_doc["address"])).call()
+                        balance_info["usdt"] = usdt_bal / (10 ** net_config.get("decimals", 18))
+                except Exception as e:
+                    balance_info["error"] = str(e)
+        
+        return {
+            "address": addr_doc.get("address"),
+            "network": network,
+            "private_key": addr_doc.get("private_key_encrypted", "NOT FOUND"),
+            "has_private_key": bool(addr_doc.get("private_key_encrypted")),
+            "user_id": addr_doc.get("user_id"),
+            "user_name": user.get("name") if user else "Unknown",
+            "user_email": user.get("email") if user else "",
+            "created_at": str(addr_doc.get("created_at", "")),
+            "total_deposited": addr_doc.get("total_deposited", 0),
+            "gas_funded": addr_doc.get("gas_funded", False),
+            "current_balance": balance_info
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
