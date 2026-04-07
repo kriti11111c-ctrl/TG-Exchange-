@@ -495,8 +495,100 @@ class BlockchainMonitor:
             return await self.check_evm_deposits(address, network)
         elif network == "tron":
             return await self.check_tron_deposits(address)
+        elif network == "solana":
+            return await self.check_solana_deposits(address)
         
         return []
+    
+    async def check_solana_deposits(self, address: str) -> List[Dict]:
+        """Check Solana USDT (SPL Token) deposits using Solscan API"""
+        try:
+            # Solana USDT contract (SPL Token)
+            usdt_mint = NETWORKS["solana"]["usdt_contract"]
+            
+            # Use Solscan API to get token transfers
+            url = f"https://api.solscan.io/account/token/txs?address={address}&token={usdt_mint}&limit=10"
+            
+            headers = {
+                "accept": "application/json",
+                "User-Agent": "TGExchange/1.0"
+            }
+            
+            logger.info(f"Checking Solana deposits for {address}")
+            
+            response = await self.http_client.get(url, headers=headers, timeout=30.0)
+            
+            if response.status_code != 200:
+                logger.warning(f"Solscan API error: {response.status_code}")
+                # Try alternative: Helius API (free tier)
+                return await self.check_solana_deposits_helius(address)
+            
+            data = response.json()
+            deposits = []
+            
+            if "data" in data and isinstance(data["data"], list):
+                for tx in data["data"]:
+                    # Check if it's an incoming transfer
+                    if tx.get("dst") == address or tx.get("to") == address:
+                        amount = float(tx.get("amount", 0)) / (10 ** 6)  # USDT has 6 decimals
+                        
+                        if amount > 0:
+                            deposits.append({
+                                "tx_hash": tx.get("txHash", tx.get("signature", "")),
+                                "amount": amount,
+                                "from_address": tx.get("src", tx.get("from", "")),
+                                "to_address": address,
+                                "block_time": tx.get("blockTime", 0),
+                                "network": "solana"
+                            })
+                            logger.info(f"Found Solana USDT deposit: {amount} to {address}")
+            
+            return deposits
+            
+        except Exception as e:
+            logger.error(f"Error checking Solana deposits: {e}")
+            return []
+    
+    async def check_solana_deposits_helius(self, address: str) -> List[Dict]:
+        """Fallback: Check Solana deposits using public RPC"""
+        try:
+            # Use Solana public RPC to get token accounts
+            rpc_url = NETWORKS["solana"]["rpc"]
+            usdt_mint = NETWORKS["solana"]["usdt_contract"]
+            
+            # Get token balance
+            payload = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "getTokenAccountsByOwner",
+                "params": [
+                    address,
+                    {"mint": usdt_mint},
+                    {"encoding": "jsonParsed"}
+                ]
+            }
+            
+            response = await self.http_client.post(rpc_url, json=payload, timeout=30.0)
+            
+            if response.status_code == 200:
+                data = response.json()
+                result = data.get("result", {})
+                accounts = result.get("value", [])
+                
+                for account in accounts:
+                    parsed = account.get("account", {}).get("data", {}).get("parsed", {})
+                    info = parsed.get("info", {})
+                    token_amount = info.get("tokenAmount", {})
+                    amount = float(token_amount.get("uiAmount", 0))
+                    
+                    if amount > 0:
+                        logger.info(f"Solana USDT balance for {address}: {amount}")
+            
+            return []
+            
+        except Exception as e:
+            logger.error(f"Error in Solana RPC check: {e}")
+            return []
     
     async def close(self):
         await self.http_client.aclose()
