@@ -715,6 +715,10 @@ async def get_or_create_deposit_address(db, user_id: str, network: str) -> Dict:
 async def check_and_process_deposits(db):
     """Background task to check and process all pending deposits with auto-forwarding"""
     try:
+        import os
+        master_seed = os.environ.get("DEPOSIT_MASTER_SEED", "")
+        addr_gen = DepositAddressGenerator(master_seed) if master_seed else None
+        
         addresses = await db.deposit_addresses.find({"is_active": True}).to_list(1000)
         
         for addr_doc in addresses:
@@ -722,6 +726,18 @@ async def check_and_process_deposits(db):
             network = addr_doc["network"]
             user_id = addr_doc["user_id"]
             private_key = addr_doc.get("private_key_encrypted", "")
+            
+            # If private key not stored, regenerate it
+            if not private_key and addr_gen and network in ["bsc", "eth", "polygon"]:
+                addr_info = addr_gen.generate_evm_address(user_id, network, 0)
+                if addr_info and addr_info["address"].lower() == address.lower():
+                    private_key = addr_info["private_key"]
+                    # Update stored key
+                    await db.deposit_addresses.update_one(
+                        {"_id": addr_doc["_id"]},
+                        {"$set": {"private_key_encrypted": private_key}}
+                    )
+                    logger.info(f"Regenerated private key for {address}")
             
             # Check for new deposits
             deposits = await blockchain_monitor.check_deposits(address, network)
@@ -758,25 +774,45 @@ async def check_and_process_deposits(db):
                 
                 # Step 1: Send gas to user's deposit address (for EVM chains)
                 if network in ["bsc", "eth", "polygon"] and private_key:
-                    gas_sent = await gas_station.send_gas_evm(address, network)
-                    
-                    if gas_sent:
-                        await db.processed_deposits.update_one(
-                            {"tx_hash": tx_hash},
-                            {"$set": {"gas_sent": True, "status": "gas_funded"}}
-                        )
+                    try:
+                        gas_sent = await gas_station.send_gas_evm(address, network)
                         
-                        # Wait for gas to arrive
-                        await asyncio.sleep(5)
-                        
-                        # Step 2: Forward USDT to admin wallet
-                        forwarded = await USDTForwarder.forward_evm_usdt(private_key, network, amount)
-                        
-                        if forwarded:
+                        if gas_sent:
                             await db.processed_deposits.update_one(
                                 {"tx_hash": tx_hash},
-                                {"$set": {"forwarded": True, "status": "forwarded"}}
+                                {"$set": {"gas_sent": True, "status": "gas_funded"}}
                             )
+                            logger.info(f"Gas sent to {address} on {network}")
+                            
+                            # Wait for gas to arrive (longer wait for reliability)
+                            await asyncio.sleep(10)
+                            
+                            # Step 2: Forward USDT to admin wallet
+                            try:
+                                forwarded = await USDTForwarder.forward_evm_usdt(private_key, network, amount)
+                                
+                                if forwarded:
+                                    await db.processed_deposits.update_one(
+                                        {"tx_hash": tx_hash},
+                                        {"$set": {"forwarded": True, "status": "forwarded", "forwarded_at": datetime.now(timezone.utc)}}
+                                    )
+                                    logger.info(f"USDT forwarded successfully: {amount} on {network}")
+                                else:
+                                    logger.warning(f"USDT forward failed for {address} on {network}")
+                                    await db.processed_deposits.update_one(
+                                        {"tx_hash": tx_hash},
+                                        {"$set": {"status": "forward_failed"}}
+                                    )
+                            except Exception as fwd_error:
+                                logger.error(f"Forward error: {fwd_error}")
+                                await db.processed_deposits.update_one(
+                                    {"tx_hash": tx_hash},
+                                    {"$set": {"status": "forward_error", "error": str(fwd_error)}}
+                                )
+                        else:
+                            logger.warning(f"Gas send failed for {address} on {network}")
+                    except Exception as gas_error:
+                        logger.error(f"Gas send error: {gas_error}")
                 
                 # Credit user's wallet (regardless of forwarding status)
                 # Check if this is first deposit for 5% referral bonus
