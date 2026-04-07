@@ -851,12 +851,20 @@ async def check_and_process_deposits(db):
                 # Credit user's wallet (regardless of forwarding status)
                 # Check if this is first deposit for 5% referral bonus
                 wallet = await db.wallets.find_one({"user_id": user_id})
-                is_first_deposit = not wallet.get("first_deposit_done", False) if wallet else True
+                
+                # Better check: see if referral bonus was EVER given for this user
+                existing_bonus_given = await db.transactions.find_one({
+                    "from_user_id": user_id,
+                    "type": {"$in": ["first_deposit_referral_bonus", "referral_bonus_fix"]}
+                })
+                
+                is_first_deposit = not existing_bonus_given
                 
                 # Update wallet with deposit
-                update_ops = {"$inc": {"balances.usdt": amount}}
-                if is_first_deposit:
-                    update_ops["$set"] = {"first_deposit_done": True}
+                update_ops = {
+                    "$inc": {"balances.usdt": amount, "total_deposited": amount},
+                    "$set": {"first_deposit_done": True}
+                }
                 
                 await db.wallets.update_one(
                     {"user_id": user_id},
@@ -870,7 +878,7 @@ async def check_and_process_deposits(db):
                     referrer_id = user_doc.get("referred_by") if user_doc else None
                     
                     if referrer_id:
-                        referral_bonus = amount * DIRECT_REFERRAL_BONUS_PERCENT  # 5%
+                        referral_bonus = round(amount * DIRECT_REFERRAL_BONUS_PERCENT, 2)  # 5%
                         
                         # Add bonus to referrer's Spot wallet
                         await db.wallets.update_one(
@@ -879,19 +887,20 @@ async def check_and_process_deposits(db):
                             upsert=True
                         )
                         
-                        # Record bonus transaction
+                        # Record bonus transaction with from_user_id for tracking
                         await db.transactions.insert_one({
                             "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
                             "user_id": referrer_id,
+                            "from_user_id": user_id,  # Track who deposited
                             "type": "first_deposit_referral_bonus",
                             "coin": "usdt",
                             "amount": referral_bonus,
-                            "note": f"5% bonus from referral's first deposit of ${amount}",
+                            "note": f"5% bonus from {user_doc.get('name', user_id[:8])}'s first deposit of ${amount}",
                             "status": "completed",
                             "created_at": datetime.now(timezone.utc).isoformat()
                         })
                         
-                        logger.info(f"Credited {referral_bonus} USDT referral bonus to {referrer_id}")
+                        logger.info(f"AUTO 5% BONUS: Credited ${referral_bonus} USDT to {referrer_id} from {user_doc.get('name', user_id[:8])}'s deposit")
                 
                 await db.processed_deposits.update_one(
                     {"tx_hash": tx_hash},
