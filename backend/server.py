@@ -6359,6 +6359,78 @@ async def check_referral_bonuses(admin: dict = Depends(get_current_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/admin/trigger-daily-salary")
+async def trigger_daily_salary(admin: dict = Depends(get_current_admin)):
+    """
+    Manually trigger daily salary distribution for ranked users.
+    Normally this runs automatically at 12:00 AM IST.
+    """
+    try:
+        from deposit_system import credit_daily_salary
+        result = await credit_daily_salary(db)
+        return {
+            "success": True,
+            "message": "Daily salary distribution triggered",
+            **result
+        }
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/salary-status")
+async def get_salary_status(admin: dict = Depends(get_current_admin)):
+    """Get today's salary distribution status"""
+    try:
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        
+        # Get today's salary transactions
+        today_salaries = await db.transactions.find({
+            "type": "daily_rank_salary",
+            "date": today
+        }).to_list(length=1000)
+        
+        # Get all ranked users
+        ranked_users = await db.users.find(
+            {"team_rank_level": {"$gte": 1}},
+            {"_id": 0, "user_id": 1, "username": 1, "team_rank_level": 1}
+        ).to_list(length=1000)
+        
+        credited_user_ids = [t.get("user_id") for t in today_salaries]
+        
+        pending = []
+        credited = []
+        
+        for user in ranked_users:
+            user_info = {
+                "user_id": user["user_id"][:12] + "...",
+                "username": user.get("username", "Unknown"),
+                "rank_level": user.get("team_rank_level")
+            }
+            if user["user_id"] in credited_user_ids:
+                # Find the salary amount
+                salary_tx = next((t for t in today_salaries if t.get("user_id") == user["user_id"]), None)
+                user_info["salary_credited"] = salary_tx.get("amount", 0) if salary_tx else 0
+                credited.append(user_info)
+            else:
+                pending.append(user_info)
+        
+        total_distributed = sum(t.get("amount", 0) for t in today_salaries)
+        
+        return {
+            "date": today,
+            "total_ranked_users": len(ranked_users),
+            "credited_today": len(credited),
+            "pending": len(pending),
+            "total_distributed_today": total_distributed,
+            "credited_users": credited,
+            "pending_users": pending
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)

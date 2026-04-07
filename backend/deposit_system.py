@@ -4,6 +4,7 @@ Unique Deposit Address System with Gas Station & Auto-Forward
 - Monitor blockchain for incoming deposits
 - Auto-send gas from Gas Fee Wallet to user's deposit address
 - Auto-forward USDT to Admin wallet
+- Daily Salary Credit at Midnight (12:00 AM IST)
 """
 
 import os
@@ -12,7 +13,7 @@ import logging
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, List
 from bip_utils import Bip39SeedGenerator, Bip39MnemonicGenerator, Bip44, Bip44Coins, Bip44Changes
 from eth_account import Account
@@ -25,6 +26,33 @@ logger = logging.getLogger(__name__)
 
 # Referral bonus rate (5% on first deposit)
 DIRECT_REFERRAL_BONUS_PERCENT = 0.05
+
+# Team Rank Monthly Salaries (same as server.py)
+TEAM_RANK_SALARIES = {
+    1: 30,    # Bronze
+    2: 100,   # Silver
+    3: 250,   # Gold
+    4: 500,   # Platinum
+    5: 1000,  # Diamond
+    6: 2000,  # Master
+    7: 4000,  # Grandmaster
+    8: 7000,  # Champion
+    9: 12000, # Legend
+    10: 20000 # Immortal
+}
+
+TEAM_RANK_NAMES = {
+    1: "Bronze",
+    2: "Silver", 
+    3: "Gold",
+    4: "Platinum",
+    5: "Diamond",
+    6: "Master",
+    7: "Grandmaster",
+    8: "Champion",
+    9: "Legend",
+    10: "Immortal"
+}
 
 # Admin wallet addresses (where USDT will be forwarded)
 ADMIN_WALLETS = {
@@ -722,5 +750,162 @@ __all__ = [
     'blockchain_monitor',
     'gas_station',
     'NETWORKS',
-    'ADMIN_WALLETS'
+    'ADMIN_WALLETS',
+    'midnight_salary_job'
 ]
+
+
+async def credit_daily_salary(db):
+    """
+    Credit daily salary to all users who have achieved a team rank.
+    Daily salary = Monthly salary / 30
+    Runs at 12:00 AM IST every day.
+    """
+    try:
+        # Find all users with team rank >= 1
+        ranked_users = await db.users.find(
+            {"team_rank_level": {"$gte": 1}},
+            {"_id": 0, "user_id": 1, "username": 1, "team_rank_level": 1}
+        ).to_list(length=10000)
+        
+        credited_count = 0
+        total_salary_distributed = 0
+        
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        
+        for user in ranked_users:
+            user_id = user["user_id"]
+            rank_level = user.get("team_rank_level", 0)
+            username = user.get("username", "Unknown")
+            
+            if rank_level < 1 or rank_level > 10:
+                continue
+            
+            # Check if salary already credited today
+            existing_salary = await db.transactions.find_one({
+                "user_id": user_id,
+                "type": "daily_rank_salary",
+                "date": today
+            })
+            
+            if existing_salary:
+                logger.info(f"Salary already credited today for {username}")
+                continue
+            
+            # Calculate daily salary
+            monthly_salary = TEAM_RANK_SALARIES.get(rank_level, 0)
+            daily_salary = round(monthly_salary / 30, 2)
+            
+            if daily_salary <= 0:
+                continue
+            
+            # Credit salary to wallet
+            await db.wallets.update_one(
+                {"user_id": user_id},
+                {"$inc": {"balances.usdt": daily_salary}},
+                upsert=True
+            )
+            
+            # Record transaction
+            rank_name = TEAM_RANK_NAMES.get(rank_level, f"Level {rank_level}")
+            await db.transactions.insert_one({
+                "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+                "user_id": user_id,
+                "type": "daily_rank_salary",
+                "coin": "usdt",
+                "amount": daily_salary,
+                "note": f"Daily {rank_name} rank salary (${monthly_salary}/month)",
+                "date": today,
+                "rank_level": rank_level,
+                "status": "completed",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            
+            credited_count += 1
+            total_salary_distributed += daily_salary
+            logger.info(f"Credited ${daily_salary} daily salary to {username} ({rank_name})")
+        
+        logger.info(f"Daily salary distribution complete: {credited_count} users, ${total_salary_distributed} total")
+        return {
+            "credited_count": credited_count,
+            "total_distributed": total_salary_distributed
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in daily salary credit: {e}")
+        return {"error": str(e)}
+
+
+async def midnight_salary_job(db):
+    """
+    Background job that waits for midnight IST and credits daily salary.
+    IST = UTC + 5:30
+    Midnight IST = 18:30 UTC (previous day)
+    """
+    logger.info("Midnight salary job started")
+    
+    while True:
+        try:
+            # Get current time in IST
+            utc_now = datetime.now(timezone.utc)
+            ist_offset = timedelta(hours=5, minutes=30)
+            ist_now = utc_now + ist_offset
+            
+            # Calculate time until next midnight IST
+            next_midnight_ist = ist_now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+            time_until_midnight = (next_midnight_ist - ist_now).total_seconds()
+            
+            # If it's very close to midnight (within 1 minute), credit salary now
+            if time_until_midnight > 86340:  # More than 23:59:00
+                # We just passed midnight, credit now
+                logger.info("Midnight detected! Crediting daily salaries...")
+                await credit_daily_salary(db)
+                # Wait 1 hour before checking again
+                await asyncio.sleep(3600)
+            else:
+                # Wait until midnight
+                logger.info(f"Waiting {time_until_midnight/3600:.2f} hours until midnight IST for salary credit")
+                await asyncio.sleep(min(time_until_midnight, 3600))  # Check every hour max
+                
+        except Exception as e:
+            logger.error(f"Error in midnight salary job: {e}")
+            await asyncio.sleep(300)  # Wait 5 minutes on error
+
+
+# Main entry point for standalone execution
+async def main():
+    """Main function to run deposit monitoring and salary job"""
+    from motor.motor_asyncio import AsyncIOMotorClient
+    from dotenv import load_dotenv
+    
+    load_dotenv()
+    
+    mongo_url = os.environ.get("MONGO_URL")
+    db_name = os.environ.get("DB_NAME", "tgx_exchange")
+    
+    client = AsyncIOMotorClient(mongo_url)
+    db = client[db_name]
+    
+    logger.info("Starting deposit system with midnight salary job...")
+    
+    # Run both jobs concurrently
+    await asyncio.gather(
+        deposit_monitor_loop(db),
+        midnight_salary_job(db)
+    )
+
+
+async def deposit_monitor_loop(db):
+    """Continuous loop to monitor deposits"""
+    while True:
+        try:
+            await check_and_process_deposits(db)
+            await asyncio.sleep(30)  # Check every 30 seconds
+        except Exception as e:
+            logger.error(f"Error in deposit monitor: {e}")
+            await asyncio.sleep(60)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
