@@ -6635,6 +6635,151 @@ async def check_stuck_deposits(admin: dict = Depends(get_current_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/admin/find-and-forward-stuck")
+async def find_and_forward_stuck(
+    request: Request,
+    admin: dict = Depends(get_current_admin)
+):
+    """
+    Find the user who owns a stuck deposit address and forward the USDT.
+    Regenerates private key from master seed + user_id.
+    """
+    try:
+        data = await request.json()
+        target_address = data.get("address", "").lower()
+        network = data.get("network", "bsc").lower()
+        
+        if not target_address:
+            raise HTTPException(status_code=400, detail="Address required")
+        
+        from deposit_system import NETWORKS, ADMIN_WALLETS, AddressGenerator
+        from web3 import Web3
+        from eth_account import Account
+        import os
+        
+        # Get master seed
+        master_seed = os.environ.get("DEPOSIT_MASTER_SEED", "")
+        if not master_seed:
+            raise HTTPException(status_code=500, detail="DEPOSIT_MASTER_SEED not configured")
+        
+        # Initialize address generator
+        addr_gen = AddressGenerator(master_seed)
+        
+        # Get all users and check their deposit addresses
+        all_users = await db.users.find({}, {"_id": 0, "user_id": 1, "username": 1}).to_list(length=50000)
+        
+        found_user = None
+        found_private_key = None
+        
+        for user in all_users:
+            user_id = user.get("user_id")
+            if not user_id:
+                continue
+            
+            # Generate address for this user on the specified network
+            addr_info = addr_gen.generate_evm_address(user_id, network, 0)
+            if addr_info and addr_info["address"].lower() == target_address:
+                found_user = user
+                found_private_key = addr_info["private_key"]
+                break
+        
+        if not found_user:
+            return {
+                "success": False,
+                "message": f"Could not find user for address {target_address}",
+                "users_checked": len(all_users)
+            }
+        
+        # Now forward the USDT
+        net_config = NETWORKS.get(network)
+        if not net_config:
+            raise HTTPException(status_code=400, detail=f"Unsupported network: {network}")
+        
+        w3 = Web3(Web3.HTTPProvider(net_config["rpc"]))
+        
+        # Check USDT balance
+        usdt_abi = [
+            {"constant": True, "inputs": [{"name": "_owner", "type": "address"}], "name": "balanceOf", "outputs": [{"name": "balance", "type": "uint256"}], "type": "function"},
+            {"constant": False, "inputs": [{"name": "_to", "type": "address"}, {"name": "_value", "type": "uint256"}], "name": "transfer", "outputs": [{"name": "", "type": "bool"}], "type": "function"}
+        ]
+        
+        usdt_contract = w3.eth.contract(
+            address=Web3.to_checksum_address(net_config["usdt_contract"]),
+            abi=usdt_abi
+        )
+        
+        checksum_address = Web3.to_checksum_address(target_address)
+        usdt_balance_wei = usdt_contract.functions.balanceOf(checksum_address).call()
+        decimals = net_config["decimals"]
+        usdt_balance = usdt_balance_wei / (10 ** decimals)
+        
+        # Check native balance for gas
+        native_balance = w3.eth.get_balance(checksum_address) / (10 ** 18)
+        
+        if usdt_balance <= 0:
+            return {
+                "success": False,
+                "message": "No USDT balance to forward",
+                "user": found_user.get("username"),
+                "usdt_balance": usdt_balance,
+                "native_balance": native_balance
+            }
+        
+        min_gas = net_config.get("min_gas_required", 0.0001)
+        if native_balance < min_gas:
+            return {
+                "success": False,
+                "message": f"Not enough gas! Need {min_gas}, have {native_balance}",
+                "user": found_user.get("username"),
+                "usdt_balance": usdt_balance,
+                "native_balance": native_balance,
+                "need_gas": True
+            }
+        
+        # Forward USDT to admin wallet
+        admin_wallet = ADMIN_WALLETS.get(network)
+        if not admin_wallet:
+            raise HTTPException(status_code=400, detail="Admin wallet not configured")
+        
+        account = Account.from_key(found_private_key)
+        
+        nonce = w3.eth.get_transaction_count(account.address)
+        gas_price = w3.eth.gas_price
+        
+        tx = usdt_contract.functions.transfer(
+            Web3.to_checksum_address(admin_wallet),
+            usdt_balance_wei
+        ).build_transaction({
+            'from': account.address,
+            'nonce': nonce,
+            'gas': 100000,
+            'gasPrice': gas_price,
+            'chainId': net_config["chain_id"]
+        })
+        
+        signed_tx = w3.eth.account.sign_transaction(tx, found_private_key)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+        
+        return {
+            "success": True,
+            "message": f"Successfully forwarded {usdt_balance} USDT to admin wallet",
+            "tx_hash": tx_hash.hex(),
+            "amount": usdt_balance,
+            "from_address": target_address,
+            "to_address": admin_wallet,
+            "user": found_user.get("username"),
+            "user_id": found_user.get("user_id"),
+            "network": network
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
