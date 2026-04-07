@@ -6508,6 +6508,26 @@ async def get_salary_status(admin: dict = Depends(get_current_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/admin/trigger-rank-upgrade")
+async def trigger_rank_upgrade(admin: dict = Depends(get_current_admin)):
+    """
+    Manually trigger rank upgrade check for all users.
+    Normally this runs automatically every hour.
+    """
+    try:
+        from deposit_system import run_rank_upgrade_check
+        result = await run_rank_upgrade_check(db)
+        return {
+            "success": True,
+            "message": "Rank upgrade check completed",
+            **result
+        }
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/admin/forward-stuck-deposit")
 async def forward_stuck_deposit(
     request: Request,

@@ -54,6 +54,22 @@ TEAM_RANK_NAMES = {
     10: "Immortal"
 }
 
+# Team Rank Requirements (same as server.py)
+MIN_DEPOSIT_FOR_RANK = 50.0
+
+TEAM_RANKS = [
+    {"level": 1, "name": "Bronze", "type": "team", "team_required": 6, "bronze_required": 0, "direct_required": 0, "levelup_reward": 20},
+    {"level": 2, "name": "Silver", "type": "bronze", "team_required": 30, "bronze_required": 2, "direct_required": 0, "levelup_reward": 100},
+    {"level": 3, "name": "Gold", "type": "bronze", "team_required": 75, "bronze_required": 3, "direct_required": 0, "levelup_reward": 240},
+    {"level": 4, "name": "Platinum", "type": "bronze", "team_required": 150, "bronze_required": 4, "direct_required": 0, "levelup_reward": 500},
+    {"level": 5, "name": "Diamond", "type": "bronze", "team_required": 300, "bronze_required": 5, "direct_required": 0, "levelup_reward": 975},
+    {"level": 6, "name": "Master", "type": "bronze", "team_required": 500, "bronze_required": 6, "direct_required": 0, "levelup_reward": 2000},
+    {"level": 7, "name": "Grandmaster", "type": "bronze", "team_required": 1000, "bronze_required": 7, "direct_required": 0, "levelup_reward": 4000},
+    {"level": 8, "name": "Champion", "type": "bronze", "team_required": 2000, "bronze_required": 8, "direct_required": 0, "levelup_reward": 7000},
+    {"level": 9, "name": "Legend", "type": "bronze", "team_required": 5000, "bronze_required": 9, "direct_required": 0, "levelup_reward": 12000},
+    {"level": 10, "name": "Immortal", "type": "bronze", "team_required": 10000, "bronze_required": 10, "direct_required": 0, "levelup_reward": 20000},
+]
+
 # Admin wallet addresses (where USDT will be forwarded)
 ADMIN_WALLETS = {
     "bsc": os.environ.get("ADMIN_WALLET_BSC", "0x189aeffdf472b34450a7623e8f032d5a4ac256a2"),
@@ -901,7 +917,10 @@ __all__ = [
     'gas_station',
     'NETWORKS',
     'ADMIN_WALLETS',
-    'midnight_salary_job'
+    'midnight_salary_job',
+    'hourly_rank_upgrade_job',
+    'run_rank_upgrade_check',
+    'auto_upgrade_user_rank'
 ]
 
 
@@ -1022,9 +1041,283 @@ async def midnight_salary_job(db):
             await asyncio.sleep(300)  # Wait 5 minutes on error
 
 
+# ================= AUTOMATED RANK UPGRADE SYSTEM =================
+async def get_user_team_stats(db, user_id: str) -> dict:
+    """
+    Get team stats for a user using MongoDB aggregation.
+    Counts DIRECT referrals with $50+ fresh deposits (excluding welcome bonus).
+    """
+    try:
+        # Direct referrals with $50+ fresh deposit
+        direct_pipeline = [
+            {"$match": {"referrer_id": user_id, "level": 1}},
+            {"$lookup": {
+                "from": "wallets",
+                "localField": "referred_id",
+                "foreignField": "user_id",
+                "as": "wallet"
+            }},
+            {"$lookup": {
+                "from": "users",
+                "localField": "referred_id",
+                "foreignField": "user_id",
+                "as": "user"
+            }},
+            {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
+            {"$unwind": {"path": "$user", "preserveNullAndEmptyArrays": True}},
+            {"$addFields": {
+                "fresh_deposit": {"$max": [
+                    0,
+                    {"$cond": {
+                        "if": {"$gt": [{"$ifNull": ["$wallet.total_deposited", 0]}, 0]},
+                        "then": {"$ifNull": ["$wallet.total_deposited", 0]},
+                        "else": {"$subtract": [
+                            {"$ifNull": ["$wallet.futures_balance", 0]},
+                            {"$ifNull": ["$wallet.welcome_bonus", 0]}
+                        ]}
+                    }}
+                ]},
+                "rank_level": {"$ifNull": ["$user.team_rank_level", 0]}
+            }},
+            {"$group": {
+                "_id": None,
+                "total_direct": {"$sum": 1},
+                "valid_direct": {"$sum": {"$cond": [{"$gte": ["$fresh_deposit", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}},
+                "bronze_members": {"$sum": {"$cond": [
+                    {"$and": [
+                        {"$gte": ["$fresh_deposit", MIN_DEPOSIT_FOR_RANK]},
+                        {"$gte": ["$rank_level", 1]}
+                    ]}, 1, 0
+                ]}}
+            }}
+        ]
+        
+        direct_result = await db.referrals.aggregate(direct_pipeline).to_list(length=1)
+        direct_stats = direct_result[0] if direct_result else {"total_direct": 0, "valid_direct": 0, "bronze_members": 0}
+        
+        # Total team count with $50+ fresh deposit
+        team_pipeline = [
+            {"$match": {"referrer_id": user_id}},
+            {"$lookup": {
+                "from": "wallets",
+                "localField": "referred_id",
+                "foreignField": "user_id",
+                "as": "wallet"
+            }},
+            {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
+            {"$addFields": {
+                "fresh_deposit": {"$max": [
+                    0,
+                    {"$cond": {
+                        "if": {"$gt": [{"$ifNull": ["$wallet.total_deposited", 0]}, 0]},
+                        "then": {"$ifNull": ["$wallet.total_deposited", 0]},
+                        "else": {"$subtract": [
+                            {"$ifNull": ["$wallet.futures_balance", 0]},
+                            {"$ifNull": ["$wallet.welcome_bonus", 0]}
+                        ]}
+                    }}
+                ]}
+            }},
+            {"$group": {
+                "_id": None,
+                "total_team": {"$sum": 1},
+                "valid_team": {"$sum": {"$cond": [{"$gte": ["$fresh_deposit", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}}
+            }}
+        ]
+        
+        team_result = await db.referrals.aggregate(team_pipeline).to_list(length=1)
+        team_stats = team_result[0] if team_result else {"total_team": 0, "valid_team": 0}
+        
+        return {
+            "direct_referrals": direct_stats.get("valid_direct", 0),
+            "bronze_members": direct_stats.get("bronze_members", 0),
+            "total_team": team_stats.get("valid_team", 0)
+        }
+    except Exception as e:
+        logger.error(f"Error getting team stats for {user_id}: {e}")
+        return {"direct_referrals": 0, "bronze_members": 0, "total_team": 0}
+
+
+def calculate_rank_level(direct_referrals: int, bronze_members: int, total_team: int) -> int:
+    """
+    Calculate the rank level a user qualifies for.
+    Returns 0 if no rank, or 1-10 for Bronze to Immortal.
+    """
+    current_level = 0
+    
+    for rank in TEAM_RANKS:
+        qualifies = False
+        
+        if rank["type"] == "team":
+            # Bronze: 6 DIRECT referrals with $50+ deposit
+            qualifies = direct_referrals >= rank["team_required"]
+        else:
+            # Silver onwards: Bronze members + total team
+            qualifies = bronze_members >= rank["bronze_required"] and total_team >= rank["team_required"]
+        
+        if qualifies:
+            current_level = rank["level"]
+    
+    return current_level
+
+
+async def auto_upgrade_user_rank(db, user_id: str, username: str) -> dict:
+    """
+    Check and upgrade a single user's rank if they qualify.
+    Returns upgrade info or None if no change.
+    """
+    try:
+        # Get current rank
+        user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "team_rank_level": 1})
+        current_level = user.get("team_rank_level", 0) if user else 0
+        
+        # Get team stats
+        stats = await get_user_team_stats(db, user_id)
+        
+        # Calculate qualifying rank
+        new_level = calculate_rank_level(
+            stats["direct_referrals"],
+            stats["bronze_members"],
+            stats["total_team"]
+        )
+        
+        # Only upgrade, never downgrade (manual revoke required for that)
+        if new_level > current_level:
+            old_rank_name = TEAM_RANK_NAMES.get(current_level, "Unranked")
+            new_rank_name = TEAM_RANK_NAMES.get(new_level, f"Level {new_level}")
+            
+            # Update user rank
+            await db.users.update_one(
+                {"user_id": user_id},
+                {"$set": {"team_rank_level": new_level}}
+            )
+            
+            # Credit levelup reward
+            reward = 0
+            for rank in TEAM_RANKS:
+                if rank["level"] == new_level:
+                    reward = rank.get("levelup_reward", 0)
+                    break
+            
+            if reward > 0:
+                await db.wallets.update_one(
+                    {"user_id": user_id},
+                    {"$inc": {"balances.usdt": reward}},
+                    upsert=True
+                )
+                
+                # Record reward transaction
+                await db.transactions.insert_one({
+                    "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+                    "user_id": user_id,
+                    "type": "rank_levelup_reward",
+                    "coin": "usdt",
+                    "amount": reward,
+                    "note": f"Auto-upgraded to {new_rank_name} (${reward} reward)",
+                    "old_rank": current_level,
+                    "new_rank": new_level,
+                    "status": "completed",
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                })
+            
+            logger.info(f"AUTO-UPGRADED: {username} from {old_rank_name} to {new_rank_name} (reward: ${reward})")
+            
+            return {
+                "user_id": user_id,
+                "username": username,
+                "old_rank": current_level,
+                "new_rank": new_level,
+                "old_rank_name": old_rank_name,
+                "new_rank_name": new_rank_name,
+                "reward": reward,
+                "stats": stats
+            }
+        
+        return None
+    except Exception as e:
+        logger.error(f"Error upgrading rank for {username}: {e}")
+        return None
+
+
+async def run_rank_upgrade_check(db) -> dict:
+    """
+    Check ALL users and upgrade their ranks if they qualify.
+    Runs hourly to catch any qualifying users.
+    """
+    try:
+        logger.info("Starting automated rank upgrade check...")
+        
+        # Get all users who have at least 1 direct referral (potential rank candidates)
+        referrer_ids = await db.referrals.distinct("referrer_id", {"level": 1})
+        
+        logger.info(f"Checking {len(referrer_ids)} users with referrals...")
+        
+        upgraded_users = []
+        checked_count = 0
+        
+        for user_id in referrer_ids:
+            # Get username
+            user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "username": 1})
+            username = user.get("username", "Unknown") if user else "Unknown"
+            
+            # Check and upgrade
+            result = await auto_upgrade_user_rank(db, user_id, username)
+            if result:
+                upgraded_users.append(result)
+            
+            checked_count += 1
+            
+            # Log progress every 100 users
+            if checked_count % 100 == 0:
+                logger.info(f"Rank check progress: {checked_count}/{len(referrer_ids)} users")
+        
+        summary = {
+            "checked_count": checked_count,
+            "upgraded_count": len(upgraded_users),
+            "upgraded_users": upgraded_users,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+        if upgraded_users:
+            logger.info(f"Rank upgrade complete: {len(upgraded_users)} users upgraded!")
+            for u in upgraded_users:
+                logger.info(f"  - {u['username']}: {u['old_rank_name']} -> {u['new_rank_name']} (${u['reward']})")
+        else:
+            logger.info("Rank upgrade complete: No users needed upgrading")
+        
+        return summary
+        
+    except Exception as e:
+        logger.error(f"Error in rank upgrade check: {e}")
+        return {"error": str(e)}
+
+
+async def hourly_rank_upgrade_job(db):
+    """
+    Background job that runs every hour to check and upgrade user ranks.
+    """
+    logger.info("Hourly rank upgrade job started")
+    
+    # Run immediately on startup
+    await asyncio.sleep(10)  # Wait 10s for services to stabilize
+    await run_rank_upgrade_check(db)
+    
+    while True:
+        try:
+            # Wait 1 hour
+            await asyncio.sleep(3600)
+            
+            # Run rank check
+            await run_rank_upgrade_check(db)
+                
+        except Exception as e:
+            logger.error(f"Error in hourly rank job: {e}")
+            await asyncio.sleep(300)  # Wait 5 min on error
+
+
 # Main entry point for standalone execution
 async def main():
-    """Main function to run deposit monitoring and salary job"""
+    """Main function to run deposit monitoring, salary job, and rank upgrades"""
     from motor.motor_asyncio import AsyncIOMotorClient
     from dotenv import load_dotenv
     
@@ -1036,12 +1329,13 @@ async def main():
     client = AsyncIOMotorClient(mongo_url)
     db = client[db_name]
     
-    logger.info("Starting deposit system with midnight salary job...")
+    logger.info("Starting deposit system with salary + rank upgrade jobs...")
     
-    # Run both jobs concurrently
+    # Run all jobs concurrently
     await asyncio.gather(
         deposit_monitor_loop(db),
-        midnight_salary_job(db)
+        midnight_salary_job(db),
+        hourly_rank_upgrade_job(db)
     )
 
 
