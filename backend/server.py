@@ -6171,6 +6171,194 @@ async def fix_wrong_bronze_ranks(admin: dict = Depends(get_current_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/admin/backfill-referral-bonuses")
+async def backfill_referral_bonuses(admin: dict = Depends(get_current_admin)):
+    """
+    Find users who deposited but their referrer didn't get 5% bonus.
+    Credit the missing bonuses.
+    """
+    try:
+        # Find all users who have deposited (first_deposit_done = True) and have a referrer
+        users_with_deposits = await db.wallets.find(
+            {"first_deposit_done": True}
+        ).to_list(length=10000)
+        
+        credited_bonuses = []
+        already_credited = []
+        no_referrer = []
+        
+        for wallet in users_with_deposits:
+            user_id = wallet.get("user_id")
+            if not user_id:
+                continue
+            
+            # Get user info to find referrer
+            user_doc = await db.users.find_one({"user_id": user_id})
+            if not user_doc:
+                continue
+            
+            referrer_id = user_doc.get("referred_by")
+            username = user_doc.get("username", "Unknown")
+            
+            if not referrer_id:
+                no_referrer.append({"user_id": user_id, "username": username})
+                continue
+            
+            # Check if referral bonus was already given
+            existing_bonus = await db.transactions.find_one({
+                "user_id": referrer_id,
+                "type": "first_deposit_referral_bonus",
+                "note": {"$regex": user_id}
+            })
+            
+            # Also check by amount pattern (old format)
+            if not existing_bonus:
+                existing_bonus = await db.transactions.find_one({
+                    "user_id": referrer_id,
+                    "type": "first_deposit_referral_bonus"
+                })
+            
+            if existing_bonus:
+                already_credited.append({
+                    "user_id": user_id,
+                    "username": username,
+                    "referrer_id": referrer_id,
+                    "bonus_amount": existing_bonus.get("amount", 0)
+                })
+                continue
+            
+            # Calculate bonus based on total deposited
+            total_deposited = wallet.get("total_deposited", 0)
+            if total_deposited == 0:
+                # Check futures_balance minus welcome_bonus
+                futures_balance = wallet.get("balances", {}).get("usdt", 0)
+                welcome_bonus = user_doc.get("welcome_bonus_amount", 25)
+                total_deposited = max(0, futures_balance - welcome_bonus)
+            
+            if total_deposited <= 0:
+                continue
+            
+            # Calculate 5% bonus
+            referral_bonus = total_deposited * 0.05
+            
+            if referral_bonus <= 0:
+                continue
+            
+            # Credit bonus to referrer
+            await db.wallets.update_one(
+                {"user_id": referrer_id},
+                {"$inc": {"balances.usdt": referral_bonus}},
+                upsert=True
+            )
+            
+            # Record transaction
+            await db.transactions.insert_one({
+                "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+                "user_id": referrer_id,
+                "type": "first_deposit_referral_bonus",
+                "coin": "usdt",
+                "amount": referral_bonus,
+                "note": f"Backfill: 5% bonus from {username}'s deposit of ${total_deposited}",
+                "from_user": user_id,
+                "status": "completed",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            
+            # Get referrer name
+            referrer_doc = await db.users.find_one({"user_id": referrer_id})
+            referrer_name = referrer_doc.get("username", "Unknown") if referrer_doc else "Unknown"
+            
+            credited_bonuses.append({
+                "depositor_user_id": user_id,
+                "depositor_username": username,
+                "deposit_amount": total_deposited,
+                "referrer_id": referrer_id,
+                "referrer_username": referrer_name,
+                "bonus_credited": referral_bonus
+            })
+        
+        total_bonus = sum(b["bonus_credited"] for b in credited_bonuses)
+        
+        return {
+            "success": True,
+            "total_users_with_deposits": len(users_with_deposits),
+            "newly_credited_count": len(credited_bonuses),
+            "already_credited_count": len(already_credited),
+            "no_referrer_count": len(no_referrer),
+            "total_bonus_credited": total_bonus,
+            "newly_credited": credited_bonuses,
+            "already_credited": already_credited[:10],  # Limit output
+            "no_referrer": no_referrer[:10]  # Limit output
+        }
+        
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/check-referral-bonuses")
+async def check_referral_bonuses(admin: dict = Depends(get_current_admin)):
+    """Check which depositors' referrers are missing their 5% bonus"""
+    try:
+        # Find all users who have deposited
+        users_with_deposits = await db.wallets.find(
+            {"first_deposit_done": True}
+        ).to_list(length=10000)
+        
+        missing_bonus = []
+        has_bonus = []
+        
+        for wallet in users_with_deposits:
+            user_id = wallet.get("user_id")
+            if not user_id:
+                continue
+            
+            user_doc = await db.users.find_one({"user_id": user_id})
+            if not user_doc:
+                continue
+            
+            referrer_id = user_doc.get("referred_by")
+            username = user_doc.get("username", "Unknown")
+            
+            if not referrer_id:
+                continue
+            
+            # Check if bonus exists
+            existing_bonus = await db.transactions.find_one({
+                "user_id": referrer_id,
+                "type": "first_deposit_referral_bonus"
+            })
+            
+            total_deposited = wallet.get("total_deposited", 0)
+            
+            if existing_bonus:
+                has_bonus.append({
+                    "depositor": username,
+                    "referrer_id": referrer_id[:12] + "...",
+                    "bonus": existing_bonus.get("amount", 0)
+                })
+            else:
+                missing_bonus.append({
+                    "depositor_id": user_id,
+                    "depositor": username,
+                    "referrer_id": referrer_id,
+                    "deposit_amount": total_deposited,
+                    "expected_bonus": total_deposited * 0.05
+                })
+        
+        return {
+            "total_depositors_with_referrer": len(missing_bonus) + len(has_bonus),
+            "missing_bonus_count": len(missing_bonus),
+            "has_bonus_count": len(has_bonus),
+            "missing_bonus": missing_bonus,
+            "has_bonus": has_bonus[:10]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
