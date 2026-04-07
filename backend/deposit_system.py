@@ -712,7 +712,20 @@ class USDTForwarder:
 
 
 # Initialize global instances
-MASTER_SEED = os.environ.get("DEPOSIT_MASTER_SEED", secrets.token_hex(32))
+# Use GAS_WALLET_MNEMONIC as master seed (MUST be set in .env)
+_mnemonic = os.environ.get("GAS_WALLET_MNEMONIC", "")
+if _mnemonic:
+    # Derive seed from mnemonic for consistent address generation
+    import hashlib
+    MASTER_SEED = hashlib.sha256(_mnemonic.encode()).hexdigest()
+    logger.info("Using GAS_WALLET_MNEMONIC as master seed for address generation")
+else:
+    # Fallback - but this will cause issues! Log a warning
+    MASTER_SEED = os.environ.get("DEPOSIT_MASTER_SEED", "")
+    if not MASTER_SEED:
+        logger.error("WARNING: No GAS_WALLET_MNEMONIC or DEPOSIT_MASTER_SEED set! Addresses will be unrecoverable!")
+        MASTER_SEED = secrets.token_hex(32)
+        
 address_generator = DepositAddressGenerator(MASTER_SEED)
 blockchain_monitor = BlockchainMonitor()
 gas_station = GasStationWallet(GAS_WALLET_MNEMONIC)
@@ -763,9 +776,8 @@ async def get_or_create_deposit_address(db, user_id: str, network: str) -> Dict:
 async def check_and_process_deposits(db):
     """Background task to check and process all pending deposits with auto-forwarding"""
     try:
-        import os
-        master_seed = os.environ.get("DEPOSIT_MASTER_SEED", "")
-        addr_gen = DepositAddressGenerator(master_seed) if master_seed else None
+        # Use the global address generator (now using GAS_WALLET_MNEMONIC)
+        addr_gen = address_generator
         
         addresses = await db.deposit_addresses.find({"is_active": True}).to_list(1000)
         
@@ -775,7 +787,7 @@ async def check_and_process_deposits(db):
             user_id = addr_doc["user_id"]
             private_key = addr_doc.get("private_key_encrypted", "")
             
-            # If private key not stored, regenerate it
+            # If private key not stored, regenerate it using the consistent address generator
             if not private_key and addr_gen and network in ["bsc", "eth", "polygon"]:
                 addr_info = addr_gen.generate_evm_address(user_id, network, 0)
                 if addr_info and addr_info["address"].lower() == address.lower():
@@ -785,7 +797,9 @@ async def check_and_process_deposits(db):
                         {"_id": addr_doc["_id"]},
                         {"$set": {"private_key_encrypted": private_key}}
                     )
-                    logger.info(f"Regenerated private key for {address}")
+                    logger.info(f"Regenerated and stored private key for {address}")
+                else:
+                    logger.warning(f"Address mismatch for {user_id} on {network}: DB has {address}, generated {addr_info['address'] if addr_info else 'None'}")
             
             # Check for new deposits
             deposits = await blockchain_monitor.check_deposits(address, network)
