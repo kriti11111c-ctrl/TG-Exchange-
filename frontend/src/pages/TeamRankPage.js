@@ -280,31 +280,51 @@ const TeamRankPage = () => {
       <div className="px-4">
         {activeTab === "overview" && (
           <div className={`${cardBg} rounded-xl overflow-hidden`}>
-            {/* Simple Rank List - No Emojis */}
+            {/* Simple Rank List - With Self Deposit Required */}
             {allRanks.map((rank) => {
               const isCurrentRank = rankInfo?.current_rank?.level === rank.level;
               
               return (
                 <div 
                   key={rank.level}
-                  className={`flex items-center justify-between p-4 border-b last:border-0 ${isDark ? 'border-[#2B3139]' : 'border-gray-100'} ${
+                  className={`p-4 border-b last:border-0 ${isDark ? 'border-[#2B3139]' : 'border-gray-100'} ${
                     isCurrentRank ? (isDark ? 'bg-[#00E5FF]/10' : 'bg-yellow-50') : ''
                   }`}
                 >
-                  {/* Name */}
-                  <div className="flex items-center gap-2">
-                    <span className={`font-medium ${text}`}>{rank.name}</span>
-                    {isCurrentRank && (
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-[#0ECB81] text-white font-medium">
-                        YOU
+                  {/* Top Row - Name and Requirements */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`font-medium ${text}`}>{rank.name}</span>
+                      {isCurrentRank && (
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-[#0ECB81] text-white font-medium">
+                          YOU
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Requirements */}
+                    <div className="text-right">
+                      <span className={textMuted}>
+                        {rank.bronze_required > 0 ? `${rank.bronze_required}B/` : ''}{rank.team_required}T
                       </span>
-                    )}
+                    </div>
                   </div>
                   
-                  {/* Requirements */}
-                  <span className={textMuted}>
-                    {rank.direct_required}D/{rank.team_required}T
-                  </span>
+                  {/* Bottom Row - Self Deposit Required & Monthly Salary */}
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center gap-1">
+                      <Wallet size={14} className="text-[#F0B90B]" />
+                      <span className="text-xs text-[#F0B90B] font-medium">
+                        Self Deposit: ${rank.self_deposit_required || (rank.level === 1 ? 50 : rank.level === 2 ? 200 : rank.level === 3 ? 500 : rank.level === 4 ? 1000 : rank.level === 5 ? 2000 : rank.level === 6 ? 5000 : rank.level === 7 ? 10000 : rank.level === 8 ? 15000 : rank.level === 9 ? 30000 : 50000)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Money size={14} className="text-[#0ECB81]" />
+                      <span className="text-xs text-[#0ECB81] font-medium">
+                        ${rank.monthly_salary}/mo
+                      </span>
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -382,12 +402,21 @@ const TeamRankPage = () => {
               </div>
             </div>
             <div className="flex gap-3">
-              <div className="w-6 h-6 rounded-full bg-[#3498DB] flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-xs font-bold">3</span>
+              <div className="w-6 h-6 rounded-full bg-[#F0B90B] flex items-center justify-center flex-shrink-0">
+                <span className="text-black text-xs font-bold">3</span>
               </div>
               <div>
-                <p className={text}>Earn Rewards</p>
-                <p className={`text-xs ${textMuted}`}>Salary paid 3x/month (9th, 19th, 29th)</p>
+                <p className={text}>Maintain Self Deposit</p>
+                <p className={`text-xs ${textMuted}`}>Keep required amount in Futures to receive salary</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <div className="w-6 h-6 rounded-full bg-[#3498DB] flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-xs font-bold">4</span>
+              </div>
+              <div>
+                <p className={text}>Earn Daily Salary</p>
+                <p className={`text-xs ${textMuted}`}>Salary credited at midnight IST daily</p>
               </div>
             </div>
           </div>
