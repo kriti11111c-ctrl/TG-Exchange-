@@ -315,7 +315,7 @@ const TeamRankPage = () => {
                     <div className="flex items-center gap-1">
                       <Wallet size={14} className="text-[#F0B90B]" />
                       <span className="text-xs text-[#F0B90B] font-medium">
-                        Self Deposit: ${rank.self_deposit_required || (rank.level === 1 ? 50 : rank.level === 2 ? 200 : rank.level === 3 ? 500 : rank.level === 4 ? 1000 : rank.level === 5 ? 2000 : rank.level === 6 ? 5000 : rank.level === 7 ? 10000 : rank.level === 8 ? 15000 : rank.level === 9 ? 30000 : 50000)}
+                        Future Balance: ${rank.self_deposit_required || (rank.level === 1 ? 50 : rank.level === 2 ? 200 : rank.level === 3 ? 500 : rank.level === 4 ? 1000 : rank.level === 5 ? 2000 : rank.level === 6 ? 5000 : rank.level === 7 ? 10000 : rank.level === 8 ? 15000 : rank.level === 9 ? 30000 : 50000)}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
@@ -406,7 +406,7 @@ const TeamRankPage = () => {
                 <span className="text-black text-xs font-bold">3</span>
               </div>
               <div>
-                <p className={text}>Maintain Self Deposit</p>
+                <p className={text}>Maintain Future Balance</p>
                 <p className={`text-xs ${textMuted}`}>Keep required amount in Futures to receive salary</p>
               </div>
             </div>

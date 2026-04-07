@@ -465,9 +465,9 @@ const RankPage = () => {
                         <p className="text-xs text-[#0ECB81] font-semibold">
                           Reward: ${rankBenefits[rank.level]?.reward || 0}
                         </p>
-                        {/* Self Deposit Required */}
+                        {/* Future Balance Required */}
                         <p className="text-xs text-[#F0B90B] font-semibold">
-                          Self Deposit: ${selfDepositRequired[rank.level] || 50}
+                          Future Balance: ${selfDepositRequired[rank.level] || 50}
                         </p>
                       </div>
                     </div>
@@ -608,13 +608,13 @@ const RankPage = () => {
                             }}
                           >
                             <p className="text-[#F0B90B] text-lg font-bold">${selfDepositRequired[rank.level] >= 1000 ? (selfDepositRequired[rank.level]/1000) + 'K' : selfDepositRequired[rank.level]}</p>
-                            <p className={`text-[10px] ${textMuted} mt-1`}>Self Dep</p>
+                            <p className={`text-[10px] ${textMuted} mt-1`}>Future Bal</p>
                           </div>
                         </div>
 
                         {/* Footer Note */}
                         <p className={`text-[10px] ${textMuted} text-center mt-4`}>
-                          * Self Deposit = Futures Balance required to receive monthly salary
+                          * Future Balance = Min amount required in Futures wallet to receive salary
                         </p>
                       </div>
                     </div>
