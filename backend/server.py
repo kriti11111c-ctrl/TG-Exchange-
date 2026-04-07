@@ -5939,6 +5939,12 @@ async def download_teamrank_page():
     file_path = Path("/app/frontend/src/pages/TeamRankPage.js")
     return file_path.read_text()
 
+@app.get("/api/download-rank-page", response_class=PlainTextResponse)
+async def download_rank_page():
+    """Download the RankPage.js file (VIP Rank page)"""
+    file_path = Path("/app/frontend/src/pages/RankPage.js")
+    return file_path.read_text()
+
 
 
 @app.get("/api/debug/team-stats/{user_id}")

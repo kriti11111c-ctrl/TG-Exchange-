@@ -76,6 +76,20 @@ const RankPage = () => {
     10: { bronze: 10, team: 8000 }      // 10 Bronze / 8000T
   };
 
+  // Self Deposit Required to MAINTAIN Rank (Futures Balance)
+  const selfDepositRequired = {
+    1: 50,      // Bronze - $50
+    2: 200,     // Silver - $200
+    3: 500,     // Gold - $500
+    4: 1000,    // Platinum - $1K
+    5: 2000,    // Diamond - $2K
+    6: 5000,    // Master - $5K
+    7: 10000,   // Grandmaster - $10K
+    8: 15000,   // Champion - $15K
+    9: 30000,   // Legend - $30K
+    10: 50000   // Immortal - $50K
+  };
+
   // Format requirement text
   const formatRequirement = (level) => {
     const req = rankRequirements[level];
@@ -451,6 +465,10 @@ const RankPage = () => {
                         <p className="text-xs text-[#0ECB81] font-semibold">
                           Reward: ${rankBenefits[rank.level]?.reward || 0}
                         </p>
+                        {/* Self Deposit Required */}
+                        <p className="text-xs text-[#F0B90B] font-semibold">
+                          Self Deposit: ${selfDepositRequired[rank.level] || 50}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -551,7 +569,7 @@ const RankPage = () => {
                         </div>
 
                         {/* Benefits Grid */}
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-4 gap-2">
                           <div 
                             className="text-center p-3 rounded-xl"
                             style={{ 
@@ -559,7 +577,7 @@ const RankPage = () => {
                               border: '1px solid rgba(240, 185, 11, 0.2)'
                             }}
                           >
-                            <p className="text-[#00E5FF] text-xl font-bold">{benefits?.bonus}%</p>
+                            <p className="text-[#00E5FF] text-lg font-bold">{benefits?.bonus}%</p>
                             <p className={`text-[10px] ${textMuted} mt-1`}>Bonus</p>
                           </div>
                           <div 
@@ -569,7 +587,7 @@ const RankPage = () => {
                               border: '1px solid rgba(14, 203, 129, 0.2)'
                             }}
                           >
-                            <p className="text-[#0ECB81] text-xl font-bold">${benefits?.salary >= 1000 ? (benefits?.salary/1000) + 'K' : benefits?.salary}</p>
+                            <p className="text-[#0ECB81] text-lg font-bold">${benefits?.salary >= 1000 ? (benefits?.salary/1000) + 'K' : benefits?.salary}</p>
                             <p className={`text-[10px] ${textMuted} mt-1`}>Monthly</p>
                           </div>
                           <div 
@@ -579,17 +597,24 @@ const RankPage = () => {
                               border: '1px solid rgba(59, 130, 246, 0.2)'
                             }}
                           >
-                            <p className="text-[#3B82F6] text-xl font-bold">${benefits?.reward >= 1000 ? (benefits?.reward/1000) + 'K' : benefits?.reward}</p>
+                            <p className="text-[#3B82F6] text-lg font-bold">${benefits?.reward >= 1000 ? (benefits?.reward/1000) + 'K' : benefits?.reward}</p>
                             <p className={`text-[10px] ${textMuted} mt-1`}>Reward</p>
+                          </div>
+                          <div 
+                            className="text-center p-3 rounded-xl"
+                            style={{ 
+                              background: isDark ? 'rgba(240, 185, 11, 0.1)' : 'rgba(240, 185, 11, 0.15)',
+                              border: '1px solid rgba(240, 185, 11, 0.3)'
+                            }}
+                          >
+                            <p className="text-[#F0B90B] text-lg font-bold">${selfDepositRequired[rank.level] >= 1000 ? (selfDepositRequired[rank.level]/1000) + 'K' : selfDepositRequired[rank.level]}</p>
+                            <p className={`text-[10px] ${textMuted} mt-1`}>Self Dep</p>
                           </div>
                         </div>
 
                         {/* Footer Note */}
                         <p className={`text-[10px] ${textMuted} text-center mt-4`}>
-                          {requirements?.type === 'direct' 
-                            ? '* Min $50 deposit required per referral'
-                            : '* Bronze rank members count towards requirement'
-                          }
+                          * Self Deposit = Futures Balance required to receive monthly salary
                         </p>
                       </div>
                     </div>
