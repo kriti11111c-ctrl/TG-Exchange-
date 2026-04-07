@@ -39,6 +39,9 @@ const AdminWithdrawalsPage = lazy(() => import("./pages/AdminWithdrawalsPage"));
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
 
+// Configure axios defaults for faster responses
+axios.defaults.timeout = 15000; // 15 second timeout
+
 // Axios interceptor to add auth token to all requests
 axios.interceptors.request.use(
   (config) => {

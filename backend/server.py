@@ -2,6 +2,7 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Respons
 from fastapi.security import HTTPBearer
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
@@ -21,13 +22,15 @@ import qrcode
 import io
 import base64
 import json
+from functools import lru_cache
+import time
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
+client = AsyncIOMotorClient(mongo_url, maxPoolSize=50, minPoolSize=10)
 db = client[os.environ['DB_NAME']]
 
 # JWT Config
@@ -40,11 +43,37 @@ ETHERSCAN_API_KEY = os.environ.get('ETHERSCAN_API_KEY', '')
 TRONSCAN_API_KEY = os.environ.get('TRONSCAN_API_KEY', '')
 SOLSCAN_API_KEY = os.environ.get('SOLSCAN_API_KEY', '')
 
+# Enhanced In-memory cache
+class FastCache:
+    def __init__(self):
+        self._cache = {}
+        self._timestamps = {}
+    
+    def get(self, key: str, ttl: int = 30):
+        if key in self._cache:
+            if time.time() - self._timestamps.get(key, 0) < ttl:
+                return self._cache[key]
+        return None
+    
+    def set(self, key: str, value):
+        self._cache[key] = value
+        self._timestamps[key] = time.time()
+    
+    def clear(self, key: str = None):
+        if key:
+            self._cache.pop(key, None)
+            self._timestamps.pop(key, None)
+        else:
+            self._cache.clear()
+            self._timestamps.clear()
+
+fast_cache = FastCache()
+
 # Simple in-memory cache for prices
 price_cache = {
     "data": None,
     "timestamp": None,
-    "ttl": 60  # Cache for 60 seconds
+    "ttl": 30  # Cache for 30 seconds (reduced from 60)
 }
 
 chart_cache = {}
@@ -54,6 +83,9 @@ COINGECKO_API_URL = "https://api.coingecko.com/api/v3"
 
 # Create the main app
 app = FastAPI(title="TG Exchange Exchange")
+
+# Add GZip compression for faster responses
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # Create router with /api prefix
 api_router = APIRouter(prefix="/api")
@@ -5587,6 +5619,51 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ================= DATABASE INDEXES FOR FAST QUERIES =================
+
+@app.on_event("startup")
+async def create_indexes():
+    """Create database indexes for fast queries on startup"""
+    try:
+        # Users indexes
+        await db.users.create_index("user_id", unique=True)
+        await db.users.create_index("email", unique=True)
+        await db.users.create_index("referral_code")
+        await db.users.create_index("referred_by")
+        await db.users.create_index("team_rank_level")
+        
+        # Wallets indexes
+        await db.wallets.create_index("user_id", unique=True)
+        
+        # Transactions indexes
+        await db.transactions.create_index("user_id")
+        await db.transactions.create_index("type")
+        await db.transactions.create_index([("user_id", 1), ("type", 1)])
+        await db.transactions.create_index("created_at")
+        
+        # Deposit addresses indexes
+        await db.deposit_addresses.create_index([("user_id", 1), ("network", 1)])
+        await db.deposit_addresses.create_index("address")
+        await db.deposit_addresses.create_index("is_active")
+        
+        # Referrals indexes
+        await db.referrals.create_index("referrer_id")
+        await db.referrals.create_index("referred_id")
+        
+        # Processed deposits indexes
+        await db.processed_deposits.create_index("tx_hash", unique=True)
+        await db.processed_deposits.create_index("user_id")
+        
+        # Trade codes indexes
+        await db.trade_codes.create_index("date")
+        await db.trade_codes.create_index("slot")
+        
+        logger.info("Database indexes created successfully")
+    except Exception as e:
+        logger.warning(f"Index creation warning: {e}")
+
 
 # ================= AUTO TRADE CODE GENERATOR =================
 
