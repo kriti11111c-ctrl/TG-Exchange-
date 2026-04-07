@@ -16,15 +16,15 @@ const LoadingPage = ({ onComplete, minimal = false }) => {
     }));
     setCandles(generatedCandles);
     
-    // Faster loading: complete in ~1.2 seconds (progress +5 every 60ms)
+    // Ultra-fast loading: complete in ~0.6 seconds (progress +10 every 60ms)
     const timer = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) {
           clearInterval(timer);
-          setTimeout(() => onComplete && onComplete(), 200);
+          setTimeout(() => onComplete && onComplete(), 100);
           return 100;
         }
-        return prev + 5;
+        return prev + 10;
       });
     }, 60);
     

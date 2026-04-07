@@ -170,9 +170,10 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Parallel fetch for speed
         const [walletRes, pricesRes] = await Promise.all([
           axios.get(`${API}/wallet`, { withCredentials: true }),
-          axios.get(`${API}/market/prices`)
+          axios.get(`${API}/market/prices`, { timeout: 5000 }) // Faster timeout for prices
         ]);
         setWallet(walletRes.data);
         setPrices(pricesRes.data);
@@ -186,12 +187,13 @@ const Dashboard = () => {
     fetchData();
     fetchTradeCodes(); // Fetch trade codes on mount
     
+    // Reduced polling interval from 30s to 60s for better performance
     const interval = setInterval(() => {
       if (!isConnected) {
         fetchData();
       }
-      fetchTradeCodes(); // Refresh trade codes every 30 seconds
-    }, 30000);
+      fetchTradeCodes();
+    }, 60000);
     return () => clearInterval(interval);
   }, [isConnected]);
 

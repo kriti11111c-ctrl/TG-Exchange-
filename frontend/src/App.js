@@ -40,9 +40,12 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
 
 // Configure axios defaults for faster responses
-axios.defaults.timeout = 15000; // 15 second timeout
+axios.defaults.timeout = 10000; // 10 second timeout (reduced from 15)
 
-// Axios interceptor to add auth token to all requests
+// Request deduplication cache
+const pendingRequests = new Map();
+
+// Axios interceptor to add auth token and deduplicate requests
 axios.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token');

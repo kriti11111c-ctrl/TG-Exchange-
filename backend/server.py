@@ -73,7 +73,7 @@ fast_cache = FastCache()
 price_cache = {
     "data": None,
     "timestamp": None,
-    "ttl": 30  # Cache for 30 seconds (reduced from 60)
+    "ttl": 60  # Cache for 60 seconds (increased for better performance)
 }
 
 chart_cache = {}
