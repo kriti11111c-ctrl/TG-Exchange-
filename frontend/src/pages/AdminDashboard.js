@@ -55,24 +55,19 @@ const AdminDashboard = () => {
   const [adminData, setAdminData] = useState({});
   const [isReady, setIsReady] = useState(false);
 
-  // Load admin data on mount
+  // Load admin data on mount - FASTER
   useEffect(() => {
-    // Small delay to ensure localStorage is updated after login redirect
-    const timer = setTimeout(() => {
-      const token = localStorage.getItem("admin_token");
-      const data = JSON.parse(localStorage.getItem("admin_data") || "{}");
-      
-      if (!token) {
-        navigate("/admin");
-        return;
-      }
-      
-      setAdminToken(token);
-      setAdminData(data);
-      setIsReady(true);
-    }, 100);
+    const token = localStorage.getItem("admin_token");
+    const data = JSON.parse(localStorage.getItem("admin_data") || "{}");
     
-    return () => clearTimeout(timer);
+    if (!token) {
+      navigate("/admin");
+      return;
+    }
+    
+    setAdminToken(token);
+    setAdminData(data);
+    setIsReady(true);
   }, [navigate]);
 
   useEffect(() => {
@@ -92,13 +87,17 @@ const AdminDashboard = () => {
     try {
       const headers = { Authorization: `Bearer ${token}` };
       
-      const [statsRes, depositsRes, usersRes] = await Promise.all([
-        axios.get(`${API}/admin/stats`, { headers }),
-        axios.get(`${API}/admin/deposit-requests?status=pending`, { headers }),
-        axios.get(`${API}/admin/users`, { headers })
+      // Fetch stats first for quick display, then other data
+      const statsRes = await axios.get(`${API}/admin/stats`, { headers, timeout: 8000 });
+      setStats(statsRes.data);
+      setLoading(false); // Show stats immediately
+      
+      // Fetch other data in background
+      const [depositsRes, usersRes] = await Promise.all([
+        axios.get(`${API}/admin/deposit-requests?status=pending`, { headers, timeout: 10000 }),
+        axios.get(`${API}/admin/users`, { headers, timeout: 10000 })
       ]);
 
-      setStats(statsRes.data);
       setPendingDeposits(depositsRes.data.requests || []);
       setAllUsers(usersRes.data.users || []);
     } catch (error) {
@@ -110,7 +109,6 @@ const AdminDashboard = () => {
         return;
       }
       console.error("Fetch error:", error);
-    } finally {
       setLoading(false);
     }
   };
@@ -255,8 +253,12 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+      <div className="min-h-screen bg-[#0A0A0A] flex flex-col items-center justify-center gap-4">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center animate-pulse">
+          <ShieldCheck size={32} weight="bold" className="text-white" />
+        </div>
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-orange-500"></div>
+        <p className="text-gray-400 text-sm">Loading Admin Panel...</p>
       </div>
     );
   }

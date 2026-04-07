@@ -4139,23 +4139,25 @@ async def process_deposit_request(approval: DepositApproval, admin: dict = Depen
 
 @api_router.get("/admin/users")
 async def get_all_users(admin: dict = Depends(get_current_admin)):
-    """Admin: Get all users with their wallet balances and credentials"""
-    users = await db.users.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    """Admin: Get all users with their wallet balances and credentials - OPTIMIZED"""
+    # Fetch users and wallets in parallel
+    users_task = db.users.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    wallets_task = db.wallets.find({}, {"_id": 0}).to_list(1000)
     
-    # Get wallet info for each user
+    users, wallets = await asyncio.gather(users_task, wallets_task)
+    
+    # Create wallet lookup dict for O(1) access
+    wallet_map = {w.get("user_id"): w for w in wallets}
+    
+    # Merge wallet info into users
     for user in users:
-        wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
-        user["wallet"] = wallet if wallet else {"balances": {}}
-        # Include password hash for admin view (masked display in frontend)
+        user["wallet"] = wallet_map.get(user["user_id"], {"balances": {}})
         user["has_password"] = bool(user.get("password_hash") or user.get("password"))
-        # Include blocked status
         user["is_blocked"] = user.get("is_blocked", False)
-    
-    total_users = len(users)
     
     return {
         "users": users,
-        "total": total_users
+        "total": len(users)
     }
 
 @api_router.post("/admin/block-user")
