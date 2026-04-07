@@ -54,6 +54,20 @@ TEAM_RANK_NAMES = {
     10: "Immortal"
 }
 
+# Self Deposit Required to MAINTAIN Rank (Futures Balance)
+RANK_SELF_DEPOSIT_REQUIRED = {
+    1: 50,      # Bronze - $50
+    2: 200,     # Silver - $200
+    3: 500,     # Gold - $500
+    4: 1000,    # Platinum - $1K
+    5: 2000,    # Diamond - $2K
+    6: 5000,    # Master - $5K
+    7: 10000,   # Grandmaster - $10K
+    8: 15000,   # Champion - $15K
+    9: 30000,   # Legend - $30K
+    10: 50000   # Immortal - $50K
+}
+
 # Team Rank Requirements (same as server.py)
 MIN_DEPOSIT_FOR_RANK = 50.0
 
@@ -938,6 +952,8 @@ async def credit_daily_salary(db):
     Credit daily salary to all users who have achieved a team rank.
     Daily salary = Monthly salary / 30
     Runs at 12:00 AM IST every day.
+    
+    IMPORTANT: User must maintain required self deposit (futures balance) to receive salary.
     """
     try:
         # Find all users with team rank >= 1
@@ -947,6 +963,7 @@ async def credit_daily_salary(db):
         ).to_list(length=10000)
         
         credited_count = 0
+        skipped_count = 0
         total_salary_distributed = 0
         
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -968,6 +985,23 @@ async def credit_daily_salary(db):
             
             if existing_salary:
                 logger.info(f"Salary already credited today for {username}")
+                continue
+            
+            # CHECK SELF DEPOSIT REQUIREMENT
+            wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0})
+            if wallet:
+                futures_balance = wallet.get("futures_balance", 0) or 0
+                required_deposit = RANK_SELF_DEPOSIT_REQUIRED.get(rank_level, 0)
+                
+                if futures_balance < required_deposit:
+                    rank_name = TEAM_RANK_NAMES.get(rank_level, f"Level {rank_level}")
+                    logger.info(f"SKIPPED salary for {username} ({rank_name}): Futures balance ${futures_balance} < required ${required_deposit}")
+                    skipped_count += 1
+                    continue
+            else:
+                # No wallet = no deposit = skip
+                logger.info(f"SKIPPED salary for {username}: No wallet found")
+                skipped_count += 1
                 continue
             
             # Calculate daily salary
@@ -1003,7 +1037,7 @@ async def credit_daily_salary(db):
             total_salary_distributed += daily_salary
             logger.info(f"Credited ${daily_salary} daily salary to {username} ({rank_name})")
         
-        logger.info(f"Daily salary distribution complete: {credited_count} users, ${total_salary_distributed} total")
+        logger.info(f"Daily salary distribution complete: {credited_count} users credited, {skipped_count} skipped (low balance), ${total_salary_distributed} total")
         return {
             "credited_count": credited_count,
             "total_distributed": total_salary_distributed

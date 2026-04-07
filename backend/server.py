@@ -242,6 +242,20 @@ MIN_WITHDRAWAL = 10.0
 # Silver onwards: X Bronze rank users + Y total team
 MIN_DEPOSIT_FOR_RANK = 50.0
 
+# Self Deposit Required to MAINTAIN Rank (Futures Balance)
+RANK_SELF_DEPOSIT_REQUIRED = {
+    1: 50,      # Bronze - $50
+    2: 200,     # Silver - $200
+    3: 500,     # Gold - $500
+    4: 1000,    # Platinum - $1K
+    5: 2000,    # Diamond - $2K
+    6: 5000,    # Master - $5K
+    7: 10000,   # Grandmaster - $10K
+    8: 15000,   # Champion - $15K
+    9: 30000,   # Legend - $30K
+    10: 50000   # Immortal - $50K
+}
+
 TEAM_RANKS = [
     {
         "level": 1, 
@@ -254,6 +268,7 @@ TEAM_RANKS = [
         "bonus_percent": 0.50,
         "monthly_salary": 30,
         "levelup_reward": 20,
+        "self_deposit_required": 50,
         "color": "#9CA3AF"
     },
     {
@@ -267,6 +282,7 @@ TEAM_RANKS = [
         "bonus_percent": 1.00,
         "monthly_salary": 100,
         "levelup_reward": 100,
+        "self_deposit_required": 200,
         "color": "#60A5FA"
     },
     {
@@ -280,6 +296,7 @@ TEAM_RANKS = [
         "bonus_percent": 1.50,
         "monthly_salary": 250,
         "levelup_reward": 240,
+        "self_deposit_required": 500,
         "color": "#34D399"
     },
     {
@@ -293,6 +310,7 @@ TEAM_RANKS = [
         "bonus_percent": 2.00,
         "monthly_salary": 500,
         "levelup_reward": 500,
+        "self_deposit_required": 1000,
         "color": "#FBBF24"
     },
     {
@@ -306,6 +324,7 @@ TEAM_RANKS = [
         "bonus_percent": 2.50,
         "monthly_salary": 1000,
         "levelup_reward": 975,
+        "self_deposit_required": 2000,
         "color": "#F97316"
     },
     {
@@ -319,6 +338,7 @@ TEAM_RANKS = [
         "bonus_percent": 3.00,
         "monthly_salary": 2000,
         "levelup_reward": 1950,
+        "self_deposit_required": 5000,
         "color": "#3B82F6"
     },
     {
@@ -332,6 +352,7 @@ TEAM_RANKS = [
         "bonus_percent": 3.50,
         "monthly_salary": 4000,
         "levelup_reward": 3250,
+        "self_deposit_required": 10000,
         "color": "#8B5CF6"
     },
     {
@@ -345,6 +366,7 @@ TEAM_RANKS = [
         "bonus_percent": 4.00,
         "monthly_salary": 7000,
         "levelup_reward": 6500,
+        "self_deposit_required": 15000,
         "color": "#EC4899"
     },
     {
@@ -358,6 +380,7 @@ TEAM_RANKS = [
         "bonus_percent": 4.50,
         "monthly_salary": 12000,
         "levelup_reward": 13000,
+        "self_deposit_required": 30000,
         "color": "#F59E0B"
     },
     {
@@ -371,6 +394,7 @@ TEAM_RANKS = [
         "bonus_percent": 5.00,
         "monthly_salary": 20000,
         "levelup_reward": 26000,
+        "self_deposit_required": 50000,
         "color": "#EF4444"
     }
 ]
