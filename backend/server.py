@@ -6431,6 +6431,210 @@ async def get_salary_status(admin: dict = Depends(get_current_admin)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/admin/forward-stuck-deposit")
+async def forward_stuck_deposit(
+    request: Request,
+    admin: dict = Depends(get_current_admin)
+):
+    """
+    Manually forward stuck USDT from user deposit address to admin wallet.
+    Requires: address, network, amount in request body
+    """
+    try:
+        data = await request.json()
+        deposit_address = data.get("address")
+        network = data.get("network", "bsc").lower()
+        
+        if not deposit_address:
+            raise HTTPException(status_code=400, detail="Address required")
+        
+        # Find the deposit address in database
+        deposit_doc = await db.deposit_addresses.find_one({
+            "address": {"$regex": deposit_address, "$options": "i"}
+        })
+        
+        if not deposit_doc:
+            raise HTTPException(status_code=404, detail="Deposit address not found in database")
+        
+        user_id = deposit_doc.get("user_id")
+        private_key = deposit_doc.get("private_key")
+        
+        if not private_key:
+            raise HTTPException(status_code=400, detail="Private key not found for this address")
+        
+        # Import the forwarder
+        from deposit_system import USDTForwarder, ADMIN_WALLETS, NETWORKS
+        from web3 import Web3
+        
+        net_config = NETWORKS.get(network)
+        if not net_config:
+            raise HTTPException(status_code=400, detail=f"Unsupported network: {network}")
+        
+        # Check USDT balance
+        w3 = Web3(Web3.HTTPProvider(net_config["rpc"]))
+        
+        usdt_abi = [
+            {
+                "constant": True,
+                "inputs": [{"name": "_owner", "type": "address"}],
+                "name": "balanceOf",
+                "outputs": [{"name": "balance", "type": "uint256"}],
+                "type": "function"
+            },
+            {
+                "constant": False,
+                "inputs": [
+                    {"name": "_to", "type": "address"},
+                    {"name": "_value", "type": "uint256"}
+                ],
+                "name": "transfer",
+                "outputs": [{"name": "", "type": "bool"}],
+                "type": "function"
+            }
+        ]
+        
+        usdt_contract = w3.eth.contract(
+            address=Web3.to_checksum_address(net_config["usdt_contract"]),
+            abi=usdt_abi
+        )
+        
+        # Get USDT balance
+        checksum_address = Web3.to_checksum_address(deposit_address)
+        usdt_balance_wei = usdt_contract.functions.balanceOf(checksum_address).call()
+        decimals = net_config["decimals"]
+        usdt_balance = usdt_balance_wei / (10 ** decimals)
+        
+        # Get BNB/ETH balance for gas
+        native_balance_wei = w3.eth.get_balance(checksum_address)
+        native_balance = native_balance_wei / (10 ** 18)
+        
+        if usdt_balance <= 0:
+            return {
+                "success": False,
+                "message": "No USDT balance to forward",
+                "usdt_balance": usdt_balance,
+                "native_balance": native_balance
+            }
+        
+        min_gas = net_config.get("min_gas_required", 0.0001)
+        
+        if native_balance < min_gas:
+            return {
+                "success": False,
+                "message": f"Not enough gas! Need {min_gas} native token, have {native_balance}",
+                "usdt_balance": usdt_balance,
+                "native_balance": native_balance,
+                "need_gas": True,
+                "gas_needed": min_gas - native_balance
+            }
+        
+        # Forward USDT to admin wallet
+        admin_wallet = ADMIN_WALLETS.get(network)
+        if not admin_wallet:
+            raise HTTPException(status_code=400, detail="Admin wallet not configured for this network")
+        
+        from eth_account import Account
+        account = Account.from_key(private_key)
+        
+        # Build transaction
+        nonce = w3.eth.get_transaction_count(account.address)
+        gas_price = w3.eth.gas_price
+        
+        tx = usdt_contract.functions.transfer(
+            Web3.to_checksum_address(admin_wallet),
+            usdt_balance_wei
+        ).build_transaction({
+            'from': account.address,
+            'nonce': nonce,
+            'gas': 100000,
+            'gasPrice': gas_price,
+            'chainId': net_config["chain_id"]
+        })
+        
+        # Sign and send
+        signed_tx = w3.eth.account.sign_transaction(tx, private_key)
+        tx_hash = w3.eth.send_raw_transaction(signed_tx.raw_transaction)
+        
+        return {
+            "success": True,
+            "message": f"Successfully forwarded {usdt_balance} USDT to admin wallet",
+            "tx_hash": tx_hash.hex(),
+            "amount": usdt_balance,
+            "from_address": deposit_address,
+            "to_address": admin_wallet,
+            "network": network,
+            "user_id": user_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/check-stuck-deposits")
+async def check_stuck_deposits(admin: dict = Depends(get_current_admin)):
+    """Find all deposit addresses with USDT balance that hasn't been forwarded"""
+    try:
+        from deposit_system import NETWORKS
+        from web3 import Web3
+        import httpx
+        
+        # Get all deposit addresses
+        deposit_addresses = await db.deposit_addresses.find({}).to_list(length=10000)
+        
+        stuck_deposits = []
+        
+        async with httpx.AsyncClient() as client:
+            for dep in deposit_addresses:
+                address = dep.get("address")
+                network = dep.get("network", "bsc").lower()
+                user_id = dep.get("user_id")
+                
+                if network not in ["bsc", "eth", "polygon"]:
+                    continue
+                
+                net_config = NETWORKS.get(network)
+                if not net_config:
+                    continue
+                
+                try:
+                    # Use scanner API to check balance
+                    scanner_api = net_config.get("scanner_api")
+                    usdt_contract = net_config.get("usdt_contract")
+                    
+                    url = f"{scanner_api}?module=account&action=tokenbalance&contractaddress={usdt_contract}&address={address}&tag=latest"
+                    
+                    response = await client.get(url, timeout=10.0)
+                    if response.status_code == 200:
+                        data = response.json()
+                        if data.get("status") == "1":
+                            balance_wei = int(data.get("result", 0))
+                            decimals = net_config["decimals"]
+                            balance = balance_wei / (10 ** decimals)
+                            
+                            if balance > 0:
+                                stuck_deposits.append({
+                                    "address": address,
+                                    "network": network,
+                                    "usdt_balance": balance,
+                                    "user_id": user_id
+                                })
+                except:
+                    pass
+        
+        return {
+            "total_addresses": len(deposit_addresses),
+            "stuck_count": len(stuck_deposits),
+            "stuck_deposits": stuck_deposits
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
