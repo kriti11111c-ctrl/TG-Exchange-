@@ -5933,6 +5933,12 @@ async def download_profile_page():
     file_path = Path("/app/frontend/src/pages/ProfilePage.js")
     return file_path.read_text()
 
+@app.get("/api/download-teamrank-page", response_class=PlainTextResponse)
+async def download_teamrank_page():
+    """Download the TeamRankPage.js file"""
+    file_path = Path("/app/frontend/src/pages/TeamRankPage.js")
+    return file_path.read_text()
+
 
 
 @app.get("/api/debug/team-stats/{user_id}")
