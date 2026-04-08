@@ -2200,6 +2200,7 @@ async def get_referral_stats(user: dict = Depends(get_current_user)):
     level_stats = []
     total_referrals = 0
     total_earnings = 0.0
+    total_team_futures = 0.0
     
     for level in range(1, 11):
         level_referrals = [r for r in referrals if r.get("level") == level]
@@ -2207,21 +2208,31 @@ async def get_referral_stats(user: dict = Depends(get_current_user)):
         earnings = sum(r.get("total_earnings", 0) for r in level_referrals)
         commission_rate = REFERRAL_COMMISSION_RATES.get(level, 0) * 100  # Convert to percentage
         
+        # Calculate futures balance for this level's members
+        level_futures = 0.0
+        for ref in level_referrals:
+            wallet = await db.wallets.find_one({"user_id": ref["referred_id"]}, {"_id": 0})
+            if wallet:
+                level_futures += wallet.get("futures_balance", 0) or 0
+        
         level_stats.append({
             "level": level,
             "count": count,
             "earnings": earnings,
-            "commission_rate": commission_rate
+            "commission_rate": commission_rate,
+            "futures_balance": level_futures
         })
         
         total_referrals += count
         total_earnings += earnings
+        total_team_futures += level_futures
     
     return {
         "user_id": user_id,
         "referral_code": referral_code,
         "total_referrals": total_referrals,
         "total_earnings": total_earnings,
+        "total_team_futures": total_team_futures,
         "level_stats": level_stats
     }
 

@@ -309,10 +309,12 @@ const ReferralPage = () => {
         
         <div className={`${cardBg} rounded-xl p-4`}>
           <div className="flex items-center gap-2 mb-2">
-            <Coins size={20} className="text-[#0ECB81]" />
-            <span className={textMuted}>Total Earnings</span>
+            <Coins size={20} className="text-[#F0B90B]" />
+            <span className={textMuted}>Team Future Bal</span>
           </div>
-          <p className="text-2xl font-bold text-[#0ECB81]">${stats?.total_earnings?.toFixed(2) || '0.00'}</p>
+          <p className={`text-2xl font-bold ${stats?.total_team_futures >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+            {stats?.total_team_futures >= 0 ? '+' : ''}{stats?.total_team_futures?.toFixed(2) || '0.00'}
+          </p>
         </div>
       </div>
 
