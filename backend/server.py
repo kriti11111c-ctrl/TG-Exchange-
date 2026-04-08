@@ -7079,11 +7079,6 @@ async def find_and_forward_stuck(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
-
-
 # ==================== DEPOSIT ADDRESS MANAGEMENT ====================
 @app.get("/api/admin/deposit-addresses")
 async def get_all_deposit_addresses(
@@ -7107,7 +7102,7 @@ async def get_all_deposit_addresses(
         if network:
             query["network"] = network.lower()
         
-        addresses = await db.deposit_addresses.find(query, {"_id": 0}).to_list(length=1000)
+        addresses = await db.deposit_addresses.find(query, {"_id": 0}).sort("gas_funded", -1).to_list(length=1000)
         
         result = []
         for addr in addresses:
@@ -7198,3 +7193,8 @@ async def get_deposit_address_detail(address: str, admin: dict = Depends(get_cur
         import traceback
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8001)
