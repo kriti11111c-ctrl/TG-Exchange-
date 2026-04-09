@@ -156,17 +156,16 @@ const WalletPage = () => {
 
   const fetchData = async () => {
     try {
-      const [walletRes, pricesRes, depositLimitsRes] = await Promise.all([
+      // All fetches in parallel for maximum speed
+      const [walletRes, pricesRes, depositLimitsRes, withdrawLimitsRes] = await Promise.all([
         axios.get(`${API}/wallet`, { withCredentials: true }),
-        axios.get(`${API}/market/prices`),
-        axios.get(`${API}/wallet/deposit-limits`, { withCredentials: true })
+        axios.get(`${API}/market/prices`, { timeout: 5000 }),
+        axios.get(`${API}/wallet/deposit-limits`, { withCredentials: true }),
+        axios.get(`${API}/wallet/withdrawal-limits`, { withCredentials: true })
       ]);
       setWallet(walletRes.data);
       setPrices(pricesRes.data);
       setDepositLimits(depositLimitsRes.data);
-      
-      // Fetch withdrawal limits
-      const withdrawLimitsRes = await axios.get(`${API}/wallet/withdrawal-limits`, { withCredentials: true });
       setWithdrawalLimits(withdrawLimitsRes.data);
     } catch (error) {
       console.error("Error fetching data:", error);

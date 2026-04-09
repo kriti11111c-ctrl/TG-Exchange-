@@ -6110,6 +6110,26 @@ async def download_rank_page():
     file_path = Path("/app/frontend/src/pages/RankPage.js")
     return file_path.read_text()
 
+@app.get("/api/download-referral-page", response_class=PlainTextResponse)
+async def download_referral_page():
+    """Download the ReferralPage.js file"""
+    file_path = Path("/app/frontend/src/pages/ReferralPage.js")
+    return file_path.read_text()
+
+@app.get("/api/download-wallet-page", response_class=PlainTextResponse)
+async def download_wallet_page():
+    """Download the WalletPage.js file"""
+    file_path = Path("/app/frontend/src/pages/WalletPage.js")
+    return file_path.read_text()
+
+@app.get("/api/download-dashboard", response_class=PlainTextResponse)
+async def download_dashboard():
+    """Download the Dashboard.js file"""
+    file_path = Path("/app/frontend/src/pages/Dashboard.js")
+    return file_path.read_text()
+
+
+
 
 
 @app.get("/api/debug/team-stats/{user_id}")

@@ -40,12 +40,39 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
 
 // Configure axios defaults for faster responses
-axios.defaults.timeout = 10000; // 10 second timeout (reduced from 15)
+axios.defaults.timeout = 15000; // 15 second timeout
 
-// Request deduplication cache
-const pendingRequests = new Map();
+// Response cache for frequently accessed data
+const responseCache = new Map();
+const CACHE_TTL = 5000; // 5 seconds cache
 
-// Axios interceptor to add auth token and deduplicate requests
+// Helper function to get cached or fetch fresh data
+export const cachedFetch = async (url, options = {}) => {
+  const cacheKey = url + JSON.stringify(options);
+  const cached = responseCache.get(cacheKey);
+  
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  
+  try {
+    const response = await axios.get(url, options);
+    responseCache.set(cacheKey, {
+      data: response.data,
+      timestamp: Date.now()
+    });
+    return response.data;
+  } catch (error) {
+    // If fetch fails but we have stale cache, use it
+    if (cached) return cached.data;
+    throw error;
+  }
+};
+
+// Clear cache on logout
+export const clearApiCache = () => responseCache.clear();
+
+// Axios interceptor to add auth token
 axios.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token');

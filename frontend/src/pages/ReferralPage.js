@@ -44,9 +44,35 @@ const ReferralPage = () => {
   const hoverBg = isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100';
 
   useEffect(() => {
-    fetchStats();
-    fetchUserProfile();
-    // Don't fetch team on initial load - only when level is selected
+    // Parallel fetch for faster loading
+    const loadData = async () => {
+      try {
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const [statsRes, profileRes] = await Promise.all([
+          axios.get(`${API}/referral/stats`, { withCredentials: true, headers }),
+          axios.get(`${API}/auth/me`, { withCredentials: true, headers })
+        ]);
+        
+        setStats(statsRes.data);
+        if (statsRes.data?.referral_code) {
+          setUserReferralCode(statsRes.data.referral_code);
+        }
+        if (profileRes.data?.referral_code) {
+          setUserReferralCode(profileRes.data.referral_code);
+        }
+      } catch (error) {
+        console.error("Error fetching referral data:", error);
+        setStats({
+          referral_code: userReferralCode || "Loading...",
+          total_referrals: 0,
+          total_earnings: 0,
+          level_stats: []
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
   }, []);
 
   const fetchUserProfile = async () => {
