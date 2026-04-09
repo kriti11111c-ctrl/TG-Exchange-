@@ -2218,18 +2218,27 @@ async def get_referral_stats(user: dict = Depends(get_current_user)):
     referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=1000)
     
     # OPTIMIZATION: Batch fetch all wallets at once instead of one by one
+    # Include welcome_bonus to exclude it from business calculation
     referred_ids = list(set(r.get("referred_id") for r in referrals if r.get("referred_id")))
     wallets_cursor = await db.wallets.find(
         {"user_id": {"$in": referred_ids}},
-        {"_id": 0, "user_id": 1, "futures_balance": 1}
+        {"_id": 0, "user_id": 1, "futures_balance": 1, "welcome_bonus": 1}
     ).to_list(length=1000)
-    wallets_map = {w["user_id"]: w.get("futures_balance", 0) or 0 for w in wallets_cursor}
+    
+    # Calculate REAL balance = futures_balance - welcome_bonus (only real deposits count)
+    wallets_map = {}
+    for w in wallets_cursor:
+        futures_bal = w.get("futures_balance", 0) or 0
+        welcome_bonus = w.get("welcome_bonus", 0) or 0
+        # Real business = futures balance minus welcome bonus
+        real_balance = max(0, futures_bal - welcome_bonus)
+        wallets_map[w["user_id"]] = real_balance
     
     # Calculate stats per level
     level_stats = []
     total_referrals = 0
     total_earnings = 0.0
-    total_business = 0.0  # Sum of ALL team members' futures_balance
+    total_business = 0.0  # Sum of REAL deposits (excluding welcome bonus)
     
     for level in range(1, 11):
         level_referrals = [r for r in referrals if r.get("level") == level]
@@ -2279,12 +2288,14 @@ async def get_referral_team(user: dict = Depends(get_current_user), level: int =
     for ref in referrals:
         referred_user = await db.users.find_one({"user_id": ref["referred_id"]}, {"_id": 0})
         if referred_user:
-            # Get wallet - use FUTURES BALANCE instead of spot
+            # Get wallet - use FUTURES BALANCE minus WELCOME BONUS (only count REAL deposits)
             wallet = await db.wallets.find_one({"user_id": ref["referred_id"]}, {"_id": 0})
-            futures_balance = 0
+            real_balance = 0
             if wallet:
-                # Get futures_balance directly
-                futures_balance = wallet.get("futures_balance", 0)
+                # Real balance = futures_balance - welcome_bonus (exclude welcome bonus from business)
+                futures_balance = wallet.get("futures_balance", 0) or 0
+                welcome_bonus = wallet.get("welcome_bonus", 0) or 0
+                real_balance = max(0, futures_balance - welcome_bonus)
             
             # Mask email
             email = referred_user.get("email", "")
@@ -2298,7 +2309,7 @@ async def get_referral_team(user: dict = Depends(get_current_user), level: int =
                 "level": ref.get("level", 1),
                 "joined_at": ref.get("created_at"),
                 "earnings_from": ref.get("total_earnings", 0),
-                "fund": round(futures_balance, 2)
+                "fund": round(real_balance, 2)  # Only real deposits, not welcome bonus
             })
     
     return {
