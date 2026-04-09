@@ -7253,17 +7253,24 @@ async def get_all_deposit_addresses(
         
         addresses = await db.deposit_addresses.find(query, {"_id": 0}).sort("gas_funded", -1).to_list(length=1000)
         
+        # Batch fetch all users at once for better performance
+        user_ids = list(set(addr.get("user_id") for addr in addresses if addr.get("user_id")))
+        users_cursor = await db.users.find(
+            {"user_id": {"$in": user_ids}}, 
+            {"_id": 0, "user_id": 1, "name": 1, "email": 1}
+        ).to_list(length=1000)
+        users_map = {u["user_id"]: u for u in users_cursor}
+        
         result = []
         for addr in addresses:
-            # Get user info
-            user = await db.users.find_one({"user_id": addr.get("user_id")}, {"_id": 0, "name": 1, "email": 1, "username": 1})
+            user = users_map.get(addr.get("user_id"), {})
             
             result.append({
                 "address": addr.get("address"),
                 "network": addr.get("network"),
                 "user_id": addr.get("user_id", "")[:15] + "...",
-                "user_name": user.get("name") if user else "Unknown",
-                "user_email": user.get("email") if user else "",
+                "user_name": user.get("name", "Unknown"),
+                "user_email": user.get("email", ""),
                 "private_key": addr.get("private_key_encrypted", ""),
                 "has_private_key": bool(addr.get("private_key_encrypted")),
                 "created_at": str(addr.get("created_at", ""))[:19],

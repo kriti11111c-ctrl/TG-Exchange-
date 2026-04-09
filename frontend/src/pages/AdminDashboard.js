@@ -272,11 +272,15 @@ const AdminDashboard = () => {
       }
       const headers = { Authorization: `Bearer ${token}` };
       const params = search ? `?search=${encodeURIComponent(search)}` : "";
-      const response = await axios.get(`${API}/admin/deposit-addresses${params}`, { headers, timeout: 15000 });
+      const response = await axios.get(`${API}/admin/deposit-addresses${params}`, { headers, timeout: 60000 });
       setDepositAddresses(response.data.addresses || []);
     } catch (error) {
       console.error("Deposit addresses error:", error);
-      toast.error("Failed to fetch deposit addresses: " + (error.response?.data?.detail || error.message));
+      if (error.code === 'ECONNABORTED') {
+        toast.error("Request timed out. Please try again.");
+      } else {
+        toast.error("Failed to fetch deposit addresses: " + (error.response?.data?.detail || error.message));
+      }
     } finally {
       setSearchingAddresses(false);
     }
