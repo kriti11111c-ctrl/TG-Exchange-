@@ -263,12 +263,20 @@ const AdminDashboard = () => {
   const fetchDepositAddresses = async (search = "") => {
     setSearchingAddresses(true);
     try {
-      const headers = { Authorization: `Bearer ${adminToken}` };
+      // Use localStorage directly to avoid state race condition
+      const token = localStorage.getItem("admin_token");
+      if (!token) {
+        toast.error("Admin token not found");
+        setSearchingAddresses(false);
+        return;
+      }
+      const headers = { Authorization: `Bearer ${token}` };
       const params = search ? `?search=${encodeURIComponent(search)}` : "";
       const response = await axios.get(`${API}/admin/deposit-addresses${params}`, { headers, timeout: 15000 });
       setDepositAddresses(response.data.addresses || []);
     } catch (error) {
-      toast.error("Failed to fetch deposit addresses");
+      console.error("Deposit addresses error:", error);
+      toast.error("Failed to fetch deposit addresses: " + (error.response?.data?.detail || error.message));
     } finally {
       setSearchingAddresses(false);
     }
