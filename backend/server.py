@@ -4488,7 +4488,9 @@ async def create_withdrawal_request(withdrawal: WithdrawalRequestModel, user: di
     
     coin = withdrawal.coin.lower()
     current_balance = wallet.get("balances", {}).get(coin, 0)
-    welcome_bonus = wallet.get("welcome_bonus", 0) if coin == "usdt" else 0
+    
+    # For USDT: Only REAL deposits are withdrawable, NOT welcome bonus transfers
+    real_spot_deposits = wallet.get("real_spot_deposits", 0) if coin == "usdt" else current_balance
     
     # Check pending withdrawal requests for this user and coin
     pending_withdrawals = await db.withdrawal_requests.find({
@@ -4498,8 +4500,10 @@ async def create_withdrawal_request(withdrawal: WithdrawalRequestModel, user: di
     }).to_list(1000)
     pending_amount = sum(w.get("amount", 0) for w in pending_withdrawals)
     
-    # Withdrawable = Total - Welcome Bonus (locked) - Pending Withdrawals
-    withdrawable_balance = current_balance - welcome_bonus - pending_amount
+    # Withdrawable = min(balance, real_deposits) - pending
+    # This ensures welcome bonus transferred to spot cannot be withdrawn
+    withdrawable_balance = min(current_balance, real_spot_deposits) - pending_amount
+    locked_from_bonus = max(0, current_balance - real_spot_deposits)
     
     # Check if user has enough WITHDRAWABLE balance
     if withdrawable_balance < withdrawal.amount:
@@ -4508,10 +4512,10 @@ async def create_withdrawal_request(withdrawal: WithdrawalRequestModel, user: di
                 status_code=400, 
                 detail=f"Insufficient balance. Available: ${withdrawable_balance:.2f} (Pending withdrawals: ${pending_amount:.2f})"
             )
-        elif welcome_bonus > 0:
+        elif locked_from_bonus > 0:
             raise HTTPException(
                 status_code=400, 
-                detail=f"Insufficient balance. Withdrawable: ${withdrawable_balance:.2f} (Welcome bonus ${welcome_bonus:.2f} is locked)"
+                detail=f"Insufficient balance. Withdrawable: ${withdrawable_balance:.2f} (${locked_from_bonus:.2f} from Welcome Bonus is locked)"
             )
         else:
             raise HTTPException(status_code=400, detail=f"Insufficient balance. Available: {current_balance} {coin.upper()}")
