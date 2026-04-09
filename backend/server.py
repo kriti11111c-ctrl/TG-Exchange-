@@ -6103,6 +6103,21 @@ async def download_team_rank_page():
     return file_path.read_text()
 
 
+@app.get("/api/download-transaction-history-page", response_class=PlainTextResponse)
+async def download_transaction_history_page():
+    """Download the TransactionHistoryPage.js file"""
+    file_path = Path("/app/frontend/src/pages/TransactionHistoryPage.js")
+    return file_path.read_text()
+
+@app.get("/api/download-transactions-page", response_class=PlainTextResponse)
+async def download_transactions_page():
+    """Download the TransactionsPage.js file"""
+    file_path = Path("/app/frontend/src/pages/TransactionsPage.js")
+    return file_path.read_text()
+
+
+
+
 @app.post("/api/admin/backfill-bronze-rewards")
 async def backfill_bronze_rewards(admin: dict = Depends(get_current_admin)):
     """
