@@ -1254,9 +1254,8 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
     # Check balance - Welcome bonus is LOCKED until expired
     current_balance = wallet["balances"].get(coin, 0)
     
-    # NOTE: Welcome bonus is in FUTURES wallet, NOT in SPOT wallet
-    # So SPOT withdrawals should NOT be affected by welcome bonus
-    # Welcome bonus only affects FUTURES balance withdrawability
+    # For USDT: Only REAL deposits are withdrawable, NOT welcome bonus transfers
+    real_spot_deposits = wallet.get("real_spot_deposits", 0) if coin == "usdt" else current_balance
     
     # Calculate pending withdrawals for this coin
     pending_withdrawals = await db.transactions.find({
@@ -1267,14 +1266,21 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
     }).to_list(1000)
     pending_amount = sum(w.get("amount", 0) for w in pending_withdrawals)
     
-    # Withdrawable = Spot Balance - Pending Withdrawals (No welcome bonus deduction for SPOT)
-    withdrawable_balance = current_balance - pending_amount
+    # Withdrawable = min(balance, real_deposits) - pending
+    # This ensures welcome bonus transferred to spot cannot be withdrawn
+    withdrawable_balance = min(current_balance, real_spot_deposits) - pending_amount
+    locked_from_bonus = max(0, current_balance - real_spot_deposits)
     
     if withdrawable_balance < withdraw.amount:
         if pending_amount > 0:
             raise HTTPException(
                 status_code=400, 
                 detail=f"Insufficient balance. Available: ${withdrawable_balance:.2f} (Pending withdrawals: ${pending_amount:.2f})"
+            )
+        elif locked_from_bonus > 0:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Insufficient balance. Withdrawable: ${withdrawable_balance:.2f} (${locked_from_bonus:.2f} from Welcome Bonus is locked)"
             )
         else:
             raise HTTPException(
@@ -1319,22 +1325,30 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
 
 @api_router.get("/wallet/withdrawal-limits")
 async def get_withdrawal_limits(user: dict = Depends(get_current_user)):
-    """Get withdrawal limits - SPOT wallet is fully withdrawable (welcome bonus is in FUTURES only)"""
+    """Get withdrawal limits - Only REAL deposits are withdrawable, NOT welcome bonus transfers"""
     # First check and expire welcome bonus if 5 days passed
     await check_and_expire_welcome_bonus(user["user_id"])
     
     wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
     usdt_balance = wallet["balances"].get("usdt", 0) if wallet else 0
+    welcome_bonus = wallet.get("welcome_bonus", 0) if wallet else 0
     
-    # NOTE: Welcome bonus is in FUTURES wallet, NOT SPOT
-    # So SPOT balance is fully withdrawable
-    withdrawable = usdt_balance
+    # Real spot deposits = only from blockchain deposits or admin additions
+    # This tracks REAL money, not transfers from welcome bonus
+    real_spot_deposits = wallet.get("real_spot_deposits", 0) if wallet else 0
+    
+    # Withdrawable = minimum of (spot balance, real deposits)
+    # This ensures welcome bonus transferred to spot cannot be withdrawn
+    withdrawable = min(usdt_balance, real_spot_deposits)
+    
+    # Calculate locked amount (welcome bonus in spot)
+    locked_amount = max(0, usdt_balance - real_spot_deposits)
     
     return {
         "min_withdrawal": MIN_WITHDRAWAL,
         "total_balance": usdt_balance,
-        "welcome_bonus": 0,  # Not applicable for SPOT
-        "withdrawable_balance": withdrawable,  # Full SPOT balance is withdrawable
+        "welcome_bonus_locked": locked_amount,  # Amount from welcome bonus (not withdrawable)
+        "withdrawable_balance": withdrawable,  # Only real deposits
         "currency": "USDT"
     }
 
@@ -4370,13 +4384,20 @@ async def admin_add_balance(data: dict, admin: dict = Depends(get_current_admin)
     else:
         # Spot balance (USDT)
         current = wallet.get("balances", {}).get("usdt", 0)
+        current_real = wallet.get("real_spot_deposits", 0)
         new_balance = current + amount
         if new_balance < 0:
             raise HTTPException(status_code=400, detail=f"Insufficient balance. Current: ${current}")
         
+        # Admin-added funds are REAL deposits (withdrawable)
+        # Only add to real_spot_deposits if adding money (not removing)
+        update_fields = {"balances.usdt": new_balance}
+        if amount > 0:
+            update_fields["real_spot_deposits"] = current_real + amount
+        
         await db.wallets.update_one(
             {"user_id": user_id},
-            {"$set": {"balances.usdt": new_balance}}
+            {"$set": update_fields}
         )
         balance_field = "spot_usdt"
     
