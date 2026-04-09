@@ -4631,12 +4631,19 @@ async def process_withdrawal_request(approval: WithdrawalApproval, admin: dict =
         if current_balance < amount:
             raise HTTPException(status_code=400, detail=f"User has insufficient balance: {current_balance}")
         
-        # Deduct from wallet
+        # Get current real_spot_deposits
+        current_real_deposits = wallet.get("real_spot_deposits", current_balance)
+        new_real_deposits = max(0, current_real_deposits - amount)
+        
+        # Deduct from wallet (both balance and real_spot_deposits)
         await db.wallets.update_one(
             {"user_id": user_id},
             {
                 "$inc": {f"balances.{coin}": -amount},
-                "$set": {"updated_at": now.isoformat()}
+                "$set": {
+                    "real_spot_deposits": new_real_deposits,
+                    "updated_at": now.isoformat()
+                }
             }
         )
         
