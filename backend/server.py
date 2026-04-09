@@ -1255,7 +1255,8 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
     current_balance = wallet["balances"].get(coin, 0)
     
     # For USDT: Only REAL deposits are withdrawable, NOT welcome bonus transfers
-    real_spot_deposits = wallet.get("real_spot_deposits", 0) if coin == "usdt" else current_balance
+    # If real_spot_deposits is not set, default to current balance (backward compatibility)
+    real_spot_deposits = wallet.get("real_spot_deposits", current_balance) if coin == "usdt" else current_balance
     
     # Calculate pending withdrawals for this coin
     pending_withdrawals = await db.transactions.find({
@@ -1335,7 +1336,8 @@ async def get_withdrawal_limits(user: dict = Depends(get_current_user)):
     
     # Real spot deposits = only from blockchain deposits or admin additions
     # This tracks REAL money, not transfers from welcome bonus
-    real_spot_deposits = wallet.get("real_spot_deposits", 0) if wallet else 0
+    # If not set, default to current balance (backward compatibility)
+    real_spot_deposits = wallet.get("real_spot_deposits", usdt_balance) if wallet else 0
     
     # Withdrawable = minimum of (spot balance, real deposits)
     # This ensures welcome bonus transferred to spot cannot be withdrawn
@@ -4492,7 +4494,8 @@ async def create_withdrawal_request(withdrawal: WithdrawalRequestModel, user: di
     current_balance = wallet.get("balances", {}).get(coin, 0)
     
     # For USDT: Only REAL deposits are withdrawable, NOT welcome bonus transfers
-    real_spot_deposits = wallet.get("real_spot_deposits", 0) if coin == "usdt" else current_balance
+    # If real_spot_deposits is not set, default to current balance (backward compatibility)
+    real_spot_deposits = wallet.get("real_spot_deposits", current_balance) if coin == "usdt" else current_balance
     
     # Check pending withdrawal requests for this user and coin
     pending_withdrawals = await db.withdrawal_requests.find({
