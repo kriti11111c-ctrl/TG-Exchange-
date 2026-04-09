@@ -2272,7 +2272,7 @@ async def get_referral_stats(user: dict = Depends(get_current_user)):
 
 @api_router.get("/referral/team")
 async def get_referral_team(user: dict = Depends(get_current_user), level: int = 0):
-    """Get list of referred users"""
+    """Get list of referred users - OPTIMIZED with batch queries"""
     user_id = user["user_id"]
     
     # Build query
@@ -2283,19 +2283,36 @@ async def get_referral_team(user: dict = Depends(get_current_user), level: int =
     # Get referrals
     referrals = await db.referrals.find(query, {"_id": 0}).sort("created_at", -1).to_list(length=100)
     
-    # Get user details for each referral
+    if not referrals:
+        return {"team_members": [], "total": 0}
+    
+    # OPTIMIZATION: Batch fetch all users and wallets at once
+    referred_ids = [ref["referred_id"] for ref in referrals]
+    
+    # Batch fetch users
+    users_cursor = await db.users.find(
+        {"user_id": {"$in": referred_ids}},
+        {"_id": 0, "user_id": 1, "name": 1, "email": 1}
+    ).to_list(length=100)
+    users_map = {u["user_id"]: u for u in users_cursor}
+    
+    # Batch fetch wallets
+    wallets_cursor = await db.wallets.find(
+        {"user_id": {"$in": referred_ids}},
+        {"_id": 0, "user_id": 1, "futures_balance": 1, "welcome_bonus": 1}
+    ).to_list(length=100)
+    wallets_map = {w["user_id"]: w for w in wallets_cursor}
+    
+    # Build team members list
     team_members = []
     for ref in referrals:
-        referred_user = await db.users.find_one({"user_id": ref["referred_id"]}, {"_id": 0})
+        referred_user = users_map.get(ref["referred_id"])
         if referred_user:
-            # Get wallet - use FUTURES BALANCE minus WELCOME BONUS (only count REAL deposits)
-            wallet = await db.wallets.find_one({"user_id": ref["referred_id"]}, {"_id": 0})
-            real_balance = 0
-            if wallet:
-                # Real balance = futures_balance - welcome_bonus (exclude welcome bonus from business)
-                futures_balance = wallet.get("futures_balance", 0) or 0
-                welcome_bonus = wallet.get("welcome_bonus", 0) or 0
-                real_balance = max(0, futures_balance - welcome_bonus)
+            wallet = wallets_map.get(ref["referred_id"], {})
+            # Real balance = futures_balance - welcome_bonus
+            futures_balance = wallet.get("futures_balance", 0) or 0
+            welcome_bonus = wallet.get("welcome_bonus", 0) or 0
+            real_balance = max(0, futures_balance - welcome_bonus)
             
             # Mask email
             email = referred_user.get("email", "")
@@ -2309,7 +2326,7 @@ async def get_referral_team(user: dict = Depends(get_current_user), level: int =
                 "level": ref.get("level", 1),
                 "joined_at": ref.get("created_at"),
                 "earnings_from": ref.get("total_earnings", 0),
-                "fund": round(real_balance, 2)  # Only real deposits, not welcome bonus
+                "fund": round(real_balance, 2)
             })
     
     return {
