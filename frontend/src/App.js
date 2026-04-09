@@ -286,7 +286,7 @@ const AuthCallback = () => {
 // App Router
 function AppRouter() {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   
   // Check URL fragment for session_id (OAuth callback)
   if (location.hash?.includes('session_id=')) {
@@ -300,6 +300,12 @@ function AppRouter() {
   // If "/" route and has referral code, redirect to register with ref code
   if (location.pathname === '/' && refCode) {
     return <Navigate to={`/register?ref=${refCode}`} replace />;
+  }
+  
+  // CRITICAL: Wait for auth check to complete before redirecting
+  // This fixes admin "Login as User" which sets auth_token and navigates to "/"
+  if (loading && location.pathname === '/') {
+    return <MiniCandleLoader />;
   }
   
   // If "/" route and no user, redirect to login
