@@ -1735,6 +1735,8 @@ def get_tx_description(tx_type: str, tx: dict) -> str:
         return "Transfer: Spot → Futures"
     elif tx_type == "futures_to_spot":
         return "Transfer: Futures → Spot"
+    elif tx_type == "admin_adjustment":
+        return "Deposit"  # Admin-added funds shown as Deposit
     else:
         return tx_type.replace("_", " ").title()
 

@@ -61,6 +61,7 @@ const TransactionsPage = () => {
   const getIcon = (type) => {
     switch(type) {
       case "deposit":
+      case "admin_adjustment":
         return <ArrowDown size={20} className="text-[#0ECB81]" />;
       case "withdrawal":
         return <ArrowUp size={20} className="text-[#F6465D]" />;
@@ -88,6 +89,7 @@ const TransactionsPage = () => {
   const getBgColor = (type) => {
     switch(type) {
       case "deposit":
+      case "admin_adjustment":
         return "bg-[#0ECB81]/20";
       case "withdrawal":
         return "bg-[#F6465D]/20";
@@ -123,7 +125,7 @@ const TransactionsPage = () => {
 
   const filteredHistory = history.filter(item => {
     if (filter === "all") return true;
-    if (filter === "deposit") return item.type === "deposit";
+    if (filter === "deposit") return item.type === "deposit" || item.type === "admin_adjustment";
     if (filter === "withdrawal") return item.type === "withdrawal";
     if (filter === "bonus") return ["welcome_bonus", "bonus"].includes(item.type);
     if (filter === "trade") return ["trade_code", "trade_profit", "trade"].includes(item.type);
