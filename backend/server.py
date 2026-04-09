@@ -2199,7 +2199,7 @@ async def root():
 
 @api_router.get("/referral/stats")
 async def get_referral_stats(user: dict = Depends(get_current_user)):
-    """Get referral statistics for the current user"""
+    """Get referral statistics for the current user - OPTIMIZED"""
     user_id = user["user_id"]
     
     # Get user's referral code
@@ -2217,6 +2217,14 @@ async def get_referral_stats(user: dict = Depends(get_current_user)):
     # Get all referrals where this user is the referrer
     referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=1000)
     
+    # OPTIMIZATION: Batch fetch all wallets at once instead of one by one
+    referred_ids = list(set(r.get("referred_id") for r in referrals if r.get("referred_id")))
+    wallets_cursor = await db.wallets.find(
+        {"user_id": {"$in": referred_ids}},
+        {"_id": 0, "user_id": 1, "futures_balance": 1}
+    ).to_list(length=1000)
+    wallets_map = {w["user_id"]: w.get("futures_balance", 0) or 0 for w in wallets_cursor}
+    
     # Calculate stats per level
     level_stats = []
     total_referrals = 0
@@ -2229,13 +2237,8 @@ async def get_referral_stats(user: dict = Depends(get_current_user)):
         earnings = sum(r.get("total_earnings", 0) for r in level_referrals)
         commission_rate = REFERRAL_COMMISSION_RATES.get(level, 0) * 100  # Convert to percentage
         
-        # Calculate futures balance for this level's members
-        level_futures = 0.0
-        for ref in level_referrals:
-            wallet = await db.wallets.find_one({"user_id": ref["referred_id"]}, {"_id": 0})
-            if wallet:
-                futures_bal = wallet.get("futures_balance", 0) or 0
-                level_futures += futures_bal
+        # Calculate futures balance for this level's members using pre-fetched data
+        level_futures = sum(wallets_map.get(ref["referred_id"], 0) for ref in level_referrals)
         
         level_stats.append({
             "level": level,
