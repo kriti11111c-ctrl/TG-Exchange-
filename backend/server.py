@@ -1253,7 +1253,10 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
     
     # Check balance - Welcome bonus is LOCKED until expired
     current_balance = wallet["balances"].get(coin, 0)
-    welcome_bonus = wallet.get("welcome_bonus", 0) if coin == "usdt" else 0
+    
+    # NOTE: Welcome bonus is in FUTURES wallet, NOT in SPOT wallet
+    # So SPOT withdrawals should NOT be affected by welcome bonus
+    # Welcome bonus only affects FUTURES balance withdrawability
     
     # Calculate pending withdrawals for this coin
     pending_withdrawals = await db.transactions.find({
@@ -1264,8 +1267,8 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
     }).to_list(1000)
     pending_amount = sum(w.get("amount", 0) for w in pending_withdrawals)
     
-    # Withdrawable = Total - Welcome Bonus (locked) - Pending Withdrawals
-    withdrawable_balance = current_balance - welcome_bonus - pending_amount
+    # Withdrawable = Spot Balance - Pending Withdrawals (No welcome bonus deduction for SPOT)
+    withdrawable_balance = current_balance - pending_amount
     
     if withdrawable_balance < withdraw.amount:
         if pending_amount > 0:
@@ -1276,7 +1279,7 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
         else:
             raise HTTPException(
                 status_code=400, 
-                detail=f"Insufficient balance. Withdrawable: ${withdrawable_balance:.2f} (Welcome bonus ${welcome_bonus:.2f} is locked)"
+                detail=f"Insufficient balance. Available: ${withdrawable_balance:.2f}"
             )
     
     now = datetime.now(timezone.utc)
@@ -1316,22 +1319,22 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
 
 @api_router.get("/wallet/withdrawal-limits")
 async def get_withdrawal_limits(user: dict = Depends(get_current_user)):
-    """Get withdrawal limits - Welcome bonus locked for 5 days, then auto-deducted"""
+    """Get withdrawal limits - SPOT wallet is fully withdrawable (welcome bonus is in FUTURES only)"""
     # First check and expire welcome bonus if 5 days passed
     await check_and_expire_welcome_bonus(user["user_id"])
     
     wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
     usdt_balance = wallet["balances"].get("usdt", 0) if wallet else 0
-    welcome_bonus = wallet.get("welcome_bonus", 0) if wallet else 0
     
-    # Withdrawable = Total balance - Welcome bonus (if still locked)
-    withdrawable = max(0, usdt_balance - welcome_bonus)
+    # NOTE: Welcome bonus is in FUTURES wallet, NOT SPOT
+    # So SPOT balance is fully withdrawable
+    withdrawable = usdt_balance
     
     return {
         "min_withdrawal": MIN_WITHDRAWAL,
         "total_balance": usdt_balance,
-        "welcome_bonus": welcome_bonus,  # Locked amount
-        "withdrawable_balance": withdrawable,  # Can withdraw this
+        "welcome_bonus": 0,  # Not applicable for SPOT
+        "withdrawable_balance": withdrawable,  # Full SPOT balance is withdrawable
         "currency": "USDT"
     }
 
