@@ -4323,6 +4323,88 @@ async def admin_change_user_password(data: dict, admin: dict = Depends(get_curre
         "message": f"Password changed for {user.get('email')}"
     }
 
+
+@api_router.post("/admin/add-balance")
+async def admin_add_balance(data: dict, admin: dict = Depends(get_current_admin)):
+    """Admin: Add/Remove balance to any user's wallet (Futures or Spot)"""
+    user_id = data.get("user_id")
+    email = data.get("email")  # Can use email instead of user_id
+    amount = data.get("amount", 0)
+    wallet_type = data.get("wallet_type", "futures").lower()  # "futures" or "spot"
+    note = data.get("note", "Admin adjustment")
+    
+    if not user_id and not email:
+        raise HTTPException(status_code=400, detail="User ID or email required")
+    
+    if amount == 0:
+        raise HTTPException(status_code=400, detail="Amount cannot be zero")
+    
+    # Find user by ID or email
+    query = {"user_id": user_id} if user_id else {"email": email}
+    user = await db.users.find_one(query, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user_id = user["user_id"]
+    
+    # Get current wallet
+    wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0})
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    
+    # Update balance based on wallet type
+    if wallet_type == "futures":
+        current = wallet.get("futures_balance", 0)
+        new_balance = current + amount
+        if new_balance < 0:
+            raise HTTPException(status_code=400, detail=f"Insufficient balance. Current: ${current}")
+        
+        await db.wallets.update_one(
+            {"user_id": user_id},
+            {"$set": {"futures_balance": new_balance}}
+        )
+        balance_field = "futures_balance"
+    else:
+        # Spot balance (USDT)
+        current = wallet.get("balances", {}).get("usdt", 0)
+        new_balance = current + amount
+        if new_balance < 0:
+            raise HTTPException(status_code=400, detail=f"Insufficient balance. Current: ${current}")
+        
+        await db.wallets.update_one(
+            {"user_id": user_id},
+            {"$set": {"balances.usdt": new_balance}}
+        )
+        balance_field = "spot_usdt"
+    
+    # Log the transaction
+    await db.transactions.insert_one({
+        "user_id": user_id,
+        "type": "admin_adjustment",
+        "amount": amount,
+        "wallet_type": wallet_type,
+        "previous_balance": current,
+        "new_balance": new_balance,
+        "note": note,
+        "admin_email": admin.get("email"),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    action = "added" if amount > 0 else "removed"
+    logging.info(f"Admin {admin.get('email')} {action} ${abs(amount)} to {user.get('email')} {wallet_type} wallet")
+    
+    return {
+        "success": True,
+        "message": f"${abs(amount)} {action} to {user.get('email')}'s {wallet_type} wallet",
+        "user_email": user.get("email"),
+        "wallet_type": wallet_type,
+        "previous_balance": current,
+        "new_balance": new_balance,
+        "amount": amount
+    }
+
+
+
 @api_router.get("/admin/stats")
 async def get_admin_stats(admin: dict = Depends(get_current_admin)):
     """Admin: Get platform statistics"""
