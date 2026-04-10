@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TG Exchange - Silver Rank Reward</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #0B0E11;
+        }
+        
+        .banner-container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 229, 255, 0.3);
+        }
+        
+        .banner {
+            position: relative;
+            width: 100%;
+            min-height: 600px;
+            background: linear-gradient(135deg, #0B0E11 0%, #1a1f2e 50%, #0B0E11 100%);
+            display: flex;
+            overflow: hidden;
+        }
+        
+        .banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('https://images.unsplash.com/photo-1667889097834-ebfae9b34cba?w=1200&q=80') center/cover;
+            opacity: 0.4;
+            z-index: 0;
+        }
+        
+        .banner::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to right, rgba(11, 14, 17, 0.95) 0%, rgba(11, 14, 17, 0.7) 50%, rgba(11, 14, 17, 0.9) 100%);
+            z-index: 1;
+        }
+        
+        .content {
+            position: relative;
+            z-index: 2;
+            padding: 50px;
+            display: flex;
+            width: 100%;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .left-section {
+            flex: 1;
+            padding-right: 40px;
+        }
+        
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .logo {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #00E5FF, #00B4D8);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 24px;
+            color: #0B0E11;
+        }
+        
+        .brand-name {
+            font-size: 28px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .brand-name span {
+            color: #00E5FF;
+        }
+        
+        .event-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: #0B0E11;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .main-title {
+            font-size: 52px;
+            font-weight: 900;
+            color: white;
+            line-height: 1.1;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+        
+        .main-title .highlight {
+            background: linear-gradient(135deg, #C0C0C0, #E8E8E8, #A8A8A8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .destination {
+            font-size: 42px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #00E5FF, #00B4D8, #0099CC);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 25px;
+        }
+        
+        .trip-details {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .detail-box {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            border-radius: 15px;
+            padding: 20px 30px;
+            text-align: center;
+        }
+        
+        .detail-box .icon {
+            font-size: 30px;
+            margin-bottom: 10px;
+        }
+        
+        .detail-box .value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #00E5FF;
+        }
+        
+        .detail-box .label {
+            font-size: 12px;
+            color: #848E9C;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .date-section {
+            background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(0, 180, 216, 0.1));
+            border: 2px solid #00E5FF;
+            border-radius: 15px;
+            padding: 25px 35px;
+            display: inline-block;
+        }
+        
+        .date-label {
+            font-size: 14px;
+            color: #00E5FF;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+        }
+        
+        .date-range {
+            font-size: 28px;
+            font-weight: 700;
+            color: white;
+        }
+        
+        .right-section {
+            flex: 0.8;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .rank-badge {
+            width: 250px;
+            height: 250px;
+            background: linear-gradient(135deg, #C0C0C0, #E8E8E8, #A8A8A8, #C0C0C0);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 60px rgba(192, 192, 192, 0.5), inset 0 0 30px rgba(255, 255, 255, 0.3);
+            position: relative;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 40px rgba(192, 192, 192, 0.4), inset 0 0 20px rgba(255, 255, 255, 0.2);
+            }
+            to {
+                box-shadow: 0 0 80px rgba(192, 192, 192, 0.7), inset 0 0 40px rgba(255, 255, 255, 0.4);
+            }
+        }
+        
+        .rank-badge::before {
+            content: '';
+            position: absolute;
+            width: 280px;
+            height: 280px;
+            border: 3px solid rgba(192, 192, 192, 0.3);
+            border-radius: 50%;
+            animation: rotate 10s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .rank-icon {
+            font-size: 80px;
+            margin-bottom: 10px;
+        }
+        
+        .rank-text {
+            font-size: 32px;
+            font-weight: 900;
+            color: #1a1a1a;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        
+        .rank-sub {
+            font-size: 14px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .features {
+            display: flex;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .feature {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 229, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px 20px;
+            text-align: center;
+        }
+        
+        .feature-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .feature-text {
+            font-size: 11px;
+            color: #848E9C;
+            text-transform: uppercase;
+        }
+        
+        .footer-strip {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(90deg, #00E5FF, #00B4D8, #0099CC, #00E5FF);
+            background-size: 300% 100%;
+            animation: gradientMove 3s ease infinite;
+            padding: 15px;
+            text-align: center;
+            z-index: 3;
+        }
+        
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .footer-text {
+            color: #0B0E11;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 1px;
+        }
+        
+        @media (max-width: 900px) {
+            .content {
+                flex-direction: column;
+                padding: 30px;
+            }
+            
+            .left-section {
+                padding-right: 0;
+                text-align: center;
+            }
+            
+            .main-title {
+                font-size: 36px;
+            }
+            
+            .destination {
+                font-size: 28px;
+            }
+            
+            .trip-details {
+                justify-content: center;
+            }
+            
+            .date-section {
+                width: 100%;
+                text-align: center;
+            }
+            
+            .right-section {
+                margin-top: 40px;
+            }
+            
+            .rank-badge {
+                width: 180px;
+                height: 180px;
+            }
+            
+            .rank-icon {
+                font-size: 50px;
+            }
+            
+            .rank-text {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="banner-container">
+        <div class="banner">
+            <div class="content">
+                <div class="left-section">
+                    <div class="logo-section">
+                        <div class="logo">TG</div>
+                        <div class="brand-name">TG <span>Exchange</span></div>
+                    </div>
+                    
+                    <div class="event-badge">Exclusive Reward</div>
+                    
+                    <h1 class="main-title">
+                        <span class="highlight">SILVER</span> RANK<br>ACHIEVERS
+                    </h1>
+                    
+                    <div class="destination">GANGTOK, SIKKIM</div>
+                    
+                    <div class="trip-details">
+                        <div class="detail-box">
+                            <div class="icon">🌙</div>
+                            <div class="value">1</div>
+                            <div class="label">Night</div>
+                        </div>
+                        <div class="detail-box">
+                            <div class="icon">☀️</div>
+                            <div class="value">2</div>
+                            <div class="label">Days</div>
+                        </div>
+                        <div class="detail-box">
+                            <div class="icon">🏔️</div>
+                            <div class="value">FREE</div>
+                            <div class="label">Trip</div>
+                        </div>
+                    </div>
+                    
+                    <div class="date-section">
+                        <div class="date-label">Event Period</div>
+                        <div class="date-range">15 APR - 15 MAY 2026</div>
+                    </div>
+                </div>
+                
+                <div class="right-section">
+                    <div class="rank-badge">
+                        <div class="rank-icon">🥈</div>
+                        <div class="rank-text">Silver</div>
+                        <div class="rank-sub">RANK</div>
+                    </div>
+                    
+                    <div class="features">
+                        <div class="feature">
+                            <div class="feature-icon">🏨</div>
+                            <div class="feature-text">Hotel Stay</div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🍽️</div>
+                            <div class="feature-text">Meals</div>
+                        </div>
+                        <div class="feature">
+                            <div class="feature-icon">🚗</div>
+                            <div class="feature-text">Transport</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="footer-strip">
+                <div class="footer-text">ACHIEVE SILVER RANK & WIN FREE GANGTOK TRIP! 🎉</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
