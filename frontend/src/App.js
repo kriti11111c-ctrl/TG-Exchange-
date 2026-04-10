@@ -28,6 +28,7 @@ const FuturesPage = lazy(() => import("./pages/FuturesPage"));
 const MarketsPage = lazy(() => import("./pages/MarketsPage"));
 const TradeHistoryPage = lazy(() => import("./pages/TradeHistoryPage"));
 const KYCPage = lazy(() => import("./pages/KYCPage"));
+const SupportPage = lazy(() => import("./pages/SupportPage"));
 
 // Admin Pages (lazy loaded)
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage"));
@@ -384,6 +385,11 @@ function AppRouter() {
         <Route path="/referral" element={
           <ProtectedRoute>
             <ReferralPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/profile/support" element={
+          <ProtectedRoute>
+            <SupportPage />
           </ProtectedRoute>
         } />
         <Route path="/rank" element={

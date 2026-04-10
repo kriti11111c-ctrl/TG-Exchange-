@@ -6129,6 +6129,14 @@ async def download_dashboard():
     return file_path.read_text()
 
 
+@app.get("/api/download-support-page", response_class=PlainTextResponse)
+async def download_support_page():
+    """Download the SupportPage.js file"""
+    file_path = Path("/app/frontend/src/pages/SupportPage.js")
+    return file_path.read_text()
+
+
+
 
 
 

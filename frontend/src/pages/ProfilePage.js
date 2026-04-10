@@ -33,6 +33,7 @@ import {
   Fingerprint,
   UserPlus,
   Wallet,
+  EnvelopeSimple,
   Robot,
   UsersThree,
   PencilSimple,
@@ -314,6 +315,21 @@ const ProfilePage = () => {
             </div>
             <CaretRight size={18} className={textMuted} />
           </Link>
+          <div className={`h-px ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} mx-4`}></div>
+          <a 
+            href="mailto:TGexchange.support@gmail.com?subject=Support Request - TG Exchange" 
+            className={`flex items-center justify-between p-4 ${hoverBg}`}
+            data-testid="email-support-link"
+          >
+            <div className="flex items-center gap-3">
+              <EnvelopeSimple size={22} className="text-[#EA4335]" />
+              <div>
+                <span className={`${text} block`}>Email Support</span>
+                <span className={`text-xs ${textMuted}`}>TGexchange.support@gmail.com</span>
+              </div>
+            </div>
+            <span className="bg-[#0ECB81] text-white text-xs px-2 py-1 rounded-full font-semibold">TAP</span>
+          </a>
           <div className={`h-px ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} mx-4`}></div>
           <Link to="/profile/about" className={`flex items-center justify-between p-4 ${hoverBg}`}>
             <div className="flex items-center gap-3">
