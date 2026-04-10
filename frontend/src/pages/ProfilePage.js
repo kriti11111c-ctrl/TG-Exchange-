@@ -323,10 +323,7 @@ const ProfilePage = () => {
           >
             <div className="flex items-center gap-3">
               <EnvelopeSimple size={22} className="text-[#EA4335]" />
-              <div>
-                <span className={`${text} block`}>Email Support</span>
-                <span className={`text-xs ${textMuted}`}>TGexchange.support@gmail.com</span>
-              </div>
+              <span className={text}>Email Support</span>
             </div>
             <span className="bg-[#0ECB81] text-white text-xs px-2 py-1 rounded-full font-semibold">TAP</span>
           </a>

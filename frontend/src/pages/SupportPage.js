@@ -57,16 +57,16 @@ const SupportPage = () => {
             data-testid="email-support-btn"
           >
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#EA4335] to-[#FBBC05] flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#EA4335] to-[#FBBC05] flex items-center justify-center flex-shrink-0">
                 <EnvelopeSimple size={24} weight="fill" className="text-white" />
               </div>
               <div className="text-left">
                 <span className={`font-semibold ${text} block`}>Email Support</span>
-                <span className={`text-sm ${textMuted}`}>{SUPPORT_EMAIL}</span>
+                <span className={`text-sm ${textMuted}`}>Tap to contact us</span>
               </div>
             </div>
-            <div className="bg-[#0ECB81] text-white text-xs px-3 py-1 rounded-full font-semibold">
-              TAP TO EMAIL
+            <div className="bg-[#0ECB81] text-white text-xs px-3 py-1 rounded-full font-semibold flex-shrink-0">
+              TAP
             </div>
           </button>
         </div>
