@@ -4,6 +4,7 @@ import { useAuth, API, useTheme } from "../App";
 import axios from "axios";
 import useWebSocket from "../hooks/useWebSocket";
 import { toast } from "sonner";
+import TelegramPopup from "../components/TelegramPopup";
 import { 
   Vault, 
   ChartLineUp, 
@@ -303,6 +304,9 @@ const Dashboard = () => {
 
   return (
     <div className={`min-h-screen ${bg} pb-20`}>
+      {/* Telegram Popup */}
+      <TelegramPopup />
+      
       {/* Cinematic Header Banner */}
       <div className="relative overflow-hidden">
         {/* Background Gradient */}

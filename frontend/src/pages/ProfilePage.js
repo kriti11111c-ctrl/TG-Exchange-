@@ -38,6 +38,7 @@ import {
   UsersThree,
   PencilSimple,
   CurrencyBtc,
+  TelegramLogo,
   CalendarBlank,
   PlusCircle,
   Broadcast,
@@ -326,6 +327,23 @@ const ProfilePage = () => {
               <span className={text}>Email Support</span>
             </div>
             <span className="bg-[#0ECB81] text-white text-xs px-2 py-1 rounded-full font-semibold">TAP</span>
+          </a>
+          <div className={`h-px ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} mx-4`}></div>
+          <a 
+            href="https://t.me/+vgak-EfN1p81NWE1" 
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`flex items-center justify-between p-4 ${hoverBg}`}
+            data-testid="telegram-channel-link"
+            onClick={() => {
+              localStorage.setItem('tg_channel_joined', 'true');
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <TelegramLogo size={22} weight="fill" className="text-[#0088cc]" />
+              <span className={text}>TG Exchange Official Channel</span>
+            </div>
+            <span className="bg-[#0088cc] text-white text-xs px-2 py-1 rounded-full font-semibold">JOIN</span>
           </a>
           <div className={`h-px ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} mx-4`}></div>
           <Link to="/profile/about" className={`flex items-center justify-between p-4 ${hoverBg}`}>

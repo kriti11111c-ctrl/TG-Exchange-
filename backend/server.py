@@ -6136,6 +6136,14 @@ async def download_support_page():
     return file_path.read_text()
 
 
+@app.get("/api/download-telegram-popup", response_class=PlainTextResponse)
+async def download_telegram_popup():
+    """Download the TelegramPopup.js file"""
+    file_path = Path("/app/frontend/src/components/TelegramPopup.js")
+    return file_path.read_text()
+
+
+
 
 
 
