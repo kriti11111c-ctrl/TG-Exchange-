@@ -10,10 +10,10 @@ const TelegramPopup = () => {
     const hasJoined = localStorage.getItem('tg_channel_joined');
     
     if (!hasJoined) {
-      // Show popup after 2 seconds delay
+      // Show popup after 0.5 seconds delay (instant feel)
       const showTimer = setTimeout(() => {
         setIsVisible(true);
-      }, 2000);
+      }, 500);
 
       return () => clearTimeout(showTimer);
     }
