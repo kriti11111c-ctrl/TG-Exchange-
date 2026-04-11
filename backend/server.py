@@ -1033,10 +1033,19 @@ async def check_and_expire_welcome_bonus(user_id: str):
 
 @api_router.get("/wallet")
 async def get_wallet(user: dict = Depends(get_current_user)):
-    # Check and expire welcome bonus if needed
-    await check_and_expire_welcome_bonus(user["user_id"])
+    """Get user wallet - CACHED for speed"""
+    user_id = user["user_id"]
     
-    wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    # Check cache first (short TTL for wallet)
+    cache_key = f"wallet_{user_id}"
+    cached = api_cache.get(cache_key, ttl=5)  # 5 seconds cache
+    if cached:
+        return cached
+    
+    # Check and expire welcome bonus if needed
+    await check_and_expire_welcome_bonus(user_id)
+    
+    wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0})
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
     
@@ -1073,13 +1082,17 @@ async def get_wallet(user: dict = Depends(get_current_user)):
     # Get futures balance
     futures_balance = wallet.get("futures_balance", 0)
     
-    return {
+    result = {
         "user_id": wallet["user_id"],
         "balances": wallet["balances"],  # Spot balances
         "futures_balance": futures_balance,  # Futures USDT balance
         "welcome_bonus": welcome_bonus_info,
         "updated_at": updated_at.isoformat() if updated_at else None
     }
+    
+    # Cache result
+    api_cache.set(cache_key, result)
+    return result
 
 # Transfer between Spot and Futures
 class TransferRequest(BaseModel):
@@ -2202,12 +2215,18 @@ async def root():
 
 @api_router.get("/referral/stats")
 async def get_referral_stats(user: dict = Depends(get_current_user)):
-    """Get referral statistics for the current user - OPTIMIZED"""
+    """Get referral statistics for the current user - ULTRA OPTIMIZED with CACHING"""
     user_id = user["user_id"]
     
+    # Check cache first
+    cache_key = f"referral_stats_{user_id}"
+    cached = api_cache.get(cache_key, ttl=30)  # Cache for 30 seconds
+    if cached:
+        return cached
+    
     # Get user's referral code
-    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
-    referral_code = user_doc.get("referral_code", "")
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0, "referral_code": 1})
+    referral_code = user_doc.get("referral_code", "") if user_doc else ""
     
     # If no referral code, generate one
     if not referral_code:
@@ -2221,19 +2240,17 @@ async def get_referral_stats(user: dict = Depends(get_current_user)):
     referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=1000)
     
     # OPTIMIZATION: Batch fetch all wallets at once instead of one by one
-    # Include welcome_bonus to exclude it from business calculation
     referred_ids = list(set(r.get("referred_id") for r in referrals if r.get("referred_id")))
     wallets_cursor = await db.wallets.find(
         {"user_id": {"$in": referred_ids}},
         {"_id": 0, "user_id": 1, "futures_balance": 1, "welcome_bonus": 1}
     ).to_list(length=1000)
     
-    # Calculate REAL balance = futures_balance - welcome_bonus (only real deposits count)
+    # Calculate REAL balance = futures_balance - welcome_bonus
     wallets_map = {}
     for w in wallets_cursor:
         futures_bal = w.get("futures_balance", 0) or 0
         welcome_bonus = w.get("welcome_bonus", 0) or 0
-        # Real business = futures balance minus welcome bonus
         real_balance = max(0, futures_bal - welcome_bonus)
         wallets_map[w["user_id"]] = real_balance
     
@@ -2264,7 +2281,7 @@ async def get_referral_stats(user: dict = Depends(get_current_user)):
         total_earnings += earnings
         total_business += level_futures  # Total Business = Sum of all futures_balance
     
-    return {
+    result = {
         "user_id": user_id,
         "referral_code": referral_code,
         "total_referrals": total_referrals,
@@ -2272,11 +2289,21 @@ async def get_referral_stats(user: dict = Depends(get_current_user)):
         "total_business": total_business,
         "level_stats": level_stats
     }
+    
+    # Cache the result
+    api_cache.set(cache_key, result)
+    return result
 
 @api_router.get("/referral/team")
 async def get_referral_team(user: dict = Depends(get_current_user), level: int = 0):
-    """Get list of referred users - OPTIMIZED with batch queries"""
+    """Get list of referred users - ULTRA OPTIMIZED with CACHING"""
     user_id = user["user_id"]
+    
+    # Check cache first
+    cache_key = f"referral_team_{user_id}_{level}"
+    cached = api_cache.get(cache_key, ttl=30)
+    if cached:
+        return cached
     
     # Build query
     query = {"referrer_id": user_id}
@@ -2332,10 +2359,14 @@ async def get_referral_team(user: dict = Depends(get_current_user), level: int =
                 "fund": round(real_balance, 2)
             })
     
-    return {
+    result = {
         "team_members": team_members,
         "total": len(team_members)
     }
+    
+    # Cache the result
+    api_cache.set(cache_key, result)
+    return result
 
 @api_router.post("/referral/claim-commission")
 async def claim_referral_commission(user: dict = Depends(get_current_user)):
@@ -2384,8 +2415,14 @@ async def claim_referral_commission(user: dict = Depends(get_current_user)):
 
 @api_router.get("/rank/info")
 async def get_rank_info(user: dict = Depends(get_current_user)):
-    """Get user's current rank and progress"""
+    """Get user's current rank and progress - CACHED"""
     user_id = user["user_id"]
+    
+    # Check cache first
+    cache_key = f"rank_info_{user_id}"
+    cached = api_cache.get(cache_key, ttl=60)  # Cache for 60 seconds
+    if cached:
+        return cached
     
     # Calculate total trading volume from transactions
     pipeline = [
@@ -2400,8 +2437,8 @@ async def get_rank_info(user: dict = Depends(get_current_user)):
     rank_info = get_user_rank(total_volume)
     
     # Get user stats
-    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
-    created_at = user_doc.get("created_at", datetime.now(timezone.utc).isoformat())
+    user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0, "created_at": 1})
+    created_at = user_doc.get("created_at", datetime.now(timezone.utc).isoformat()) if user_doc else datetime.now(timezone.utc).isoformat()
     
     # Calculate days as member
     try:
@@ -2416,7 +2453,7 @@ async def get_rank_info(user: dict = Depends(get_current_user)):
         "type": {"$in": ["buy", "sell"]}
     })
     
-    return {
+    response = {
         "user_id": user_id,
         "rank": rank_info["current_rank"],
         "next_rank": rank_info["next_rank"],
@@ -2428,6 +2465,10 @@ async def get_rank_info(user: dict = Depends(get_current_user)):
             "days_as_member": days_as_member
         }
     }
+    
+    # Cache result
+    api_cache.set(cache_key, response)
+    return response
 
 @api_router.get("/rank/all-levels")
 async def get_all_rank_levels():
@@ -2480,13 +2521,20 @@ async def get_rank_leaderboard():
 
 @api_router.get("/team-rank/info")
 async def get_team_rank_info(user: dict = Depends(get_current_user)):
-    """Get user's team rank information with demotion support"""
+    """Get user's team rank information with demotion support - CACHED"""
     try:
         user_id = user["user_id"]
+        
+        # Check cache first
+        cache_key = f"team_rank_info_{user_id}"
+        cached = api_cache.get(cache_key, ttl=30)  # Cache for 30 seconds
+        if cached:
+            return cached
+        
         now = datetime.now(timezone.utc)
         
         # Get user's saved data FIRST
-        user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+        user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0, "team_rank_level": 1, "claimed_rank_rewards": 1})
         saved_rank_level = user_doc.get("team_rank_level", 0) if user_doc else 0
         claimed_rewards = user_doc.get("claimed_rank_rewards", []) if user_doc else []
         
