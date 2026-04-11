@@ -33,7 +33,7 @@ const TelegramPopup = () => {
 
   const handleJoin = () => {
     localStorage.setItem('tg_channel_joined', 'true');
-    window.open('https://t.me/+vgak-EfN1p81NWE1', '_blank');
+    window.open('https://t.me/+BQgWwaC0W69iZTM1', '_blank');
     setIsVisible(false);
   };
 

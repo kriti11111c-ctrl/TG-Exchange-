@@ -330,7 +330,7 @@ const ProfilePage = () => {
           </a>
           <div className={`h-px ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} mx-4`}></div>
           <a 
-            href="https://t.me/+vgak-EfN1p81NWE1" 
+            href="https://t.me/+BQgWwaC0W69iZTM1" 
             target="_blank"
             rel="noopener noreferrer"
             className={`flex items-center justify-between p-4 ${hoverBg}`}
