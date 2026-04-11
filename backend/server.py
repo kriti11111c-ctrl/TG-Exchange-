@@ -43,13 +43,13 @@ ETHERSCAN_API_KEY = os.environ.get('ETHERSCAN_API_KEY', '')
 TRONSCAN_API_KEY = os.environ.get('TRONSCAN_API_KEY', '')
 SOLSCAN_API_KEY = os.environ.get('SOLSCAN_API_KEY', '')
 
-# Enhanced In-memory cache
+# Enhanced In-memory cache with longer TTL for speed
 class FastCache:
     def __init__(self):
         self._cache = {}
         self._timestamps = {}
     
-    def get(self, key: str, ttl: int = 30):
+    def get(self, key: str, ttl: int = 60):  # Increased default TTL to 60s
         if key in self._cache:
             if time.time() - self._timestamps.get(key, 0) < ttl:
                 return self._cache[key]
@@ -69,11 +69,14 @@ class FastCache:
 
 fast_cache = FastCache()
 
+# API Response cache for frequently accessed endpoints
+api_cache = FastCache()
+
 # Simple in-memory cache for prices
 price_cache = {
     "data": None,
     "timestamp": None,
-    "ttl": 60  # Cache for 60 seconds (increased for better performance)
+    "ttl": 120  # Cache for 120 seconds (2 minutes for ultra speed)
 }
 
 chart_cache = {}

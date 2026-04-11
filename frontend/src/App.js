@@ -40,38 +40,57 @@ const AdminWithdrawalsPage = lazy(() => import("./pages/AdminWithdrawalsPage"));
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
 
-// Configure axios defaults for faster responses
-axios.defaults.timeout = 15000; // 15 second timeout
+// Configure axios defaults for ULTRA FAST responses
+axios.defaults.timeout = 10000; // 10 second timeout (reduced for faster failure)
 
-// Response cache for frequently accessed data
+// Response cache for frequently accessed data - AGGRESSIVE CACHING
 const responseCache = new Map();
-const CACHE_TTL = 5000; // 5 seconds cache
+const CACHE_TTL = 10000; // 10 seconds cache (increased for speed)
 
-// Helper function to get cached or fetch fresh data
+// Pending requests to prevent duplicate calls
+const pendingRequests = new Map();
+
+// Helper function to get cached or fetch fresh data with deduplication
 export const cachedFetch = async (url, options = {}) => {
   const cacheKey = url + JSON.stringify(options);
-  const cached = responseCache.get(cacheKey);
   
+  // Return cached data immediately if available
+  const cached = responseCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data;
   }
   
-  try {
-    const response = await axios.get(url, options);
-    responseCache.set(cacheKey, {
-      data: response.data,
-      timestamp: Date.now()
-    });
-    return response.data;
-  } catch (error) {
-    // If fetch fails but we have stale cache, use it
-    if (cached) return cached.data;
-    throw error;
+  // Deduplicate concurrent requests
+  if (pendingRequests.has(cacheKey)) {
+    return pendingRequests.get(cacheKey);
   }
+  
+  const requestPromise = (async () => {
+    try {
+      const response = await axios.get(url, { ...options, timeout: 8000 });
+      responseCache.set(cacheKey, {
+        data: response.data,
+        timestamp: Date.now()
+      });
+      return response.data;
+    } catch (error) {
+      // If fetch fails but we have stale cache, use it
+      if (cached) return cached.data;
+      throw error;
+    } finally {
+      pendingRequests.delete(cacheKey);
+    }
+  })();
+  
+  pendingRequests.set(cacheKey, requestPromise);
+  return requestPromise;
 };
 
 // Clear cache on logout
-export const clearApiCache = () => responseCache.clear();
+export const clearApiCache = () => {
+  responseCache.clear();
+  pendingRequests.clear();
+};
 
 // Axios interceptor to add auth token
 axios.interceptors.request.use(
