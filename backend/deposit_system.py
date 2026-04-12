@@ -306,9 +306,10 @@ class DepositAddressGenerator:
         self.seed_bytes = seed_bytes[:64]
     
     def generate_evm_address(self, user_id: str, network: str, index: int = 0) -> Dict:
-        """Generate EVM-compatible address (BSC, ETH, Polygon)"""
+        """Generate EVM-compatible address (BSC, ETH, Polygon) - SAME address for all EVM chains"""
         try:
-            user_hash = hashlib.sha256(f"{user_id}_{network}_{index}".encode()).hexdigest()
+            # Use 'evm' instead of network name so all EVM chains get SAME address
+            user_hash = hashlib.sha256(f"{user_id}_evm_{index}".encode()).hexdigest()
             
             combined_seed = hashlib.pbkdf2_hmac(
                 'sha512',
