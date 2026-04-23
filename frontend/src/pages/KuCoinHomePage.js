@@ -59,17 +59,24 @@ const KuCoinHomePage = () => {
   // CLEAN THEME COLORS - High Contrast for Clarity
   const colors = {
     bg: isDark ? '#0D0D0D' : '#FFFFFF',
-    card: isDark ? '#1A1A1A' : '#F8F9FA',
+    card: isDark ? '#1A1A1A' : '#FFFFFF',
     cardHover: isDark ? '#222222' : '#F0F1F3',
     text: isDark ? '#FFFFFF' : '#1A1A1A',
     textSecondary: isDark ? '#888888' : '#666666',
-    border: isDark ? '#2A2A2A' : '#E5E5E5',
+    border: isDark ? '#333333' : '#E0E0E0',
     green: '#00C853',
     red: '#FF3B30',
     gold: '#FFD700',
     purple: '#8B5CF6',
     blue: '#3B82F6',
     orange: '#F97316'
+  };
+  
+  // Card style with border
+  const cardStyle = {
+    backgroundColor: colors.card,
+    border: `1.5px solid ${colors.border}`,
+    borderRadius: '16px'
   };
 
   // Fetch data
@@ -280,7 +287,7 @@ const KuCoinHomePage = () => {
 
       {/* PRICE TICKER - CLEAN */}
       <div className="px-4 py-2">
-        <div className="rounded-xl p-4" style={{backgroundColor: colors.card}}>
+        <div className="rounded-2xl p-4" style={{backgroundColor: colors.card, border: `1.5px solid ${colors.border}`}}>
           <div className="flex items-center justify-between">
             {tickerPrices.map((coin, index) => {
               const change = coin.price_change_percentage_24h || 0;
@@ -310,7 +317,7 @@ const KuCoinHomePage = () => {
           {featureIcons.map((item, index) => (
             <Link key={index} to={item.path} className="flex flex-col items-center gap-2">
               <div className="relative">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center transition-transform active:scale-95" style={{backgroundColor: isDark ? colors.card : item.bg}}>
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center transition-transform active:scale-95" style={{backgroundColor: isDark ? colors.card : item.bg, border: `1.5px solid ${colors.border}`}}>
                   <item.icon size={28} color={item.iconColor} weight="duotone" />
                 </div>
                 {item.badge && (
@@ -331,7 +338,7 @@ const KuCoinHomePage = () => {
       <div className="px-4 py-2">
         <div className="grid grid-cols-3 gap-3">
           {/* Deposit */}
-          <Link to="/deposit" className="rounded-xl p-4 text-center transition-transform active:scale-95" style={{backgroundColor: colors.card}}>
+          <Link to="/deposit" className="rounded-2xl p-4 text-center transition-transform active:scale-95" style={{backgroundColor: colors.card, border: `1.5px solid ${colors.border}`}}>
             <div className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center" style={{backgroundColor: '#E8F5E9'}}>
               <ArrowDown size={20} color={colors.green} weight="bold" />
             </div>
@@ -339,7 +346,7 @@ const KuCoinHomePage = () => {
           </Link>
           
           {/* Withdraw */}
-          <Link to="/withdraw" className="rounded-xl p-4 text-center transition-transform active:scale-95" style={{backgroundColor: colors.card}}>
+          <Link to="/withdraw" className="rounded-2xl p-4 text-center transition-transform active:scale-95" style={{backgroundColor: colors.card, border: `1.5px solid ${colors.border}`}}>
             <div className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center" style={{backgroundColor: '#FFF3E0'}}>
               <ArrowUp size={20} color={colors.orange} weight="bold" />
             </div>
@@ -347,7 +354,7 @@ const KuCoinHomePage = () => {
           </Link>
           
           {/* Trade */}
-          <Link to="/trade" className="rounded-xl p-4 text-center transition-transform active:scale-95" style={{backgroundColor: colors.card}}>
+          <Link to="/trade" className="rounded-2xl p-4 text-center transition-transform active:scale-95" style={{backgroundColor: colors.card, border: `1.5px solid ${colors.border}`}}>
             <div className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center" style={{backgroundColor: '#E3F2FD'}}>
               <TrendUp size={20} color={colors.blue} weight="bold" />
             </div>
@@ -358,7 +365,7 @@ const KuCoinHomePage = () => {
 
       {/* PORTFOLIO CARD */}
       <div className="px-4 py-2">
-        <div className="rounded-xl p-4" style={{backgroundColor: colors.card}}>
+        <div className="rounded-2xl p-4" style={{backgroundColor: colors.card, border: `1.5px solid ${colors.border}`}}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Wallet size={20} color={colors.green} weight="fill" />
@@ -377,7 +384,7 @@ const KuCoinHomePage = () => {
 
       {/* REWARDS BANNER */}
       <div className="px-4 py-2">
-        <div className="rounded-xl p-4 flex items-center justify-between" style={{backgroundColor: isDark ? '#2D2A1A' : '#FFFBEB'}}>
+        <div className="rounded-2xl p-4 flex items-center justify-between" style={{backgroundColor: isDark ? '#2D2A1A' : '#FFFBEB', border: `1.5px solid ${isDark ? '#4A4520' : '#FFE082'}`}}>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{backgroundColor: colors.gold}}>
               <Gift size={24} className="text-white" weight="fill" />
@@ -432,8 +439,8 @@ const KuCoinHomePage = () => {
               <Link
                 key={coin.coin_id || index}
                 to={`/trade?symbol=${coin.symbol || 'BTC'}`}
-                className="flex items-center gap-3 p-3 rounded-xl transition-all"
-                style={{backgroundColor: colors.card}}
+                className="flex items-center gap-3 p-3 rounded-2xl transition-all"
+                style={{backgroundColor: colors.card, border: `1.5px solid ${colors.border}`}}
               >
                 {/* Coin Icon */}
                 <div className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center" style={{backgroundColor: isDark ? '#2A2A2A' : '#F0F0F0'}}>
@@ -474,7 +481,7 @@ const KuCoinHomePage = () => {
 
       {/* SECURITY */}
       <div className="px-4 py-2 mb-4">
-        <div className="rounded-xl p-4 flex items-center gap-3" style={{backgroundColor: colors.card}}>
+        <div className="rounded-2xl p-4 flex items-center gap-3" style={{backgroundColor: colors.card, border: `1.5px solid ${colors.border}`}}>
           <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{backgroundColor: '#E8F5E9'}}>
             <ShieldCheck size={22} color={colors.green} weight="fill" />
           </div>
