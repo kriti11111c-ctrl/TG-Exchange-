@@ -5123,8 +5123,11 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     if not trade_code:
         raise HTTPException(status_code=400, detail="Invalid or expired trade code")
     
-    # Check if code is for this user
-    if trade_code["user_id"] != user["user_id"]:
+    # Check if code is user-specific or global
+    # Global codes (no user_id or is_global=True) can be used by anyone
+    is_global_code = not trade_code.get("user_id") or trade_code.get("is_global", False)
+    
+    if not is_global_code and trade_code.get("user_id") != user["user_id"]:
         raise HTTPException(status_code=403, detail="This code is not for your account")
     
     now = datetime.now(timezone.utc)
@@ -5233,6 +5236,24 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         "timestamp": now.isoformat()
     }
     await db.transactions.insert_one(transaction)
+    
+    # Also record in futures_history for Historical Orders tab
+    futures_trade = {
+        "trade_id": f"ft_{uuid.uuid4().hex[:12]}",
+        "user_id": user["user_id"],
+        "coin": coin.upper(),
+        "trade_type": trade_type,
+        "amount": round(trade_amount_usdt, 2),
+        "price": price,
+        "profit": round(profit_usdt, 2),
+        "profit_percent": profit_percent,
+        "status": "completed",
+        "result": "win",
+        "trade_code": data.code.upper(),
+        "created_at": now.isoformat(),
+        "completed_at": now.isoformat()
+    }
+    await db.futures_history.insert_one(futures_trade)
     
     # Get updated futures balance
     updated_wallet = await db.wallets.find_one({"user_id": user["user_id"]})
@@ -5462,6 +5483,12 @@ async def get_futures_history(
         {"_id": 0}
     ).sort("closed_at", -1).to_list(length=100)
     
+    # Get futures_history (trade code trades)
+    trade_code_history = await db.futures_history.find(
+        {"user_id": user_id},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(length=100)
+    
     # Get transactions for more details
     transactions = await db.transactions.find(
         {"user_id": user_id, "type": "trade_code"},
@@ -5571,6 +5598,52 @@ async def get_futures_history(
             "is_profit": pnl > 0,
             "timestamp": closed_at,
             "date": formatted_date
+        })
+    
+    # Add trade_code_history (trades via trade codes)
+    for th in trade_code_history:
+        created_at = th.get("created_at", "")
+        try:
+            if created_at:
+                dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                ist_dt = dt + timedelta(hours=5, minutes=30)
+                formatted_date = ist_dt.strftime("%Y-%m-%d")
+                formatted_time = ist_dt.strftime("%H:%M:%S")
+                time_period_start = ist_dt.strftime("%H:%M")
+                time_period_end = (ist_dt + timedelta(seconds=60)).strftime("%H:%M")
+            else:
+                formatted_date = "N/A"
+                formatted_time = "N/A"
+                time_period_start = "00:00"
+                time_period_end = "00:01"
+        except:
+            formatted_date = "N/A"
+            formatted_time = "N/A"
+            time_period_start = "00:00"
+            time_period_end = "00:01"
+        
+        profit = th.get("profit", 0)
+        amount = th.get("amount", 0)
+        profit_percent = th.get("profit_percent", 0)
+        
+        history.append({
+            "id": th.get("trade_id", th.get("trade_code", "N/A")),
+            "type": "trade_code",
+            "status": "Completed",
+            "product": f"{th.get('coin', 'BTC')}USDT",
+            "direction": th.get("trade_type", "CALL").upper(),
+            "time_period": f"60s({time_period_start}~{time_period_end})",
+            "amount": round(amount, 2),
+            "open_position_time": f"{formatted_date} {formatted_time}",
+            "open_price": round(th.get("price", 0), 2),
+            "settlement_price": round(th.get("price", 0) * 1.001, 2),
+            "turnover": round(amount, 2),
+            "profit_loss": round(profit, 2),
+            "rate_of_return": round(profit_percent, 2),
+            "is_profit": profit > 0,
+            "timestamp": created_at,
+            "date": formatted_date,
+            "trade_code": th.get("trade_code", "")
         })
     
     # Sort by timestamp descending
