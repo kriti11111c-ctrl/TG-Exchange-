@@ -52,6 +52,7 @@ const KuCoinHomePage = () => {
   const [activeSlide, setActiveSlide] = useState(0);
   const [tradeCodes, setTradeCodes] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [countdowns, setCountdowns] = useState({});
   const notificationRef = useRef(null);
   
   const { prices: wsPrices, isConnected } = useWebSocket(true);
@@ -86,6 +87,28 @@ const KuCoinHomePage = () => {
       setTradeCodes(res.data.codes || []);
     } catch (error) {
       console.error("Error fetching trade codes:", error);
+    }
+  };
+
+  // Format countdown time
+  const formatCountdown = (seconds) => {
+    if (!seconds || seconds <= 0) return "00:00";
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Copy code to clipboard
+  const copyCode = async (code) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      toast.success("Code copied!");
+    } catch (err) {
+      toast.error("Copy failed");
     }
   };
 
