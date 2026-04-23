@@ -34,6 +34,9 @@ const ReferralPage = () => {
   const [copied, setCopied] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [userReferralCode, setUserReferralCode] = useState("");
+  const [selectedPeriod, setSelectedPeriod] = useState("all");
+  const [periodBusiness, setPeriodBusiness] = useState({});
+  const [loadingPeriod, setLoadingPeriod] = useState(false);
 
   // Theme colors
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-[#FAFAFA]';
@@ -128,6 +131,42 @@ const ReferralPage = () => {
       console.error("Error fetching team:", error);
       setTeam([]);
     }
+  };
+
+  // Fetch business for a specific period
+  const fetchPeriodBusiness = async (period) => {
+    setLoadingPeriod(true);
+    try {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await axios.get(`${API}/referral/stats?period=${period}`, { 
+        withCredentials: true, 
+        headers 
+      });
+      setPeriodBusiness(prev => ({
+        ...prev,
+        [period]: response.data.total_business || 0
+      }));
+    } catch (error) {
+      console.error("Error fetching period business:", error);
+    } finally {
+      setLoadingPeriod(false);
+    }
+  };
+
+  // Handle period change
+  const handlePeriodChange = (period) => {
+    setSelectedPeriod(period);
+    if (!periodBusiness[period]) {
+      fetchPeriodBusiness(period);
+    }
+  };
+
+  // Get current business value based on selected period
+  const getCurrentBusiness = () => {
+    if (selectedPeriod === "all") {
+      return stats?.total_business || 0;
+    }
+    return periodBusiness[selectedPeriod] || 0;
   };
 
   const fallbackCopyToClipboard = (text) => {
@@ -338,9 +377,33 @@ const ReferralPage = () => {
             <ChartLineUp size={20} className="text-[#F0B90B]" />
             <span className={textMuted}>Total Business</span>
           </div>
-          <p className={`text-2xl font-bold ${stats?.total_business >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
-            ${Math.abs(stats?.total_business || 0).toFixed(2)}
+          <p className={`text-2xl font-bold ${getCurrentBusiness() >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+            {loadingPeriod ? '...' : `$${Math.abs(getCurrentBusiness()).toFixed(2)}`}
           </p>
+        </div>
+      </div>
+
+      {/* Period Filter */}
+      <div className="mx-4 mt-3">
+        <div className={`${cardBg} rounded-xl p-2 flex gap-2`}>
+          {[
+            { id: '24h', label: '24H' },
+            { id: '7d', label: '7D' },
+            { id: '30d', label: '30D' },
+            { id: 'all', label: 'MAX' }
+          ].map(period => (
+            <button
+              key={period.id}
+              onClick={() => handlePeriodChange(period.id)}
+              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
+                selectedPeriod === period.id
+                  ? 'bg-[#0ECB81] text-white'
+                  : `${isDark ? 'bg-[#2B3139] text-gray-400' : 'bg-gray-100 text-gray-600'}`
+              }`}
+            >
+              {period.label}
+            </button>
+          ))}
         </div>
       </div>
 

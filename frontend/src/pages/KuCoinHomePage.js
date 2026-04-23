@@ -208,7 +208,7 @@ const KuCoinHomePage = () => {
             </button>
             
             <div className="relative" ref={notificationRef}>
-              <button onClick={() => setShowNotifications(!showNotifications)} className="w-10 h-10 rounded-xl flex items-center justify-center relative" style={{backgroundColor: colors.card}}>
+              <button onClick={() => setShowNotifications(!showNotifications)} className="w-10 h-10 rounded-xl flex items-center justify-center relative" style={{backgroundColor: colors.card, border: `1.5px solid ${colors.border}`}}>
                 <Bell size={20} color={colors.text} weight="fill" />
                 {activeOrScheduledCodes.length > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[10px] text-white flex items-center justify-center font-bold" style={{backgroundColor: colors.red}}>
@@ -216,6 +216,58 @@ const KuCoinHomePage = () => {
                   </span>
                 )}
               </button>
+              
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 top-12 w-72 rounded-2xl shadow-2xl z-50 overflow-hidden" style={{backgroundColor: colors.card, border: `1.5px solid ${colors.border}`}}>
+                  <div className="p-3 flex items-center justify-between" style={{borderBottom: `1px solid ${colors.border}`}}>
+                    <span className="font-bold" style={{color: colors.text}}>Trade Codes</span>
+                    <button onClick={() => setShowNotifications(false)}>
+                      <span style={{color: colors.textSecondary}}>✕</span>
+                    </button>
+                  </div>
+                  
+                  <div className="max-h-80 overflow-y-auto">
+                    {activeOrScheduledCodes.length === 0 ? (
+                      <div className="p-4 text-center">
+                        <p style={{color: colors.textSecondary}}>No active codes</p>
+                      </div>
+                    ) : (
+                      activeOrScheduledCodes.map((code, idx) => (
+                        <div key={idx} className="p-3" style={{borderBottom: `1px solid ${colors.border}`}}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-lg" style={{color: colors.green}}>{code.code}</span>
+                            <button 
+                              onClick={() => copyCode(code.code)}
+                              className="px-3 py-1 rounded-lg text-xs font-bold text-white"
+                              style={{backgroundColor: colors.green}}
+                            >
+                              COPY
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs" style={{color: colors.textSecondary}}>
+                              {code.is_live ? 'LIVE NOW' : `Starts in ${formatCountdown(code.countdown_to_live)}`}
+                            </span>
+                            {code.is_live && (
+                              <span className="text-xs font-bold" style={{color: colors.gold}}>
+                                {formatCountdown(countdowns[`${code.code}_remaining`] || code.time_remaining)}
+                              </span>
+                            )}
+                          </div>
+                          {code.reward && (
+                            <p className="text-xs mt-1" style={{color: colors.gold}}>Reward: ${code.reward}</p>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  
+                  <Link to="/profile" className="block p-3 text-center font-semibold" style={{color: colors.green, borderTop: `1px solid ${colors.border}`}}>
+                    View All Codes
+                  </Link>
+                </div>
+              )}
             </div>
             
             <Link to="/profile">
