@@ -11,6 +11,7 @@ import LoadingPage from "./components/LoadingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import Dashboard from "./pages/Dashboard";
+import KuCoinHomePage from "./pages/KuCoinHomePage";
 
 // Lazy loaded pages (load on demand)
 const WalletPage = lazy(() => import("./pages/WalletPage"));
@@ -372,6 +373,11 @@ function AppRouter() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <KuCoinHomePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/old-dashboard" element={
           <ProtectedRoute>
             <Dashboard />
           </ProtectedRoute>
