@@ -2,11 +2,11 @@
 
 ## User Accounts
 
-### Demo User
-- **Email:** demo@cryptovault.com
-- **Password:** Demo@123
+### Demo User (Updated)
+- **Email:** demo@tgexchange.com
+- **Password:** Demo123!
 - **Role:** User
-- **KYC Status:** Verified
+- **Team Rank:** Bronze (6 team members)
 
 ## Admin Accounts
 
@@ -18,4 +18,6 @@
 ## Notes
 - Admin login: /admin
 - User login: /login
-- KYC Verification: Profile → KYC Verification
+- Dashboard: /dashboard (KuCoin-style homepage)
+- Team Rank: /team-rank
+- KYC Verification: /kyc
