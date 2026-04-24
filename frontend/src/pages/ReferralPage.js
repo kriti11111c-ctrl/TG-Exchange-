@@ -332,6 +332,14 @@ const ReferralPage = () => {
             <div>
               <h2 className="text-white font-bold text-xl mb-1">Invite & Earn</h2>
               <p className="text-white/80 text-sm">Earn 0.6% on every trade from your referrals!</p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <span className="px-2 py-0.5 rounded-md bg-white/20 text-white text-xs font-medium">
+                  🎁 $200 Welcome Bonus
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-white/20 text-white text-xs font-medium">
+                  💰 5% First Deposit
+                </span>
+              </div>
               <p className="text-white/90 text-xs mt-2 font-medium">10 Levels Deep • Unlimited Earnings</p>
             </div>
             <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
