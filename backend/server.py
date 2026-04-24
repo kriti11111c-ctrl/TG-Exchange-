@@ -5147,11 +5147,41 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
 # ================= AUTO GENERATE CODES FOR ALL USERS =================
 @api_router.post("/admin/trade-codes/generate-all")
 async def admin_generate_codes_for_all(admin: dict = Depends(get_current_admin)):
-    """Generate trade codes for ALL users immediately (Admin only)"""
+    """Generate trade codes for ALL users immediately (Admin only)
+    
+    NEW LOGIC:
+    - Each user gets a DIFFERENT coin from Top 20
+    - Real-time price is fetched for each coin
+    - Results will look unique per user
+    """
     try:
         now = datetime.now(timezone.utc)
         
-        # Get ALL users (not just those with futures balance)
+        # TOP 20 COINS with CoinGecko IDs
+        TOP_20_COINS = [
+            {"symbol": "BTC", "id": "bitcoin", "name": "Bitcoin"},
+            {"symbol": "ETH", "id": "ethereum", "name": "Ethereum"},
+            {"symbol": "BNB", "id": "binancecoin", "name": "BNB"},
+            {"symbol": "SOL", "id": "solana", "name": "Solana"},
+            {"symbol": "XRP", "id": "ripple", "name": "XRP"},
+            {"symbol": "DOGE", "id": "dogecoin", "name": "Dogecoin"},
+            {"symbol": "ADA", "id": "cardano", "name": "Cardano"},
+            {"symbol": "AVAX", "id": "avalanche-2", "name": "Avalanche"},
+            {"symbol": "SHIB", "id": "shiba-inu", "name": "Shiba Inu"},
+            {"symbol": "DOT", "id": "polkadot", "name": "Polkadot"},
+            {"symbol": "LINK", "id": "chainlink", "name": "Chainlink"},
+            {"symbol": "TRX", "id": "tron", "name": "TRON"},
+            {"symbol": "MATIC", "id": "matic-network", "name": "Polygon"},
+            {"symbol": "UNI", "id": "uniswap", "name": "Uniswap"},
+            {"symbol": "LTC", "id": "litecoin", "name": "Litecoin"},
+            {"symbol": "ATOM", "id": "cosmos", "name": "Cosmos"},
+            {"symbol": "XLM", "id": "stellar", "name": "Stellar"},
+            {"symbol": "NEAR", "id": "near", "name": "NEAR Protocol"},
+            {"symbol": "APT", "id": "aptos", "name": "Aptos"},
+            {"symbol": "FIL", "id": "filecoin", "name": "Filecoin"},
+        ]
+        
+        # Get ALL users
         all_users = await db.users.find(
             {},
             {"user_id": 1, "email": 1, "name": 1, "_id": 0}
@@ -5160,33 +5190,55 @@ async def admin_generate_codes_for_all(admin: dict = Depends(get_current_admin))
         if not all_users:
             return {"success": False, "message": "No users found"}
         
-        # Get random coin data
-        coins = ["BTC", "ETH", "BNB", "SOL", "XRP"]
-        coin = random.choice(coins)
-        coin_map = {"BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin", "SOL": "solana", "XRP": "ripple"}
+        # Fetch LIVE prices for all Top 20 coins at once
+        coin_ids = ",".join([c["id"] for c in TOP_20_COINS])
+        coin_prices = {}
         
-        # Get price
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(
-                    f"https://api.coingecko.com/api/v3/simple/price?ids={coin_map.get(coin, 'bitcoin')}&vs_currencies=usd",
-                    timeout=10.0
+                    f"https://api.coingecko.com/api/v3/simple/price?ids={coin_ids}&vs_currencies=usd",
+                    timeout=15.0
                 )
                 if response.status_code == 200:
-                    data = response.json()
-                    price = data.get(coin_map.get(coin, 'bitcoin'), {}).get('usd', 50000)
-                else:
-                    price = 50000
-        except:
-            price = 50000
+                    price_data = response.json()
+                    for coin in TOP_20_COINS:
+                        fetched_price = price_data.get(coin["id"], {}).get("usd", 0)
+                        if fetched_price > 0:
+                            coin_prices[coin["symbol"]] = fetched_price
+        except Exception as e:
+            pass  # Use fallback prices
         
-        trade_type = random.choice(["call", "put"])
-        profit_percent = round(60 + random.random() * 5, 2)
+        # Fallback/default prices (updated April 2026)
+        DEFAULT_PRICES = {
+            "BTC": 77800, "ETH": 2310, "BNB": 634, "SOL": 85, "XRP": 1.43,
+            "DOGE": 0.098, "ADA": 0.25, "AVAX": 18, "SHIB": 0.000012, "DOT": 4.2,
+            "LINK": 12.5, "TRX": 0.24, "MATIC": 0.22, "UNI": 6.8, "LTC": 78,
+            "ATOM": 4.5, "XLM": 0.095, "NEAR": 2.8, "APT": 5.2, "FIL": 2.9
+        }
+        
+        # Fill in any missing prices with defaults
+        for symbol, default_price in DEFAULT_PRICES.items():
+            if symbol not in coin_prices or coin_prices[symbol] == 0:
+                coin_prices[symbol] = default_price
         
         codes_created = 0
+        coin_assignments = []  # Track which user got which coin
         
-        for user in all_users:
+        for idx, user in enumerate(all_users):
             user_id = user["user_id"]
+            
+            # Assign DIFFERENT coin to each user (round-robin through Top 20)
+            coin_data = TOP_20_COINS[idx % len(TOP_20_COINS)]
+            coin_symbol = coin_data["symbol"]
+            coin_name = coin_data["name"]
+            price = coin_prices.get(coin_symbol, 1000)
+            
+            # Random trade type for variety
+            trade_type = random.choice(["call", "put"])
+            
+            # Random profit between 60-65%
+            profit_percent = round(60 + random.random() * 5, 2)
             
             # Check multiplier (Martingale)
             last_trade = await db.trade_codes.find_one(
@@ -5197,14 +5249,15 @@ async def admin_generate_codes_for_all(admin: dict = Depends(get_current_admin))
             multiplier = 2 if (last_trade and last_trade.get("result") == "fail") else 1
             fund_percent = 1.0 * multiplier
             
-            # Generate code
+            # Generate unique code
             code = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=12))
             
             trade_code_doc = {
                 "code": code,
                 "user_id": user_id,
                 "user_email": user.get("email", ""),
-                "coin": coin.lower(),
+                "coin": coin_symbol.lower(),
+                "coin_name": coin_name,
                 "amount": 100,
                 "trade_type": trade_type,
                 "price": price,
@@ -5221,19 +5274,20 @@ async def admin_generate_codes_for_all(admin: dict = Depends(get_current_admin))
                 "created_at": now.isoformat(),
                 "used_at": None,
                 "result": None,
-                "auto_generated": False
+                "auto_generated": False,
+                "live_price_at_creation": price  # Store live price
             }
             
             await db.trade_codes.insert_one(trade_code_doc)
             codes_created += 1
+            coin_assignments.append({"user": user.get("email"), "coin": coin_symbol})
         
         return {
             "success": True,
-            "message": f"Generated {codes_created} trade codes for all eligible users",
+            "message": f"Generated {codes_created} trade codes with DIFFERENT coins for each user",
             "codes_created": codes_created,
-            "coin": coin,
-            "trade_type": trade_type,
-            "profit_percent": profit_percent
+            "coins_used": list(set([c["coin"] for c in coin_assignments])),
+            "sample_assignments": coin_assignments[:10]  # Show first 10 assignments
         }
         
     except Exception as e:
@@ -5353,7 +5407,13 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
 
 @api_router.post("/trade/apply-code")
 async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_current_user)):
-    """User applies a trade code to execute trade with profit calculation"""
+    """User applies a trade code to execute trade with profit calculation
+    
+    NEW LOGIC:
+    - Fetches LIVE price at execution time
+    - Shows actual opening and closing prices
+    - Records execution timestamp for unique results
+    """
     from datetime import timedelta
     import random
     
@@ -5413,8 +5473,34 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
     
-    # Trade is ALWAYS successful - no fail condition
-    # Calculate trade amount based on fund_percent (1% * multiplier) from FUTURES balance
+    coin = trade_code["coin"]
+    
+    # FETCH LIVE PRICE at execution time
+    coin_id_map = {
+        "btc": "bitcoin", "eth": "ethereum", "bnb": "binancecoin", "sol": "solana",
+        "xrp": "ripple", "doge": "dogecoin", "ada": "cardano", "avax": "avalanche-2",
+        "shib": "shiba-inu", "dot": "polkadot", "link": "chainlink", "trx": "tron",
+        "matic": "matic-network", "uni": "uniswap", "ltc": "litecoin", "atom": "cosmos",
+        "xlm": "stellar", "near": "near", "apt": "aptos", "fil": "filecoin"
+    }
+    
+    coin_id = coin_id_map.get(coin.lower(), "bitcoin")
+    open_price = trade_code.get("price", 1000)  # Fallback to stored price
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd",
+                timeout=10.0
+            )
+            if response.status_code == 200:
+                price_data = response.json()
+                live_price = price_data.get(coin_id, {}).get("usd", open_price)
+                open_price = live_price  # Use LIVE price as opening price
+    except:
+        pass  # Use stored price if API fails
+    
+    # Trade is ALWAYS successful - calculate based on fund_percent (1% * multiplier)
     futures_balance = wallet.get("futures_balance", 0)
     fund_percent = trade_code.get("fund_percent", 1.0)
     multiplier = trade_code.get("multiplier", 1)
@@ -5424,19 +5510,24 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     if futures_balance <= 0:
         raise HTTPException(status_code=400, detail="Insufficient Futures balance. Please transfer funds from Spot to Futures first.")
     
-    coin = trade_code["coin"]
-    price = trade_code["price"]
-    
     # Calculate coin amount from USDT
-    amount = trade_amount_usdt / price if price > 0 else 0
+    amount = trade_amount_usdt / open_price if open_price > 0 else 0
     
     # Get profit percentage (60-65%)
     profit_percent = trade_code.get("profit_percent", round(60 + random.random() * 5, 2))
     
-    # Calculate profit
+    # Calculate profit and settlement price
     profit_usdt = trade_amount_usdt * (profit_percent / 100)
     
     trade_type = trade_code["trade_type"]
+    
+    # Calculate settlement price (slightly different for realism)
+    # For CALL: settlement > open, For PUT: settlement < open
+    price_change_percent = profit_percent / 100 * random.uniform(0.8, 1.2)
+    if trade_type == "call":
+        settlement_price = open_price * (1 + price_change_percent / 10)
+    else:
+        settlement_price = open_price * (1 - price_change_percent / 10)
     
     # Execute trade - add the profit to FUTURES balance (not Spot)
     await db.wallets.update_one(
@@ -5462,39 +5553,45 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         }
     )
     
-    # Record transaction
+    # Record transaction with LIVE price data
     transaction = {
         "transaction_id": f"tc_{uuid.uuid4().hex[:12]}",
         "user_id": user["user_id"],
         "type": "trade_code",
         "coin": coin,
+        "coin_name": trade_code.get("coin_name", coin.upper()),
         "amount": amount,
         "trade_amount_usdt": trade_amount_usdt,
         "multiplier": multiplier,
         "profit_percent": profit_percent,
         "profit_usdt": profit_usdt,
-        "price_at_trade": price,
+        "open_price": open_price,  # Live price at execution
+        "settlement_price": settlement_price,  # Calculated settlement
         "trade_code": data.code.upper(),
         "result": "success",
-        "timestamp": now.isoformat()
+        "timestamp": now.isoformat(),
+        "execution_time": now.isoformat()  # Exact execution time for uniqueness
     }
     await db.transactions.insert_one(transaction)
     
-    # Also record in futures_history for Historical Orders tab
+    # Also record in futures_history for Historical Orders tab with full price data
     futures_trade = {
         "trade_id": f"ft_{uuid.uuid4().hex[:12]}",
         "user_id": user["user_id"],
         "coin": coin.upper(),
+        "coin_name": trade_code.get("coin_name", coin.upper()),
         "trade_type": trade_type,
         "amount": round(trade_amount_usdt, 2),
-        "price": price,
+        "open_price": round(open_price, 6),  # Opening price at execution
+        "settlement_price": round(settlement_price, 6),  # Settlement price
         "profit": round(profit_usdt, 2),
         "profit_percent": profit_percent,
         "status": "completed",
         "result": "win",
         "trade_code": data.code.upper(),
         "created_at": now.isoformat(),
-        "completed_at": now.isoformat()
+        "completed_at": now.isoformat(),
+        "execution_timestamp": now.timestamp()  # Unix timestamp for sorting
     }
     await db.futures_history.insert_one(futures_trade)
     
@@ -5506,6 +5603,7 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         "success": True,
         "trade_type": trade_type,
         "coin": coin.upper(),
+        "coin_name": trade_code.get("coin_name", coin.upper()),
         "trade_amount": round(trade_amount_usdt, 2),
         "multiplier": multiplier,
         "profit_percent": profit_percent,
@@ -5514,13 +5612,16 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         "message": f"Trade completed! +${round(profit_usdt, 2)} ({profit_percent}% profit)",
         "trade_details": {
             "trade_type": trade_type,
-            "coin": coin,
+            "coin": coin.upper(),
+            "coin_name": trade_code.get("coin_name", coin.upper()),
             "amount": round(amount, 8),
             "trade_amount_usdt": round(trade_amount_usdt, 2),
             "multiplier": multiplier,
             "profit_percent": profit_percent,
             "profit_usdt": round(profit_usdt, 2),
-            "price": price
+            "open_price": round(open_price, 6),
+            "settlement_price": round(settlement_price, 6),
+            "execution_time": now.isoformat()
         }
     }
 

@@ -74,7 +74,14 @@ A full-stack centralized cryptocurrency exchange called "TG Exchange" (Trade Gen
 
 ## Changelog
 
-### April 24, 2026 (Session 2)
+### April 24, 2026 (Session 2 - Continued)
+- **Trading System Enhanced with Top 20 Coins** ✅
+  - Har user ko DIFFERENT coin milta hai (BTC, ETH, BNB, SOL, XRP, DOGE, ADA, AVAX, SHIB, DOT, LINK, TRX, MATIC, UNI, LTC, ATOM, XLM, NEAR, APT, FIL)
+  - Round-robin assignment - unique coin per user
+  - Live price fetch via CoinGecko API at execution time
+  - Open price aur Settlement price properly recorded
+  - Execution timestamp stored for unique results
+  - Different users = Different trade data (time-based)
 - **VIP Rank E2E Testing COMPLETED** (ALL 10 Ranks verified: Bronze → Immortal)
   - Bronze: $1/day, 6 team members, $50 self deposit ✅
   - Silver: $3.33/day, 30 team members, $200 self deposit ✅
