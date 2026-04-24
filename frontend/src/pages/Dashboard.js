@@ -489,7 +489,7 @@ const Dashboard = () => {
                       </div>
                       <div className="mt-2 pt-2 border-t border-dashed border-[#2B3139]">
                         <p className={`text-[10px] ${textMuted} text-center`}>
-                          📅 Daily Codes: <span className="text-[#F0B90B]">10:45 AM</span> & <span className="text-[#F0B90B]">8:30 PM</span> IST (Valid for 1 hour)
+                          📅 Daily Codes: <span className="text-[#F0B90B]">10:45 AM</span> & <span className="text-[#F0B90B]">8:30 PM</span> IST (Valid for 2 hours)
                         </p>
                       </div>
                     </div>
