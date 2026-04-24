@@ -52,6 +52,7 @@ const KuCoinHomePage = () => {
   const [activeSlide, setActiveSlide] = useState(0);
   const [tradeCodes, setTradeCodes] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [countdowns, setCountdowns] = useState({});
   const notificationRef = useRef(null);
   
@@ -297,7 +298,10 @@ const KuCoinHomePage = () => {
 
   const portfolioValue = calculatePortfolioValue();
   const tickerPrices = getTickerPrices();
-  const activeOrScheduledCodes = tradeCodes.filter(c => (c.is_live || (c.countdown_to_live > 0 && c.status !== "used")));
+  
+  // Separate active/live codes from history (used/expired)
+  const activeOrScheduledCodes = tradeCodes.filter(c => (c.is_live || (c.countdown_to_live > 0 && c.status !== "used" && c.status !== "expired")));
+  const historyCodesList = tradeCodes.filter(c => (c.status === "used" || c.status === "expired" || c.is_expired));
 
   return (
     <div className="min-h-screen pb-24" style={{backgroundColor: colors.bg}}>
@@ -507,6 +511,81 @@ const KuCoinHomePage = () => {
                             </div>
                           );
                         })
+                      )}
+                      
+                      {/* HISTORY SECTION - Toggle Button */}
+                      {historyCodesList.length > 0 && (
+                        <div className="mx-3 my-3">
+                          <button 
+                            onClick={() => setShowHistory(!showHistory)}
+                            className="w-full py-2 px-3 rounded-xl flex items-center justify-between text-sm font-semibold"
+                            style={{backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid #2a2a4a', color: '#9CA3AF'}}
+                          >
+                            <span>📜 Trade Code History ({historyCodesList.length})</span>
+                            <span className="transform transition-transform" style={{transform: showHistory ? 'rotate(180deg)' : 'rotate(0deg)'}}>▼</span>
+                          </button>
+                          
+                          {/* History List */}
+                          {showHistory && (
+                            <div className="mt-2 space-y-2">
+                              {historyCodesList.map((code, idx) => {
+                                const isSuccess = code.status === "used" || code.is_success;
+                                const isExpiredCode = code.status === "expired" || code.is_expired;
+                                
+                                return (
+                                  <div 
+                                    key={`history-${idx}`} 
+                                    className="rounded-xl overflow-hidden"
+                                    style={{
+                                      backgroundColor: isSuccess ? 'rgba(0,200,83,0.1)' : 'rgba(255,59,48,0.1)',
+                                      border: `1px solid ${isSuccess ? '#00C853' : '#FF3B30'}`
+                                    }}
+                                  >
+                                    {/* Status Banner */}
+                                    <div className={`px-3 py-1.5 flex items-center gap-2 ${
+                                      isSuccess ? 'bg-gradient-to-r from-green-600 to-green-500' : 
+                                      'bg-gradient-to-r from-red-600 to-red-500'
+                                    }`}>
+                                      {isSuccess ? (
+                                        <>
+                                          <span className="text-white">✓</span>
+                                          <span className="text-white font-bold text-xs">SUCCESS</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="text-white">✕</span>
+                                          <span className="text-white font-bold text-xs">EXPIRED</span>
+                                        </>
+                                      )}
+                                      <span className="ml-auto text-white/80 text-[10px]">
+                                        {code.coin?.toUpperCase() || 'N/A'}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* Content */}
+                                    <div className="p-2">
+                                      <div className="flex items-center justify-between">
+                                        <span className="font-mono text-sm tracking-wider" style={{color: isSuccess ? '#00C853' : '#FF3B30'}}>
+                                          {code.code}
+                                        </span>
+                                        {isSuccess && code.actual_profit && (
+                                          <span className="text-green-400 text-xs font-bold">
+                                            +${code.actual_profit?.toFixed(2)}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-gray-500 text-[10px] mt-1">
+                                        {code.used_at ? new Date(code.used_at).toLocaleString() : 
+                                         code.expires_at ? `Expired: ${new Date(code.expires_at).toLocaleString()}` : 
+                                         code.created_at}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                     

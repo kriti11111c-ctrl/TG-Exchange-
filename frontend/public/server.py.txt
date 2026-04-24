@@ -5428,10 +5428,10 @@ async def get_trade_codes(admin: dict = Depends(get_current_admin)):
 
 @api_router.get("/user/trade-codes")
 async def get_user_trade_codes(user: dict = Depends(get_current_user)):
-    """Get all trade codes for current user with live/scheduled status"""
+    """Get all trade codes for current user with live/scheduled status + HISTORY"""
     from datetime import timedelta
     
-    # Get GLOBAL trade codes (not user-specific) that are active or scheduled
+    # Get ALL trade codes for user - including used and expired for HISTORY
     codes = await db.trade_codes.find(
         {
             "$or": [
@@ -5439,10 +5439,10 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
                 {"user_id": {"$exists": False}},  # Global codes without user_id
                 {"is_global": True}  # Explicitly marked global codes
             ],
-            "status": {"$in": ["active", "scheduled"]}
+            "status": {"$in": ["active", "scheduled", "live", "used", "expired"]}  # Include ALL statuses for history
         },
         {"_id": 0}
-    ).sort("created_at", -1).to_list(50)
+    ).sort("created_at", -1).to_list(100)  # Increased limit for history
     
     now = datetime.now(timezone.utc)
     
@@ -5471,7 +5471,8 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
             # Determine status
             if code_data["status"] == "used":
                 code_data["is_live"] = False
-                code_data["is_expired"] = True
+                code_data["is_expired"] = False  # Not expired, successfully used
+                code_data["is_success"] = True  # Mark as success
                 code_data["time_remaining"] = 0
                 code_data["countdown_to_live"] = 0
             elif now < scheduled_start:
@@ -5494,11 +5495,19 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
                     )
                     code_data["status"] = "active"
             else:
-                # Expired
+                # Expired - mark in database too
                 code_data["is_live"] = False
                 code_data["is_expired"] = True
+                code_data["is_success"] = False
                 code_data["time_remaining"] = 0
                 code_data["countdown_to_live"] = 0
+                # Update status to expired in database
+                if code_data["status"] not in ["used", "expired"]:
+                    await db.trade_codes.update_one(
+                        {"code": code_data["code"]},
+                        {"$set": {"status": "expired"}}
+                    )
+                    code_data["status"] = "expired"
         else:
             # Legacy codes - treat as already active
             if code_data.get("expires_at"):
