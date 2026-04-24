@@ -2709,6 +2709,20 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         # Calculate balance progress
         balance_progress = min(100, (real_futures / balance_required) * 100) if balance_required > 0 else 100
         
+        # Team members progress
+        team_required = next_rank_for_balance.get("team_required", 6) if next_rank_for_balance else 6
+        team_progress = min(100, (team_stats["total_team"] / team_required) * 100) if team_required > 0 else 100
+        
+        # Bronze/Direct members progress  
+        bronze_required = next_rank_for_balance.get("bronze_required", 0) if next_rank_for_balance else 0
+        direct_required = next_rank_for_balance.get("team_required", 6) if next_rank_for_balance and next_rank_for_balance.get("type") == "team" else 0
+        
+        # For Bronze rank (type=team), need direct referrals with $50+
+        # For Silver onwards (type=bronze), need bronze members
+        members_current = team_stats["direct_referrals"] if (next_rank_for_balance and next_rank_for_balance.get("type") == "team") else team_stats["bronze_members"]
+        members_required = direct_required if (next_rank_for_balance and next_rank_for_balance.get("type") == "team") else bronze_required
+        members_progress = min(100, (members_current / members_required) * 100) if members_required > 0 else 100
+        
         return {
             "user_id": user_id,
             "direct_referrals": team_stats["direct_referrals"],
@@ -2720,10 +2734,17 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
             "progress_current": rank_info.get("progress_current", 0),
             "progress_target": rank_info.get("progress_target", 1),
             "progress_type": rank_info.get("progress_type", "team"),
-            # Futures Balance Progress (NEW)
+            # Progress Bar 1 - Futures Balance
             "futures_balance": round(real_futures, 2),
             "balance_required": balance_required,
             "balance_progress": round(balance_progress, 2),
+            # Progress Bar 2 - Direct/Bronze Members
+            "members_current": members_current,
+            "members_required": members_required,
+            "members_progress": round(members_progress, 2),
+            # Progress Bar 3 - Total Team
+            "team_required": team_required,
+            "team_progress": round(team_progress, 2),
             # Other fields
             "team_level_income": team_income,
             "bonus_percent": bonus_percent,

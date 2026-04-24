@@ -192,112 +192,144 @@ const TeamRankPage = () => {
 
             {/* Progress to Next Rank Header */}
             {rankInfo?.next_rank && rankInfo?.current_rank && (
-              <div className="mb-2">
+              <div className="mb-3">
                 <p className={`text-sm font-medium ${text}`}>
                   Next Rank: <span style={{color: rankInfo.next_rank.color}}>{rankInfo.next_rank.name}</span>
                 </p>
               </div>
             )}
             
-            {/* Progress Bar 1 - Team/Bronze Members (Only when user HAS a rank) */}
+            {/* === 3 PROGRESS BARS (When user HAS a rank) === */}
             {rankInfo?.next_rank && rankInfo?.current_rank && (
-              <div className="mb-3">
-                <div className="flex justify-between text-xs mb-1">
-                  <span className={textMuted}>
-                    {rankInfo.progress_type === 'direct' ? '👥 Direct Members' : 
-                     rankInfo.progress_type === 'bronze' ? '🥉 Bronze Members' : '👥 Team Members'}
-                  </span>
-                  <span className="text-[#00E5FF]">
-                    {rankInfo.progress_current || 0}/{rankInfo.progress_target || 0} ({rankInfo.progress?.toFixed(0)}%)
-                  </span>
+              <div className="space-y-3 mb-4">
+                {/* Progress Bar 1 - Futures Balance (Yellow/Gold) */}
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className={textMuted}>💰 Your Futures Balance</span>
+                    <span className="text-[#F0B90B]">
+                      ${rankInfo.futures_balance || 0}/${rankInfo.balance_required || 50}
+                    </span>
+                  </div>
+                  <div className={`h-2.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                    <div 
+                      className="h-full rounded-full bg-gradient-to-r from-[#F0B90B] to-[#FCD535]"
+                      style={{ width: `${Math.min(rankInfo.balance_progress || 0, 100)}%` }}
+                    />
+                  </div>
+                  <p className={`text-xs mt-0.5 ${textMuted}`}>
+                    {rankInfo.balance_progress >= 100 ? '✅ Balance requirement met!' : `${(rankInfo.balance_required - rankInfo.futures_balance).toFixed(0)} more needed`}
+                  </p>
                 </div>
-                <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
-                  <div 
-                    className={`h-full rounded-full bg-gradient-to-r ${getRankGradient(rankInfo.next_rank.level)}`}
-                    style={{ width: `${rankInfo.progress || 0}%` }}
-                  />
+                
+                {/* Progress Bar 2 - Direct/Bronze Members (Orange) */}
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className={textMuted}>
+                      {rankInfo.next_rank?.type === 'team' ? '👥 Direct Members' : '🥉 Bronze Members'}
+                    </span>
+                    <span className="text-[#FF6B35]">
+                      {rankInfo.members_current || 0}/{rankInfo.members_required || 0}
+                    </span>
+                  </div>
+                  <div className={`h-2.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                    <div 
+                      className="h-full rounded-full bg-gradient-to-r from-[#FF6B35] to-[#FF9F1C]"
+                      style={{ width: `${Math.min(rankInfo.members_progress || 0, 100)}%` }}
+                    />
+                  </div>
+                  <p className={`text-xs mt-0.5 ${textMuted}`}>
+                    {rankInfo.members_progress >= 100 ? '✅ Members requirement met!' : `${(rankInfo.members_required - rankInfo.members_current)} more ${rankInfo.next_rank?.type === 'team' ? 'direct' : 'Bronze'} needed`}
+                  </p>
                 </div>
-                <p className={`text-xs mt-1 ${textMuted}`}>
-                  {rankInfo.progress_type === 'direct' && (
-                    <>Need: {rankInfo.progress_target} direct members (min $50 futures deposit)</>
-                  )}
-                  {rankInfo.progress_type === 'bronze' && (
-                    <>Need: {rankInfo.next_rank.bronze_required} Bronze members + {rankInfo.next_rank.team_required} total team</>
-                  )}
-                  {rankInfo.progress_type === 'team' && (
-                    <>Need: {rankInfo.next_rank.team_required} total team members</>
-                  )}
-                </p>
+                
+                {/* Progress Bar 3 - Total Team (Cyan/Blue) */}
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className={textMuted}>👥 Total Team</span>
+                    <span className="text-[#00E5FF]">
+                      {rankInfo.total_team || 0}/{rankInfo.team_required || 0}
+                    </span>
+                  </div>
+                  <div className={`h-2.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                    <div 
+                      className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#00B4D8]"
+                      style={{ width: `${Math.min(rankInfo.team_progress || 0, 100)}%` }}
+                    />
+                  </div>
+                  <p className={`text-xs mt-0.5 ${textMuted}`}>
+                    {rankInfo.team_progress >= 100 ? '✅ Team requirement met!' : `${(rankInfo.team_required - rankInfo.total_team)} more team members needed`}
+                  </p>
+                </div>
               </div>
             )}
             
-            {/* Progress Bar 2 - Futures Balance Requirement (Only when user HAS a rank) */}
-            {rankInfo?.next_rank && rankInfo?.current_rank && (
-              <div className="mb-4">
-                <div className="flex justify-between text-xs mb-1">
-                  <span className={textMuted}>💰 Futures Balance</span>
-                  <span className="text-[#F0B90B]">
-                    ${rankInfo.futures_balance || 0}/${rankInfo.balance_required || 50} ({rankInfo.balance_progress?.toFixed(0) || 0}%)
-                  </span>
-                </div>
-                <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
-                  <div 
-                    className="h-full rounded-full bg-gradient-to-r from-[#F0B90B] to-[#FCD535]"
-                    style={{ width: `${Math.min(rankInfo.balance_progress || 0, 100)}%` }}
-                  />
-                </div>
-                <p className={`text-xs mt-1 ${textMuted}`}>
-                  Need: ${rankInfo.balance_required || 50} futures balance for {rankInfo.next_rank.name} rank
-                </p>
-              </div>
-            )}
-            
-            {/* No rank yet - show first rank requirements with progress */}
+            {/* No rank yet - show first rank requirements with 3 progress bars */}
             {!rankInfo?.current_rank && (
               <div className="mb-4">
                 <div className={`p-3 rounded-xl ${isDark ? 'bg-[#00E5FF]/10' : 'bg-yellow-50'} border border-[#00E5FF]/30 mb-3`}>
                   <p className={`text-sm ${text} font-medium`}>🎯 Get your first rank!</p>
                   <p className={`text-xs ${textMuted} mt-1`}>
-                    Invite 6 members who deposit minimum $50 each to unlock Bronze rank
+                    Complete all 3 requirements to unlock Bronze rank
                   </p>
                 </div>
                 
-                {/* Progress Bar 1 - Direct Members */}
-                <div className="mb-3">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className={textMuted}>👥 Direct Members</span>
-                    <span className="text-[#00E5FF]">
-                      {rankInfo?.progress_current || 0}/{rankInfo?.progress_target || 6} ({rankInfo?.progress?.toFixed(0) || 0}%)
-                    </span>
+                <div className="space-y-3">
+                  {/* Progress Bar 1 - Futures Balance (Yellow/Gold) */}
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className={textMuted}>💰 Your Futures Balance</span>
+                      <span className="text-[#F0B90B]">
+                        ${rankInfo?.futures_balance || 0}/${rankInfo?.balance_required || 50}
+                      </span>
+                    </div>
+                    <div className={`h-2.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                      <div 
+                        className="h-full rounded-full bg-gradient-to-r from-[#F0B90B] to-[#FCD535]"
+                        style={{ width: `${Math.min(rankInfo?.balance_progress || 0, 100)}%` }}
+                      />
+                    </div>
+                    <p className={`text-xs mt-0.5 ${textMuted}`}>
+                      {rankInfo?.balance_progress >= 100 ? '✅ Balance requirement met!' : `${((rankInfo?.balance_required || 50) - (rankInfo?.futures_balance || 0)).toFixed(0)} more needed`}
+                    </p>
                   </div>
-                  <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
-                    <div 
-                      className="h-full rounded-full bg-gradient-to-r from-slate-400 to-slate-500"
-                      style={{ width: `${rankInfo?.progress || 0}%` }}
-                    />
+                  
+                  {/* Progress Bar 2 - Direct Members (Orange) */}
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className={textMuted}>👥 Direct Members</span>
+                      <span className="text-[#FF6B35]">
+                        {rankInfo?.members_current || rankInfo?.direct_referrals || 0}/{rankInfo?.members_required || 6}
+                      </span>
+                    </div>
+                    <div className={`h-2.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                      <div 
+                        className="h-full rounded-full bg-gradient-to-r from-[#FF6B35] to-[#FF9F1C]"
+                        style={{ width: `${Math.min(rankInfo?.members_progress || rankInfo?.progress || 0, 100)}%` }}
+                      />
+                    </div>
+                    <p className={`text-xs mt-0.5 ${textMuted}`}>
+                      {(rankInfo?.members_progress || rankInfo?.progress || 0) >= 100 ? '✅ Members requirement met!' : `${((rankInfo?.members_required || 6) - (rankInfo?.members_current || rankInfo?.direct_referrals || 0))} more direct members needed`}
+                    </p>
                   </div>
-                  <p className={`text-xs mt-1 ${textMuted}`}>
-                    {rankInfo?.progress_current || 0} members with $50+ futures balance
-                  </p>
-                </div>
-                
-                {/* Progress Bar 2 - Futures Balance */}
-                <div className="mb-3">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className={textMuted}>💰 Your Futures Balance</span>
-                    <span className="text-[#F0B90B]">
-                      ${rankInfo?.futures_balance || 0}/${rankInfo?.balance_required || 50} ({rankInfo?.balance_progress?.toFixed(0) || 0}%)
-                    </span>
+                  
+                  {/* Progress Bar 3 - Total Team (Cyan/Blue) */}
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className={textMuted}>👥 Total Team</span>
+                      <span className="text-[#00E5FF]">
+                        {rankInfo?.total_team || 0}/{rankInfo?.team_required || 6}
+                      </span>
+                    </div>
+                    <div className={`h-2.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                      <div 
+                        className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#00B4D8]"
+                        style={{ width: `${Math.min(rankInfo?.team_progress || 0, 100)}%` }}
+                      />
+                    </div>
+                    <p className={`text-xs mt-0.5 ${textMuted}`}>
+                      {(rankInfo?.team_progress || 0) >= 100 ? '✅ Team requirement met!' : `${((rankInfo?.team_required || 6) - (rankInfo?.total_team || 0))} more team members needed`}
+                    </p>
                   </div>
-                  <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
-                    <div 
-                      className="h-full rounded-full bg-gradient-to-r from-[#F0B90B] to-[#FCD535]"
-                      style={{ width: `${Math.min(rankInfo?.balance_progress || 0, 100)}%` }}
-                    />
-                  </div>
-                  <p className={`text-xs mt-1 ${textMuted}`}>
-                    Need: ${rankInfo?.balance_required || 50} for Bronze rank
-                  </p>
                 </div>
               </div>
             )}
