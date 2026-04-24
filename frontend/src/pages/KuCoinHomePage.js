@@ -108,12 +108,30 @@ const KuCoinHomePage = () => {
   };
 
   // Copy code to clipboard
+  const [copiedCode, setCopiedCode] = useState(null);
+  
   const copyCode = async (code) => {
     try {
-      await navigator.clipboard.writeText(code);
-      toast.success("Code copied!");
+      // Try modern clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(code);
+      } else {
+        // Fallback for older browsers/environments
+        const textArea = document.createElement('textarea');
+        textArea.value = code;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopiedCode(code);
+      toast.success("Code copied! Paste in Futures page");
+      setTimeout(() => setCopiedCode(null), 3000);
     } catch (err) {
-      toast.error("Copy failed");
+      // Even if copy fails, show the code for manual copy
+      toast.info(`Code: ${code} - Long press to copy`);
     }
   };
 
@@ -427,9 +445,13 @@ const KuCoinHomePage = () => {
                                       {isLive && (
                                         <button 
                                           onClick={() => copyCode(code.code)}
-                                          className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-green-500 to-green-400 hover:from-green-400 hover:to-green-300 transition-all"
+                                          className={`px-4 py-1.5 rounded-lg text-xs font-bold text-white transition-all ${
+                                            copiedCode === code.code 
+                                              ? 'bg-gradient-to-r from-blue-500 to-blue-400' 
+                                              : 'bg-gradient-to-r from-green-500 to-green-400 hover:from-green-400 hover:to-green-300'
+                                          }`}
                                         >
-                                          COPY
+                                          {copiedCode === code.code ? '✓ COPIED!' : 'COPY'}
                                         </button>
                                       )}
                                     </div>
