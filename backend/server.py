@@ -482,13 +482,20 @@ async def get_team_stats(user_id: str) -> dict:
         "total_team_all": team_stats.get("total_team", 0)
     }
 
-async def get_team_members_with_balance(user_id: str) -> list:
-    """Get list of direct team members with their futures balance status
-    This helps user see who has low balance causing rank demotion
+async def get_team_members_with_balance(user_id: str, include_all_levels: bool = False) -> list:
+    """Get list of team members with their futures balance status
+    - If include_all_levels=False: Only direct referrals (level 1)
+    - If include_all_levels=True: All team members (all levels)
+    Sorted by futures_balance descending (highest first)
+    Limited to 100 members to prevent server overload
     """
     
+    match_condition = {"referrer_id": user_id}
+    if not include_all_levels:
+        match_condition["level"] = 1
+    
     pipeline = [
-        {"$match": {"referrer_id": user_id, "level": 1}},
+        {"$match": match_condition},
         {"$lookup": {
             "from": "wallets",
             "localField": "referred_id",
@@ -510,9 +517,11 @@ async def get_team_members_with_balance(user_id: str) -> list:
             "email": {"$ifNull": ["$user.email", ""]},
             "futures_balance": {"$ifNull": ["$wallet.futures_balance", 0]},
             "is_valid": {"$gte": [{"$ifNull": ["$wallet.futures_balance", 0]}, MIN_DEPOSIT_FOR_RANK]},
+            "level": "$level",
             "created_at": "$created_at"
         }},
-        {"$sort": {"futures_balance": -1}}  # Sort by balance (highest first)
+        {"$sort": {"futures_balance": -1}},  # Sort by balance (highest first)
+        {"$limit": 100}  # Limit to prevent server overload
     ]
     
     members = await db.referrals.aggregate(pipeline).to_list(length=100)
@@ -2762,10 +2771,13 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         members_required = direct_required if (next_rank_for_balance and next_rank_for_balance.get("type") == "team") else bronze_required
         members_progress = min(100, (members_current / members_required) * 100) if members_required > 0 else 100
         
-        # Get team members list with balance status (for showing who has low balance)
-        team_members_list = await get_team_members_with_balance(user_id)
+        # Get direct team members list (Level 1 only)
+        team_members_list = await get_team_members_with_balance(user_id, include_all_levels=False)
         
-        # Count low balance members (causing rank issues)
+        # Get ALL team members (all levels) - sorted by balance
+        all_team_members = await get_team_members_with_balance(user_id, include_all_levels=True)
+        
+        # Count low balance members (causing rank issues) - only from direct
         low_balance_members = [m for m in team_members_list if not m.get("is_valid", False)]
         
         return {
@@ -2791,7 +2803,8 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
             "team_required": team_required,
             "team_progress": round(team_progress, 2),
             # Team Members List (with balance status)
-            "team_members": team_members_list,
+            "team_members": team_members_list,  # Direct referrals only (Level 1)
+            "all_team_members": all_team_members,  # All levels, sorted by balance
             "low_balance_members": low_balance_members,
             "low_balance_count": len(low_balance_members),
             # Other fields
