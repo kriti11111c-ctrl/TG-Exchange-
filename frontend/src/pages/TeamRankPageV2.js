@@ -475,7 +475,7 @@ const TeamRankPage = () => {
               const isNextRank = rankInfo?.next_rank?.level === rank.level;
               
               // Calculate progress for this rank
-              const rankBalanceReq = rank.self_deposit_required || (rank.level === 1 ? 50 : rank.level === 2 ? 200 : rank.level === 3 ? 500 : rank.level === 4 ? 1000 : rank.level === 5 ? 2000 : rank.level === 6 ? 5000 : rank.level === 7 ? 10000 : rank.level === 8 ? 15000 : rank.level === 9 ? 30000 : 50000);
+              const rankBalanceReq = rank.self_deposit_required || (rank.level === 1 ? 50 : rank.level === 2 ? 200 : rank.level === 3 ? 500 : rank.level === 4 ? 800 : rank.level === 5 ? 1600 : rank.level === 6 ? 4000 : rank.level === 7 ? 8000 : rank.level === 8 ? 12000 : rank.level === 9 ? 24000 : 40000);
               const balanceProgress = Math.min(100, ((rankInfo?.futures_balance || 0) / rankBalanceReq) * 100);
               const bronzeProgress = rank.bronze_required > 0 ? Math.min(100, ((rankInfo?.bronze_members || 0) / rank.bronze_required) * 100) : 100;
               const teamProgress = Math.min(100, ((rankInfo?.total_team || 0) / rank.team_required) * 100);
