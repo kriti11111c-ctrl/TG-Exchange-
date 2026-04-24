@@ -378,6 +378,8 @@ const KuCoinHomePage = () => {
                           const isExpired = code.is_expired;
                           const isLive = code.is_live && !isUsed && !isExpired;
                           const remaining = countdowns[`${code.code}_remaining`] || code.time_remaining;
+                          const countdownToLive = countdowns[`${code.code}_tolive`] || code.countdown_to_live;
+                          const isComingSoon = !isLive && !isUsed && !isExpired && countdownToLive > 0;
                           
                           return (
                             <div key={idx} className="mx-3 my-2 rounded-xl overflow-hidden" style={{backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid #2a2a4a'}}>
@@ -391,6 +393,7 @@ const KuCoinHomePage = () => {
                                 {isLive && <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>}
                                 {isUsed && <span className="text-white">✓</span>}
                                 {isExpired && <span className="text-white">✕</span>}
+                                {isComingSoon && <span className="w-2 h-2 rounded-full bg-white animate-bounce"></span>}
                                 <span className="text-white font-bold text-sm">
                                   {isLive ? 'LIVE NOW' : isUsed ? 'SUCCESS' : isExpired ? 'EXPIRED' : 'COMING SOON'}
                                 </span>
@@ -401,34 +404,50 @@ const KuCoinHomePage = () => {
                                 )}
                               </div>
                               
-                              {/* Trade Code Display */}
+                              {/* Content - Different for COMING SOON vs LIVE */}
                               <div className="p-3">
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="font-bold text-xl tracking-wider" style={{color: '#FF3B30'}}>
-                                    {code.code}
-                                  </span>
-                                  {isLive && (
-                                    <button 
-                                      onClick={() => copyCode(code.code)}
-                                      className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-green-500 to-green-400 hover:from-green-400 hover:to-green-300 transition-all"
-                                    >
-                                      COPY
-                                    </button>
-                                  )}
-                                </div>
-                                
-                                {/* Trade Details */}
-                                {isUsed && code.profit && (
-                                  <div className="space-y-1">
-                                    <p className="text-green-400 font-bold">+${code.profit?.toFixed(2)} Earned</p>
-                                    <p className="text-gray-400 text-xs">Traded ${code.amount?.toFixed(2)} at {code.multiplier || 1}x</p>
+                                {isComingSoon ? (
+                                  /* COMING SOON - Show countdown only, NO code */
+                                  <div className="text-center py-2">
+                                    <p className="text-gray-400 text-xs mb-2">Code generates in</p>
+                                    <p className="text-3xl font-mono font-bold text-yellow-400">
+                                      {formatCountdown(countdownToLive)}
+                                    </p>
+                                    <p className="text-gray-500 text-[10px] mt-2">
+                                      {code.slot_name || 'Scheduled'}
+                                    </p>
                                   </div>
+                                ) : (
+                                  /* LIVE / SUCCESS / EXPIRED - Show code */
+                                  <>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <span className="font-bold text-xl tracking-wider" style={{color: '#FF3B30'}}>
+                                        {code.code}
+                                      </span>
+                                      {isLive && (
+                                        <button 
+                                          onClick={() => copyCode(code.code)}
+                                          className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-green-500 to-green-400 hover:from-green-400 hover:to-green-300 transition-all"
+                                        >
+                                          COPY
+                                        </button>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Trade Details */}
+                                    {isUsed && code.profit && (
+                                      <div className="space-y-1">
+                                        <p className="text-green-400 font-bold">+${code.profit?.toFixed(2)} Earned</p>
+                                        <p className="text-gray-400 text-xs">Traded ${code.amount?.toFixed(2)} at {code.multiplier || 1}x</p>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Time */}
+                                    <p className="text-gray-500 text-[10px] mt-2">
+                                      {code.slot_name || code.created_at}
+                                    </p>
+                                  </>
                                 )}
-                                
-                                {/* Time */}
-                                <p className="text-gray-500 text-[10px] mt-2">
-                                  {code.slot_name || code.created_at}
-                                </p>
                               </div>
                             </div>
                           );
