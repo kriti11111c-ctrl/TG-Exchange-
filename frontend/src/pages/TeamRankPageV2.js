@@ -716,7 +716,7 @@ const TeamRankPage = () => {
                   {/* 10-Day Progress Bar Preview */}
                   <div className={`rounded-xl p-3 mb-3 ${isDark ? 'bg-[#1A1A1A]' : 'bg-gray-50'} border ${isDark ? 'border-[#2B3139]' : 'border-gray-200'}`}>
                     <div className="flex justify-between text-xs mb-2">
-                      <span className={textMuted}>🔒 10-Day Lock Period (Preview)</span>
+                      <span className={textMuted}>🔒 10-Day Lock Period</span>
                       <span className="text-[#00E5FF] font-medium">0/10 Days</span>
                     </div>
                     <div className={`h-3 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} overflow-hidden`}>
@@ -725,22 +725,10 @@ const TeamRankPage = () => {
                         style={{ width: '0%' }}
                       />
                     </div>
-                    
-                    {/* Day-by-day amount preview */}
-                    <div className="mt-3 grid grid-cols-5 gap-1">
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((day) => (
-                        <div 
-                          key={day} 
-                          className={`text-center p-1 rounded ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}
-                        >
-                          <p className={`text-[8px] ${textMuted}`}>Day {day}</p>
-                          <p className="text-[#0ECB81] font-bold text-[10px]">${day}</p>
-                        </div>
-                      ))}
+                    <div className="flex justify-between mt-1">
+                      <span className={`text-[10px] ${textMuted}`}>$0</span>
+                      <span className="text-[10px] text-[#0ECB81] font-medium">$10 claimable</span>
                     </div>
-                    <p className={`text-[10px] ${textMuted} mt-2 text-center`}>
-                      Daily $1 × 10 days = <span className="text-[#0ECB81] font-bold">$10 claimable</span>
-                    </p>
                   </div>
                   
                   {/* Preview of potential earnings */}
