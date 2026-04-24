@@ -182,38 +182,72 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
 
   // Fetch real candles from Binance API
   const fetchBinanceCandles = useCallback(async () => {
-    const binanceSymbol = BINANCE_SYMBOLS[symbol] || "BTCUSDT";
+    // Map symbol to backend format
+    const coinMap = {
+      "BTCUSDT": "BTC",
+      "ETHUSDT": "ETH",
+      "BNBUSDT": "BNB",
+      "SOLUSDT": "SOL",
+      "XRPUSDT": "XRP",
+      "ADAUSDT": "ADA",
+      "DOGEUSDT": "DOGE",
+      "DOTUSDT": "DOT"
+    };
+    
+    const coinId = coinMap[symbol] || "BTC";
     const interval = TIMEFRAME_MAP[timeframe] || "15m";
+    const API_URL = process.env.REACT_APP_BACKEND_URL || "";
     
     setLoading(true);
     setError(null);
     
     try {
-      // Using Binance public API (no authentication needed)
+      // Using backend API that fetches from OKX (more reliable)
       const response = await fetch(
-        `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=100`
+        `${API_URL}/api/market/binance-klines/${coinId}?interval=${interval}&limit=100`
       );
       
       if (!response.ok) {
-        throw new Error("Failed to fetch from Binance");
+        throw new Error("Failed to fetch candle data");
       }
       
       const data = await response.json();
       
-      // Binance klines format: [openTime, open, high, low, close, volume, closeTime, ...]
-      const formattedCandles = data.map(k => ({
-        time: k[0],
-        open: parseFloat(k[1]),
-        high: parseFloat(k[2]),
-        low: parseFloat(k[3]),
-        close: parseFloat(k[4]),
-        volume: parseFloat(k[5])
-      }));
+      if (data.candles && data.candles.length > 0) {
+        setCandles(data.candles);
+      } else {
+        throw new Error("No candle data received");
+      }
       
-      setCandles(formattedCandles);
       setLoading(false);
     } catch (err) {
-      console.error("Binance API error:", err);
+      console.error("Candle API error:", err);
+      
+      // Fallback to Binance direct API
+      try {
+        const binanceSymbol = BINANCE_SYMBOLS[symbol] || "BTCUSDT";
+        const response = await fetch(
+          `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=100`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          const formattedCandles = data.map(k => ({
+            time: k[0],
+            open: parseFloat(k[1]),
+            high: parseFloat(k[2]),
+            low: parseFloat(k[3]),
+            close: parseFloat(k[4]),
+            volume: parseFloat(k[5])
+          }));
+          setCandles(formattedCandles);
+          setLoading(false);
+          return;
+        }
+      } catch (fallbackErr) {
+        console.error("Fallback also failed:", fallbackErr);
+      }
+      
       setError("Failed to load chart");
       setLoading(false);
     }
