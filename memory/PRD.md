@@ -75,6 +75,11 @@ A full-stack centralized cryptocurrency exchange called "TG Exchange" (Trade Gen
 ## Changelog
 
 ### April 24, 2026
+- **"All Team Members" Collapsible Section Added** - Shows full team hierarchy (not just direct referrals)
+  - Click to expand/collapse
+  - Sorted by Futures Balance (highest first)
+  - Level badge (L1, L2, etc.) for each member
+  - Valid/Invalid status indicators
 - **VIP Rank Progress Bar Fixed** - Now shows X/Y format (3/6 = 50%)
 - Added `progress_current`, `progress_target`, `progress_type` to API
 - Frontend updated to show proper progress indicator

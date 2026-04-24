@@ -31,7 +31,8 @@ const TeamRankPage = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
-  const [showTeamMembers, setShowTeamMembers] = useState(false);  // Toggle for team members list
+  const [showTeamMembers, setShowTeamMembers] = useState(false);  // Toggle for direct team members list
+  const [showAllTeamMembers, setShowAllTeamMembers] = useState(false);  // Toggle for ALL team members (full hierarchy)
 
   // Theme colors
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
@@ -440,6 +441,90 @@ const TeamRankPage = () => {
                   <p className="text-xs text-red-400 mt-2 p-2 rounded bg-red-500/10">
                     ⚠️ {rankInfo.low_balance_count} member(s) have less than $50 in Futures. This is affecting your rank!
                   </p>
+                )}
+              </div>
+            )}
+
+            {/* ALL Team Members (Full Hierarchy) - Collapsible List */}
+            {rankInfo?.all_team_members && rankInfo.all_team_members.length > 0 && (
+              <div className={`${cardBg} rounded-xl overflow-hidden mb-4`}>
+                {/* Collapsible Header */}
+                <button 
+                  onClick={() => setShowAllTeamMembers(!showAllTeamMembers)}
+                  className="w-full p-3 flex justify-between items-center"
+                  data-testid="all-team-members-toggle"
+                >
+                  <div className="flex items-center gap-2">
+                    <p className={`font-medium ${text}`}>🌐 All Team Members</p>
+                    <span className="px-2 py-0.5 rounded-full bg-[#3498DB]/20 text-[#3498DB] text-xs font-medium">
+                      {rankInfo.all_team_members.length} Total
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs ${textMuted}`}>
+                      {showAllTeamMembers ? 'Hide' : 'Show'}
+                    </span>
+                    <span className={`transition-transform duration-200 ${showAllTeamMembers ? 'rotate-180' : ''}`}>
+                      ▼
+                    </span>
+                  </div>
+                </button>
+                
+                {/* Collapsible Content */}
+                {showAllTeamMembers && (
+                  <div className="px-3 pb-3">
+                    <p className={`text-xs ${textMuted} mb-2`}>
+                      Full team hierarchy sorted by Futures Balance (Highest First)
+                    </p>
+                    
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {[...rankInfo.all_team_members]
+                        .sort((a, b) => (b.futures_balance || 0) - (a.futures_balance || 0))
+                        .map((member, index) => (
+                          <div 
+                            key={member.user_id || `all-${index}`}
+                            className="p-2 rounded-lg flex justify-between items-center"
+                            style={{
+                              backgroundColor: member.is_valid 
+                                ? (isDark ? 'rgba(14, 203, 129, 0.1)' : '#E8F5E9')
+                                : (isDark ? 'rgba(239, 68, 68, 0.1)' : '#FFEBEE'),
+                              border: `1px solid ${member.is_valid 
+                                ? (isDark ? 'rgba(14, 203, 129, 0.3)' : '#C8E6C9')
+                                : (isDark ? 'rgba(239, 68, 68, 0.3)' : '#FFCDD2')}`
+                            }}
+                            data-testid={`all-team-member-${index}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {/* Rank Badge */}
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                                member.is_valid ? 'bg-[#3498DB]/20 text-[#3498DB]' : 'bg-red-500/20 text-red-400'
+                              }`}>
+                                #{index + 1}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1">
+                                  <p className={`text-sm font-medium ${text}`}>{member.name || 'User'}</p>
+                                  {member.level && (
+                                    <span className="px-1.5 py-0.5 rounded bg-[#00E5FF]/20 text-[#00E5FF] text-[9px] font-medium">
+                                      L{member.level}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className={`text-xs ${textMuted}`}>{member.email || ''}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className={`text-sm font-bold ${member.is_valid ? 'text-[#0ECB81]' : 'text-red-400'}`}>
+                                ${member.futures_balance?.toFixed(2) || '0.00'}
+                              </p>
+                              <p className={`text-[10px] ${textMuted}`}>
+                                {member.is_valid ? '✅ Valid' : '❌ < $50'}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
                 )}
               </div>
             )}
