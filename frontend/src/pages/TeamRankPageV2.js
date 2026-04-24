@@ -378,7 +378,13 @@ const TeamRankPage = () => {
 
             {/* Team Members List - Collapsible, Sorted by Futures Balance (Highest First) */}
             {rankInfo?.team_members && rankInfo.team_members.length > 0 && (
-              <div className={`${cardBg} rounded-xl overflow-hidden mb-4`}>
+              <div 
+                className={`${cardBg} rounded-xl overflow-hidden mb-4`}
+                style={{
+                  border: isDark ? '1.5px solid #00E5FF50' : '1.5px solid #00E5FF80',
+                  boxShadow: isDark ? '0 4px 15px rgba(0, 229, 255, 0.15), inset 0 1px 0 rgba(255,255,255,0.1)' : '0 4px 15px rgba(0, 229, 255, 0.2)'
+                }}
+              >
                 {/* Collapsible Header */}
                 <button 
                   onClick={() => setShowTeamMembers(!showTeamMembers)}
@@ -466,7 +472,13 @@ const TeamRankPage = () => {
 
             {/* ALL Team Members (Full Hierarchy) - Collapsible List */}
             {rankInfo?.all_team_members && rankInfo.all_team_members.length > 0 && (
-              <div className={`${cardBg} rounded-xl overflow-hidden mb-4`}>
+              <div 
+                className={`${cardBg} rounded-xl overflow-hidden mb-4`}
+                style={{
+                  border: isDark ? '1.5px solid #3498DB50' : '1.5px solid #3498DB80',
+                  boxShadow: isDark ? '0 4px 15px rgba(52, 152, 219, 0.15), inset 0 1px 0 rgba(255,255,255,0.1)' : '0 4px 15px rgba(52, 152, 219, 0.2)'
+                }}
+              >
                 {/* Collapsible Header */}
                 <button 
                   onClick={() => setShowAllTeamMembers(!showAllTeamMembers)}
