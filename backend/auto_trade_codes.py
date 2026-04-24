@@ -52,8 +52,8 @@ async def generate_codes_for_all_users(slot: str):
             minute=scheduled_minute
         )).replace(tzinfo=timezone.utc)
         
-        # Code expires 1 hour after scheduled start
-        expires_at = scheduled_start + timedelta(hours=1)
+        # Code expires 2 hours after scheduled start
+        expires_at = scheduled_start + timedelta(hours=2)
         
         # Get all active users with futures balance > 0
         users = await db.users.find({

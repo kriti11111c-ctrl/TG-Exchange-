@@ -5201,11 +5201,11 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
     )).replace(tzinfo=timezone.utc)
     
     # If scheduled time has passed today, schedule for tomorrow
-    if now > scheduled_start + timedelta(hours=1):
+    if now > scheduled_start + timedelta(hours=2):
         scheduled_start = scheduled_start + timedelta(days=1)
     
-    # Code expires 1 hour after scheduled start
-    expires_at = scheduled_start + timedelta(hours=1)
+    # Code expires 2 hours after scheduled start
+    expires_at = scheduled_start + timedelta(hours=2)
     
     # Generate random profit percentage between 60-65%
     profit_percent = round(60 + random.random() * 5, 2)
@@ -5585,7 +5585,7 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         created_at = datetime.fromisoformat(trade_code["created_at"].replace('Z', '+00:00'))
         if created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=timezone.utc)
-        expires_at = created_at + timedelta(hours=1)
+        expires_at = created_at + timedelta(hours=2)
     
     if now > expires_at:
         await db.trade_codes.update_one(
