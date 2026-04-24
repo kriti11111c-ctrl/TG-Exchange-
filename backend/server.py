@@ -378,7 +378,7 @@ TEAM_RANKS = [
         "bronze_required": 0,
         "team_required": 6,
         "type": "team",
-        "bonus_percent": 0.50,
+        "bonus_percent": 6.67,
         "monthly_salary": 30,
         "levelup_reward": 20,
         "self_deposit_required": 50,
