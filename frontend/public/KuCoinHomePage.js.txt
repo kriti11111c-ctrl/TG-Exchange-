@@ -412,7 +412,7 @@ const KuCoinHomePage = () => {
                         </div>
                         <div className="mt-2 pt-2" style={{borderTop: '1px dashed #3a3a5a'}}>
                           <p className="text-[10px] text-center text-gray-400">
-                            📅 Daily Codes: <span className="text-yellow-400">05:15</span> & <span className="text-yellow-400">15:00</span> UTC (Valid for 2 hours)
+                            📅 Daily Codes: <span className="text-yellow-400">05:15</span> & <span className="text-yellow-400">15:00</span> UTC (Valid for 1 hour)
                           </p>
                         </div>
                       </div>
