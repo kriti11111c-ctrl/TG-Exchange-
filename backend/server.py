@@ -1457,9 +1457,9 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
     # Check balance - Welcome bonus is LOCKED until expired
     current_balance = wallet["balances"].get(coin, 0)
     
-    # For USDT: Only REAL deposits are withdrawable, NOT welcome bonus transfers
-    # If real_spot_deposits is not set, default to current balance (backward compatibility)
-    real_spot_deposits = wallet.get("real_spot_deposits", current_balance) if coin == "usdt" else current_balance
+    # For USDT: Only REAL deposits + trading profits are withdrawable, NOT welcome bonus
+    real_spot_deposits = wallet.get("real_spot_deposits", 0) if coin == "usdt" else current_balance
+    trading_profit = wallet.get("trading_profit", 0) if coin == "usdt" else 0
     
     # Calculate pending withdrawals for this coin
     pending_withdrawals = await db.transactions.find({
@@ -1470,10 +1470,10 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
     }).to_list(1000)
     pending_amount = sum(w.get("amount", 0) for w in pending_withdrawals)
     
-    # Withdrawable = min(balance, real_deposits) - pending
-    # This ensures welcome bonus transferred to spot cannot be withdrawn
-    withdrawable_balance = min(current_balance, real_spot_deposits) - pending_amount
-    locked_from_bonus = max(0, current_balance - real_spot_deposits)
+    # Withdrawable = min(balance, real_deposits + trading_profit) - pending
+    # Welcome bonus cannot be withdrawn, but trading profits can
+    withdrawable_balance = min(current_balance, real_spot_deposits + trading_profit) - pending_amount
+    locked_from_bonus = max(0, current_balance - (real_spot_deposits + trading_profit))
     
     if withdrawable_balance < withdraw.amount:
         if pending_amount > 0:
@@ -1529,8 +1529,8 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
 
 @api_router.get("/wallet/withdrawal-limits")
 async def get_withdrawal_limits(user: dict = Depends(get_current_user)):
-    """Get withdrawal limits - Only REAL deposits are withdrawable, NOT welcome bonus transfers"""
-    # First check and expire welcome bonus if 5 days passed
+    """Get withdrawal limits - Only REAL deposits + trading profits are withdrawable, NOT welcome bonus"""
+    # First check and expire welcome bonus if 3 days passed
     await check_and_expire_welcome_bonus(user["user_id"])
     
     wallet = await db.wallets.find_one({"user_id": user["user_id"]}, {"_id": 0})
@@ -1538,22 +1538,23 @@ async def get_withdrawal_limits(user: dict = Depends(get_current_user)):
     welcome_bonus = wallet.get("welcome_bonus", 0) if wallet else 0
     
     # Real spot deposits = only from blockchain deposits or admin additions
-    # This tracks REAL money, not transfers from welcome bonus
-    # If not set, default to current balance (backward compatibility)
-    real_spot_deposits = wallet.get("real_spot_deposits", usdt_balance) if wallet else 0
+    real_spot_deposits = wallet.get("real_spot_deposits", 0) if wallet else 0
     
-    # Withdrawable = minimum of (spot balance, real deposits)
-    # This ensures welcome bonus transferred to spot cannot be withdrawn
-    withdrawable = min(usdt_balance, real_spot_deposits)
+    # Trading profit earned from welcome bonus is withdrawable
+    trading_profit = wallet.get("trading_profit", 0) if wallet else 0
     
-    # Calculate locked amount (welcome bonus in spot)
-    locked_amount = max(0, usdt_balance - real_spot_deposits)
+    # Withdrawable = real deposits + trading profits (but not more than current balance)
+    withdrawable = min(usdt_balance, real_spot_deposits + trading_profit)
+    
+    # Calculate locked amount (welcome bonus in spot that can't be withdrawn)
+    locked_amount = max(0, usdt_balance - withdrawable)
     
     return {
         "min_withdrawal": MIN_WITHDRAWAL,
         "total_balance": usdt_balance,
         "welcome_bonus_locked": locked_amount,  # Amount from welcome bonus (not withdrawable)
-        "withdrawable_balance": withdrawable,  # Only real deposits
+        "trading_profit": trading_profit,  # Profit from trading (withdrawable)
+        "withdrawable_balance": withdrawable,  # Real deposits + trading profits
         "currency": "USDT"
     }
 
@@ -2977,9 +2978,9 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         welcome_bonus = wallet.get("welcome_bonus", 0) if wallet else 0
         total_deposited = wallet.get("total_deposited", 0) if wallet else 0
         
-        # Real futures = futures_balance - welcome_bonus (if not deposited)
-        # If user has deposited, use their actual futures balance
-        real_futures = futures_balance if total_deposited > 0 else max(0, futures_balance - welcome_bonus)
+        # Real futures = futures_balance - welcome_bonus (Welcome bonus NEVER counts for rank)
+        # Only real deposits count towards rank requirement
+        real_futures = max(0, futures_balance - welcome_bonus)
         
         # Get required balance for next rank (or current rank if no rank yet)
         next_rank_for_balance = rank_info["next_rank"] if rank_info["next_rank"] else TEAM_RANKS[0]
@@ -5667,11 +5668,13 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         settlement_price = round(settlement_price, 6)  # DOGE, SHIB
     
     # Execute trade - add the profit to FUTURES balance (not Spot)
+    # Also track trading_profit separately so it can be withdrawn
     await db.wallets.update_one(
         {"user_id": user["user_id"]},
         {
             "$inc": {
-                "futures_balance": profit_usdt
+                "futures_balance": profit_usdt,
+                "trading_profit": profit_usdt  # Track profit separately - this is withdrawable
             }
         }
     )
