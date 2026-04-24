@@ -690,71 +690,73 @@ const FuturesPage = () => {
                 <p className={`text-xs ${textMuted}`}>Your completed trades will appear here</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {tradeHistory.map((trade, index) => (
                   <div 
                     key={trade.id || index} 
-                    className={`rounded-2xl border-2 overflow-hidden transition-all ${
-                      trade.is_profit 
-                        ? 'border-[#0ECB81]/30 bg-gradient-to-br from-[#0ECB81]/10 to-transparent' 
-                        : 'border-[#F6465D]/30 bg-gradient-to-br from-[#F6465D]/10 to-transparent'
-                    }`}
+                    className={`${cardBg} rounded-xl border ${border} overflow-hidden`}
                     data-testid={`history-item-${index}`}
                   >
                     {/* Header with Status Badge */}
-                    <div className={`flex items-center justify-between px-4 py-3 ${isDark ? 'bg-[#1E2329]/50' : 'bg-gray-50'}`}>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                          trade.is_profit ? 'bg-[#0ECB81] text-white' : 'bg-[#F6465D] text-white'
-                        }`}>
-                          {trade.is_profit ? '✓ WIN' : '✗ LOSS'}
-                        </span>
-                        <span className={`text-sm font-bold ${text}`}>{trade.product}</span>
-                      </div>
+                    <div className={`flex items-center justify-between px-4 py-2.5 ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'} border-b ${border}`}>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        trade.is_profit ? 'bg-[#0ECB81] text-white' : 'bg-[#F6465D] text-white'
+                      }`}>
+                        {trade.is_profit ? 'WIN' : 'LOSS'}
+                      </span>
                       <span className={`text-xs ${textMuted}`}>{trade.date}</span>
                     </div>
 
                     {/* Trade Details */}
-                    <div className="p-4 space-y-3">
-                      {/* Direction & Amount Row */}
+                    <div className="p-4 space-y-2">
                       <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${
-                            trade.direction === 'CALL' || trade.direction === 'BUY' 
-                              ? 'bg-[#0ECB81]/20 text-[#0ECB81]' 
-                              : 'bg-[#F6465D]/20 text-[#F6465D]'
-                          }`}>
-                            {trade.direction === 'CALL' ? '▲ CALL' : '▼ PUT'}
-                          </span>
-                          <span className={`text-xs ${textMuted}`}>{trade.time_period}</span>
-                        </div>
-                        <span className={`text-sm font-bold ${text}`}>{trade.amount} USDT</span>
+                        <span className={`text-sm ${textMuted}`}>Product</span>
+                        <span className={`text-sm font-semibold ${text}`}>{trade.product}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className={`text-sm ${textMuted}`}>Direction</span>
+                        <span className={`text-sm font-bold ${
+                          trade.direction === 'CALL' || trade.direction === 'BUY' 
+                            ? 'text-[#0ECB81]' 
+                            : 'text-[#F6465D]'
+                        }`}>
+                          {trade.direction}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className={`text-sm ${textMuted}`}>Time Period</span>
+                        <span className={`text-sm ${text}`}>{trade.time_period}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className={`text-sm ${textMuted}`}>Amount</span>
+                        <span className={`text-sm ${text}`}>{trade.amount} USDT</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className={`text-sm ${textMuted}`}>Open Price</span>
+                        <span className={`text-sm font-medium ${text}`}>
+                          ${trade.open_price ? trade.open_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6}) : '0.00'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className={`text-sm ${textMuted}`}>Settlement Price</span>
+                        <span className={`text-sm font-medium ${text}`}>
+                          ${trade.settlement_price ? trade.settlement_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6}) : '0.00'}
+                        </span>
                       </div>
                       
-                      {/* Prices Grid */}
-                      <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-[#0B0E11]/50">
-                        <div>
-                          <p className={`text-[10px] ${textMuted} mb-1`}>Open Price</p>
-                          <p className={`text-sm font-semibold ${text}`}>${trade.open_price?.toLocaleString()}</p>
-                        </div>
-                        <div>
-                          <p className={`text-[10px] ${textMuted} mb-1`}>Settlement</p>
-                          <p className={`text-sm font-semibold ${text}`}>${trade.settlement_price?.toLocaleString()}</p>
-                        </div>
-                      </div>
-                      
-                      {/* Profit Section - Highlighted */}
-                      <div className={`p-3 rounded-xl ${trade.is_profit ? 'bg-[#0ECB81]/20' : 'bg-[#F6465D]/20'}`}>
+                      {/* Profit Section */}
+                      <div className={`pt-2 mt-2 border-t border-dashed ${border}`}>
                         <div className="flex justify-between items-center">
                           <span className={`text-sm ${textMuted}`}>Profit/Loss</span>
-                          <div className="text-right">
-                            <span className={`text-xl font-bold ${trade.is_profit ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
-                              {trade.is_profit ? '+' : ''}{trade.profit_loss?.toFixed(2)} USDT
-                            </span>
-                            <p className={`text-sm font-semibold ${trade.is_profit ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
-                              ({trade.rate_of_return?.toFixed(2)}%)
-                            </p>
-                          </div>
+                          <span className={`text-lg font-bold ${trade.is_profit ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+                            {trade.is_profit ? '+' : ''}{trade.profit_loss?.toFixed(2)} USDT
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center mt-1">
+                          <span className={`text-sm ${textMuted}`}>Rate of Return</span>
+                          <span className={`text-sm font-bold ${trade.is_profit ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+                            {trade.rate_of_return?.toFixed(2)}%
+                          </span>
                         </div>
                       </div>
                     </div>
