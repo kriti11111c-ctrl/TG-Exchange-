@@ -306,58 +306,43 @@ const KuCoinHomePage = () => {
       {/* CLEAN HEADER */}
       <header className="sticky top-0 z-40 px-4 py-3" style={{backgroundColor: colors.bg, borderBottom: `1px solid ${colors.border}`}}>
         <div className="flex items-center justify-between">
-          {/* Logo with Green Cinematic Glow */}
+          {/* Logo with Subtle Green Glow */}
           <div className="flex items-center gap-3">
             <div className="relative" style={{width: '48px', height: '48px'}}>
-              {/* Green Outer Glow Ring - Pulsing */}
+              {/* Subtle Green Glow - Contained around logo only */}
               <div 
                 className="absolute rounded-full"
                 style={{
-                  top: '-10px',
-                  left: '-10px',
-                  right: '-10px',
-                  bottom: '-10px',
-                  background: 'conic-gradient(from 0deg, rgba(14,203,129,0.8), rgba(0,255,136,0.4), rgba(14,203,129,0.8), rgba(0,200,100,0.4), rgba(14,203,129,0.8))',
-                  filter: 'blur(10px)',
-                  animation: 'logoShine 4s linear infinite, logoGlow 2s ease-in-out infinite',
-                  opacity: 0.8
-                }}
-              />
-              {/* Main Green Glow - Emanating Light */}
-              <div 
-                className="absolute rounded-full"
-                style={{
-                  top: '-15px',
-                  left: '-15px',
-                  right: '-15px',
-                  bottom: '-15px',
-                  background: 'radial-gradient(circle, rgba(14,203,129,0.7) 0%, rgba(0,255,136,0.4) 30%, rgba(14,203,129,0.2) 50%, transparent 70%)',
-                  filter: 'blur(12px)',
-                  animation: 'logoGlow 2s ease-in-out infinite'
-                }}
-              />
-              {/* Secondary Green Glow Layer */}
-              <div 
-                className="absolute rounded-full"
-                style={{
-                  top: '-8px',
-                  left: '-8px',
-                  right: '-8px',
-                  bottom: '-8px',
-                  background: 'radial-gradient(circle, rgba(144,238,144,0.6) 0%, rgba(14,203,129,0.3) 40%, transparent 70%)',
+                  top: '-4px',
+                  left: '-4px',
+                  right: '-4px',
+                  bottom: '-4px',
+                  background: 'radial-gradient(circle, rgba(14,203,129,0.5) 0%, rgba(14,203,129,0.2) 50%, transparent 70%)',
                   filter: 'blur(6px)',
-                  animation: 'logoGlow 3s ease-in-out infinite reverse'
+                  animation: 'logoGlow 2.5s ease-in-out infinite'
                 }}
               />
-              {/* TG Coin Logo - Full Image */}
-              <img 
-                src="/tg-logo.png" 
-                alt="TG Exchange" 
-                className="w-12 h-12 rounded-full relative z-10 object-cover"
+              {/* TG Coin Logo - Zoomed to hide black border */}
+              <div 
+                className="w-12 h-12 rounded-full relative z-10 overflow-hidden"
                 style={{
-                  boxShadow: '0 0 15px rgba(14,203,129,0.7), 0 0 30px rgba(0,255,136,0.5), 0 0 45px rgba(14,203,129,0.3)'
+                  boxShadow: '0 0 8px rgba(14,203,129,0.5), 0 0 16px rgba(14,203,129,0.3)'
                 }}
-              />
+              >
+                <img 
+                  src="/tg-logo.png" 
+                  alt="TG Exchange" 
+                  className="absolute"
+                  style={{
+                    width: '145%',
+                    height: '145%',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    objectFit: 'cover'
+                  }}
+                />
+              </div>
             </div>
             <div>
               <h1 className="font-bold text-lg" style={{color: colors.text}}>TG Exchange</h1>
