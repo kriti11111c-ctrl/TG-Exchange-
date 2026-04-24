@@ -12,7 +12,11 @@ import {
   Coin,
   CaretUp,
   CaretDown,
-  Pencil
+  TrendUp,
+  TrendDown,
+  Lightning,
+  Trophy,
+  Sparkle
 } from "@phosphor-icons/react";
 
 const MarketsPage = () => {
@@ -21,19 +25,10 @@ const MarketsPage = () => {
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("spot");
-  const [subTab, setSubTab] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("volume");
   const [sortOrder, setSortOrder] = useState("desc");
 
-  const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
-  const cardBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
-  const text = isDark ? 'text-white' : 'text-gray-900';
-  const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
-  const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
-  const inputBg = isDark ? 'bg-[#2B3139]' : 'bg-gray-100';
-
-  // Fetch all coins
   useEffect(() => {
     const fetchPrices = async () => {
       try {
@@ -52,20 +47,16 @@ const MarketsPage = () => {
   }, []);
 
   const mainTabs = [
-    { id: "favorites", label: "Favorites", icon: Star },
-    { id: "new", label: "New Listing", icon: Rocket },
-    { id: "spot", label: "Spot", icon: Coin },
-    { id: "futures", label: "Futures", icon: ChartLineUp },
-    { id: "earn", label: "Earn", icon: Fire }
+    { id: "favorites", label: "Favorites", icon: Star, color: "#F0B90B" },
+    { id: "hot", label: "Hot", icon: Fire, color: "#F6465D" },
+    { id: "gainers", label: "Gainers", icon: TrendUp, color: "#0ECB81" },
+    { id: "spot", label: "Spot", icon: Coin, color: "#00E5FF" },
+    { id: "futures", label: "Futures", icon: ChartLineUp, color: "#A855F7" },
   ];
 
-  const subTabs = ["All", "Spot", "Futures", "LTs"];
-
-  // Filter and sort coins
   const getFilteredCoins = () => {
     let filtered = [...prices];
 
-    // Search filter
     if (searchQuery) {
       filtered = filtered.filter(coin => 
         coin.symbol?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -73,19 +64,18 @@ const MarketsPage = () => {
       );
     }
 
-    // Tab filter
     if (activeTab === "favorites") {
       filtered = filtered.filter(coin => 
         ["bitcoin", "ethereum", "binancecoin", "solana", "ripple"].includes(coin.coin_id)
       );
-    } else if (activeTab === "new") {
-      // Show newer/trending coins
+    } else if (activeTab === "hot") {
       filtered = filtered.filter(coin => 
-        ["sui", "pepe", "floki", "bonk", "wif"].includes(coin.coin_id)
+        ["bitcoin", "ethereum", "dogecoin", "pepe", "shiba-inu", "bonk"].includes(coin.coin_id)
       );
+    } else if (activeTab === "gainers") {
+      filtered = filtered.filter(coin => (coin.price_change_percentage_24h || 0) > 0);
     }
 
-    // Sort
     filtered.sort((a, b) => {
       let aVal, bVal;
       switch (sortBy) {
@@ -135,118 +125,157 @@ const MarketsPage = () => {
 
   const filteredCoins = getFilteredCoins();
 
+  // Top Gainers/Losers for header cards
+  const topGainer = prices.reduce((max, coin) => 
+    (coin.price_change_percentage_24h || 0) > (max?.price_change_percentage_24h || -999) ? coin : max
+  , null);
+  
+  const topLoser = prices.reduce((min, coin) => 
+    (coin.price_change_percentage_24h || 0) < (min?.price_change_percentage_24h || 999) ? coin : min
+  , null);
+
   if (loading) {
     return (
-      <div className={`min-h-screen ${bg} flex items-center justify-center`}>
-        <div className="w-10 h-10 border-4 border-[#00E5FF] border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#0B0E11] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-12 h-12 border-4 border-[#00E5FF] border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-[#848E9C] text-sm">Loading markets...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${bg} pb-20`}>
-      {/* Search Header */}
-      <div className={`${cardBg} border-b ${border} sticky top-0 z-40`}>
-        <div className="p-3">
-          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${inputBg}`}>
-            <MagnifyingGlass size={18} className={textMuted} />
-            <input
-              type="text"
-              placeholder="Search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={`flex-1 bg-transparent outline-none text-sm ${text}`}
-            />
-            <span className={`text-xs ${textMuted}`}>🔥 7</span>
+    <div className="min-h-screen bg-[#0B0E11] pb-20">
+      {/* Header */}
+      <div className="bg-gradient-to-b from-[#1E2329] to-[#0B0E11] px-4 pt-4 pb-2">
+        {/* Search Bar */}
+        <div className="relative mb-4">
+          <MagnifyingGlass size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#848E9C]" />
+          <input
+            type="text"
+            placeholder="Search coin name"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-12 pr-4 py-3 rounded-xl bg-[#2B3139] text-white placeholder-[#5E6673] outline-none focus:ring-2 focus:ring-[#00E5FF]/50 transition-all"
+          />
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <Fire size={16} className="text-[#F6465D]" weight="fill" />
+            <span className="text-[#F6465D] text-sm font-bold">HOT</span>
           </div>
         </div>
 
-        {/* Main Tabs */}
+        {/* Quick Stats Cards */}
+        <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
+          {/* Top Gainer Card */}
+          <div className="flex-shrink-0 w-40 bg-gradient-to-br from-[#0ECB81]/20 to-[#0ECB81]/5 rounded-2xl p-3 border border-[#0ECB81]/20">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendUp size={16} className="text-[#0ECB81]" weight="bold" />
+              <span className="text-[#0ECB81] text-xs font-bold">TOP GAINER</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {topGainer?.image && (
+                <img src={topGainer.image} alt="" className="w-6 h-6 rounded-full" />
+              )}
+              <span className="text-white font-bold">{topGainer?.symbol?.toUpperCase()}</span>
+            </div>
+            <p className="text-[#0ECB81] font-bold text-lg mt-1">
+              +{(topGainer?.price_change_percentage_24h || 0).toFixed(2)}%
+            </p>
+          </div>
+
+          {/* Top Loser Card */}
+          <div className="flex-shrink-0 w-40 bg-gradient-to-br from-[#F6465D]/20 to-[#F6465D]/5 rounded-2xl p-3 border border-[#F6465D]/20">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendDown size={16} className="text-[#F6465D]" weight="bold" />
+              <span className="text-[#F6465D] text-xs font-bold">TOP LOSER</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {topLoser?.image && (
+                <img src={topLoser.image} alt="" className="w-6 h-6 rounded-full" />
+              )}
+              <span className="text-white font-bold">{topLoser?.symbol?.toUpperCase()}</span>
+            </div>
+            <p className="text-[#F6465D] font-bold text-lg mt-1">
+              {(topLoser?.price_change_percentage_24h || 0).toFixed(2)}%
+            </p>
+          </div>
+
+          {/* Volume Card */}
+          <div className="flex-shrink-0 w-40 bg-gradient-to-br from-[#00E5FF]/20 to-[#00E5FF]/5 rounded-2xl p-3 border border-[#00E5FF]/20">
+            <div className="flex items-center gap-2 mb-2">
+              <Lightning size={16} className="text-[#00E5FF]" weight="fill" />
+              <span className="text-[#00E5FF] text-xs font-bold">24H VOLUME</span>
+            </div>
+            <p className="text-white font-bold text-lg">
+              ${formatVolume(prices.reduce((sum, c) => sum + (c.total_volume || 0), 0))}
+            </p>
+            <p className="text-[#848E9C] text-xs mt-1">{prices.length} Coins</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="sticky top-0 z-40 bg-[#0B0E11] border-b border-[#2B3139]">
         <div className="overflow-x-auto scrollbar-hide">
-          <div className="flex gap-1 px-3 pb-2 min-w-max">
+          <div className="flex gap-1 px-4 py-2 min-w-max">
             {mainTabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap flex items-center gap-1 ${
+                className={`px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap flex items-center gap-2 transition-all ${
                   activeTab === tab.id 
-                    ? 'bg-[#00E5FF]/20 text-[#00E5FF]' 
-                    : `${textMuted}`
+                    ? 'bg-[#2B3139] text-white' 
+                    : 'text-[#848E9C] hover:text-white'
                 }`}
               >
+                <tab.icon 
+                  size={18} 
+                  weight={activeTab === tab.id ? "fill" : "regular"}
+                  style={{ color: activeTab === tab.id ? tab.color : undefined }}
+                />
                 {tab.label}
               </button>
             ))}
           </div>
         </div>
-
-        {/* Sub Tabs */}
-        <div className={`flex items-center justify-between px-3 py-2 border-t ${border}`}>
-          <div className="flex gap-4">
-            {subTabs.map(tab => (
-              <button
-                key={tab}
-                onClick={() => setSubTab(tab.toLowerCase())}
-                className={`text-sm ${
-                  subTab === tab.toLowerCase() ? text : textMuted
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-          <button className={textMuted}>
-            <Pencil size={18} />
-          </button>
-        </div>
       </div>
 
       {/* Table Header */}
-      <div className={`${cardBg} sticky top-[140px] z-30`}>
-        <div className={`grid grid-cols-12 px-4 py-2 text-xs ${textMuted} border-b ${border}`}>
-          <div 
-            className="col-span-4 flex items-center gap-1 cursor-pointer"
-            onClick={() => toggleSort("name")}
-          >
-            Pairs
-            <div className="flex flex-col">
-              <CaretUp size={8} className={sortBy === "name" && sortOrder === "asc" ? "text-[#00E5FF]" : ""} />
-              <CaretDown size={8} className={sortBy === "name" && sortOrder === "desc" ? "text-[#00E5FF]" : ""} />
-            </div>
-            <span className="ml-1">24h Vol</span>
-            <div className="flex flex-col">
-              <CaretUp size={8} className={sortBy === "volume" && sortOrder === "asc" ? "text-[#00E5FF]" : ""} />
-              <CaretDown size={8} className={sortBy === "volume" && sortOrder === "desc" ? "text-[#00E5FF]" : ""} />
-            </div>
+      <div className="sticky top-[52px] z-30 bg-[#0B0E11] border-b border-[#2B3139]">
+        <div className="grid grid-cols-12 px-4 py-3 text-xs text-[#848E9C]">
+          <div className="col-span-5 flex items-center gap-2">
+            <span>Name / Vol</span>
           </div>
           <div 
-            className="col-span-4 text-right flex items-center justify-end gap-1 cursor-pointer"
+            className="col-span-3 text-right flex items-center justify-end gap-1 cursor-pointer hover:text-white transition-colors"
             onClick={() => toggleSort("price")}
           >
-            Last Price
-            <div className="flex flex-col">
-              <CaretUp size={8} className={sortBy === "price" && sortOrder === "asc" ? "text-[#00E5FF]" : ""} />
-              <CaretDown size={8} className={sortBy === "price" && sortOrder === "desc" ? "text-[#00E5FF]" : ""} />
+            Price
+            <div className="flex flex-col -space-y-1">
+              <CaretUp size={10} className={sortBy === "price" && sortOrder === "asc" ? "text-[#00E5FF]" : ""} weight="bold" />
+              <CaretDown size={10} className={sortBy === "price" && sortOrder === "desc" ? "text-[#00E5FF]" : ""} weight="bold" />
             </div>
           </div>
           <div 
-            className="col-span-4 text-right flex items-center justify-end gap-1 cursor-pointer"
+            className="col-span-4 text-right flex items-center justify-end gap-1 cursor-pointer hover:text-white transition-colors"
             onClick={() => toggleSort("change")}
           >
-            Change
-            <div className="flex flex-col">
-              <CaretUp size={8} className={sortBy === "change" && sortOrder === "asc" ? "text-[#00E5FF]" : ""} />
-              <CaretDown size={8} className={sortBy === "change" && sortOrder === "desc" ? "text-[#00E5FF]" : ""} />
+            24h Change
+            <div className="flex flex-col -space-y-1">
+              <CaretUp size={10} className={sortBy === "change" && sortOrder === "asc" ? "text-[#00E5FF]" : ""} weight="bold" />
+              <CaretDown size={10} className={sortBy === "change" && sortOrder === "desc" ? "text-[#00E5FF]" : ""} weight="bold" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Coin List */}
-      <div className={cardBg}>
+      <div>
         {filteredCoins.length === 0 ? (
-          <div className="py-12 text-center">
-            <p className={textMuted}>No coins found</p>
+          <div className="py-16 text-center">
+            <MagnifyingGlass size={48} className="text-[#2B3139] mx-auto mb-4" />
+            <p className="text-[#848E9C]">No coins found</p>
           </div>
         ) : (
           filteredCoins.map((coin, index) => {
@@ -257,60 +286,67 @@ const MarketsPage = () => {
               <Link
                 key={coin.coin_id || index}
                 to={`/trade?symbol=${coin.symbol || 'BTC'}`}
-                className={`grid grid-cols-12 px-4 py-3 items-center border-b ${border} ${isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-50'}`}
+                className="grid grid-cols-12 px-4 py-4 items-center border-b border-[#2B3139]/50 hover:bg-[#1E2329]/50 transition-colors active:bg-[#2B3139]"
               >
-                {/* Pair & Volume */}
-                <div className="col-span-4">
-                  <div className="flex items-center gap-2">
-                    {coin.image ? (
-                      <img 
-                        src={coin.image} 
-                        alt={coin.symbol} 
-                        className="w-8 h-8 rounded-full object-cover"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.parentElement.innerHTML = `<div class="w-8 h-8 rounded-full bg-[#00E5FF] flex items-center justify-center"><span class="text-black font-bold">${coin.symbol?.charAt(0).toUpperCase()}</span></div>`;
-                        }}
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-[#00E5FF] flex items-center justify-center">
-                        <span className="text-black font-bold">{coin.symbol?.charAt(0).toUpperCase()}</span>
-                      </div>
-                    )}
+                {/* Coin Info */}
+                <div className="col-span-5">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      {coin.image ? (
+                        <img 
+                          src={coin.image} 
+                          alt={coin.symbol} 
+                          className="w-10 h-10 rounded-full object-cover ring-2 ring-[#2B3139]"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = `https://ui-avatars.com/api/?name=${coin.symbol}&background=00E5FF&color=000`;
+                          }}
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00E5FF] to-[#00E5FF]/50 flex items-center justify-center">
+                          <span className="text-black font-bold">{coin.symbol?.charAt(0).toUpperCase()}</span>
+                        </div>
+                      )}
+                      {index < 3 && (
+                        <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#F0B90B] flex items-center justify-center">
+                          <span className="text-[8px] text-black font-bold">{index + 1}</span>
+                        </div>
+                      )}
+                    </div>
                     <div>
-                      <div className="flex items-center gap-1">
-                        <span className={`font-semibold ${text}`}>{coin.symbol?.toUpperCase()}</span>
-                        <span className="text-[10px] px-1 py-0.5 rounded bg-[#00E5FF]/20 text-[#00E5FF]">3x</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold">{coin.symbol?.toUpperCase()}</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#00E5FF]/20 text-[#00E5FF] font-bold">USDT</span>
                       </div>
-                      <span className={`text-xs ${textMuted}`}>{formatVolume(coin.total_volume)}M</span>
+                      <span className="text-[#848E9C] text-xs">Vol {formatVolume(coin.total_volume)}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Price */}
-                <div className="col-span-4 text-right">
-                  <p className={`font-medium ${text}`}>{formatPrice(coin.current_price)}</p>
-                  <p className={`text-xs ${textMuted}`}>${formatPrice(coin.current_price)}</p>
+                <div className="col-span-3 text-right">
+                  <p className="text-white font-semibold">${formatPrice(coin.current_price)}</p>
                 </div>
 
                 {/* Change */}
                 <div className="col-span-4 flex justify-end">
-                  <span className={`px-3 py-1.5 rounded text-sm font-medium min-w-[80px] text-center ${
+                  <div className={`px-3 py-2 rounded-lg text-sm font-bold min-w-[90px] text-center flex items-center justify-center gap-1 ${
                     isPositive 
                       ? 'bg-[#0ECB81] text-white' 
                       : 'bg-[#F6465D] text-white'
                   }`}>
+                    {isPositive ? <TrendUp size={14} weight="bold" /> : <TrendDown size={14} weight="bold" />}
                     {isPositive ? '+' : ''}{change.toFixed(2)}%
-                  </span>
+                  </div>
                 </div>
               </Link>
             );
           })
         )}
         
-        {/* No More indicator */}
-        <div className={`py-6 text-center ${textMuted}`}>
-          <p>No More</p>
+        {/* End indicator */}
+        <div className="py-8 text-center">
+          <p className="text-[#5E6673] text-sm">— End of List —</p>
         </div>
       </div>
 

@@ -366,47 +366,67 @@ const FuturesPage = () => {
         </div>
       </div>
 
-      {/* Trade Code Section - Above CALL/PUT */}
+      {/* Trade Code Section - PREMIUM DESIGN */}
       <div className="px-3 pb-20">
-        <div className={`p-3 rounded-xl border ${border} ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
-          <div className="flex items-center gap-2 mb-3">
-            <Ticket size={18} className="text-[#0ECB81]" weight="fill" />
-            <span className={`text-sm font-semibold ${text}`}>Trade Code</span>
+        <div className={`p-4 rounded-2xl border-2 ${isDark ? 'border-[#0ECB81]/30 bg-gradient-to-br from-[#0ECB81]/10 to-[#0B0E11]' : 'border-[#0ECB81]/30 bg-gradient-to-br from-[#0ECB81]/5 to-white'}`}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0ECB81] to-[#0ECB81]/60 flex items-center justify-center">
+                <Ticket size={18} className="text-white" weight="fill" />
+              </div>
+              <div>
+                <span className={`text-sm font-bold ${text}`}>AI Trade Signal</span>
+                <p className="text-[10px] text-[#0ECB81]">Enter code to execute</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#0ECB81]/20">
+              <span className="w-2 h-2 rounded-full bg-[#0ECB81] animate-pulse"></span>
+              <span className="text-[10px] text-[#0ECB81] font-bold">LIVE</span>
+            </div>
           </div>
           
-          {/* Success Message */}
+          {/* Success Message - Enhanced */}
           {codeSuccess && (
-            <div className="mb-3 p-3 rounded-lg bg-[#0ECB81]/20 border border-[#0ECB81]/40">
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle size={20} className="text-[#0ECB81]" weight="fill" />
-                <span className="text-[#0ECB81] font-bold text-sm">Trade Successful!</span>
-              </div>
-              <div className={`text-xs ${text} space-y-1`}>
-                <p className="flex justify-between">
-                  <span className="opacity-60">Trade Amount:</span> 
-                  <span>${codeSuccess.trade_amount_usdt?.toFixed(2)}</span>
-                </p>
-                <p className="flex justify-between">
-                  <span className="opacity-60">Profit:</span> 
-                  <span className="text-[#0ECB81] font-bold">+${codeSuccess.profit_usdt?.toFixed(2)} ({codeSuccess.profit_percent}%)</span>
-                </p>
-                <p className="flex justify-between border-t border-[#0ECB81]/30 pt-1 mt-1">
-                  <span className="opacity-60">Total Earned:</span> 
-                  <span className="text-[#0ECB81] font-bold text-sm">+${codeSuccess.profit_usdt?.toFixed(2)}</span>
-                </p>
+            <div className="mb-4 p-4 rounded-xl bg-gradient-to-br from-[#0ECB81]/30 to-[#0ECB81]/10 border border-[#0ECB81]/50 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-[#0ECB81]/20 rounded-full blur-2xl"></div>
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-[#0ECB81] flex items-center justify-center">
+                    <CheckCircle size={20} className="text-white" weight="fill" />
+                  </div>
+                  <div>
+                    <span className="text-[#0ECB81] font-bold">Trade Successful!</span>
+                    <p className="text-[10px] text-white/60">{codeSuccess.coin_name || codeSuccess.coin}</p>
+                  </div>
+                </div>
+                <div className={`text-sm space-y-2`}>
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-black/20">
+                    <span className="text-white/60 text-xs">Trade Amount</span> 
+                    <span className="text-white font-bold">${codeSuccess.trade_amount_usdt?.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-black/20">
+                    <span className="text-white/60 text-xs">Profit Earned</span> 
+                    <span className="text-[#0ECB81] font-bold text-lg">+${codeSuccess.profit_usdt?.toFixed(2)}</span>
+                  </div>
+                  <div className="text-center pt-2">
+                    <span className="text-[#F0B90B] text-xs font-bold">{codeSuccess.profit_percent}% PROFIT RATE</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
           
           <div className="flex gap-2">
-            <Input
-              type="text"
-              value={tradeCode}
-              onChange={(e) => setTradeCode(e.target.value.toUpperCase())}
-              placeholder="Paste trade code here"
-              className={`flex-1 text-sm ${inputBg} ${border} ${text} uppercase tracking-wider font-mono`}
-              data-testid="trade-code-input"
-            />
+            <div className="flex-1 relative">
+              <Input
+                type="text"
+                value={tradeCode}
+                onChange={(e) => setTradeCode(e.target.value.toUpperCase())}
+                placeholder="PASTE CODE HERE"
+                className={`w-full text-center text-sm ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-100'} ${border} ${text} uppercase tracking-[0.2em] font-mono h-12 rounded-xl focus:ring-2 focus:ring-[#0ECB81]/50 placeholder:text-[#5E6673]`}
+                data-testid="trade-code-input"
+              />
+            </div>
             <Button
               onClick={async () => {
                 if (!tradeCode.trim()) {
@@ -420,23 +440,21 @@ const FuturesPage = () => {
                     code: tradeCode
                   }, { withCredentials: true });
                   
-                  // Show success with confetti effect
                   toast.success("🎉 " + res.data.message, {
                     duration: 5000,
                   });
                   
-                  // Set success data for display
                   setCodeSuccess(res.data.trade_details || {
                     trade_type: res.data.trade_type,
                     amount: res.data.amount,
                     coin: res.data.coin,
+                    coin_name: res.data.coin_name,
                     price: res.data.price
                   });
                   
                   setTradeCode("");
                   fetchFuturesData();
                   
-                  // Auto-hide success after 10 seconds
                   setTimeout(() => setCodeSuccess(null), 10000);
                 } catch (error) {
                   toast.error(error.response?.data?.detail || "Invalid or expired trade code");
@@ -445,7 +463,7 @@ const FuturesPage = () => {
                 }
               }}
               disabled={applyingCode || !tradeCode.trim()}
-              className="bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white font-bold px-5 disabled:opacity-50"
+              className="h-12 px-6 bg-gradient-to-r from-[#0ECB81] to-[#0ECB81]/80 hover:from-[#0ECB81]/90 hover:to-[#0ECB81]/70 text-white font-bold rounded-xl shadow-lg shadow-[#0ECB81]/20 disabled:opacity-50 disabled:shadow-none transition-all"
               data-testid="apply-code-button"
             >
               {applyingCode ? "..." : "Apply"}
@@ -676,71 +694,67 @@ const FuturesPage = () => {
                 {tradeHistory.map((trade, index) => (
                   <div 
                     key={trade.id || index} 
-                    className={`${cardBg} rounded-xl border ${border} overflow-hidden`}
+                    className={`rounded-2xl border-2 overflow-hidden transition-all ${
+                      trade.is_profit 
+                        ? 'border-[#0ECB81]/30 bg-gradient-to-br from-[#0ECB81]/10 to-transparent' 
+                        : 'border-[#F6465D]/30 bg-gradient-to-br from-[#F6465D]/10 to-transparent'
+                    }`}
                     data-testid={`history-item-${index}`}
                   >
                     {/* Header with Status Badge */}
-                    <div className={`flex items-center justify-between px-4 py-2 ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold bg-[#0ECB81] text-white`}>
-                        Opened
-                      </span>
+                    <div className={`flex items-center justify-between px-4 py-3 ${isDark ? 'bg-[#1E2329]/50' : 'bg-gray-50'}`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
+                          trade.is_profit ? 'bg-[#0ECB81] text-white' : 'bg-[#F6465D] text-white'
+                        }`}>
+                          {trade.is_profit ? '✓ WIN' : '✗ LOSS'}
+                        </span>
+                        <span className={`text-sm font-bold ${text}`}>{trade.product}</span>
+                      </div>
                       <span className={`text-xs ${textMuted}`}>{trade.date}</span>
                     </div>
 
-                    {/* Trade Details - Exact format like reference */}
-                    <div className="p-4 space-y-2.5">
+                    {/* Trade Details */}
+                    <div className="p-4 space-y-3">
+                      {/* Direction & Amount Row */}
                       <div className="flex justify-between items-center">
-                        <span className={`text-sm ${textMuted}`}>Product</span>
-                        <span className={`text-sm font-semibold ${text}`}>{trade.product}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${
+                            trade.direction === 'CALL' || trade.direction === 'BUY' 
+                              ? 'bg-[#0ECB81]/20 text-[#0ECB81]' 
+                              : 'bg-[#F6465D]/20 text-[#F6465D]'
+                          }`}>
+                            {trade.direction === 'CALL' ? '▲ CALL' : '▼ PUT'}
+                          </span>
+                          <span className={`text-xs ${textMuted}`}>{trade.time_period}</span>
+                        </div>
+                        <span className={`text-sm font-bold ${text}`}>{trade.amount} USDT</span>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className={`text-sm ${textMuted}`}>Direction</span>
-                        <span className={`text-sm font-bold ${
-                          trade.direction === 'CALL' || trade.direction === 'BUY' 
-                            ? 'text-[#0ECB81]' 
-                            : 'text-[#F6465D]'
-                        }`}>
-                          {trade.direction}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className={`text-sm ${textMuted}`}>Time Period</span>
-                        <span className={`text-sm ${text}`}>{trade.time_period}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className={`text-sm ${textMuted}`}>Amount</span>
-                        <span className={`text-sm ${text}`}>{trade.amount}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className={`text-sm ${textMuted}`}>Open Position Time</span>
-                        <span className={`text-sm ${text}`}>{trade.open_position_time}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className={`text-sm ${textMuted}`}>Open Price</span>
-                        <span className={`text-sm ${text}`}>{trade.open_price?.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className={`text-sm ${textMuted}`}>Settlement price</span>
-                        <span className={`text-sm ${text}`}>{trade.settlement_price?.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className={`text-sm ${textMuted}`}>Turnover</span>
-                        <span className={`text-sm ${text}`}>{trade.turnover}</span>
+                      
+                      {/* Prices Grid */}
+                      <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-[#0B0E11]/50">
+                        <div>
+                          <p className={`text-[10px] ${textMuted} mb-1`}>Open Price</p>
+                          <p className={`text-sm font-semibold ${text}`}>${trade.open_price?.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className={`text-[10px] ${textMuted} mb-1`}>Settlement</p>
+                          <p className={`text-sm font-semibold ${text}`}>${trade.settlement_price?.toLocaleString()}</p>
+                        </div>
                       </div>
                       
                       {/* Profit Section - Highlighted */}
-                      <div className={`pt-2 mt-2 border-t border-dashed ${border}`}>
+                      <div className={`p-3 rounded-xl ${trade.is_profit ? 'bg-[#0ECB81]/20' : 'bg-[#F6465D]/20'}`}>
                         <div className="flex justify-between items-center">
                           <span className={`text-sm ${textMuted}`}>Profit/Loss</span>
-                          <span className={`text-lg font-bold ${trade.is_profit ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
-                            {trade.is_profit ? '+' : ''}{trade.profit_loss?.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center mt-1">
-                          <span className={`text-sm ${textMuted}`}>Rate of return</span>
-                          <span className={`text-base font-bold ${trade.is_profit ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
-                            {trade.rate_of_return?.toFixed(2)}%
-                          </span>
+                          <div className="text-right">
+                            <span className={`text-xl font-bold ${trade.is_profit ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+                              {trade.is_profit ? '+' : ''}{trade.profit_loss?.toFixed(2)} USDT
+                            </span>
+                            <p className={`text-sm font-semibold ${trade.is_profit ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
+                              ({trade.rate_of_return?.toFixed(2)}%)
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
