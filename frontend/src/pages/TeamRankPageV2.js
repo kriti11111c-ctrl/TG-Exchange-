@@ -426,16 +426,112 @@ const TeamRankPage = () => {
               </div>
             )}
 
-            {/* Claim Salary Button */}
+            {/* VIP Salary Card */}
             {rankInfo?.current_rank && (
-              <Button 
-                onClick={handleClaimSalary}
-                disabled={claiming}
-                className="w-full bg-[#00E5FF] hover:bg-[#00E5FF]/90 text-black font-semibold py-3"
-              >
-                <Wallet size={20} className="mr-2" />
-                {claiming ? "Processing..." : `Claim Salary (${formatMoney((rankInfo.monthly_salary || 0) / 3)})`}
-              </Button>
+              <div className="rounded-2xl overflow-hidden mb-4" style={{
+                background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+                border: '1.5px solid #00E5FF30'
+              }}>
+                {/* Header */}
+                <div className="p-4 border-b border-white/10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F0B90B] to-[#FCD535] flex items-center justify-center">
+                        <Wallet size={20} className="text-black" />
+                      </div>
+                      <div>
+                        <p className="text-white font-bold text-sm">VIP Salary</p>
+                        <p className="text-white/60 text-xs">{rankInfo.current_rank.name} Rank</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[#F0B90B] font-bold text-lg">${rankInfo.daily_salary || (rankInfo.current_rank.monthly_salary / 30).toFixed(2)}</p>
+                      <p className="text-white/50 text-xs">per day</p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Progress Section */}
+                <div className="p-4">
+                  {/* Days Progress */}
+                  <div className="mb-4">
+                    <div className="flex justify-between text-xs mb-2">
+                      <span className="text-white/70">Salary Cycle Progress</span>
+                      <span className="text-[#00E5FF] font-medium">
+                        {rankInfo.days_in_cycle || 0}/10 Days
+                      </span>
+                    </div>
+                    <div className="h-3 rounded-full bg-white/10 overflow-hidden">
+                      <div 
+                        className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#0ECB81] transition-all duration-500"
+                        style={{ width: `${((rankInfo.days_in_cycle || 0) / 10) * 100}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-1">
+                      <span className="text-white/40 text-[10px]">Day 0</span>
+                      <span className="text-white/40 text-[10px]">Day 10 (Unlock)</span>
+                    </div>
+                  </div>
+                  
+                  {/* Accumulated Amount */}
+                  <div className="rounded-xl p-3 mb-4" style={{backgroundColor: 'rgba(0, 229, 255, 0.1)', border: '1px solid rgba(0, 229, 255, 0.2)'}}>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-white/60 text-xs">Accumulated Salary</p>
+                        <p className="text-[#0ECB81] font-bold text-xl">
+                          ${(rankInfo.accumulated_salary || 0).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        {rankInfo.can_claim_salary ? (
+                          <span className="px-3 py-1 rounded-full bg-[#0ECB81]/20 text-[#0ECB81] text-xs font-medium">
+                            ✅ Ready to Claim
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 rounded-full bg-[#F0B90B]/20 text-[#F0B90B] text-xs font-medium flex items-center gap-1">
+                            🔒 {rankInfo.days_remaining || 10} days left
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Info Box */}
+                  <div className="rounded-xl p-3 mb-4" style={{backgroundColor: 'rgba(240, 185, 11, 0.1)'}}>
+                    <p className="text-[#F0B90B] text-xs">
+                      💡 Salary accumulates daily. After 10 days, you can claim your earnings. Keep your rank active to continue earning!
+                    </p>
+                  </div>
+                  
+                  {/* Claim Button */}
+                  {rankInfo.can_claim_salary ? (
+                    <Button 
+                      onClick={handleClaimSalary}
+                      disabled={claiming}
+                      className="w-full bg-gradient-to-r from-[#0ECB81] to-[#00E5FF] hover:opacity-90 text-black font-bold py-4 text-base rounded-xl"
+                    >
+                      <Gift size={24} className="mr-2" />
+                      {claiming ? "Processing..." : `Claim $${(rankInfo.accumulated_salary || 0).toFixed(2)}`}
+                    </Button>
+                  ) : (
+                    <Button 
+                      disabled
+                      className="w-full bg-white/10 text-white/50 font-medium py-4 text-base rounded-xl cursor-not-allowed"
+                    >
+                      🔒 Unlocks in {rankInfo.days_remaining || 10} Days
+                    </Button>
+                  )}
+                  
+                  {/* Salary Paused Warning */}
+                  {rankInfo.salary_paused && (
+                    <div className="mt-3 p-3 rounded-xl bg-red-500/20 border border-red-500/30">
+                      <p className="text-red-400 text-xs text-center">
+                        ⚠️ Salary is paused due to rank demotion. Restore your rank to resume earning.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>
