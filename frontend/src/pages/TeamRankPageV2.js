@@ -737,7 +737,7 @@ const TeamRankPage = () => {
                             )}
                           </div>
                           <span className="text-white/70 text-xs">
-                            {rank.bronze_required > 0 ? `${rank.bronze_required} Bronze / ` : ''}{rank.team_required} Team • ${rank.monthly_salary}/mo
+                            {rank.bronze_required > 0 ? `${rank.bronze_required} Bronze / ` : ''}{rank.team_required} Team • ${rank.monthly_salary} M
                           </span>
                         </div>
                       </div>
