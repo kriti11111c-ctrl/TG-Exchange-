@@ -74,7 +74,20 @@ A full-stack centralized cryptocurrency exchange called "TG Exchange" (Trade Gen
 
 ## Changelog
 
-### April 24, 2026
+### April 24, 2026 (Session 2)
+- **VIP Rank E2E Testing COMPLETED** (Bronze → Master verified)
+  - Gold: $8.33/day, 75 team members ✅
+  - Platinum: $16.67/day, 150 team members ✅
+  - Diamond: $33.33/day, 300 team members ✅
+  - Master: $66.67/day, 600 team members ✅
+- **Demotion Logic VERIFIED**
+  - Rank drops when team members' futures_balance < $50
+  - "Salary Paused" banner displays correctly
+  - Demotion message shows previous vs current rank
+  - "45 Low" badge warns about team members with low balance
+- Test accounts created for all ranks (testbronze@, testsilver@, testgold@, etc.)
+
+### April 24, 2026 (Session 1)
 - **"All Team Members" Collapsible Section Added** - Shows full team hierarchy (not just direct referrals)
   - Click to expand/collapse
   - Sorted by Futures Balance (highest first)
@@ -103,7 +116,9 @@ A full-stack centralized cryptocurrency exchange called "TG Exchange" (Trade Gen
 - All backend routes prefixed with `/api`
 
 ## Backlog / Future Tasks
-- P0: Deploy approved frontend to user's Hostinger VPS
-- P1: Binance Chart fallback (rate limit handling)
-- P2: server.py refactoring into modules
-- P2: Staking feature implementation
+- P0: Deploy approved frontend to user's Hostinger VPS (wait for user confirmation)
+- P1: Staking Page E2E verification (Flexible/Locked flow)
+- P1: Withdraw Pages E2E verification
+- P2: Profile/KYC Page verification
+- P2: server.py refactoring into modules (~7700 lines → modular routers)
+- P2: Grandmaster/Legend/Immortal ranks need real test users (not dummy referrals)
