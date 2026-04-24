@@ -376,72 +376,90 @@ const TeamRankPage = () => {
               </div>
             </div>
 
-            {/* Team Members List - Sorted by Futures Balance (Highest First) */}
+            {/* Team Members List - Collapsible, Sorted by Futures Balance (Highest First) */}
             {rankInfo?.team_members && rankInfo.team_members.length > 0 && (
-              <div className={`${cardBg} rounded-xl p-3 mb-4`}>
-                <div className="flex justify-between items-center mb-3">
+              <div className={`${cardBg} rounded-xl overflow-hidden mb-4`}>
+                {/* Collapsible Header */}
+                <button 
+                  onClick={() => setShowTeamMembers(!showTeamMembers)}
+                  className="w-full p-3 flex justify-between items-center"
+                  data-testid="team-members-toggle"
+                >
                   <div className="flex items-center gap-2">
                     <p className={`font-medium ${text}`}>👥 Team Members</p>
                     <span className="px-2 py-0.5 rounded-full bg-[#0ECB81]/20 text-[#0ECB81] text-xs font-medium">
                       {rankInfo.direct_referrals || 0} Active
                     </span>
+                    {rankInfo.low_balance_count > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-xs font-medium">
+                        ⚠️ {rankInfo.low_balance_count} Low
+                      </span>
+                    )}
                   </div>
-                  {rankInfo.low_balance_count > 0 && (
-                    <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-xs font-medium">
-                      ⚠️ {rankInfo.low_balance_count} Low
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs ${textMuted}`}>
+                      {showTeamMembers ? 'Hide' : 'Show'}
                     </span>
-                  )}
-                </div>
+                    <span className={`transition-transform duration-200 ${showTeamMembers ? 'rotate-180' : ''}`}>
+                      ▼
+                    </span>
+                  </div>
+                </button>
                 
-                <p className={`text-xs ${textMuted} mb-2`}>
-                  Sorted by Futures Balance (Highest First)
-                </p>
-                
-                <div className="space-y-2 max-h-72 overflow-y-auto">
-                  {/* Sort by futures_balance descending */}
-                  {[...rankInfo.team_members]
-                    .sort((a, b) => (b.futures_balance || 0) - (a.futures_balance || 0))
-                    .map((member, index) => (
-                      <div 
-                        key={member.user_id || index}
-                        className="p-2 rounded-lg flex justify-between items-center"
-                        style={{
-                          backgroundColor: member.is_valid 
-                            ? (isDark ? 'rgba(14, 203, 129, 0.1)' : '#E8F5E9')
-                            : (isDark ? 'rgba(239, 68, 68, 0.1)' : '#FFEBEE'),
-                          border: `1px solid ${member.is_valid 
-                            ? (isDark ? 'rgba(14, 203, 129, 0.3)' : '#C8E6C9')
-                            : (isDark ? 'rgba(239, 68, 68, 0.3)' : '#FFCDD2')}`
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          {/* Rank Badge */}
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                            member.is_valid ? 'bg-[#0ECB81]/20 text-[#0ECB81]' : 'bg-red-500/20 text-red-400'
-                          }`}>
-                            #{index + 1}
+                {/* Collapsible Content */}
+                {showTeamMembers && (
+                  <div className="px-3 pb-3">
+                    <p className={`text-xs ${textMuted} mb-2`}>
+                      Sorted by Futures Balance (Highest First)
+                    </p>
+                    
+                    <div className="space-y-2 max-h-72 overflow-y-auto">
+                      {/* Sort by futures_balance descending */}
+                      {[...rankInfo.team_members]
+                        .sort((a, b) => (b.futures_balance || 0) - (a.futures_balance || 0))
+                        .map((member, index) => (
+                          <div 
+                            key={member.user_id || index}
+                            className="p-2 rounded-lg flex justify-between items-center"
+                            style={{
+                              backgroundColor: member.is_valid 
+                                ? (isDark ? 'rgba(14, 203, 129, 0.1)' : '#E8F5E9')
+                                : (isDark ? 'rgba(239, 68, 68, 0.1)' : '#FFEBEE'),
+                              border: `1px solid ${member.is_valid 
+                                ? (isDark ? 'rgba(14, 203, 129, 0.3)' : '#C8E6C9')
+                                : (isDark ? 'rgba(239, 68, 68, 0.3)' : '#FFCDD2')}`
+                            }}
+                          >
+                            <div className="flex items-center gap-2">
+                              {/* Rank Badge */}
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                                member.is_valid ? 'bg-[#0ECB81]/20 text-[#0ECB81]' : 'bg-red-500/20 text-red-400'
+                              }`}>
+                                #{index + 1}
+                              </div>
+                              <div>
+                                <p className={`text-sm font-medium ${text}`}>{member.name || 'User'}</p>
+                                <p className={`text-xs ${textMuted}`}>{member.email || ''}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className={`text-sm font-bold ${member.is_valid ? 'text-[#0ECB81]' : 'text-red-400'}`}>
+                                ${member.futures_balance?.toFixed(2) || '0.00'}
+                              </p>
+                              <p className={`text-[10px] ${textMuted}`}>
+                                {member.is_valid ? '✅ Valid' : '❌ < $50'}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className={`text-sm font-medium ${text}`}>{member.name || 'User'}</p>
-                            <p className={`text-xs ${textMuted}`}>{member.email || ''}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className={`text-sm font-bold ${member.is_valid ? 'text-[#0ECB81]' : 'text-red-400'}`}>
-                            ${member.futures_balance?.toFixed(2) || '0.00'}
-                          </p>
-                          <p className={`text-[10px] ${textMuted}`}>
-                            {member.is_valid ? '✅ Valid' : '❌ < $50'}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-                
-                {rankInfo.low_balance_count > 0 && (
-                  <p className="text-xs text-red-400 mt-2 p-2 rounded bg-red-500/10">
-                    ⚠️ {rankInfo.low_balance_count} member(s) have less than $50 in Futures. This is affecting your rank!
-                  </p>
+                        ))}
+                    </div>
+                    
+                    {rankInfo.low_balance_count > 0 && (
+                      <p className="text-xs text-red-400 mt-2 p-2 rounded bg-red-500/10">
+                        ⚠️ {rankInfo.low_balance_count} member(s) have less than $50 in Futures. This is affecting your rank!
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             )}
