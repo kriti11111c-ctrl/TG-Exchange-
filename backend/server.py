@@ -5869,27 +5869,28 @@ async def get_futures_history(
         # Find matching transaction for more details
         tx = next((t for t in transactions if t.get("trade_code") == tc.get("code")), None)
         
-        # Parse timestamp
+        # Parse timestamp - Use UTC time (exchange standard)
         used_at = tc.get("used_at", tc.get("created_at", ""))
         try:
             if used_at:
                 dt = datetime.fromisoformat(used_at.replace('Z', '+00:00'))
-                # Convert to IST
-                ist_dt = dt + timedelta(hours=5, minutes=30)
-                formatted_date = ist_dt.strftime("%Y-%m-%d")
-                formatted_time = ist_dt.strftime("%H:%M:%S")
-                time_period_start = ist_dt.strftime("%H:%M")
-                time_period_end = (ist_dt + timedelta(seconds=60)).strftime("%H:%M")
+                # Keep UTC time (exchange standard) - no IST conversion
+                utc_dt = dt
+                formatted_date = utc_dt.strftime("%Y-%m-%d")
+                formatted_time = utc_dt.strftime("%H:%M:%S")
+                # 10 seconds gap for time period
+                time_period_start = utc_dt.strftime("%H:%M:%S")
+                time_period_end = (utc_dt + timedelta(seconds=10)).strftime("%H:%M:%S")
             else:
                 formatted_date = "N/A"
                 formatted_time = "N/A"
-                time_period_start = "00:00"
-                time_period_end = "00:01"
+                time_period_start = "00:00:00"
+                time_period_end = "00:00:10"
         except:
             formatted_date = "N/A"
             formatted_time = "N/A"
-            time_period_start = "00:00"
-            time_period_end = "00:01"
+            time_period_start = "00:00:00"
+            time_period_end = "00:00:10"
         
         coin = tc.get("coin", "BTC").upper()
         trade_type = tc.get("trade_type", "call").upper()
@@ -5991,21 +5992,23 @@ async def get_futures_history(
         try:
             if created_at:
                 dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                ist_dt = dt + timedelta(hours=5, minutes=30)
-                formatted_date = ist_dt.strftime("%Y-%m-%d")
-                formatted_time = ist_dt.strftime("%H:%M:%S")
-                time_period_start = ist_dt.strftime("%H:%M")
-                time_period_end = (ist_dt + timedelta(seconds=60)).strftime("%H:%M")
+                # Keep UTC time (exchange standard) - no IST conversion
+                utc_dt = dt
+                formatted_date = utc_dt.strftime("%Y-%m-%d")
+                formatted_time = utc_dt.strftime("%H:%M:%S")
+                # 10 seconds gap for time period
+                time_period_start = utc_dt.strftime("%H:%M:%S")
+                time_period_end = (utc_dt + timedelta(seconds=10)).strftime("%H:%M:%S")
             else:
                 formatted_date = "N/A"
                 formatted_time = "N/A"
-                time_period_start = "00:00"
-                time_period_end = "00:01"
+                time_period_start = "00:00:00"
+                time_period_end = "00:00:10"
         except:
             formatted_date = "N/A"
             formatted_time = "N/A"
-            time_period_start = "00:00"
-            time_period_end = "00:01"
+            time_period_start = "00:00:00"
+            time_period_end = "00:00:10"
         
         profit = th.get("profit", 0)
         amount = th.get("amount", 0)
