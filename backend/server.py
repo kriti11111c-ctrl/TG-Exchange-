@@ -2793,7 +2793,11 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
             daily_salary = monthly_salary / 30  # Daily rate
             
             if salary_cycle_start:
-                cycle_start = datetime.fromisoformat(salary_cycle_start.replace('Z', '+00:00'))
+                # Handle both datetime object and string
+                if isinstance(salary_cycle_start, str):
+                    cycle_start = datetime.fromisoformat(salary_cycle_start.replace('Z', '+00:00'))
+                else:
+                    cycle_start = salary_cycle_start
                 if cycle_start.tzinfo is None:
                     cycle_start = cycle_start.replace(tzinfo=timezone.utc)
                 days_in_cycle = (now - cycle_start).days
@@ -2806,7 +2810,11 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
                 accumulated_salary = round(daily_salary * accumulation_days, 2)
                 
             elif last_claim_date:
-                last_claim = datetime.fromisoformat(last_claim_date.replace('Z', '+00:00'))
+                # Handle both datetime object and string
+                if isinstance(last_claim_date, str):
+                    last_claim = datetime.fromisoformat(last_claim_date.replace('Z', '+00:00'))
+                else:
+                    last_claim = last_claim_date
                 if last_claim.tzinfo is None:
                     last_claim = last_claim.replace(tzinfo=timezone.utc)
                 days_in_cycle = (now - last_claim).days
