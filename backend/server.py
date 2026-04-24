@@ -2689,6 +2689,26 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
                     rank_info["current_rank"] = rank
                     break
         
+        # Get user's futures balance for balance progress bar
+        wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "futures_balance": 1, "welcome_bonus": 1, "total_deposited": 1})
+        futures_balance = wallet.get("futures_balance", 0) if wallet else 0
+        welcome_bonus = wallet.get("welcome_bonus", 0) if wallet else 0
+        total_deposited = wallet.get("total_deposited", 0) if wallet else 0
+        
+        # Real futures = futures_balance - welcome_bonus (if not deposited)
+        # If user has deposited, use their actual futures balance
+        real_futures = futures_balance if total_deposited > 0 else max(0, futures_balance - welcome_bonus)
+        
+        # Get required balance for next rank (or current rank if no rank yet)
+        next_rank_for_balance = rank_info["next_rank"] if rank_info["next_rank"] else TEAM_RANKS[0]
+        current_rank_for_balance = rank_info["current_rank"]
+        
+        # Balance requirement for next rank
+        balance_required = next_rank_for_balance.get("self_deposit_required", 50) if next_rank_for_balance else 50
+        
+        # Calculate balance progress
+        balance_progress = min(100, (real_futures / balance_required) * 100) if balance_required > 0 else 100
+        
         return {
             "user_id": user_id,
             "direct_referrals": team_stats["direct_referrals"],
@@ -2700,6 +2720,11 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
             "progress_current": rank_info.get("progress_current", 0),
             "progress_target": rank_info.get("progress_target", 1),
             "progress_type": rank_info.get("progress_type", "team"),
+            # Futures Balance Progress (NEW)
+            "futures_balance": round(real_futures, 2),
+            "balance_required": balance_required,
+            "balance_progress": round(balance_progress, 2),
+            # Other fields
             "team_level_income": team_income,
             "bonus_percent": bonus_percent,
             "bonus_income": bonus_income,
