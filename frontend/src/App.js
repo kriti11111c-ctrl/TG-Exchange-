@@ -20,7 +20,7 @@ const TransactionsPage = lazy(() => import("./pages/TransactionsPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const ReferralPage = lazy(() => import("./pages/ReferralPage"));
 const RankPage = lazy(() => import("./pages/RankPage"));
-const TeamRankPage = lazy(() => import("./pages/TeamRankPage"));
+const TeamRankPageV2 = lazy(() => import("./pages/TeamRankPageV2"));
 const SecurityPage = lazy(() => import("./pages/SecurityPage"));
 const DepositPage = lazy(() => import("./pages/DepositPage"));
 const WithdrawPage = lazy(() => import("./pages/WithdrawPage"));
@@ -425,7 +425,7 @@ function AppRouter() {
         } />
         <Route path="/team-rank" element={
           <ProtectedRoute>
-            <TeamRankPage />
+            <TeamRankPageV2 />
           </ProtectedRoute>
         } />
         <Route path="/deposit" element={
