@@ -560,12 +560,18 @@ const TeamRankPage = () => {
               </div>
             )}
 
-            {/* VIP Salary Card */}
+            {/* Monthly Royalty Card - Shows for users WITH rank */}
             {rankInfo?.current_rank && (
-              <div className="rounded-2xl overflow-hidden mb-4" style={{
-                background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-                border: '1.5px solid #00E5FF30'
-              }}>
+              <div 
+                className="rounded-2xl overflow-hidden mb-4"
+                style={{
+                  background: isDark 
+                    ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' 
+                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: isDark ? '1.5px solid #00E5FF30' : '1.5px solid #764ba280',
+                  boxShadow: isDark ? '0 4px 20px rgba(0, 229, 255, 0.15)' : '0 4px 20px rgba(118, 75, 162, 0.3)'
+                }}
+              >
                 {/* Header */}
                 <div className="p-4 border-b border-white/10">
                   <div className="flex items-center justify-between">
@@ -574,13 +580,13 @@ const TeamRankPage = () => {
                         <Wallet size={20} className="text-black" />
                       </div>
                       <div>
-                        <p className="text-white font-bold text-sm">VIP Salary</p>
+                        <p className="text-white font-bold text-sm">Monthly Royalty</p>
                         <p className="text-white/60 text-xs">{rankInfo.current_rank.name} Rank</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-[#F0B90B] font-bold text-lg">${rankInfo.daily_salary || (rankInfo.current_rank.monthly_salary / 30).toFixed(2)}</p>
-                      <p className="text-white/50 text-xs">per day</p>
+                      <p className="text-white/70 text-xs">per day</p>
                     </div>
                   </div>
                 </div>
@@ -590,39 +596,39 @@ const TeamRankPage = () => {
                   {/* Days Progress */}
                   <div className="mb-4">
                     <div className="flex justify-between text-xs mb-2">
-                      <span className="text-white/70">Salary Cycle Progress</span>
+                      <span className="text-white/80">🔒 10-Day Lock Period</span>
                       <span className="text-[#00E5FF] font-medium">
                         {rankInfo.days_in_cycle || 0}/10 Days
                       </span>
                     </div>
-                    <div className="h-3 rounded-full bg-white/10 overflow-hidden">
+                    <div className="h-3 rounded-full bg-white/20 overflow-hidden">
                       <div 
                         className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#0ECB81] transition-all duration-500"
                         style={{ width: `${((rankInfo.days_in_cycle || 0) / 10) * 100}%` }}
                       />
                     </div>
                     <div className="flex justify-between mt-1">
-                      <span className="text-white/40 text-[10px]">Day 0</span>
-                      <span className="text-white/40 text-[10px]">Day 10 (Unlock)</span>
+                      <span className="text-white/50 text-[10px]">Day 0</span>
+                      <span className="text-white/50 text-[10px]">Day 10 (Unlock)</span>
                     </div>
                   </div>
                   
                   {/* Accumulated Amount */}
-                  <div className="rounded-xl p-3 mb-4" style={{backgroundColor: 'rgba(0, 229, 255, 0.1)', border: '1px solid rgba(0, 229, 255, 0.2)'}}>
+                  <div className="rounded-xl p-3 mb-4 bg-white/10 border border-white/20">
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-white/60 text-xs">Accumulated Salary</p>
+                        <p className="text-white/70 text-xs">💰 Accumulated Royalty</p>
                         <p className="text-[#0ECB81] font-bold text-xl">
                           ${(rankInfo.accumulated_salary || 0).toFixed(2)}
                         </p>
                       </div>
                       <div className="text-right">
                         {rankInfo.can_claim_salary ? (
-                          <span className="px-3 py-1 rounded-full bg-[#0ECB81]/20 text-[#0ECB81] text-xs font-medium">
+                          <span className="px-3 py-1 rounded-md bg-[#0ECB81]/30 text-[#0ECB81] text-xs font-bold border border-[#0ECB81]/50">
                             ✅ Ready to Claim
                           </span>
                         ) : (
-                          <span className="px-3 py-1 rounded-full bg-[#F0B90B]/20 text-[#F0B90B] text-xs font-medium flex items-center gap-1">
+                          <span className="px-3 py-1 rounded-md bg-[#F0B90B]/20 text-[#F0B90B] text-xs font-medium border border-[#F0B90B]/30">
                             🔒 {rankInfo.days_remaining || 10} days left
                           </span>
                         )}
@@ -630,10 +636,29 @@ const TeamRankPage = () => {
                     </div>
                   </div>
                   
+                  {/* Daily Breakdown */}
+                  <div className="rounded-xl p-3 mb-4 bg-white/5 border border-white/10">
+                    <p className="text-white/80 text-xs font-medium mb-2">📊 Daily Breakdown</p>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <p className="text-[#F0B90B] font-bold text-sm">${rankInfo.daily_salary || (rankInfo.current_rank.monthly_salary / 30).toFixed(2)}</p>
+                        <p className="text-white/50 text-[10px]">Daily Rate</p>
+                      </div>
+                      <div>
+                        <p className="text-[#00E5FF] font-bold text-sm">{rankInfo.days_in_cycle || 0}</p>
+                        <p className="text-white/50 text-[10px]">Days Earned</p>
+                      </div>
+                      <div>
+                        <p className="text-[#0ECB81] font-bold text-sm">${(rankInfo.accumulated_salary || 0).toFixed(2)}</p>
+                        <p className="text-white/50 text-[10px]">Total</p>
+                      </div>
+                    </div>
+                  </div>
+                  
                   {/* Info Box */}
-                  <div className="rounded-xl p-3 mb-4" style={{backgroundColor: 'rgba(240, 185, 11, 0.1)'}}>
+                  <div className="rounded-xl p-3 mb-4 bg-[#F0B90B]/10 border border-[#F0B90B]/20">
                     <p className="text-[#F0B90B] text-xs">
-                      💡 Salary accumulates daily. After 10 days, you can claim your earnings. Keep your rank active to continue earning!
+                      💡 Royalty accumulates daily. After 10 days, claim button activates. Keep your rank to continue earning!
                     </p>
                   </div>
                   
@@ -650,7 +675,7 @@ const TeamRankPage = () => {
                   ) : (
                     <Button 
                       disabled
-                      className="w-full bg-white/10 text-white/50 font-medium py-4 text-base rounded-xl cursor-not-allowed"
+                      className="w-full bg-white/10 text-white/60 font-medium py-4 text-base rounded-xl cursor-not-allowed border border-white/20"
                     >
                       🔒 Unlocks in {rankInfo.days_remaining || 10} Days
                     </Button>
@@ -660,10 +685,52 @@ const TeamRankPage = () => {
                   {rankInfo.salary_paused && (
                     <div className="mt-3 p-3 rounded-xl bg-red-500/20 border border-red-500/30">
                       <p className="text-red-400 text-xs text-center">
-                        ⚠️ Salary is paused due to rank demotion. Restore your rank to resume earning.
+                        ⚠️ Royalty is paused due to rank demotion. Restore your rank to resume earning.
                       </p>
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+            
+            {/* Monthly Royalty Info Card - Shows for users WITHOUT rank */}
+            {!rankInfo?.current_rank && (
+              <div 
+                className={`rounded-2xl overflow-hidden mb-4 ${isDark ? 'bg-[#1E2329]' : 'bg-white'}`}
+                style={{
+                  border: isDark ? '1.5px solid #F0B90B30' : '1.5px solid #F0B90B50',
+                  boxShadow: isDark ? '0 4px 15px rgba(240, 185, 11, 0.1)' : '0 4px 15px rgba(240, 185, 11, 0.15)'
+                }}
+              >
+                <div className="p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F0B90B] to-[#FCD535] flex items-center justify-center">
+                      <Wallet size={20} className="text-black" />
+                    </div>
+                    <div>
+                      <p className={`font-bold text-sm ${text}`}>Monthly Royalty</p>
+                      <p className={`text-xs ${textMuted}`}>Unlock your first rank to start earning!</p>
+                    </div>
+                  </div>
+                  
+                  {/* Preview of potential earnings */}
+                  <div className={`rounded-xl p-3 mb-3 ${isDark ? 'bg-[#F0B90B]/10' : 'bg-[#F0B90B]/5'} border ${isDark ? 'border-[#F0B90B]/20' : 'border-[#F0B90B]/30'}`}>
+                    <p className={`text-xs ${textMuted} mb-2`}>🎯 Bronze Rank Royalty Preview:</p>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-[#F0B90B] font-bold text-lg">$1.00/day</p>
+                        <p className={`text-xs ${textMuted}`}>$30/month</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-xs ${textMuted}`}>10-day lock</p>
+                        <p className="text-[#0ECB81] font-medium text-sm">Then claim!</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <p className={`text-xs ${textMuted}`}>
+                    💡 Get Bronze rank (6 team members with $50+ each) to start earning daily royalty!
+                  </p>
                 </div>
               </div>
             )}
