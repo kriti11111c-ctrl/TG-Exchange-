@@ -713,17 +713,47 @@ const TeamRankPage = () => {
                     </div>
                   </div>
                   
+                  {/* 10-Day Progress Bar Preview */}
+                  <div className={`rounded-xl p-3 mb-3 ${isDark ? 'bg-[#1A1A1A]' : 'bg-gray-50'} border ${isDark ? 'border-[#2B3139]' : 'border-gray-200'}`}>
+                    <div className="flex justify-between text-xs mb-2">
+                      <span className={textMuted}>🔒 10-Day Lock Period (Preview)</span>
+                      <span className="text-[#00E5FF] font-medium">0/10 Days</span>
+                    </div>
+                    <div className={`h-3 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} overflow-hidden`}>
+                      <div 
+                        className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#0ECB81]"
+                        style={{ width: '0%' }}
+                      />
+                    </div>
+                    
+                    {/* Day-by-day amount preview */}
+                    <div className="mt-3 grid grid-cols-5 gap-1">
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((day) => (
+                        <div 
+                          key={day} 
+                          className={`text-center p-1 rounded ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}
+                        >
+                          <p className={`text-[8px] ${textMuted}`}>Day {day}</p>
+                          <p className="text-[#0ECB81] font-bold text-[10px]">${day}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className={`text-[10px] ${textMuted} mt-2 text-center`}>
+                      Daily $1 × 10 days = <span className="text-[#0ECB81] font-bold">$10 claimable</span>
+                    </p>
+                  </div>
+                  
                   {/* Preview of potential earnings */}
                   <div className={`rounded-xl p-3 mb-3 ${isDark ? 'bg-[#F0B90B]/10' : 'bg-[#F0B90B]/5'} border ${isDark ? 'border-[#F0B90B]/20' : 'border-[#F0B90B]/30'}`}>
-                    <p className={`text-xs ${textMuted} mb-2`}>🎯 Bronze Rank Royalty Preview:</p>
+                    <p className={`text-xs ${textMuted} mb-2`}>🎯 Bronze Rank Royalty:</p>
                     <div className="flex justify-between items-center">
                       <div>
                         <p className="text-[#F0B90B] font-bold text-lg">$1.00/day</p>
                         <p className={`text-xs ${textMuted}`}>$30/month</p>
                       </div>
                       <div className="text-right">
-                        <p className={`text-xs ${textMuted}`}>10-day lock</p>
-                        <p className="text-[#0ECB81] font-medium text-sm">Then claim!</p>
+                        <p className={`text-xs ${textMuted}`}>After 10 days</p>
+                        <p className="text-[#0ECB81] font-bold text-sm">Claim $10! ✓</p>
                       </div>
                     </div>
                   </div>
