@@ -45,11 +45,6 @@ const FuturesPage = () => {
   const [callPercent, setCallPercent] = useState("61.23");
   const [putPercent, setPutPercent] = useState("63.45");
   
-  // Countdown timer states for scheduled trade codes
-  const [nextCodeTime, setNextCodeTime] = useState(null);
-  const [countdown, setCountdown] = useState("");
-  const [isCodeActive, setIsCodeActive] = useState(false);
-  
   // History states
   const [tradeHistory, setTradeHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -70,100 +65,6 @@ const FuturesPage = () => {
       setCallPercent(newCall);
       setPutPercent(newPut);
     }, 1500);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Countdown timer for scheduled trade codes
-  // Schedule: Morning 10:45 AM IST, Evening 8:30 PM IST
-  // Countdown starts 1 hour before, Code valid for 1 hour
-  useEffect(() => {
-    const calculateNextCode = () => {
-      const now = new Date();
-      // Convert to IST (UTC+5:30)
-      const istOffset = 5.5 * 60 * 60 * 1000;
-      const istNow = new Date(now.getTime() + istOffset);
-      const hours = istNow.getUTCHours();
-      const minutes = istNow.getUTCMinutes();
-      const seconds = istNow.getUTCSeconds();
-      const currentTotalSeconds = hours * 3600 + minutes * 60 + seconds;
-
-      // Morning slot: 10:45 AM IST
-      // Evening slot: 8:30 PM IST
-      const morningSlot = (10 * 60 + 45) * 60; // in seconds
-      const eveningSlot = (20 * 60 + 30) * 60; // in seconds
-      
-      // Countdown starts 1 hour before (3600 secs)
-      const morningCountdownStart = morningSlot - 3600; // 9:45 AM
-      const eveningCountdownStart = eveningSlot - 3600; // 7:30 PM
-      
-      // Code expires 1 hour after start
-      const morningEnd = morningSlot + 3600; // 11:45 AM
-      const eveningEnd = eveningSlot + 3600; // 9:30 PM
-
-      let nextSlot, nextEnd, slotName, countdownStart;
-      
-      // Determine which slot is next
-      if (currentTotalSeconds < morningCountdownStart) {
-        nextSlot = morningSlot;
-        nextEnd = morningEnd;
-        countdownStart = morningCountdownStart;
-        slotName = "10:45 AM";
-      } else if (currentTotalSeconds >= morningCountdownStart && currentTotalSeconds < morningEnd) {
-        nextSlot = morningSlot;
-        nextEnd = morningEnd;
-        countdownStart = morningCountdownStart;
-        slotName = "10:45 AM";
-      } else if (currentTotalSeconds < eveningCountdownStart) {
-        nextSlot = eveningSlot;
-        nextEnd = eveningEnd;
-        countdownStart = eveningCountdownStart;
-        slotName = "8:30 PM";
-      } else if (currentTotalSeconds >= eveningCountdownStart && currentTotalSeconds < eveningEnd) {
-        nextSlot = eveningSlot;
-        nextEnd = eveningEnd;
-        countdownStart = eveningCountdownStart;
-        slotName = "8:30 PM";
-      } else {
-        // After evening end - next is tomorrow morning
-        nextSlot = morningSlot + 24 * 3600;
-        nextEnd = morningEnd + 24 * 3600;
-        countdownStart = morningCountdownStart + 24 * 3600;
-        slotName = "10:45 AM (Tomorrow)";
-      }
-
-      // Check if code is currently active
-      const isActive = currentTotalSeconds >= nextSlot && currentTotalSeconds < nextEnd;
-      setIsCodeActive(isActive);
-
-      // Calculate countdown with seconds
-      let remainingSeconds;
-      const showCountdown = currentTotalSeconds >= countdownStart && currentTotalSeconds < nextEnd;
-      
-      if (currentTotalSeconds < nextSlot) {
-        // Countdown to code release
-        remainingSeconds = nextSlot - currentTotalSeconds;
-      } else if (isActive) {
-        // Countdown to code expiry
-        remainingSeconds = nextEnd - currentTotalSeconds;
-      } else {
-        remainingSeconds = nextSlot - currentTotalSeconds;
-        if (remainingSeconds < 0) remainingSeconds += 24 * 3600;
-      }
-
-      const hrs = Math.floor(remainingSeconds / 3600);
-      const mins = Math.floor((remainingSeconds % 3600) / 60);
-      const secs = remainingSeconds % 60;
-      
-      setNextCodeTime(slotName);
-      if (showCountdown) {
-        setCountdown(`${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
-      } else {
-        setCountdown(null);
-      }
-    };
-
-    calculateNextCode();
-    const interval = setInterval(calculateNextCode, 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -475,41 +376,12 @@ const FuturesPage = () => {
               </div>
               <div>
                 <span className={`text-sm font-bold ${text}`}>AI Trade Signal</span>
-                <p className="text-[10px] text-[#0ECB81]">Enter code to execute</p>
+                <p className="text-[10px] text-[#0ECB81]">Paste code from notification</p>
               </div>
             </div>
             <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#0ECB81]/20">
               <span className="w-2 h-2 rounded-full bg-[#0ECB81] animate-pulse"></span>
               <span className="text-[10px] text-[#0ECB81] font-bold">LIVE</span>
-            </div>
-          </div>
-          
-          {/* Countdown Timer Section */}
-          <div className={`mb-4 p-3 rounded-xl ${isDark ? 'bg-[#0B0E11]/80' : 'bg-gray-100'} border ${border}`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className={`text-[10px] ${textMuted} mb-1`}>
-                  {isCodeActive ? "⏰ Code Active Until" : "⏳ Next Code At"}
-                </p>
-                <p className={`text-sm font-bold ${isCodeActive ? 'text-[#0ECB81]' : 'text-[#F0B90B]'}`}>
-                  {nextCodeTime} IST
-                </p>
-              </div>
-              {countdown && (
-                <div className="text-right">
-                  <p className={`text-[10px] ${textMuted} mb-1`}>
-                    {isCodeActive ? "Expires In" : "Countdown"}
-                  </p>
-                  <p className={`text-lg font-mono font-bold ${isCodeActive ? 'text-[#0ECB81]' : 'text-[#F0B90B]'}`}>
-                    {countdown}
-                  </p>
-                </div>
-              )}
-            </div>
-            <div className="mt-2 pt-2 border-t border-dashed border-[#2B3139]">
-              <p className={`text-[10px] ${textMuted} text-center`}>
-                📅 Daily Codes: <span className="text-[#F0B90B]">10:45 AM</span> & <span className="text-[#F0B90B]">8:30 PM</span> IST (Valid for 1 hour)
-              </p>
             </div>
           </div>
           

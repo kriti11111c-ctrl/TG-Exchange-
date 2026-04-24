@@ -55,6 +55,11 @@ const KuCoinHomePage = () => {
   const [countdowns, setCountdowns] = useState({});
   const notificationRef = useRef(null);
   
+  // Countdown timer states for scheduled trade codes
+  const [nextCodeTime, setNextCodeTime] = useState(null);
+  const [scheduleCountdown, setScheduleCountdown] = useState("");
+  const [isCodeActive, setIsCodeActive] = useState(false);
+  
   const { prices: wsPrices, isConnected } = useWebSocket(true);
 
   // CLEAN THEME COLORS - High Contrast for Clarity
@@ -127,6 +132,76 @@ const KuCoinHomePage = () => {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Schedule countdown timer for trade code slots
+  // Morning: 10:45 AM IST, Evening: 8:30 PM IST
+  useEffect(() => {
+    const calculateNextCode = () => {
+      const now = new Date();
+      const istOffset = 5.5 * 60 * 60 * 1000;
+      const istNow = new Date(now.getTime() + istOffset);
+      const hours = istNow.getUTCHours();
+      const minutes = istNow.getUTCMinutes();
+      const seconds = istNow.getUTCSeconds();
+      const currentTotalSeconds = hours * 3600 + minutes * 60 + seconds;
+
+      const morningSlot = (10 * 60 + 45) * 60;
+      const eveningSlot = (20 * 60 + 30) * 60;
+      const morningCountdownStart = morningSlot - 3600;
+      const eveningCountdownStart = eveningSlot - 3600;
+      const morningEnd = morningSlot + 3600;
+      const eveningEnd = eveningSlot + 3600;
+
+      let nextSlot, nextEnd, slotName, countdownStart;
+      
+      if (currentTotalSeconds < morningCountdownStart) {
+        nextSlot = morningSlot; nextEnd = morningEnd;
+        countdownStart = morningCountdownStart; slotName = "10:45 AM";
+      } else if (currentTotalSeconds >= morningCountdownStart && currentTotalSeconds < morningEnd) {
+        nextSlot = morningSlot; nextEnd = morningEnd;
+        countdownStart = morningCountdownStart; slotName = "10:45 AM";
+      } else if (currentTotalSeconds < eveningCountdownStart) {
+        nextSlot = eveningSlot; nextEnd = eveningEnd;
+        countdownStart = eveningCountdownStart; slotName = "8:30 PM";
+      } else if (currentTotalSeconds >= eveningCountdownStart && currentTotalSeconds < eveningEnd) {
+        nextSlot = eveningSlot; nextEnd = eveningEnd;
+        countdownStart = eveningCountdownStart; slotName = "8:30 PM";
+      } else {
+        nextSlot = morningSlot + 24 * 3600; nextEnd = morningEnd + 24 * 3600;
+        countdownStart = morningCountdownStart + 24 * 3600; slotName = "10:45 AM (Tomorrow)";
+      }
+
+      const isActive = currentTotalSeconds >= nextSlot && currentTotalSeconds < nextEnd;
+      setIsCodeActive(isActive);
+
+      let remainingSeconds;
+      const showCountdown = currentTotalSeconds >= countdownStart && currentTotalSeconds < nextEnd;
+      
+      if (currentTotalSeconds < nextSlot) {
+        remainingSeconds = nextSlot - currentTotalSeconds;
+      } else if (isActive) {
+        remainingSeconds = nextEnd - currentTotalSeconds;
+      } else {
+        remainingSeconds = nextSlot - currentTotalSeconds;
+        if (remainingSeconds < 0) remainingSeconds += 24 * 3600;
+      }
+
+      const hrs = Math.floor(remainingSeconds / 3600);
+      const mins = Math.floor((remainingSeconds % 3600) / 60);
+      const secs = remainingSeconds % 60;
+      
+      setNextCodeTime(slotName);
+      if (showCountdown) {
+        setScheduleCountdown(`${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
+      } else {
+        setScheduleCountdown(null);
+      }
+    };
+
+    calculateNextCode();
+    const interval = setInterval(calculateNextCode, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -251,6 +326,35 @@ const KuCoinHomePage = () => {
                   </div>
                   
                   <div className="max-h-80 overflow-y-auto">
+                    {/* Schedule Info Box - Always show */}
+                    <div className="mx-3 mt-3 p-3 rounded-xl" style={{backgroundColor: isDark ? 'rgba(0,0,0,0.4)' : '#F5F5F5', border: `1px solid ${colors.border}`}}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-[10px] mb-1" style={{color: colors.textSecondary}}>
+                            {isCodeActive ? "⏰ Code Active Until" : "⏳ Next Code At"}
+                          </p>
+                          <p className="text-sm font-bold" style={{color: isCodeActive ? colors.green : colors.gold}}>
+                            {nextCodeTime || "Loading..."} IST
+                          </p>
+                        </div>
+                        {scheduleCountdown && (
+                          <div className="text-right">
+                            <p className="text-[10px] mb-1" style={{color: colors.textSecondary}}>
+                              {isCodeActive ? "Expires In" : "Countdown"}
+                            </p>
+                            <p className="text-lg font-mono font-bold" style={{color: isCodeActive ? colors.green : colors.gold}}>
+                              {scheduleCountdown}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-2 pt-2" style={{borderTop: '1px dashed #333'}}>
+                        <p className="text-[10px] text-center" style={{color: colors.textSecondary}}>
+                          📅 Daily Codes: <span style={{color: colors.gold}}>10:45 AM</span> & <span style={{color: colors.gold}}>8:30 PM</span> IST (Valid for 1 hour)
+                        </p>
+                      </div>
+                    </div>
+                    
                     {activeOrScheduledCodes.length === 0 ? (
                       <div className="p-4 text-center">
                         <p style={{color: colors.textSecondary}}>No active codes</p>

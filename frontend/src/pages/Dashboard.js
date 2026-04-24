@@ -58,6 +58,11 @@ const Dashboard = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef(null);
   
+  // Countdown timer states for scheduled trade codes
+  const [nextCodeTime, setNextCodeTime] = useState(null);
+  const [scheduleCountdown, setScheduleCountdown] = useState("");
+  const [isCodeActive, setIsCodeActive] = useState(false);
+  
   // WebSocket for real-time prices
   const { prices: wsPrices, isConnected } = useWebSocket(true);
 
@@ -141,6 +146,76 @@ const Dashboard = () => {
     }, 1000);
     return () => clearInterval(interval);
   }, [tradeCodes]);
+
+  // Schedule countdown timer for trade code slots
+  // Morning: 10:45 AM IST, Evening: 8:30 PM IST
+  useEffect(() => {
+    const calculateNextCode = () => {
+      const now = new Date();
+      const istOffset = 5.5 * 60 * 60 * 1000;
+      const istNow = new Date(now.getTime() + istOffset);
+      const hours = istNow.getUTCHours();
+      const minutes = istNow.getUTCMinutes();
+      const seconds = istNow.getUTCSeconds();
+      const currentTotalSeconds = hours * 3600 + minutes * 60 + seconds;
+
+      const morningSlot = (10 * 60 + 45) * 60;
+      const eveningSlot = (20 * 60 + 30) * 60;
+      const morningCountdownStart = morningSlot - 3600;
+      const eveningCountdownStart = eveningSlot - 3600;
+      const morningEnd = morningSlot + 3600;
+      const eveningEnd = eveningSlot + 3600;
+
+      let nextSlot, nextEnd, slotName, countdownStart;
+      
+      if (currentTotalSeconds < morningCountdownStart) {
+        nextSlot = morningSlot; nextEnd = morningEnd;
+        countdownStart = morningCountdownStart; slotName = "10:45 AM";
+      } else if (currentTotalSeconds >= morningCountdownStart && currentTotalSeconds < morningEnd) {
+        nextSlot = morningSlot; nextEnd = morningEnd;
+        countdownStart = morningCountdownStart; slotName = "10:45 AM";
+      } else if (currentTotalSeconds < eveningCountdownStart) {
+        nextSlot = eveningSlot; nextEnd = eveningEnd;
+        countdownStart = eveningCountdownStart; slotName = "8:30 PM";
+      } else if (currentTotalSeconds >= eveningCountdownStart && currentTotalSeconds < eveningEnd) {
+        nextSlot = eveningSlot; nextEnd = eveningEnd;
+        countdownStart = eveningCountdownStart; slotName = "8:30 PM";
+      } else {
+        nextSlot = morningSlot + 24 * 3600; nextEnd = morningEnd + 24 * 3600;
+        countdownStart = morningCountdownStart + 24 * 3600; slotName = "10:45 AM (Tomorrow)";
+      }
+
+      const isActive = currentTotalSeconds >= nextSlot && currentTotalSeconds < nextEnd;
+      setIsCodeActive(isActive);
+
+      let remainingSeconds;
+      const showCountdown = currentTotalSeconds >= countdownStart && currentTotalSeconds < nextEnd;
+      
+      if (currentTotalSeconds < nextSlot) {
+        remainingSeconds = nextSlot - currentTotalSeconds;
+      } else if (isActive) {
+        remainingSeconds = nextEnd - currentTotalSeconds;
+      } else {
+        remainingSeconds = nextSlot - currentTotalSeconds;
+        if (remainingSeconds < 0) remainingSeconds += 24 * 3600;
+      }
+
+      const hrs = Math.floor(remainingSeconds / 3600);
+      const mins = Math.floor((remainingSeconds % 3600) / 60);
+      const secs = remainingSeconds % 60;
+      
+      setNextCodeTime(slotName);
+      if (showCountdown) {
+        setScheduleCountdown(`${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
+      } else {
+        setScheduleCountdown(null);
+      }
+    };
+
+    calculateNextCode();
+    const interval = setInterval(calculateNextCode, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Apply trade code
   const applyTradeCode = async (code) => {
@@ -390,10 +465,39 @@ const Dashboard = () => {
                   
                   {/* Codes List */}
                   <div className="max-h-80 overflow-y-auto">
+                    {/* Schedule Info Box - Always show */}
+                    <div className={`mx-3 mt-3 p-3 rounded-xl ${isDark ? 'bg-[#0B0E11]/80' : 'bg-gray-100'} border ${border}`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className={`text-[10px] ${textMuted} mb-1`}>
+                            {isCodeActive ? "⏰ Code Active Until" : "⏳ Next Code At"}
+                          </p>
+                          <p className={`text-sm font-bold ${isCodeActive ? 'text-[#0ECB81]' : 'text-[#F0B90B]'}`}>
+                            {nextCodeTime} IST
+                          </p>
+                        </div>
+                        {scheduleCountdown && (
+                          <div className="text-right">
+                            <p className={`text-[10px] ${textMuted} mb-1`}>
+                              {isCodeActive ? "Expires In" : "Countdown"}
+                            </p>
+                            <p className={`text-lg font-mono font-bold ${isCodeActive ? 'text-[#0ECB81]' : 'text-[#F0B90B]'}`}>
+                              {scheduleCountdown}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-2 pt-2 border-t border-dashed border-[#2B3139]">
+                        <p className={`text-[10px] ${textMuted} text-center`}>
+                          📅 Daily Codes: <span className="text-[#F0B90B]">10:45 AM</span> & <span className="text-[#F0B90B]">8:30 PM</span> IST (Valid for 1 hour)
+                        </p>
+                      </div>
+                    </div>
+                    
                     {tradeCodes.length === 0 ? (
                       <div className="p-6 text-center">
                         <Bell size={40} className={`${textMuted} mx-auto mb-2`} />
-                        <p className={textMuted}>No trade codes yet</p>
+                        <p className={textMuted}>No active codes</p>
                       </div>
                     ) : (
                       <div className="p-3 space-y-3">
