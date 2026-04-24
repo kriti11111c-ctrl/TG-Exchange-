@@ -5611,7 +5611,18 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     }
     
     coin_id = coin_id_map.get(coin.lower(), "bitcoin")
-    open_price = trade_code.get("price", 1000)  # Fallback to stored price
+    
+    # Realistic fallback prices (updated April 2026)
+    realistic_fallback_prices = {
+        "btc": 69500, "eth": 2100, "bnb": 625, "sol": 88, "xrp": 1.38,
+        "doge": 0.092, "ada": 0.26, "avax": 9.85, "shib": 0.0000085,
+        "dot": 1.33, "link": 13.5, "trx": 0.124, "matic": 0.22,
+        "uni": 6.15, "ltc": 68.5, "atom": 4.50, "xlm": 0.092,
+        "near": 2.45, "apt": 5.25, "fil": 2.80, "pepe": 0.0000068, "sui": 1.85
+    }
+    
+    # Use realistic fallback based on coin, NOT $1000
+    open_price = realistic_fallback_prices.get(coin.lower(), trade_code.get("price", 100))
     
     try:
         async with httpx.AsyncClient() as client:
@@ -5621,10 +5632,11 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
             )
             if response.status_code == 200:
                 price_data = response.json()
-                live_price = price_data.get(coin_id, {}).get("usd", open_price)
-                open_price = live_price  # Use LIVE price as opening price
-    except:
-        pass  # Use stored price if API fails
+                live_price = price_data.get(coin_id, {}).get("usd")
+                if live_price and live_price > 0:
+                    open_price = live_price  # Use LIVE price as opening price
+    except Exception as e:
+        logger.warning(f"CoinGecko API failed for {coin}, using fallback price: {e}")
     
     # Trade is ALWAYS successful - calculate based on fund_percent (1% * multiplier)
     futures_balance = wallet.get("futures_balance", 0)

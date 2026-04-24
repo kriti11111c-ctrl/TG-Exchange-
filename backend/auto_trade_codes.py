@@ -111,20 +111,57 @@ async def generate_codes_for_all_users(slot: str):
             trade_amount = min(futures_balance * multiplier, futures_balance)
             potential_profit = trade_amount * (profit_percent / 100)
             
-            # Create trade code
+            # TOP 20 COINS with realistic fallback prices (April 2026)
+            TOP_20_COINS = [
+                {"symbol": "btc", "name": "Bitcoin", "price": 69500},
+                {"symbol": "eth", "name": "Ethereum", "price": 2100},
+                {"symbol": "bnb", "name": "BNB", "price": 625},
+                {"symbol": "sol", "name": "Solana", "price": 88},
+                {"symbol": "xrp", "name": "XRP", "price": 1.38},
+                {"symbol": "doge", "name": "Dogecoin", "price": 0.092},
+                {"symbol": "ada", "name": "Cardano", "price": 0.26},
+                {"symbol": "avax", "name": "Avalanche", "price": 9.85},
+                {"symbol": "shib", "name": "Shiba Inu", "price": 0.0000085},
+                {"symbol": "dot", "name": "Polkadot", "price": 1.33},
+                {"symbol": "link", "name": "Chainlink", "price": 13.5},
+                {"symbol": "trx", "name": "TRON", "price": 0.124},
+                {"symbol": "matic", "name": "Polygon", "price": 0.22},
+                {"symbol": "uni", "name": "Uniswap", "price": 6.15},
+                {"symbol": "ltc", "name": "Litecoin", "price": 68.5},
+                {"symbol": "atom", "name": "Cosmos", "price": 4.50},
+                {"symbol": "xlm", "name": "Stellar", "price": 0.092},
+                {"symbol": "near", "name": "NEAR Protocol", "price": 2.45},
+                {"symbol": "apt", "name": "Aptos", "price": 5.25},
+                {"symbol": "fil", "name": "Filecoin", "price": 2.80},
+            ]
+            
+            # Assign DIFFERENT coin based on user index (codes_generated)
+            coin_data = TOP_20_COINS[codes_generated % len(TOP_20_COINS)]
+            
+            # Random trade type (call/put)
+            trade_type = random.choice(["call", "put"])
+            
+            # Create trade code with COIN ASSIGNMENT
             trade_code = {
                 "code": code,
                 "user_id": user_id,
                 "user_email": email,
+                "coin": coin_data["symbol"],
+                "coin_name": coin_data["name"],
+                "price": coin_data["price"],
+                "trade_type": trade_type,
                 "scheduled_slot": slot,
-                "scheduled_start": scheduled_start,
-                "expires_at": expires_at,
+                "slot_name": slot_name,
+                "scheduled_start": scheduled_start.isoformat(),
+                "expires_at": expires_at.isoformat(),
                 "profit_percent": profit_percent,
+                "fund_percent": 1.0 * multiplier,
                 "trade_amount": trade_amount,
                 "potential_profit": potential_profit,
                 "multiplier": multiplier,
-                "status": "pending",  # Will become "active" at scheduled time
-                "created_at": now,
+                "will_fail": False,
+                "status": "scheduled",  # Will become "active" at scheduled time
+                "created_at": now.isoformat(),
                 "auto_generated": True
             }
             
