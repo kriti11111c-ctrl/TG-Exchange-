@@ -418,11 +418,7 @@ function AppRouter() {
             <SupportPage />
           </ProtectedRoute>
         } />
-        <Route path="/rank" element={
-          <ProtectedRoute>
-            <RankPage />
-          </ProtectedRoute>
-        } />
+        <Route path="/rank" element={<Navigate to="/team-rank" replace />} />
         <Route path="/team-rank" element={
           <ProtectedRoute>
             <TeamRankPageV2 />

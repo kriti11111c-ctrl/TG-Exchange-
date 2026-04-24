@@ -168,7 +168,7 @@ const KuCoinHomePage = () => {
     { icon: ArrowDown, label: "Deposit", path: "/deposit", bg: "#E8F5E9", iconColor: "#00C853" },
     { icon: Users, label: "Referral", path: "/referral", bg: "#FFF3E0", iconColor: "#F97316", badge: "HOT" },
     { icon: Robot, label: "Trade Bot", path: "/trade", bg: "#FCE4EC", iconColor: "#E91E63", badge: "NEW" },
-    { icon: Trophy, label: "VIP Rank", path: "/rank", bg: "#F3E5F5", iconColor: "#8B5CF6" },
+    { icon: Trophy, label: "VIP Rank", path: "/team-rank", bg: "#F3E5F5", iconColor: "#8B5CF6" },
     { icon: Gift, label: "Rewards", path: "/profile", bg: "#E3F2FD", iconColor: "#2196F3" },
     { icon: Coin, label: "P2P", path: "/wallet", bg: "#E8F5E9", iconColor: "#4CAF50" },
     { icon: PiggyBank, label: "Staking", path: "/staking", bg: "#FFF8E1", iconColor: "#FFC107" },

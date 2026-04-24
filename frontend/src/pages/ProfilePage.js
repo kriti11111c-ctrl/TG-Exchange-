@@ -130,7 +130,7 @@ const ProfilePage = () => {
     { icon: Coins, label: "Earn", path: "/wallet", color: "#00E5FF" },
     { icon: Robot, label: "Trading Bots", path: "/trade", color: "#848E9C" },
     { icon: CurrencyBtc, label: "Bitcoin", path: "/trade/bitcoin", color: "#F7931A" },
-    { icon: Star, label: "VIP Rank", path: "/rank", color: "#00E5FF" },
+    { icon: Star, label: "VIP Rank", path: "/team-rank", color: "#00E5FF" },
     { icon: PlusCircle, label: "Add Funds", path: "/wallet", color: "#00E5FF" },
     { icon: ChartLineUp, label: "Markets", path: "/trade", color: "#0ECB81" },
   ];
@@ -279,7 +279,7 @@ const ProfilePage = () => {
             <CaretRight size={18} className={textMuted} />
           </Link>
           <div className={`h-px ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} mx-4`}></div>
-          <Link to="/rank" className={`flex items-center justify-between p-4 ${hoverBg}`}>
+          <Link to="/team-rank" className={`flex items-center justify-between p-4 ${hoverBg}`}>
             <div className="flex items-center gap-3">
               <Crown size={22} className="text-[#00E5FF]" />
               <span className={text}>VIP Rank</span>
