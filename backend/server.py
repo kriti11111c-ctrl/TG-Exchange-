@@ -5548,24 +5548,51 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     - Fetches LIVE price at execution time
     - Shows actual opening and closing prices
     - Records execution timestamp for unique results
+    - ATOMIC: Prevents duplicate trade execution
     """
     from datetime import timedelta
     import random
     
-    # Find the trade code (can be live, active, or scheduled)
-    trade_code = await db.trade_codes.find_one({
-        "code": data.code.upper(),
-        "status": {"$in": ["active", "scheduled", "live"]}  # Added "live" status
-    })
+    # ATOMIC: Find AND update trade code status in single operation
+    # This prevents duplicate trades by immediately marking code as "processing"
+    trade_code = await db.trade_codes.find_one_and_update(
+        {
+            "code": data.code.upper(),
+            "status": {"$in": ["active", "scheduled", "live"]},  # Only unused codes
+            "used_by": {"$exists": False}  # Extra check - not used by anyone
+        },
+        {
+            "$set": {"status": "processing", "used_by": user["user_id"], "processing_at": datetime.now(timezone.utc).isoformat()}
+        },
+        return_document=True
+    )
+    
+    # Remove _id from response if exists
+    if trade_code and "_id" in trade_code:
+        del trade_code["_id"]
     
     if not trade_code:
-        raise HTTPException(status_code=400, detail="Invalid or expired trade code")
+        # Check if code exists but already used
+        existing_code = await db.trade_codes.find_one({"code": data.code.upper()})
+        if existing_code:
+            if existing_code.get("status") == "used":
+                raise HTTPException(status_code=400, detail="Trade code already used! Each code can only be used once.")
+            elif existing_code.get("status") == "expired":
+                raise HTTPException(status_code=400, detail="Trade code has expired")
+            elif existing_code.get("status") == "processing":
+                raise HTTPException(status_code=400, detail="Trade is being processed. Please wait.")
+        raise HTTPException(status_code=400, detail="Invalid trade code")
     
     # Check if code is user-specific or global
     # Global codes (no user_id or is_global=True) can be used by anyone
     is_global_code = not trade_code.get("user_id") or trade_code.get("is_global", False)
     
     if not is_global_code and trade_code.get("user_id") != user["user_id"]:
+        # Revert the processing status since this user can't use this code
+        await db.trade_codes.update_one(
+            {"code": data.code.upper()},
+            {"$set": {"status": "active"}, "$unset": {"used_by": "", "processing_at": ""}}
+        )
         raise HTTPException(status_code=403, detail="This code is not for your account")
     
     now = datetime.now(timezone.utc)
@@ -5606,9 +5633,22 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     # Get user's wallet
     wallet = await db.wallets.find_one({"user_id": user["user_id"]})
     if not wallet:
+        # Revert processing status
+        await db.trade_codes.update_one(
+            {"code": data.code.upper()},
+            {"$set": {"status": "active"}, "$unset": {"used_by": "", "processing_at": ""}}
+        )
         raise HTTPException(status_code=404, detail="Wallet not found")
     
-    coin = trade_code["coin"]
+    # Check if coin is assigned to this code
+    coin = trade_code.get("coin")
+    if not coin:
+        # Revert processing status - code has no coin assigned
+        await db.trade_codes.update_one(
+            {"code": data.code.upper()},
+            {"$set": {"status": "active"}, "$unset": {"used_by": "", "processing_at": ""}}
+        )
+        raise HTTPException(status_code=400, detail="Trade code has no coin assigned. Please contact admin.")
     
     # FETCH LIVE PRICE at execution time
     coin_id_map = {
