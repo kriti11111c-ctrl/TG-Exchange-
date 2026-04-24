@@ -331,7 +331,8 @@ const ReferralPage = () => {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-white font-bold text-xl mb-1">Invite & Earn</h2>
-              <p className="text-white/80 text-sm">Earn 0.6% on every trade from your referrals!</p>
+              <p className="text-white/80 text-sm">Your team counts up to 10 levels for royalty!</p>
+              <p className="text-white/70 text-xs mt-1">Minimum deposit: $50</p>
               <div className="flex flex-wrap gap-2 mt-2">
                 <span className="px-2 py-0.5 rounded-md bg-white/20 text-white text-xs font-medium">
                   🎁 $200 Welcome Bonus
