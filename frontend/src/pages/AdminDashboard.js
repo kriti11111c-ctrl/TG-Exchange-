@@ -21,7 +21,8 @@ import {
   UserSwitch,
   MagnifyingGlass,
   Prohibit,
-  UserCircleCheck
+  UserCircleCheck,
+  Crown
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -62,6 +63,10 @@ const AdminDashboard = () => {
   const [searchingAddresses, setSearchingAddresses] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [showPrivateKeys, setShowPrivateKeys] = useState({});
+  
+  // VIP Users State
+  const [showVipUsers, setShowVipUsers] = useState(false);
+  const [selectedVipRank, setSelectedVipRank] = useState('All');
 
   // Load admin data on mount - FASTER
   useEffect(() => {
@@ -723,8 +728,140 @@ const AdminDashboard = () => {
               </div>
             )}
           </div>
+
+          {/* CARD 6: DEPOSITS */}
+          <div className="bg-gradient-to-r from-[#0f0f0f] to-[#1a1a2e] border border-[#2a2a4a] rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                  <Money size={24} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">6. Deposits</h3>
+                  <p className="text-sm text-gray-400">Manage deposit requests</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <span className="px-3 py-1 rounded-full bg-orange-500/20 text-orange-400 text-sm font-bold">
+                  {stats?.pending_deposits || 0} Pending
+                </span>
+                <Link to="/admin/deposits">
+                  <Button className="bg-green-600 hover:bg-green-700 text-white">
+                    View All
+                    <CaretRight size={16} className="ml-1" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+            
+            {/* Recent Deposits Preview */}
+            <div className="space-y-2">
+              {pendingDeposits?.slice(0, 3).map((dep, idx) => (
+                <div key={idx} className="bg-[#0a0a0a] rounded-lg p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-medium">${dep.amount?.toFixed(2)}</p>
+                    <p className="text-xs text-gray-400">{dep.user_email || dep.user_id?.slice(0,8)}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-0.5 rounded ${
+                      dep.status === 'pending' ? 'bg-orange-500/20 text-orange-400' :
+                      dep.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                      'bg-red-500/20 text-red-400'
+                    }`}>
+                      {dep.status?.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {(!pendingDeposits || pendingDeposits.length === 0) && (
+                <p className="text-center text-gray-500 py-4">No pending deposits</p>
+              )}
+            </div>
+          </div>
+
+          {/* CARD 7: VIP RANK USERS */}
+          <div className="bg-gradient-to-r from-[#0f0f0f] to-[#1a1a2e] border border-[#2a2a4a] rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                  <Crown size={24} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">7. VIP Rank Users</h3>
+                  <p className="text-sm text-gray-400">Users who achieved VIP status</p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => setShowVipUsers(!showVipUsers)}
+                variant="outline"
+                className="border-purple-500/50 text-purple-400"
+              >
+                {showVipUsers ? 'Hide' : 'View'}
+              </Button>
+            </div>
+            
+            {showVipUsers && (
+              <div className="border-t border-[#2a2a4a] pt-4">
+                {/* VIP Rank Tabs */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {['All', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Legendary', 'Immortal'].map((rank) => (
+                    <button
+                      key={rank}
+                      onClick={() => setSelectedVipRank(rank)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                        selectedVipRank === rank 
+                          ? 'bg-purple-500 text-white' 
+                          : 'bg-[#0a0a0a] text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {rank}
+                    </button>
+                  ))}
+                </div>
+                
+                <div className="max-h-[300px] overflow-y-auto space-y-2">
+                  {allUsers
+                    .filter(u => {
+                      if (selectedVipRank === 'All') return u.team_rank_level > 0;
+                      const rankLevels = { 'Bronze': 1, 'Silver': 2, 'Gold': 3, 'Platinum': 4, 'Diamond': 5, 'Legendary': 6, 'Immortal': 7 };
+                      return u.team_rank_level === rankLevels[selectedVipRank];
+                    })
+                    .slice(0, 50)
+                    .map((u, idx) => {
+                      const rankNames = ['None', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Legendary', 'Immortal'];
+                      const rankColors = ['gray', 'orange', 'gray', 'yellow', 'cyan', 'blue', 'purple', 'red'];
+                      const rankName = rankNames[u.team_rank_level] || 'None';
+                      const rankColor = rankColors[u.team_rank_level] || 'gray';
+                      
+                      return (
+                        <div key={u.user_id || idx} className="bg-[#0a0a0a] rounded-lg p-3 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full bg-${rankColor}-500/20 flex items-center justify-center`}>
+                              <Crown size={16} className={`text-${rankColor}-400`} />
+                            </div>
+                            <div>
+                              <p className="text-white font-medium">{u.name}</p>
+                              <p className="text-xs text-gray-400">{u.email}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold bg-${rankColor}-500/20 text-${rankColor}-400`}>
+                              {rankName}
+                            </span>
+                            <p className="text-xs text-gray-500 mt-1">${(u.futures_balance || 0).toFixed(2)}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {allUsers.filter(u => u.team_rank_level > 0).length === 0 && (
+                    <p className="text-center text-gray-500 py-4">No VIP users yet</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-        {/* ================ END 5 MAIN CARDS ================ */}
+        {/* ================ END 7 MAIN CARDS ================ */}
 
         {/* Quick Links - Hidden (replaced by cards above) */}
         <div className="hidden grid-cols-2 md:grid-cols-3 gap-4">
