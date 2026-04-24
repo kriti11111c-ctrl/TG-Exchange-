@@ -28,9 +28,19 @@ import time
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
+# MongoDB connection - Optimized for high concurrency (300K+ users)
 mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url, maxPoolSize=50, minPoolSize=10)
+client = AsyncIOMotorClient(
+    mongo_url, 
+    maxPoolSize=200,  # Increased from 50 for high traffic
+    minPoolSize=50,   # Increased minimum pool
+    maxIdleTimeMS=30000,  # 30 seconds idle timeout
+    connectTimeoutMS=5000,  # 5 second connection timeout
+    serverSelectionTimeoutMS=5000,
+    retryWrites=True,
+    retryReads=True,
+    w='majority'  # Write concern for reliability
+)
 db = client[os.environ['DB_NAME']]
 
 # JWT Config
@@ -43,21 +53,38 @@ ETHERSCAN_API_KEY = os.environ.get('ETHERSCAN_API_KEY', '')
 TRONSCAN_API_KEY = os.environ.get('TRONSCAN_API_KEY', '')
 SOLSCAN_API_KEY = os.environ.get('SOLSCAN_API_KEY', '')
 
-# Enhanced In-memory cache with longer TTL for speed
+# Enhanced In-memory cache with longer TTL for speed - High Performance
 class FastCache:
     def __init__(self):
         self._cache = {}
         self._timestamps = {}
+        self._lock = asyncio.Lock()
     
-    def get(self, key: str, ttl: int = 60):  # Increased default TTL to 60s
+    def get(self, key: str, ttl: int = 120):  # Increased default TTL to 120s for high traffic
         if key in self._cache:
             if time.time() - self._timestamps.get(key, 0) < ttl:
                 return self._cache[key]
+            else:
+                # Clean expired entry
+                self._cache.pop(key, None)
+                self._timestamps.pop(key, None)
         return None
     
     def set(self, key: str, value):
         self._cache[key] = value
         self._timestamps[key] = time.time()
+    
+    def delete(self, key: str):
+        self._cache.pop(key, None)
+        self._timestamps.pop(key, None)
+    
+    def clear_expired(self, ttl: int = 120):
+        """Clean up expired cache entries"""
+        current_time = time.time()
+        expired_keys = [k for k, t in self._timestamps.items() if current_time - t > ttl]
+        for k in expired_keys:
+            self._cache.pop(k, None)
+            self._timestamps.pop(k, None)
     
     def clear(self, key: str = None):
         if key:
@@ -85,7 +112,11 @@ chart_cache = {}
 COINGECKO_API_URL = "https://api.coingecko.com/api/v3"
 
 # Create the main app
-app = FastAPI(title="TG Exchange Exchange")
+app = FastAPI(
+    title="TG Exchange Exchange",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc"
+)
 
 # Add GZip compression for faster responses
 app.add_middleware(GZipMiddleware, minimum_size=500)
@@ -96,6 +127,48 @@ api_router = APIRouter(prefix="/api")
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# ================= STARTUP EVENT - CREATE INDEXES =================
+@app.on_event("startup")
+async def create_indexes():
+    """Create database indexes for optimal query performance - Essential for 300K+ users"""
+    try:
+        # Users collection indexes
+        await db.users.create_index("email", unique=True)
+        await db.users.create_index("user_id", unique=True)
+        await db.users.create_index("referral_code")
+        await db.users.create_index("referred_by")
+        await db.users.create_index("team_rank_level")
+        
+        # Transactions collection indexes
+        await db.transactions.create_index([("user_id", 1), ("created_at", -1)])
+        await db.transactions.create_index([("user_id", 1), ("type", 1)])
+        await db.transactions.create_index("created_at")
+        
+        # Trade codes indexes
+        await db.trade_codes.create_index([("user_id", 1), ("status", 1)])
+        await db.trade_codes.create_index("code", unique=True, sparse=True)
+        await db.trade_codes.create_index("expires_at")
+        
+        # Trade records indexes
+        await db.trade_records.create_index([("user_id", 1), ("created_at", -1)])
+        await db.trade_records.create_index("execution_time")
+        
+        # Futures history indexes
+        await db.futures_history.create_index([("user_id", 1), ("created_at", -1)])
+        
+        # Deposits/Withdrawals indexes
+        await db.deposits.create_index([("user_id", 1), ("status", 1)])
+        await db.withdrawals.create_index([("user_id", 1), ("status", 1)])
+        
+        # Sessions index for fast auth
+        await db.sessions.create_index("token")
+        await db.sessions.create_index("user_id")
+        await db.sessions.create_index("expires_at", expireAfterSeconds=0)  # TTL index
+        
+        logger.info("✅ Database indexes created successfully - Ready for high traffic!")
+    except Exception as e:
+        logger.error(f"Error creating indexes: {e}")
 
 # ================= MODELS =================
 
