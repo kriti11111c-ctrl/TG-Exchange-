@@ -84,9 +84,20 @@ const FuturesPage = () => {
   const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
   const inputBg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-100';
 
-  // Fetch real price from our backend API
+  // Fetch real price from Binance API via backend proxy
   const fetchRealPrice = async () => {
     try {
+      // Use backend proxy to Binance API (avoids CORS)
+      const response = await fetch(`${API}/market/binance-price/${selectedCoin}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.price) {
+          setCurrentPrice(data.price);
+          return;
+        }
+      }
+      
+      // Fallback to backend market prices
       const coinId = COIN_IDS[selectedCoin] || "bitcoin";
       const res = await axios.get(`${API}/market/prices`);
       const prices = res.data;

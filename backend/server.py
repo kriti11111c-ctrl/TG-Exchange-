@@ -2072,6 +2072,87 @@ OKX_INTERVALS = {
     "1w": "1W"
 }
 
+# Binance symbol mapping
+BINANCE_SYMBOLS = {
+    "btc": "BTCUSDT",
+    "eth": "ETHUSDT",
+    "bnb": "BNBUSDT",
+    "sol": "SOLUSDT",
+    "xrp": "XRPUSDT",
+    "ada": "ADAUSDT",
+    "doge": "DOGEUSDT",
+    "dot": "DOTUSDT"
+}
+
+@api_router.get("/market/binance-price/{coin_id}")
+async def get_binance_price(coin_id: str):
+    """Get real-time price from Binance API"""
+    symbol = BINANCE_SYMBOLS.get(coin_id.lower(), "BTCUSDT")
+    
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            response = await client.get(
+                f"https://api.binance.com/api/v3/ticker/price",
+                params={"symbol": symbol}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return {
+                    "symbol": symbol,
+                    "price": float(data.get("price", 0))
+                }
+            
+            return {"symbol": symbol, "price": 0, "error": "API error"}
+        except Exception as e:
+            logger.error(f"Binance price API error: {e}")
+            return {"symbol": symbol, "price": 0, "error": str(e)}
+
+@api_router.get("/market/binance-candles/{coin_id}")
+async def get_binance_candles(coin_id: str, interval: str = "15m", limit: int = 100):
+    """Get candlestick data directly from Binance API - EXACT match with Binance charts"""
+    symbol = BINANCE_SYMBOLS.get(coin_id.lower(), "BTCUSDT")
+    
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        try:
+            response = await client.get(
+                f"https://api.binance.com/api/v3/klines",
+                params={
+                    "symbol": symbol,
+                    "interval": interval,
+                    "limit": min(limit, 500)
+                }
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Binance format: [openTime, open, high, low, close, volume, closeTime, ...]
+                candles = []
+                for k in data:
+                    candles.append({
+                        "time": int(k[0]),
+                        "open": float(k[1]),
+                        "high": float(k[2]),
+                        "low": float(k[3]),
+                        "close": float(k[4]),
+                        "volume": float(k[5])
+                    })
+                
+                return {
+                    "symbol": symbol,
+                    "interval": interval,
+                    "candles": candles
+                }
+            
+            logger.warning(f"Binance API returned {response.status_code}")
+            # Fallback to OKX
+            return await get_binance_klines(coin_id, interval, limit)
+            
+        except Exception as e:
+            logger.error(f"Binance candles API error: {e}")
+            # Fallback to OKX
+            return await get_binance_klines(coin_id, interval, limit)
+
 @api_router.get("/market/binance-klines/{coin_id}")
 async def get_binance_klines(coin_id: str, interval: str = "1h", limit: int = 100):
     """Get REAL OHLC (candlestick) data from OKX API (matches real exchanges)
