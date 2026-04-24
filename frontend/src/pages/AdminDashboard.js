@@ -411,8 +411,323 @@ const AdminDashboard = () => {
           />
         </div>
 
-        {/* Quick Links */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {/* ================ 5 MAIN CARDS ================ */}
+        <div className="grid grid-cols-1 gap-4">
+          
+          {/* CARD 1: DASHBOARD OVERVIEW */}
+          <div className="bg-gradient-to-r from-[#0f0f0f] to-[#1a1a2e] border border-[#2a2a4a] rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+                <ShieldCheck size={24} className="text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">1. Dashboard</h3>
+                <p className="text-sm text-gray-400">Overview & Statistics</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-[#0a0a0a] rounded-lg p-3 text-center">
+                <p className="text-2xl font-bold text-cyan-400">{stats?.total_users || 0}</p>
+                <p className="text-xs text-gray-500">Total Users</p>
+              </div>
+              <div className="bg-[#0a0a0a] rounded-lg p-3 text-center">
+                <p className="text-2xl font-bold text-green-400">${(stats?.total_deposit_value || 0).toLocaleString()}</p>
+                <p className="text-xs text-gray-500">Deposits</p>
+              </div>
+              <div className="bg-[#0a0a0a] rounded-lg p-3 text-center">
+                <p className="text-2xl font-bold text-orange-400">{stats?.pending_deposits || 0}</p>
+                <p className="text-xs text-gray-500">Pending</p>
+              </div>
+              <div className="bg-[#0a0a0a] rounded-lg p-3 text-center">
+                <p className="text-2xl font-bold text-purple-400">{stats?.today_signups || 0}</p>
+                <p className="text-xs text-gray-500">Today</p>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 2: USERS (100 shown, search for all) */}
+          <div className="bg-gradient-to-r from-[#0f0f0f] to-[#1a1a2e] border border-[#2a2a4a] rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                  <Users size={24} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">2. Users</h3>
+                  <p className="text-sm text-gray-400">Showing 100 users • Search for all</p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => {
+                  setShowAllUsers(!showAllUsers);
+                  if (!showAllUsers && allUsers.length === 0) {
+                    fetchAllUsers();
+                  }
+                }}
+                variant="outline"
+                className="border-blue-500/50 text-blue-400"
+              >
+                {showAllUsers ? 'Hide' : 'View'}
+              </Button>
+            </div>
+            
+            {showAllUsers && (
+              <div className="border-t border-[#2a2a4a] pt-4">
+                <div className="flex gap-2 mb-4">
+                  <div className="relative flex-1">
+                    <MagnifyingGlass size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Search by email, name, or user ID..."
+                      value={userSearch}
+                      onChange={(e) => setUserSearch(e.target.value)}
+                      className="pl-10 bg-[#0A0A0A] border-[#333] text-white"
+                    />
+                  </div>
+                </div>
+                <div className="max-h-[400px] overflow-y-auto space-y-2">
+                  {allUsers
+                    .filter(u => 
+                      !userSearch || 
+                      u.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                      u.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
+                      u.user_id?.includes(userSearch)
+                    )
+                    .slice(0, 100)
+                    .map((u, idx) => (
+                      <div key={u.user_id || idx} className="bg-[#0a0a0a] rounded-lg p-3 flex items-center justify-between">
+                        <div>
+                          <p className="text-white font-medium">{u.name}</p>
+                          <p className="text-xs text-gray-400">{u.email}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-green-400">${(u.futures_balance || 0).toFixed(2)}</span>
+                          <Button
+                            size="sm"
+                            onClick={() => loginAsUser(u.user_id)}
+                            disabled={loggingInAs === u.user_id}
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1"
+                          >
+                            {loggingInAs === u.user_id ? '...' : 'Login'}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* CARD 3: WITHDRAWALS */}
+          <div className="bg-gradient-to-r from-[#0f0f0f] to-[#1a1a2e] border border-[#2a2a4a] rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center">
+                  <Wallet size={24} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">3. Withdrawals</h3>
+                  <p className="text-sm text-gray-400">Manage withdrawal requests</p>
+                </div>
+              </div>
+              <Link to="/admin/withdrawals">
+                <Button className="bg-red-600 hover:bg-red-700 text-white">
+                  View All
+                  <CaretRight size={16} className="ml-1" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* CARD 4: GENERATE CODE */}
+          <div className="bg-gradient-to-r from-[#0f0f0f] to-[#1a1a2e] border border-[#2a2a4a] rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400 to-teal-500 flex items-center justify-center">
+                <Ticket size={24} className="text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">4. Generate Code</h3>
+                <p className="text-sm text-gray-400">Create trade codes for users</p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">User Email</label>
+                <Input
+                  type="email"
+                  placeholder="user@example.com"
+                  value={tradeCodeForm.user_email}
+                  onChange={(e) => setTradeCodeForm({...tradeCodeForm, user_email: e.target.value})}
+                  className="bg-[#0A0A0A] border-[#333] text-white"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Coin</label>
+                <select
+                  value={tradeCodeForm.coin}
+                  onChange={(e) => setTradeCodeForm({...tradeCodeForm, coin: e.target.value})}
+                  className="w-full h-10 px-3 bg-[#0A0A0A] border border-[#333] text-white rounded-md"
+                >
+                  <option value="BTC">BTC</option>
+                  <option value="ETH">ETH</option>
+                  <option value="SOL">SOL</option>
+                  <option value="BNB">BNB</option>
+                  <option value="XRP">XRP</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Type</label>
+                <select
+                  value={tradeCodeForm.trade_type}
+                  onChange={(e) => setTradeCodeForm({...tradeCodeForm, trade_type: e.target.value})}
+                  className="w-full h-10 px-3 bg-[#0A0A0A] border border-[#333] text-white rounded-md"
+                >
+                  <option value="buy">BUY (CALL)</option>
+                  <option value="sell">SELL (PUT)</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex gap-2">
+              <Button
+                onClick={handleGenerateTradeCode}
+                disabled={generatingCode}
+                className="bg-cyan-500 hover:bg-cyan-600 text-black font-bold flex-1"
+              >
+                {generatingCode ? "Generating..." : "Generate Code"}
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!tradeCodeForm.coin) return;
+                  setGeneratingCode(true);
+                  try {
+                    const token = localStorage.getItem("admin_token");
+                    const res = await axios.post(`${API}/admin/trade-code/generate-for-all`, {
+                      coin: tradeCodeForm.coin,
+                      trade_type: tradeCodeForm.trade_type || 'buy'
+                    }, { headers: { Authorization: `Bearer ${token}` }});
+                    toast.success(`Generated codes for ${res.data.users_count || 'all'} users!`);
+                  } catch (err) {
+                    toast.error("Failed to generate codes");
+                  } finally {
+                    setGeneratingCode(false);
+                  }
+                }}
+                variant="outline"
+                className="border-cyan-500/50 text-cyan-400"
+              >
+                Generate For All
+              </Button>
+            </div>
+            
+            {generatedCode && (
+              <div className="mt-4 p-4 bg-[#0A0A0A] border border-cyan-500/50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Generated Code:</p>
+                    <p className="text-2xl font-mono font-bold text-cyan-400">{generatedCode}</p>
+                  </div>
+                  <Button onClick={copyCode} variant="outline" className="border-cyan-500 text-cyan-400">
+                    <Copy size={16} className="mr-1" />
+                    Copy
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* CARD 5: USER ADDRESS & PRIVATE KEY */}
+          <div className="bg-gradient-to-r from-[#0f0f0f] to-[#1a1a2e] border border-[#2a2a4a] rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center">
+                  <Wallet size={24} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">5. User Address & Private Key</h3>
+                  <p className="text-sm text-gray-400">Deposit addresses & keys</p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => {
+                  setShowDepositAddresses(!showDepositAddresses);
+                  if (!showDepositAddresses && depositAddresses.length === 0) {
+                    fetchDepositAddresses();
+                  }
+                }}
+                variant="outline"
+                className="border-yellow-500/50 text-yellow-400"
+              >
+                {showDepositAddresses ? 'Hide' : 'View'}
+              </Button>
+            </div>
+            
+            {showDepositAddresses && (
+              <div className="border-t border-[#2a2a4a] pt-4">
+                <div className="flex gap-2 mb-4">
+                  <div className="relative flex-1">
+                    <MagnifyingGlass size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      type="text"
+                      placeholder="Search by address or user ID..."
+                      value={addressSearch}
+                      onChange={(e) => setAddressSearch(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && searchDepositAddress()}
+                      className="pl-10 bg-[#0A0A0A] border-[#333] text-white font-mono text-sm"
+                    />
+                  </div>
+                  <Button
+                    onClick={searchDepositAddress}
+                    disabled={searchingAddresses}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                  >
+                    {searchingAddresses ? '...' : 'Search'}
+                  </Button>
+                </div>
+                
+                <div className="max-h-[400px] overflow-y-auto space-y-2">
+                  {depositAddresses.map((addr, idx) => (
+                    <div key={idx} className="bg-[#0a0a0a] rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-xs px-2 py-0.5 rounded ${
+                          addr.network === 'bsc' ? 'bg-yellow-500/20 text-yellow-400' :
+                          addr.network === 'eth' ? 'bg-blue-500/20 text-blue-400' :
+                          addr.network === 'tron' ? 'bg-red-500/20 text-red-400' :
+                          'bg-green-500/20 text-green-400'
+                        }`}>
+                          {addr.network?.toUpperCase()}
+                        </span>
+                        <span className="text-xs text-gray-500">{addr.user_id?.slice(0,8)}...</span>
+                      </div>
+                      <p className="text-xs font-mono text-gray-300 break-all mb-2">{addr.address}</p>
+                      {addr.has_private_key && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setShowPrivateKeys({...showPrivateKeys, [idx]: !showPrivateKeys[idx]})}
+                            className="text-xs border-yellow-500/30 text-yellow-400"
+                          >
+                            {showPrivateKeys[idx] ? <EyeSlash size={14} /> : <Eye size={14} />}
+                            {showPrivateKeys[idx] ? 'Hide' : 'Show'} Key
+                          </Button>
+                          {showPrivateKeys[idx] && (
+                            <p className="text-xs font-mono text-red-400 break-all flex-1">{addr.private_key}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        {/* ================ END 5 MAIN CARDS ================ */}
+
+        {/* Quick Links - Hidden (replaced by cards above) */}
+        <div className="hidden grid-cols-2 md:grid-cols-3 gap-4">
           <Link 
             to="/admin/deposits" 
             className="bg-[#111] border border-[#222] rounded-xl p-4 flex items-center justify-between hover:border-orange-500/50 transition-colors"
