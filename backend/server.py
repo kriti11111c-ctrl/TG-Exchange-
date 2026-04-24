@@ -5854,16 +5854,6 @@ async def get_futures_history(
     # Format history items
     history = []
     
-    # Coin name mapping for display
-    coin_names = {
-        "BTC": "Bitcoin", "ETH": "Ethereum", "BNB": "BNB", "SOL": "Solana",
-        "XRP": "XRP", "DOGE": "Dogecoin", "ADA": "Cardano", "AVAX": "Avalanche",
-        "SHIB": "Shiba Inu", "DOT": "Polkadot", "LINK": "Chainlink", "TRX": "TRON",
-        "MATIC": "Polygon", "UNI": "Uniswap", "LTC": "Litecoin", "ATOM": "Cosmos",
-        "XLM": "Stellar", "NEAR": "NEAR", "APT": "Aptos", "FIL": "Filecoin",
-        "BEL": "Bella Protocol"
-    }
-    
     # Add trade code based trades
     for tc in trade_codes_used:
         # Find matching transaction for more details
@@ -5931,7 +5921,7 @@ async def get_futures_history(
             "id": tc.get("code"),
             "type": "trade_code",
             "status": "Opened",
-            "product": coin_names.get(coin.upper(), coin),
+            "product": f"{coin}/USD",
             "direction": trade_type,
             "time_period": f"10s({time_period_start}~{time_period_end}) UTC",
             "amount": round(amount, 2),
@@ -6019,7 +6009,7 @@ async def get_futures_history(
             "id": th.get("trade_id", th.get("trade_code", "N/A")),
             "type": "trade_code",
             "status": "Completed",
-            "product": coin_names.get(coin, coin),
+            "product": f"{coin}/USD",
             "direction": th.get("trade_type", "CALL").upper(),
             "time_period": f"10s({time_period_start}~{time_period_end}) UTC",
             "amount": round(amount, 2),
