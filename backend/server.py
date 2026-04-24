@@ -1606,6 +1606,7 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
         
         # Determine if income or expense
         is_income = tx_type in ["deposit", "bonus", "welcome_bonus", "referral", "referral_bonus", 
+                                "first_deposit_referral_bonus", "referral_bonus_fix",
                                 "salary", "trade_code", "trade_profit", "commission"]
         
         history.append({
@@ -1782,6 +1783,8 @@ def get_tx_category(tx_type: str) -> str:
         "bonus": "Bonus",
         "referral": "Referral Income",
         "referral_bonus": "Referral Income",
+        "first_deposit_referral_bonus": "Direct Reward",
+        "referral_bonus_fix": "Direct Reward",
         "commission": "Referral Income",
         "salary": "Salary Income",
         "trade_code": "Trade Profit",
@@ -1800,6 +1803,8 @@ def get_tx_description(tx_type: str, tx: dict) -> str:
         return "Withdrawal"
     elif tx_type in ["welcome_bonus", "bonus"]:
         return "Welcome Bonus"
+    elif tx_type in ["first_deposit_referral_bonus", "referral_bonus_fix"]:
+        return f"5% Direct Reward - {tx.get('note', 'First Deposit Bonus')}"
     elif tx_type in ["referral", "referral_bonus", "commission"]:
         return f"Referral Commission - Level {tx.get('level', 1)}"
     elif tx_type == "salary":
