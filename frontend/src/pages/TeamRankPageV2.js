@@ -136,9 +136,9 @@ const TeamRankPage = () => {
       {/* Demotion Warning */}
       {rankInfo?.demotion_message && (
         <div className="px-4 mb-2">
-          <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/50">
-            <p className="text-red-400 text-sm font-medium">⚠️ Rank Demoted!</p>
-            <p className="text-red-300 text-xs mt-1">{rankInfo.demotion_message}</p>
+          <div className={`p-3 rounded-xl ${isDark ? 'bg-red-500/20 border border-red-500/50' : 'bg-red-100 border border-red-400'}`}>
+            <p className={`text-sm font-medium ${isDark ? 'text-red-400' : 'text-red-700'}`}>⚠️ Rank Demoted!</p>
+            <p className={`text-xs mt-1 ${isDark ? 'text-red-300' : 'text-red-600'}`}>{rankInfo.demotion_message}</p>
           </div>
         </div>
       )}
@@ -146,9 +146,9 @@ const TeamRankPage = () => {
       {/* Salary Paused Warning */}
       {rankInfo?.salary_paused && (
         <div className="px-4 mb-2">
-          <div className="p-3 rounded-xl bg-yellow-500/20 border border-yellow-500/50">
-            <p className="text-yellow-400 text-sm font-medium">⏸️ Salary Paused</p>
-            <p className="text-yellow-300 text-xs mt-1">Your salary is paused due to rank demotion. Restore your rank to resume earning.</p>
+          <div className={`p-3 rounded-xl ${isDark ? 'bg-yellow-500/20 border border-yellow-500/50' : 'bg-yellow-100 border border-yellow-400'}`}>
+            <p className={`text-sm font-medium ${isDark ? 'text-yellow-400' : 'text-yellow-700'}`}>⏸️ Salary Paused</p>
+            <p className={`text-xs mt-1 ${isDark ? 'text-yellow-300' : 'text-yellow-600'}`}>Your salary is paused due to rank demotion. Restore your rank to resume earning.</p>
           </div>
         </div>
       )}
