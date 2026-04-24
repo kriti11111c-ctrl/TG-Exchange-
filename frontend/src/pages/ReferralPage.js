@@ -338,7 +338,7 @@ const ReferralPage = () => {
                   🎁 $200 Welcome Bonus
                 </span>
                 <span className="px-2 py-0.5 rounded-md bg-white/20 text-white text-xs font-medium">
-                  💰 5% First Deposit
+                  💰 5% on First Deposit Only
                 </span>
               </div>
               <p className="text-white/90 text-xs mt-2 font-medium">10 Levels Deep • Unlimited Earnings</p>
