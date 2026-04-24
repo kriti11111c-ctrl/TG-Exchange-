@@ -16,11 +16,13 @@ import {
   TrendDown,
   Lightning,
   Trophy,
-  Sparkle
+  Sparkle,
+  Sun,
+  Moon
 } from "@phosphor-icons/react";
 
 const MarketsPage = () => {
-  const { isDark } = useTheme();
+  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [prices, setPrices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,6 +30,16 @@ const MarketsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("volume");
   const [sortOrder, setSortOrder] = useState("desc");
+
+  // Theme-aware colors
+  const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
+  const cardBg = isDark ? 'bg-[#1E2329]' : 'bg-white';
+  const headerBg = isDark ? 'from-[#1E2329] to-[#0B0E11]' : 'from-gray-100 to-gray-50';
+  const text = isDark ? 'text-white' : 'text-gray-900';
+  const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
+  const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
+  const inputBg = isDark ? 'bg-[#2B3139]' : 'bg-white';
+  const hoverBg = isDark ? 'hover:bg-[#1E2329]/50' : 'hover:bg-gray-100';
 
   useEffect(() => {
     const fetchPrices = async () => {
@@ -136,28 +148,39 @@ const MarketsPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B0E11] flex items-center justify-center">
+      <div className={`min-h-screen ${bg} flex items-center justify-center`}>
         <div className="flex flex-col items-center gap-3">
           <div className="w-12 h-12 border-4 border-[#00E5FF] border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-[#848E9C] text-sm">Loading markets...</p>
+          <p className={textMuted}>Loading markets...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0E11] pb-20">
+    <div className={`min-h-screen ${bg} pb-20`}>
       {/* Header */}
-      <div className="bg-gradient-to-b from-[#1E2329] to-[#0B0E11] px-4 pt-4 pb-2">
+      <div className={`bg-gradient-to-b ${headerBg} px-4 pt-4 pb-2`}>
+        {/* Top Bar with Theme Toggle */}
+        <div className="flex items-center justify-between mb-4">
+          <h1 className={`text-xl font-bold ${text}`}>Markets</h1>
+          <button
+            onClick={toggleTheme}
+            className={`p-2.5 rounded-xl ${isDark ? 'bg-[#2B3139]' : 'bg-white shadow-md'} transition-colors`}
+          >
+            {isDark ? <Sun size={20} className="text-[#F0B90B]" /> : <Moon size={20} className="text-gray-600" />}
+          </button>
+        </div>
+
         {/* Search Bar */}
         <div className="relative mb-4">
-          <MagnifyingGlass size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#848E9C]" />
+          <MagnifyingGlass size={20} className={`absolute left-4 top-1/2 -translate-y-1/2 ${textMuted}`} />
           <input
             type="text"
             placeholder="Search coin name"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 rounded-xl bg-[#2B3139] text-white placeholder-[#5E6673] outline-none focus:ring-2 focus:ring-[#00E5FF]/50 transition-all"
+            className={`w-full pl-12 pr-4 py-3 rounded-xl ${inputBg} ${text} ${isDark ? '' : 'border border-gray-200 shadow-sm'} placeholder-${isDark ? '[#5E6673]' : 'gray-400'} outline-none focus:ring-2 focus:ring-[#00E5FF]/50 transition-all`}
           />
           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
             <Fire size={16} className="text-[#F6465D]" weight="fill" />
@@ -168,7 +191,7 @@ const MarketsPage = () => {
         {/* Quick Stats Cards */}
         <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
           {/* Top Gainer Card */}
-          <div className="flex-shrink-0 w-40 bg-gradient-to-br from-[#0ECB81]/20 to-[#0ECB81]/5 rounded-2xl p-3 border border-[#0ECB81]/20">
+          <div className={`flex-shrink-0 w-40 rounded-2xl p-3 border ${isDark ? 'bg-gradient-to-br from-[#0ECB81]/20 to-[#0ECB81]/5 border-[#0ECB81]/20' : 'bg-gradient-to-br from-[#0ECB81]/10 to-white border-[#0ECB81]/30 shadow-sm'}`}>
             <div className="flex items-center gap-2 mb-2">
               <TrendUp size={16} className="text-[#0ECB81]" weight="bold" />
               <span className="text-[#0ECB81] text-xs font-bold">TOP GAINER</span>
@@ -177,7 +200,7 @@ const MarketsPage = () => {
               {topGainer?.image && (
                 <img src={topGainer.image} alt="" className="w-6 h-6 rounded-full" />
               )}
-              <span className="text-white font-bold">{topGainer?.symbol?.toUpperCase()}</span>
+              <span className={`font-bold ${text}`}>{topGainer?.symbol?.toUpperCase()}</span>
             </div>
             <p className="text-[#0ECB81] font-bold text-lg mt-1">
               +{(topGainer?.price_change_percentage_24h || 0).toFixed(2)}%
@@ -185,7 +208,7 @@ const MarketsPage = () => {
           </div>
 
           {/* Top Loser Card */}
-          <div className="flex-shrink-0 w-40 bg-gradient-to-br from-[#F6465D]/20 to-[#F6465D]/5 rounded-2xl p-3 border border-[#F6465D]/20">
+          <div className={`flex-shrink-0 w-40 rounded-2xl p-3 border ${isDark ? 'bg-gradient-to-br from-[#F6465D]/20 to-[#F6465D]/5 border-[#F6465D]/20' : 'bg-gradient-to-br from-[#F6465D]/10 to-white border-[#F6465D]/30 shadow-sm'}`}>
             <div className="flex items-center gap-2 mb-2">
               <TrendDown size={16} className="text-[#F6465D]" weight="bold" />
               <span className="text-[#F6465D] text-xs font-bold">TOP LOSER</span>
@@ -194,7 +217,7 @@ const MarketsPage = () => {
               {topLoser?.image && (
                 <img src={topLoser.image} alt="" className="w-6 h-6 rounded-full" />
               )}
-              <span className="text-white font-bold">{topLoser?.symbol?.toUpperCase()}</span>
+              <span className={`font-bold ${text}`}>{topLoser?.symbol?.toUpperCase()}</span>
             </div>
             <p className="text-[#F6465D] font-bold text-lg mt-1">
               {(topLoser?.price_change_percentage_24h || 0).toFixed(2)}%
@@ -202,21 +225,21 @@ const MarketsPage = () => {
           </div>
 
           {/* Volume Card */}
-          <div className="flex-shrink-0 w-40 bg-gradient-to-br from-[#00E5FF]/20 to-[#00E5FF]/5 rounded-2xl p-3 border border-[#00E5FF]/20">
+          <div className={`flex-shrink-0 w-40 rounded-2xl p-3 border ${isDark ? 'bg-gradient-to-br from-[#00E5FF]/20 to-[#00E5FF]/5 border-[#00E5FF]/20' : 'bg-gradient-to-br from-[#00E5FF]/10 to-white border-[#00E5FF]/30 shadow-sm'}`}>
             <div className="flex items-center gap-2 mb-2">
               <Lightning size={16} className="text-[#00E5FF]" weight="fill" />
               <span className="text-[#00E5FF] text-xs font-bold">24H VOLUME</span>
             </div>
-            <p className="text-white font-bold text-lg">
+            <p className={`font-bold text-lg ${text}`}>
               ${formatVolume(prices.reduce((sum, c) => sum + (c.total_volume || 0), 0))}
             </p>
-            <p className="text-[#848E9C] text-xs mt-1">{prices.length} Coins</p>
+            <p className={textMuted} style={{fontSize: '11px'}}>{prices.length} Coins</p>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="sticky top-0 z-40 bg-[#0B0E11] border-b border-[#2B3139]">
+      <div className={`sticky top-0 z-40 ${bg} border-b ${border}`}>
         <div className="overflow-x-auto scrollbar-hide">
           <div className="flex gap-1 px-4 py-2 min-w-max">
             {mainTabs.map(tab => (
@@ -225,8 +248,8 @@ const MarketsPage = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap flex items-center gap-2 transition-all ${
                   activeTab === tab.id 
-                    ? 'bg-[#2B3139] text-white' 
-                    : 'text-[#848E9C] hover:text-white'
+                    ? isDark ? 'bg-[#2B3139] text-white' : 'bg-white text-gray-900 shadow-md'
+                    : `${textMuted} ${hoverBg}`
                 }`}
               >
                 <tab.icon 
@@ -242,13 +265,13 @@ const MarketsPage = () => {
       </div>
 
       {/* Table Header */}
-      <div className="sticky top-[52px] z-30 bg-[#0B0E11] border-b border-[#2B3139]">
-        <div className="grid grid-cols-12 px-4 py-3 text-xs text-[#848E9C]">
+      <div className={`sticky top-[52px] z-30 ${bg} border-b ${border}`}>
+        <div className={`grid grid-cols-12 px-4 py-3 text-xs ${textMuted}`}>
           <div className="col-span-5 flex items-center gap-2">
             <span>Name / Vol</span>
           </div>
           <div 
-            className="col-span-3 text-right flex items-center justify-end gap-1 cursor-pointer hover:text-white transition-colors"
+            className={`col-span-3 text-right flex items-center justify-end gap-1 cursor-pointer hover:${text} transition-colors`}
             onClick={() => toggleSort("price")}
           >
             Price
@@ -258,7 +281,7 @@ const MarketsPage = () => {
             </div>
           </div>
           <div 
-            className="col-span-4 text-right flex items-center justify-end gap-1 cursor-pointer hover:text-white transition-colors"
+            className={`col-span-4 text-right flex items-center justify-end gap-1 cursor-pointer hover:${text} transition-colors`}
             onClick={() => toggleSort("change")}
           >
             24h Change
@@ -271,11 +294,11 @@ const MarketsPage = () => {
       </div>
 
       {/* Coin List */}
-      <div>
+      <div className={cardBg}>
         {filteredCoins.length === 0 ? (
           <div className="py-16 text-center">
-            <MagnifyingGlass size={48} className="text-[#2B3139] mx-auto mb-4" />
-            <p className="text-[#848E9C]">No coins found</p>
+            <MagnifyingGlass size={48} className={isDark ? 'text-[#2B3139]' : 'text-gray-300'} />
+            <p className={`${textMuted} mt-4`}>No coins found</p>
           </div>
         ) : (
           filteredCoins.map((coin, index) => {
@@ -286,7 +309,7 @@ const MarketsPage = () => {
               <Link
                 key={coin.coin_id || index}
                 to={`/trade?symbol=${coin.symbol || 'BTC'}`}
-                className="grid grid-cols-12 px-4 py-4 items-center border-b border-[#2B3139]/50 hover:bg-[#1E2329]/50 transition-colors active:bg-[#2B3139]"
+                className={`grid grid-cols-12 px-4 py-4 items-center border-b ${border} ${hoverBg} transition-colors active:bg-[#00E5FF]/10`}
               >
                 {/* Coin Info */}
                 <div className="col-span-5">
@@ -296,7 +319,7 @@ const MarketsPage = () => {
                         <img 
                           src={coin.image} 
                           alt={coin.symbol} 
-                          className="w-10 h-10 rounded-full object-cover ring-2 ring-[#2B3139]"
+                          className={`w-10 h-10 rounded-full object-cover ring-2 ${isDark ? 'ring-[#2B3139]' : 'ring-gray-200'}`}
                           onError={(e) => {
                             e.target.onerror = null;
                             e.target.src = `https://ui-avatars.com/api/?name=${coin.symbol}&background=00E5FF&color=000`;
@@ -315,17 +338,17 @@ const MarketsPage = () => {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold">{coin.symbol?.toUpperCase()}</span>
+                        <span className={`font-bold ${text}`}>{coin.symbol?.toUpperCase()}</span>
                         <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#00E5FF]/20 text-[#00E5FF] font-bold">USDT</span>
                       </div>
-                      <span className="text-[#848E9C] text-xs">Vol {formatVolume(coin.total_volume)}</span>
+                      <span className={`text-xs ${textMuted}`}>Vol {formatVolume(coin.total_volume)}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Price */}
                 <div className="col-span-3 text-right">
-                  <p className="text-white font-semibold">${formatPrice(coin.current_price)}</p>
+                  <p className={`font-semibold ${text}`}>${formatPrice(coin.current_price)}</p>
                 </div>
 
                 {/* Change */}
@@ -346,7 +369,7 @@ const MarketsPage = () => {
         
         {/* End indicator */}
         <div className="py-8 text-center">
-          <p className="text-[#5E6673] text-sm">— End of List —</p>
+          <p className={textMuted} style={{fontSize: '12px'}}>— End of List —</p>
         </div>
       </div>
 
