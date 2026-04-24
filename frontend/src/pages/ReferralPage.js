@@ -320,72 +320,129 @@ const ReferralPage = () => {
         </button>
       </div>
 
-      {/* Banner */}
-      <div className="mx-4 mt-4 rounded-xl overflow-hidden bg-gradient-to-r from-[#00E5FF] to-[#F8D12F] p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-black font-bold text-xl mb-2">Invite & Earn</h2>
-            <p className="text-black/70 text-sm">Earn rewards on every trade from your referrals!</p>
+      {/* Banner - Colorful Gradient */}
+      <div className="mx-4 mt-4 rounded-2xl overflow-hidden relative" style={{
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+        boxShadow: '0 8px 32px rgba(102, 126, 234, 0.3)'
+      }}>
+        <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10"></div>
+        <div className="absolute -left-4 -bottom-4 w-24 h-24 rounded-full bg-white/10"></div>
+        <div className="p-5 relative z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-white font-bold text-xl mb-1">Invite & Earn</h2>
+              <p className="text-white/80 text-sm">Earn 0.6% on every trade from your referrals!</p>
+              <p className="text-white/90 text-xs mt-2 font-medium">10 Levels Deep • Unlimited Earnings</p>
+            </div>
+            <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <Gift size={32} className="text-white" />
+            </div>
           </div>
-          <div className="text-5xl">🎁</div>
         </div>
       </div>
 
-      {/* Referral Code Card */}
-      <div className={`${cardBg} mx-4 mt-4 rounded-xl p-4`}>
-        <div className="flex items-center justify-between mb-4">
-          <span className={textMuted}>Your Referral Code</span>
-          <div className="flex items-center gap-2">
-            <span className={`font-bold text-xl text-[#00E5FF]`}>{getReferralCode() || "LOADING..."}</span>
-            <button onClick={copyReferralCode} className="text-[#00E5FF] p-1">
-              {copied ? <CheckCircle size={24} /> : <Copy size={24} />}
+      {/* Referral Code Card - Gradient Border */}
+      <div 
+        className="mx-4 mt-4 rounded-2xl overflow-hidden"
+        style={{
+          background: isDark ? '#1E2329' : '#FFFFFF',
+          border: '2px solid transparent',
+          backgroundImage: isDark 
+            ? 'linear-gradient(#1E2329, #1E2329), linear-gradient(135deg, #00E5FF, #0ECB81)'
+            : 'linear-gradient(#FFFFFF, #FFFFFF), linear-gradient(135deg, #00E5FF, #0ECB81)',
+          backgroundOrigin: 'border-box',
+          backgroundClip: 'padding-box, border-box',
+          boxShadow: isDark ? '0 4px 20px rgba(0, 229, 255, 0.15)' : '0 4px 20px rgba(0, 229, 255, 0.2)'
+        }}
+      >
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00E5FF] to-[#0ECB81] flex items-center justify-center">
+                <QrCode size={20} className="text-white" />
+              </div>
+              <div>
+                <p className={`text-xs ${textMuted}`}>Your Referral Code</p>
+                <p className="text-[#00E5FF] font-bold text-xl">{getReferralCode() || "LOADING..."}</p>
+              </div>
+            </div>
+            <button 
+              onClick={copyReferralCode} 
+              className="w-10 h-10 rounded-xl bg-[#00E5FF]/20 flex items-center justify-center"
+            >
+              {copied ? <CheckCircle size={24} className="text-[#0ECB81]" /> : <Copy size={24} className="text-[#00E5FF]" />}
             </button>
           </div>
-        </div>
-        
-        <div className="flex gap-3">
-          <Button 
-            onClick={copyReferralLink}
-            className="flex-1 bg-[#00E5FF] hover:bg-[#00E5FF]/90 text-black font-medium"
-          >
-            <Copy size={18} className="mr-2" />
-            Copy Link
-          </Button>
-          <Button 
-            onClick={shareReferral}
-            variant="outline"
-            className={`flex-1 ${border} ${text}`}
-          >
-            <Share size={18} className="mr-2" />
-            Share
-          </Button>
+          
+          <div className="flex gap-3">
+            <Button 
+              onClick={copyReferralLink}
+              className="flex-1 bg-gradient-to-r from-[#00E5FF] to-[#0ECB81] hover:opacity-90 text-black font-bold rounded-xl"
+            >
+              <Copy size={18} className="mr-2" />
+              Copy Link
+            </Button>
+            <Button 
+              onClick={shareReferral}
+              className={`flex-1 ${isDark ? 'bg-[#2B3139] text-white hover:bg-[#3B4149]' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'} font-medium rounded-xl`}
+            >
+              <Share size={18} className="mr-2" />
+              Share
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Colorful Gradients */}
       <div className="grid grid-cols-2 gap-3 mx-4 mt-4">
-        <div className={`${cardBg} rounded-xl p-4`}>
-          <div className="flex items-center gap-2 mb-2">
-            <Users size={20} className="text-[#00E5FF]" />
-            <span className={textMuted}>Total Referrals</span>
+        {/* Total Referrals Card */}
+        <div 
+          className="rounded-2xl p-4 relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, #00E5FF 0%, #00B4D8 100%)',
+            boxShadow: '0 4px 15px rgba(0, 229, 255, 0.3)'
+          }}
+        >
+          <div className="absolute -right-4 -bottom-4 w-16 h-16 rounded-full bg-white/20"></div>
+          <div className="relative z-10">
+            <div className="w-8 h-8 rounded-lg bg-white/30 flex items-center justify-center mb-2">
+              <Users size={18} className="text-white" />
+            </div>
+            <p className="text-white/80 text-xs">Total Referrals</p>
+            <p className="text-white font-bold text-2xl">{stats?.total_referrals || 0}</p>
           </div>
-          <p className={`text-2xl font-bold ${text}`}>{stats?.total_referrals || 0}</p>
         </div>
         
-        <div className={`${cardBg} rounded-xl p-4`}>
-          <div className="flex items-center gap-2 mb-2">
-            <ChartLineUp size={20} className="text-[#F0B90B]" />
-            <span className={textMuted}>Total Business</span>
+        {/* Total Business Card */}
+        <div 
+          className="rounded-2xl p-4 relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(135deg, #0ECB81 0%, #00A86B 100%)',
+            boxShadow: '0 4px 15px rgba(14, 203, 129, 0.3)'
+          }}
+        >
+          <div className="absolute -right-4 -bottom-4 w-16 h-16 rounded-full bg-white/20"></div>
+          <div className="relative z-10">
+            <div className="w-8 h-8 rounded-lg bg-white/30 flex items-center justify-center mb-2">
+              <ChartLineUp size={18} className="text-white" />
+            </div>
+            <p className="text-white/80 text-xs">Total Business</p>
+            <p className="text-white font-bold text-2xl">
+              {loadingPeriod ? '...' : `$${Math.abs(getCurrentBusiness()).toFixed(2)}`}
+            </p>
           </div>
-          <p className={`text-2xl font-bold ${getCurrentBusiness() >= 0 ? 'text-[#0ECB81]' : 'text-[#F6465D]'}`}>
-            {loadingPeriod ? '...' : `$${Math.abs(getCurrentBusiness()).toFixed(2)}`}
-          </p>
         </div>
       </div>
 
-      {/* Period Filter */}
+      {/* Period Filter - Pill Style */}
       <div className="mx-4 mt-3">
-        <div className={`${cardBg} rounded-xl p-2 flex gap-2`}>
+        <div 
+          className={`rounded-2xl p-1.5 flex gap-1`}
+          style={{
+            background: isDark ? '#1E2329' : '#F3F4F6',
+            border: isDark ? '1px solid #2B3139' : '1px solid #E5E7EB'
+          }}
+        >
           {[
             { id: '24h', label: '24H' },
             { id: '7d', label: '7D' },
@@ -395,10 +452,10 @@ const ReferralPage = () => {
             <button
               key={period.id}
               onClick={() => handlePeriodChange(period.id)}
-              className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
+              className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
                 selectedPeriod === period.id
-                  ? 'bg-[#0ECB81] text-white'
-                  : `${isDark ? 'bg-[#2B3139] text-gray-400' : 'bg-gray-100 text-gray-600'}`
+                  ? 'bg-gradient-to-r from-[#0ECB81] to-[#00E5FF] text-white shadow-lg'
+                  : `${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`
               }`}
             >
               {period.label}
@@ -413,20 +470,48 @@ const ReferralPage = () => {
           <Button 
             onClick={claimCommission}
             disabled={claiming}
-            className="w-full bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white font-medium py-6"
+            className="w-full bg-gradient-to-r from-[#F0B90B] to-[#FCD535] hover:opacity-90 text-black font-bold py-6 rounded-2xl text-base"
+            style={{ boxShadow: '0 4px 15px rgba(240, 185, 11, 0.4)' }}
           >
-            <Gift size={20} className="mr-2" />
+            <Gift size={24} className="mr-2" />
             {claiming ? "Claiming..." : `Claim $${stats?.total_earnings?.toFixed(2)} USDT`}
           </Button>
         </div>
       )}
 
-      {/* 10 Level Team Structure */}
-      <div className={`${cardBg} mx-4 mt-4 rounded-xl p-4`}>
-        <h3 className={`font-bold mb-4 ${text}`}>10-Level Team Structure</h3>
-        
-        <div className="space-y-2">
-          {stats?.level_stats?.map((level) => (
+      {/* 10 Level Team Structure - Colorful */}
+      <div 
+        className="mx-4 mt-4 rounded-2xl overflow-hidden"
+        style={{
+          background: isDark ? '#1E2329' : '#FFFFFF',
+          border: isDark ? '1.5px solid #F0B90B30' : '1.5px solid #F0B90B50',
+          boxShadow: isDark ? '0 4px 15px rgba(240, 185, 11, 0.1)' : '0 4px 15px rgba(240, 185, 11, 0.15)'
+        }}
+      >
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#F0B90B] to-[#FCD535] flex items-center justify-center">
+              <Crown size={18} className="text-black" />
+            </div>
+            <h3 className={`font-bold ${text}`}>10-Level Team Structure</h3>
+          </div>
+          <div className="space-y-2">
+          {stats?.level_stats?.map((level) => {
+            // Level specific gradient colors
+            const levelGradients = {
+              1: 'linear-gradient(135deg, #00E5FF 0%, #00B4D8 100%)',
+              2: 'linear-gradient(135deg, #0ECB81 0%, #00A86B 100%)',
+              3: 'linear-gradient(135deg, #3498DB 0%, #2980B9 100%)',
+              4: 'linear-gradient(135deg, #9B59B6 0%, #8E44AD 100%)',
+              5: 'linear-gradient(135deg, #E74C3C 0%, #C0392B 100%)',
+              6: 'linear-gradient(135deg, #1ABC9C 0%, #16A085 100%)',
+              7: 'linear-gradient(135deg, #F39C12 0%, #E67E22 100%)',
+              8: 'linear-gradient(135deg, #2ECC71 0%, #27AE60 100%)',
+              9: 'linear-gradient(135deg, #E91E63 0%, #C2185B 100%)',
+              10: 'linear-gradient(135deg, #00BCD4 0%, #0097A7 100%)'
+            };
+            
+            return (
             <div key={level.level}>
               <div 
                 onClick={() => {
@@ -438,49 +523,67 @@ const ReferralPage = () => {
                     setTeam([]);
                   }
                 }}
-                className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
-                  selectedLevel === level.level ? (isDark ? 'bg-[#2B3139]' : 'bg-gray-100') : hoverBg
+                className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all ${
+                  selectedLevel === level.level 
+                    ? 'ring-2 ring-[#00E5FF] ring-offset-2 ring-offset-transparent' 
+                    : ''
                 }`}
+                style={{
+                  background: isDark ? '#181C21' : '#F9FAFB',
+                  border: isDark ? '1px solid #2B3139' : '1px solid #E5E7EB'
+                }}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full ${getLevelColor(level.level)} flex items-center justify-center`}>
+                  <div 
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ background: levelGradients[level.level] }}
+                  >
                     <span className="text-white font-bold text-sm">{level.level}</span>
                   </div>
                   <div>
-                    <p className={text}>Level {level.level}</p>
-                    <p className={`text-xs text-[#0ECB81]`}>0.6%</p>
+                    <p className={`font-medium ${text}`}>Level {level.level}</p>
+                    <p className="text-xs text-[#F0B90B] font-medium">0.6% Commission</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className={text}>{level.count} members</p>
-                    <p className={`text-xs text-[#0ECB81]`}>${level.earnings.toFixed(2)}</p>
+                    <p className={`font-bold ${text}`}>{level.count} <span className={`font-normal text-xs ${textMuted}`}>members</span></p>
+                    <p className="text-xs text-[#0ECB81] font-bold">${level.earnings.toFixed(2)}</p>
                   </div>
-                  <CaretRight 
-                    size={16} 
-                    className={`${textMuted} transition-transform ${selectedLevel === level.level ? 'rotate-90' : ''}`} 
-                  />
+                  <div 
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center transition-transform ${selectedLevel === level.level ? 'rotate-90' : ''}`}
+                    style={{ background: isDark ? '#2B3139' : '#E5E7EB' }}
+                  >
+                    <CaretRight size={14} className={textMuted} />
+                  </div>
                 </div>
               </div>
               
               {/* Expanded Team Members for this level - Sorted by balance (highest first) */}
               {selectedLevel === level.level && team.length > 0 && (
-                <div className={`mt-2 ml-4 space-y-1 border-l-2 ${isDark ? 'border-[#2B3139]' : 'border-gray-200'} pl-3`}>
+                <div className={`mt-2 ml-4 space-y-1.5 border-l-2 pl-3`} style={{ borderColor: isDark ? '#00E5FF50' : '#00E5FF80' }}>
                   {[...team]
                     .sort((a, b) => (b.fund || 0) - (a.fund || 0))
                     .map((member, index) => {
-                    // Full name displayed, email remains masked
                     const fullName = member.name || 'User';
                     
                     return (
                       <div 
                         key={index} 
-                        className={`flex items-center justify-between p-2 rounded-lg ${isDark ? 'bg-[#181C21]' : 'bg-gray-50'} border ${border}`}
+                        className="flex items-center justify-between p-2.5 rounded-xl"
+                        style={{
+                          background: isDark ? '#0B0E11' : '#FFFFFF',
+                          border: isDark ? '1px solid #2B3139' : '1px solid #E5E7EB'
+                        }}
                       >
-                        {/* Serial Number + Avatar + Full Name + Masked Email */}
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <span className={`text-xs font-bold text-[#00E5FF] w-5`}>{index + 1}.</span>
-                          <div className={`w-7 h-7 rounded-full bg-gradient-to-br from-[#00E5FF] to-[#0ECB81] flex items-center justify-center flex-shrink-0`}>
+                          <div 
+                            className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold text-white"
+                            style={{ background: levelGradients[level.level] }}
+                          >
+                            {index + 1}
+                          </div>
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00E5FF] to-[#0ECB81] flex items-center justify-center flex-shrink-0">
                             <span className="text-white font-bold text-xs">{member.name?.charAt(0)?.toUpperCase() || 'U'}</span>
                           </div>
                           <div className="min-w-0">
@@ -489,10 +592,9 @@ const ReferralPage = () => {
                           </div>
                         </div>
                         
-                        {/* Fund - Clear Display */}
                         <div className="text-right flex-shrink-0 ml-2">
                           <p className="text-[#0ECB81] font-bold text-sm">${member.fund?.toFixed(2) || '0.00'}</p>
-                          <p className={`${textMuted} text-xs`}>
+                          <p className={`${textMuted} text-[10px]`}>
                             {new Date(member.joined_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                           </p>
                         </div>
@@ -504,50 +606,81 @@ const ReferralPage = () => {
               
               {/* No members message */}
               {selectedLevel === level.level && team.length === 0 && (
-                <div className={`mt-2 ml-4 p-4 rounded-lg ${isDark ? 'bg-[#181C21]' : 'bg-gray-50'} border ${border} text-center`}>
+                <div 
+                  className="mt-2 ml-4 p-4 rounded-xl text-center"
+                  style={{
+                    background: isDark ? '#0B0E11' : '#F9FAFB',
+                    border: isDark ? '1px solid #2B3139' : '1px solid #E5E7EB'
+                  }}
+                >
                   <Users size={32} className={`mx-auto mb-2 ${textMuted}`} />
                   <p className={textMuted}>No members in Level {level.level}</p>
                 </div>
               )}
             </div>
-          ))}
+          );
+          })}
+          </div>
         </div>
       </div>
 
-      {/* How It Works */}
-      <div className={`${cardBg} mx-4 mt-4 rounded-xl p-4`}>
-        <h3 className={`font-bold mb-4 ${text}`}>How It Works</h3>
+      {/* How It Works - Colorful */}
+      <div 
+        className="mx-4 mt-4 rounded-2xl overflow-hidden"
+        style={{
+          background: isDark ? '#1E2329' : '#FFFFFF',
+          border: isDark ? '1.5px solid #00E5FF30' : '1.5px solid #00E5FF50',
+          boxShadow: isDark ? '0 4px 15px rgba(0, 229, 255, 0.1)' : '0 4px 15px rgba(0, 229, 255, 0.15)'
+        }}
+      >
+        <div className="p-4">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#00E5FF] to-[#0ECB81] flex items-center justify-center">
+              <Star size={18} className="text-white" />
+            </div>
+            <h3 className={`font-bold ${text}`}>How It Works</h3>
+          </div>
         
-        <div className="space-y-4">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#00E5FF] flex items-center justify-center flex-shrink-0">
-              <span className="text-black font-bold">1</span>
+        <div className="space-y-3">
+          <div 
+            className="flex items-start gap-3 p-3 rounded-xl"
+            style={{ background: isDark ? '#00E5FF10' : '#00E5FF08', border: '1px solid #00E5FF30' }}
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00E5FF] to-[#00B4D8] flex items-center justify-center flex-shrink-0">
+              <span className="text-white font-bold">1</span>
             </div>
             <div>
-              <p className={text}>Share your referral link</p>
+              <p className={`font-medium ${text}`}>Share your referral link</p>
               <p className={`text-sm ${textMuted}`}>Send your unique link to friends</p>
             </div>
           </div>
           
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#0ECB81] flex items-center justify-center flex-shrink-0">
+          <div 
+            className="flex items-start gap-3 p-3 rounded-xl"
+            style={{ background: isDark ? '#0ECB8110' : '#0ECB8108', border: '1px solid #0ECB8130' }}
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0ECB81] to-[#00A86B] flex items-center justify-center flex-shrink-0">
               <span className="text-white font-bold">2</span>
             </div>
             <div>
-              <p className={text}>Friends sign up & trade</p>
+              <p className={`font-medium ${text}`}>Friends sign up & trade</p>
               <p className={`text-sm ${textMuted}`}>They join using your code and start trading</p>
             </div>
           </div>
           
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#3498DB] flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-bold">3</span>
+          <div 
+            className="flex items-start gap-3 p-3 rounded-xl"
+            style={{ background: isDark ? '#F0B90B10' : '#F0B90B08', border: '1px solid #F0B90B30' }}
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F0B90B] to-[#FCD535] flex items-center justify-center flex-shrink-0">
+              <span className="text-black font-bold">3</span>
             </div>
             <div>
-              <p className={text}>Earn commissions</p>
+              <p className={`font-medium ${text}`}>Earn commissions</p>
               <p className={`text-sm ${textMuted}`}>Get 0.6% from team trading - 10 levels deep!</p>
             </div>
           </div>
+        </div>
         </div>
       </div>
 
