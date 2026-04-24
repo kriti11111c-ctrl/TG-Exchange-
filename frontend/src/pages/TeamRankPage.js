@@ -394,8 +394,8 @@ const TeamRankPage = () => {
       {/* Content */}
       <div className="px-4">
         {activeTab === "overview" && (
-          <div className={`${cardBg} rounded-xl overflow-hidden`}>
-            {/* Rank List with Progress Bars */}
+          <div className="space-y-4">
+            {/* Rank Cards - KuCoin Style */}
             {allRanks.map((rank) => {
               const isCurrentRank = rankInfo?.current_rank?.level === rank.level;
               const isNextRank = rankInfo?.next_rank?.level === rank.level;
@@ -406,113 +406,162 @@ const TeamRankPage = () => {
               const bronzeProgress = rank.bronze_required > 0 ? Math.min(100, ((rankInfo?.bronze_members || 0) / rank.bronze_required) * 100) : 100;
               const teamProgress = Math.min(100, ((rankInfo?.total_team || 0) / rank.team_required) * 100);
               
+              // Rank specific colors
+              const rankColors = {
+                1: { bg: 'linear-gradient(135deg, #CD7F32 0%, #8B4513 100%)', glow: '#CD7F32' }, // Bronze
+                2: { bg: 'linear-gradient(135deg, #C0C0C0 0%, #808080 100%)', glow: '#C0C0C0' }, // Silver
+                3: { bg: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', glow: '#FFD700' }, // Gold
+                4: { bg: 'linear-gradient(135deg, #E5E4E2 0%, #B4B4B4 100%)', glow: '#E5E4E2' }, // Platinum
+                5: { bg: 'linear-gradient(135deg, #B9F2FF 0%, #00BFFF 100%)', glow: '#00BFFF' }, // Diamond
+                6: { bg: 'linear-gradient(135deg, #9400D3 0%, #4B0082 100%)', glow: '#9400D3' }, // Master
+                7: { bg: 'linear-gradient(135deg, #FF4500 0%, #DC143C 100%)', glow: '#FF4500' }, // Grandmaster
+                8: { bg: 'linear-gradient(135deg, #00FF00 0%, #008000 100%)', glow: '#00FF00' }, // Champion
+                9: { bg: 'linear-gradient(135deg, #FF1493 0%, #C71585 100%)', glow: '#FF1493' }, // Legend
+                10: { bg: 'linear-gradient(135deg, #FFD700 0%, #FF6347 50%, #9400D3 100%)', glow: '#FFD700' } // Immortal
+              };
+              
+              const currentRankColor = rankColors[rank.level] || rankColors[1];
+              
               return (
                 <div 
                   key={rank.level}
-                  className={`p-4 border-b last:border-0 ${isDark ? 'border-[#2B3139]' : 'border-gray-100'} ${
-                    isCurrentRank ? (isDark ? 'bg-[#00E5FF]/10' : 'bg-yellow-50') : ''
-                  }`}
+                  className="rounded-2xl overflow-hidden"
+                  style={{
+                    background: isDark ? '#1A1A1A' : '#FFFFFF',
+                    border: isCurrentRank ? `2px solid ${currentRankColor.glow}` : `1.5px solid ${isDark ? '#333' : '#E0E0E0'}`,
+                    boxShadow: isCurrentRank ? `0 0 20px ${currentRankColor.glow}40` : 'none'
+                  }}
                 >
-                  {/* Top Row - Name, Badge and Requirements */}
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                        style={{ backgroundColor: rank.color }}
-                      >
-                        {rank.level}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className={`font-medium ${text}`}>{rank.name}</span>
-                          {isCurrentRank && (
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-[#0ECB81] text-white font-medium">
-                              YOU
-                            </span>
-                          )}
-                        </div>
-                        <span className={`text-xs ${textMuted}`}>
-                          {rank.bronze_required > 0 ? `${rank.bronze_required} Bronze/` : ''}{rank.team_required}T
-                        </span>
-                      </div>
-                    </div>
+                  {/* Header with Gradient */}
+                  <div 
+                    className="p-4 relative overflow-hidden"
+                    style={{ background: currentRankColor.bg }}
+                  >
+                    {/* Decorative circles */}
+                    <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-20" style={{backgroundColor: 'white'}}></div>
+                    <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full opacity-10" style={{backgroundColor: 'white'}}></div>
                     
-                    <div className="text-right">
-                      <span className="text-xs text-[#0ECB81] font-bold">${rank.monthly_salary}/mo</span>
+                    <div className="flex items-center justify-between relative z-10">
+                      <div className="flex items-center gap-3">
+                        {/* Rank Badge */}
+                        <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white/20 backdrop-blur-sm">
+                          <span className="text-white font-black text-xl">{rank.level}</span>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-white font-bold text-lg">{rank.name}</span>
+                            {isCurrentRank && (
+                              <span className="px-2 py-0.5 rounded-full bg-white/30 text-white text-[10px] font-bold">
+                                YOU
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-white/70 text-xs">
+                            {rank.bronze_required > 0 ? `${rank.bronze_required} Bronze / ` : ''}{rank.team_required} Team
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Monthly Salary Badge */}
+                      <div className="bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-xl">
+                        <p className="text-white/70 text-[10px]">Monthly</p>
+                        <p className="text-white font-bold text-lg">${rank.monthly_salary}</p>
+                      </div>
                     </div>
                   </div>
                   
-                  {/* Reward & Balance Info */}
-                  <div className="flex items-center gap-2 mb-3 text-xs">
-                    <span className="text-[#F0B90B]">Reward: ${rank.one_time_reward || (rank.level === 1 ? 20 : rank.level === 2 ? 100 : rank.level * 80)}</span>
-                    <span className={textMuted}>|</span>
-                    <span className="text-[#F0B90B]">Future Balance: ${rankBalanceReq}</span>
-                  </div>
-                  
-                  {/* 3 Progress Bars */}
-                  <div className="space-y-2">
-                    {/* Progress Bar 1 - Futures Balance (Yellow) */}
-                    <div>
-                      <div className="flex justify-between text-[10px] mb-0.5">
-                        <span className={textMuted}>💰 Futures Balance</span>
-                        <span className="text-[#F0B90B]">${rankInfo?.futures_balance || 0}/${rankBalanceReq}</span>
-                      </div>
-                      <div className={`h-1.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
-                        <div 
-                          className="h-full rounded-full bg-gradient-to-r from-[#F0B90B] to-[#FCD535]"
-                          style={{ width: `${balanceProgress}%` }}
-                        />
-                      </div>
+                  {/* Body */}
+                  <div className="p-4">
+                    {/* Reward & Future Balance Tags */}
+                    <div className="flex gap-2 mb-4">
+                      <span className="px-3 py-1 rounded-full text-xs font-medium" style={{
+                        backgroundColor: isDark ? '#F0B90B20' : '#FFF8E1',
+                        color: '#F0B90B'
+                      }}>
+                        🎁 Reward: ${rank.one_time_reward || (rank.level === 1 ? 20 : rank.level === 2 ? 100 : rank.level * 80)}
+                      </span>
+                      <span className="px-3 py-1 rounded-full text-xs font-medium" style={{
+                        backgroundColor: isDark ? '#F0B90B20' : '#FFF8E1',
+                        color: '#F0B90B'
+                      }}>
+                        💰 Min Balance: ${rankBalanceReq}
+                      </span>
                     </div>
                     
-                    {/* Progress Bar 2 - Bronze Members (Orange) - Only for Silver+ */}
-                    {rank.bronze_required > 0 && (
-                      <div>
-                        <div className="flex justify-between text-[10px] mb-0.5">
-                          <span className={textMuted}>🥉 Bronze Members</span>
-                          <span className="text-[#FF6B35]">{rankInfo?.bronze_members || 0}/{rank.bronze_required}</span>
+                    {/* 3 Progress Bars */}
+                    <div className="space-y-3">
+                      {/* Progress Bar 1 - Futures Balance (Yellow) */}
+                      <div className="p-3 rounded-xl" style={{backgroundColor: isDark ? '#1E1E1E' : '#F9FAFB'}}>
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className={`font-medium ${text}`}>💰 Futures Balance</span>
+                          <span className="text-[#F0B90B] font-bold">${rankInfo?.futures_balance || 0} / ${rankBalanceReq}</span>
                         </div>
-                        <div className={`h-1.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                        <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
                           <div 
-                            className="h-full rounded-full bg-gradient-to-r from-[#FF6B35] to-[#FF9F1C]"
-                            style={{ width: `${bronzeProgress}%` }}
+                            className="h-full rounded-full bg-gradient-to-r from-[#F0B90B] to-[#FCD535] transition-all duration-500"
+                            style={{ width: `${balanceProgress}%` }}
                           />
                         </div>
+                        <p className={`text-[10px] mt-1 ${textMuted}`}>
+                          {balanceProgress >= 100 ? '✅ Completed' : `${(rankBalanceReq - (rankInfo?.futures_balance || 0)).toFixed(0)} more needed`}
+                        </p>
                       </div>
-                    )}
+                      
+                      {/* Progress Bar 2 - Bronze Members (Orange) - Only for Silver+ */}
+                      {rank.bronze_required > 0 && (
+                        <div className="p-3 rounded-xl" style={{backgroundColor: isDark ? '#1E1E1E' : '#F9FAFB'}}>
+                          <div className="flex justify-between text-xs mb-2">
+                            <span className={`font-medium ${text}`}>🥉 Bronze Members</span>
+                            <span className="text-[#FF6B35] font-bold">{rankInfo?.bronze_members || 0} / {rank.bronze_required}</span>
+                          </div>
+                          <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                            <div 
+                              className="h-full rounded-full bg-gradient-to-r from-[#FF6B35] to-[#FF9F1C] transition-all duration-500"
+                              style={{ width: `${bronzeProgress}%` }}
+                            />
+                          </div>
+                          <p className={`text-[10px] mt-1 ${textMuted}`}>
+                            {bronzeProgress >= 100 ? '✅ Completed' : `${rank.bronze_required - (rankInfo?.bronze_members || 0)} more Bronze needed`}
+                          </p>
+                        </div>
+                      )}
+                      
+                      {/* Progress Bar 3 - Team Members (Cyan) */}
+                      <div className="p-3 rounded-xl" style={{backgroundColor: isDark ? '#1E1E1E' : '#F9FAFB'}}>
+                        <div className="flex justify-between text-xs mb-2">
+                          <span className={`font-medium ${text}`}>👥 Team Members</span>
+                          <span className="text-[#00E5FF] font-bold">{rankInfo?.total_team || 0} / {rank.team_required}</span>
+                        </div>
+                        <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                          <div 
+                            className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#00B4D8] transition-all duration-500"
+                            style={{ width: `${teamProgress}%` }}
+                          />
+                        </div>
+                        <p className={`text-[10px] mt-1 ${textMuted}`}>
+                          {teamProgress >= 100 ? '✅ Completed' : `${rank.team_required - (rankInfo?.total_team || 0)} more needed`}
+                        </p>
+                      </div>
+                    </div>
                     
-                    {/* Progress Bar 3 - Team Members (Cyan) */}
-                    <div>
-                      <div className="flex justify-between text-[10px] mb-0.5">
-                        <span className={textMuted}>👥 Team Members</span>
-                        <span className="text-[#00E5FF]">{rankInfo?.total_team || 0}/{rank.team_required}</span>
+                    {/* Bottom Stats Grid */}
+                    <div className="grid grid-cols-4 gap-2 mt-4">
+                      <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#00E5FF15' : '#E0F7FA', border: `1px solid ${isDark ? '#00E5FF30' : '#B2EBF2'}`}}>
+                        <p className="text-[#00E5FF] font-bold text-sm">{rank.bonus_percent || (rank.level * 0.5)}%</p>
+                        <p className={`text-[9px] ${textMuted}`}>Bonus</p>
                       </div>
-                      <div className={`h-1.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
-                        <div 
-                          className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#00B4D8]"
-                          style={{ width: `${teamProgress}%` }}
-                        />
+                      <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#0ECB8115' : '#E8F5E9', border: `1px solid ${isDark ? '#0ECB8130' : '#C8E6C9'}`}}>
+                        <p className="text-[#0ECB81] font-bold text-sm">${rank.monthly_salary}</p>
+                        <p className={`text-[9px] ${textMuted}`}>Monthly</p>
                       </div>
-                    </div>
-                  </div>
-                  
-                  {/* Bottom Stats */}
-                  <div className="flex justify-between mt-3 pt-2 border-t border-dashed" style={{ borderColor: isDark ? '#2B3139' : '#e5e5e5' }}>
-                    <div className="text-center">
-                      <p className="text-[#00E5FF] font-bold text-sm">{rank.bonus_percent || (rank.level * 0.5)}%</p>
-                      <p className={`text-[10px] ${textMuted}`}>Bonus</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[#0ECB81] font-bold text-sm">${rank.monthly_salary}</p>
-                      <p className={`text-[10px] ${textMuted}`}>Monthly</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[#F0B90B] font-bold text-sm">${rank.one_time_reward || (rank.level === 1 ? 20 : rank.level === 2 ? 100 : rank.level * 80)}</p>
-                      <p className={`text-[10px] ${textMuted}`}>Reward</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[#F0B90B] font-bold text-sm">${rankBalanceReq}</p>
-                      <p className={`text-[10px] ${textMuted}`}>Future Bal</p>
+                      <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#F0B90B15' : '#FFF8E1', border: `1px solid ${isDark ? '#F0B90B30' : '#FFECB3'}`}}>
+                        <p className="text-[#F0B90B] font-bold text-sm">${rank.one_time_reward || (rank.level === 1 ? 20 : rank.level === 2 ? 100 : rank.level * 80)}</p>
+                        <p className={`text-[9px] ${textMuted}`}>Reward</p>
+                      </div>
+                      <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#F0B90B15' : '#FFF8E1', border: `1px solid ${isDark ? '#F0B90B30' : '#FFECB3'}`}}>
+                        <p className="text-[#F0B90B] font-bold text-sm">${rankBalanceReq}</p>
+                        <p className={`text-[9px] ${textMuted}`}>Future Bal</p>
+                      </div>
                     </div>
                   </div>
                 </div>
