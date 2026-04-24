@@ -171,7 +171,7 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeIndicator, setActiveIndicator] = useState("none");
-  const [showBollinger, setShowBollinger] = useState(false);
+  const [showBollinger, setShowBollinger] = useState(true);
   
   const timeframes = ["1m", "5m", "15m", "30m", "1h", "4h", "1d"];
   const indicators = [
