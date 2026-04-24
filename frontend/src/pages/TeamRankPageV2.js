@@ -745,8 +745,8 @@ const TeamRankPage = () => {
                       {/* Monthly Salary Badge */}
                       <div className="flex items-center gap-2">
                         <div className="bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-xl text-center">
-                          <p className="text-white/70 text-[10px]">Monthly</p>
                           <p className="text-white font-bold text-lg">${rank.monthly_salary}</p>
+                          <p className="text-white/70 text-[10px]">M Royalty</p>
                         </div>
                         {!isCurrentRank && (
                           <span className={`text-white text-lg transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
