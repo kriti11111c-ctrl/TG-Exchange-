@@ -17,7 +17,7 @@ import time
 
 # MongoDB connection
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
-DB_NAME = os.environ.get("DB_NAME", "tgx_exchange")
+DB_NAME = os.environ.get("DB_NAME", "tgexchange")
 
 client = None
 db = None
