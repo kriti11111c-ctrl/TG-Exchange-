@@ -395,9 +395,16 @@ const TeamRankPage = () => {
       <div className="px-4">
         {activeTab === "overview" && (
           <div className={`${cardBg} rounded-xl overflow-hidden`}>
-            {/* Simple Rank List - With Self Deposit Required */}
+            {/* Rank List with Progress Bars */}
             {allRanks.map((rank) => {
               const isCurrentRank = rankInfo?.current_rank?.level === rank.level;
+              const isNextRank = rankInfo?.next_rank?.level === rank.level;
+              
+              // Calculate progress for this rank
+              const rankBalanceReq = rank.self_deposit_required || (rank.level === 1 ? 50 : rank.level === 2 ? 200 : rank.level === 3 ? 500 : rank.level === 4 ? 1000 : rank.level === 5 ? 2000 : rank.level === 6 ? 5000 : rank.level === 7 ? 10000 : rank.level === 8 ? 15000 : rank.level === 9 ? 30000 : 50000);
+              const balanceProgress = Math.min(100, ((rankInfo?.futures_balance || 0) / rankBalanceReq) * 100);
+              const bronzeProgress = rank.bronze_required > 0 ? Math.min(100, ((rankInfo?.bronze_members || 0) / rank.bronze_required) * 100) : 100;
+              const teamProgress = Math.min(100, ((rankInfo?.total_team || 0) / rank.team_required) * 100);
               
               return (
                 <div 
@@ -406,38 +413,106 @@ const TeamRankPage = () => {
                     isCurrentRank ? (isDark ? 'bg-[#00E5FF]/10' : 'bg-yellow-50') : ''
                   }`}
                 >
-                  {/* Top Row - Name and Requirements */}
-                  <div className="flex items-center justify-between">
+                  {/* Top Row - Name, Badge and Requirements */}
+                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className={`font-medium ${text}`}>{rank.name}</span>
-                      {isCurrentRank && (
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-[#0ECB81] text-white font-medium">
-                          YOU
+                      <div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                        style={{ backgroundColor: rank.color }}
+                      >
+                        {rank.level}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`font-medium ${text}`}>{rank.name}</span>
+                          {isCurrentRank && (
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-[#0ECB81] text-white font-medium">
+                              YOU
+                            </span>
+                          )}
+                        </div>
+                        <span className={`text-xs ${textMuted}`}>
+                          {rank.bronze_required > 0 ? `${rank.bronze_required} Bronze/` : ''}{rank.team_required}T
                         </span>
-                      )}
+                      </div>
                     </div>
                     
-                    {/* Requirements */}
                     <div className="text-right">
-                      <span className={textMuted}>
-                        {rank.bronze_required > 0 ? `${rank.bronze_required}B/` : ''}{rank.team_required}T
-                      </span>
+                      <span className="text-xs text-[#0ECB81] font-bold">${rank.monthly_salary}/mo</span>
                     </div>
                   </div>
                   
-                  {/* Bottom Row - Self Deposit Required & Monthly Salary */}
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-1">
-                      <Wallet size={14} className="text-[#F0B90B]" />
-                      <span className="text-xs text-[#F0B90B] font-medium">
-                        Future Balance: ${rank.self_deposit_required || (rank.level === 1 ? 50 : rank.level === 2 ? 200 : rank.level === 3 ? 500 : rank.level === 4 ? 1000 : rank.level === 5 ? 2000 : rank.level === 6 ? 5000 : rank.level === 7 ? 10000 : rank.level === 8 ? 15000 : rank.level === 9 ? 30000 : 50000)}
-                      </span>
+                  {/* Reward & Balance Info */}
+                  <div className="flex items-center gap-2 mb-3 text-xs">
+                    <span className="text-[#F0B90B]">Reward: ${rank.one_time_reward || (rank.level === 1 ? 20 : rank.level === 2 ? 100 : rank.level * 80)}</span>
+                    <span className={textMuted}>|</span>
+                    <span className="text-[#F0B90B]">Future Balance: ${rankBalanceReq}</span>
+                  </div>
+                  
+                  {/* 3 Progress Bars */}
+                  <div className="space-y-2">
+                    {/* Progress Bar 1 - Futures Balance (Yellow) */}
+                    <div>
+                      <div className="flex justify-between text-[10px] mb-0.5">
+                        <span className={textMuted}>💰 Futures Balance</span>
+                        <span className="text-[#F0B90B]">${rankInfo?.futures_balance || 0}/${rankBalanceReq}</span>
+                      </div>
+                      <div className={`h-1.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                        <div 
+                          className="h-full rounded-full bg-gradient-to-r from-[#F0B90B] to-[#FCD535]"
+                          style={{ width: `${balanceProgress}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Money size={14} className="text-[#0ECB81]" />
-                      <span className="text-xs text-[#0ECB81] font-medium">
-                        ${rank.monthly_salary}/mo
-                      </span>
+                    
+                    {/* Progress Bar 2 - Bronze Members (Orange) - Only for Silver+ */}
+                    {rank.bronze_required > 0 && (
+                      <div>
+                        <div className="flex justify-between text-[10px] mb-0.5">
+                          <span className={textMuted}>🥉 Bronze Members</span>
+                          <span className="text-[#FF6B35]">{rankInfo?.bronze_members || 0}/{rank.bronze_required}</span>
+                        </div>
+                        <div className={`h-1.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                          <div 
+                            className="h-full rounded-full bg-gradient-to-r from-[#FF6B35] to-[#FF9F1C]"
+                            style={{ width: `${bronzeProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Progress Bar 3 - Team Members (Cyan) */}
+                    <div>
+                      <div className="flex justify-between text-[10px] mb-0.5">
+                        <span className={textMuted}>👥 Team Members</span>
+                        <span className="text-[#00E5FF]">{rankInfo?.total_team || 0}/{rank.team_required}</span>
+                      </div>
+                      <div className={`h-1.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                        <div 
+                          className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#00B4D8]"
+                          style={{ width: `${teamProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Bottom Stats */}
+                  <div className="flex justify-between mt-3 pt-2 border-t border-dashed" style={{ borderColor: isDark ? '#2B3139' : '#e5e5e5' }}>
+                    <div className="text-center">
+                      <p className="text-[#00E5FF] font-bold text-sm">{rank.bonus_percent || (rank.level * 0.5)}%</p>
+                      <p className={`text-[10px] ${textMuted}`}>Bonus</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[#0ECB81] font-bold text-sm">${rank.monthly_salary}</p>
+                      <p className={`text-[10px] ${textMuted}`}>Monthly</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[#F0B90B] font-bold text-sm">${rank.one_time_reward || (rank.level === 1 ? 20 : rank.level === 2 ? 100 : rank.level * 80)}</p>
+                      <p className={`text-[10px] ${textMuted}`}>Reward</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[#F0B90B] font-bold text-sm">${rankBalanceReq}</p>
+                      <p className={`text-[10px] ${textMuted}`}>Future Bal</p>
                     </div>
                   </div>
                 </div>
