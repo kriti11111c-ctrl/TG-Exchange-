@@ -349,16 +349,27 @@ const KuCoinHomePage = () => {
                   animation: 'logoGlow 3s ease-in-out infinite reverse'
                 }}
               />
-              {/* TG Coin Logo */}
-              <img 
-                src="/tg-logo.png" 
-                alt="TG Exchange" 
-                className="w-12 h-12 rounded-full relative z-10 object-cover"
+              {/* TG Coin Logo - Zoomed to hide black border */}
+              <div 
+                className="w-12 h-12 rounded-full relative z-10 overflow-hidden"
                 style={{
-                  boxShadow: '0 0 15px rgba(255,215,0,0.7), 0 0 30px rgba(218,165,32,0.5), 0 0 45px rgba(184,134,11,0.3)',
-                  border: '2px solid rgba(255,215,0,0.3)'
+                  boxShadow: '0 0 15px rgba(255,215,0,0.7), 0 0 30px rgba(218,165,32,0.5), 0 0 45px rgba(184,134,11,0.3)'
                 }}
-              />
+              >
+                <img 
+                  src="/tg-logo.png" 
+                  alt="TG Exchange" 
+                  className="absolute"
+                  style={{
+                    width: '260%',
+                    height: '260%',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    objectFit: 'cover'
+                  }}
+                />
+              </div>
             </div>
             <div>
               <h1 className="font-bold text-lg" style={{color: colors.text}}>TG Exchange</h1>
