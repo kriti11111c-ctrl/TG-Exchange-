@@ -463,10 +463,12 @@ const ReferralPage = () => {
                 </div>
               </div>
               
-              {/* Expanded Team Members for this level */}
+              {/* Expanded Team Members for this level - Sorted by balance (highest first) */}
               {selectedLevel === level.level && team.length > 0 && (
                 <div className={`mt-2 ml-4 space-y-1 border-l-2 ${isDark ? 'border-[#2B3139]' : 'border-gray-200'} pl-3`}>
-                  {team.map((member, index) => {
+                  {[...team]
+                    .sort((a, b) => (b.fund || 0) - (a.fund || 0))
+                    .map((member, index) => {
                     // Full name displayed, email remains masked
                     const fullName = member.name || 'User';
                     
