@@ -5521,13 +5521,25 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     
     trade_type = trade_code["trade_type"]
     
-    # Calculate settlement price (slightly different for realism)
-    # For CALL: settlement > open, For PUT: settlement < open
-    price_change_percent = profit_percent / 100 * random.uniform(0.8, 1.2)
+    # Calculate settlement price with VISIBLE difference
+    # For realistic trading display, show meaningful price movement
+    # Price movement should be proportional to profit (roughly 1-2% movement)
+    price_movement_percent = random.uniform(0.8, 1.5)  # 0.8% to 1.5% price change
+    
     if trade_type == "call":
-        settlement_price = open_price * (1 + price_change_percent / 10)
+        # CALL = price goes UP = settlement > open
+        settlement_price = open_price * (1 + price_movement_percent / 100)
     else:
-        settlement_price = open_price * (1 - price_change_percent / 10)
+        # PUT = price goes DOWN = settlement < open  
+        settlement_price = open_price * (1 - price_movement_percent / 100)
+    
+    # Round settlement price appropriately based on coin value
+    if open_price > 1000:
+        settlement_price = round(settlement_price, 2)  # BTC, ETH
+    elif open_price > 1:
+        settlement_price = round(settlement_price, 4)  # SOL, BNB
+    else:
+        settlement_price = round(settlement_price, 6)  # DOGE, SHIB
     
     # Execute trade - add the profit to FUTURES balance (not Spot)
     await db.wallets.update_one(
@@ -5872,16 +5884,35 @@ async def get_futures_history(
         coin = tc.get("coin", "BTC").upper()
         trade_type = tc.get("trade_type", "call").upper()
         
-        # Calculate settlement price (slightly different from open)
+        # Get actual stored prices from transaction or futures_history
         open_price = tc.get("price", 0)
         profit = tc.get("actual_profit", tx.get("profit_usdt", 0) if tx else 0)
         amount = tc.get("actual_trade_amount", tx.get("trade_amount_usdt", 0) if tx else 0)
         
-        # Settlement price calculation
-        if trade_type == "CALL":
-            settlement_price = open_price * 1.001 if profit > 0 else open_price * 0.999
+        # Try to get actual settlement price from futures_history
+        fh = next((f for f in trade_code_history if f.get("trade_code") == tc.get("code")), None)
+        if fh and fh.get("settlement_price", 0) > 0:
+            settlement_price = fh.get("settlement_price")
+            open_price = fh.get("open_price", open_price)
         else:
-            settlement_price = open_price * 0.999 if profit > 0 else open_price * 1.001
+            # Calculate visible settlement price difference (0.8% - 1.5% movement)
+            import random
+            price_change = random.uniform(0.008, 0.015)  # 0.8% to 1.5%
+            if trade_type == "CALL":
+                settlement_price = open_price * (1 + price_change) if profit > 0 else open_price * (1 - price_change)
+            else:
+                settlement_price = open_price * (1 - price_change) if profit > 0 else open_price * (1 + price_change)
+        
+        # Format prices based on value
+        if open_price > 1000:
+            open_price = round(open_price, 2)
+            settlement_price = round(settlement_price, 2)
+        elif open_price > 1:
+            open_price = round(open_price, 4)
+            settlement_price = round(settlement_price, 4)
+        else:
+            open_price = round(open_price, 6)
+            settlement_price = round(settlement_price, 6)
         
         profit_percent = tc.get("profit_percent", tx.get("profit_percent", 60) if tx else 60)
         
