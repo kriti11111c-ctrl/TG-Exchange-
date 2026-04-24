@@ -881,7 +881,7 @@ const TeamRankPage = () => {
                           backgroundColor: isDark ? '#F0B90B20' : '#FFF8E1',
                           color: '#F0B90B'
                         }}>
-                          🎁 Reward: ${rank.one_time_reward || (rank.level === 1 ? 20 : rank.level === 2 ? 100 : rank.level * 80)}
+                          🎁 Reward: ${rank.levelup_reward || rank.one_time_reward || 0}
                         </span>
                         <span className="px-3 py-1 rounded-full text-xs font-medium" style={{
                           backgroundColor: isDark ? '#F0B90B20' : '#FFF8E1',
@@ -950,19 +950,19 @@ const TeamRankPage = () => {
                       {/* Bottom Stats Grid */}
                       <div className="grid grid-cols-4 gap-2 mt-4">
                         <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#00E5FF15' : '#E0F7FA', border: `1px solid ${isDark ? '#00E5FF30' : '#B2EBF2'}`}}>
-                          <p className="text-[#00E5FF] font-bold text-sm">{rank.bonus_percent || (rank.level * 0.5)}%</p>
+                          <p className="text-[#00E5FF] font-bold text-sm">{rank.bonus_percent || 0}%</p>
                           <p className={`text-[9px] ${textMuted}`}>Bonus</p>
                         </div>
                         <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#0ECB8115' : '#E8F5E9', border: `1px solid ${isDark ? '#0ECB8130' : '#C8E6C9'}`}}>
-                          <p className="text-[#0ECB81] font-bold text-sm">${rank.monthly_salary}</p>
+                          <p className="text-[#0ECB81] font-bold text-sm">${rank.monthly_salary || 0}</p>
                           <p className={`text-[9px] ${textMuted}`}>Monthly</p>
                         </div>
                         <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#F0B90B15' : '#FFF8E1', border: `1px solid ${isDark ? '#F0B90B30' : '#FFECB3'}`}}>
-                          <p className="text-[#F0B90B] font-bold text-sm">${rank.one_time_reward || (rank.level === 1 ? 20 : rank.level === 2 ? 100 : rank.level * 80)}</p>
+                          <p className="text-[#F0B90B] font-bold text-sm">${rank.levelup_reward || 0}</p>
                           <p className={`text-[9px] ${textMuted}`}>Reward</p>
                         </div>
                         <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#F0B90B15' : '#FFF8E1', border: `1px solid ${isDark ? '#F0B90B30' : '#FFECB3'}`}}>
-                          <p className="text-[#F0B90B] font-bold text-sm">${rankBalanceReq}</p>
+                          <p className="text-[#F0B90B] font-bold text-sm">${rank.self_deposit_required || rankBalanceReq}</p>
                           <p className={`text-[9px] ${textMuted}`}>Future Bal</p>
                         </div>
                       </div>

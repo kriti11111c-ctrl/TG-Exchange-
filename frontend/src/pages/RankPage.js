@@ -175,7 +175,7 @@ const RankPage = () => {
 
   const fetchAllRanks = async () => {
     try {
-      const response = await axios.get(`${API}/rank/all-levels`, { withCredentials: true });
+      const response = await axios.get(`${API}/team-rank/all-levels`, { withCredentials: true });
       setAllRanks(response.data.ranks || []);
     } catch (error) {
       console.error("Error fetching ranks:", error);
@@ -403,7 +403,12 @@ const RankPage = () => {
               const isLocked = rank.level > (rankInfo?.rank?.level || 0);
               const isSelected = selectedRank === rank.level;
               const progress = calculateProgressToRank(rank.level);
-              const benefits = rankBenefits[rank.level];
+              // Use API data directly for benefits
+              const benefits = {
+                bonus: rank.bonus_percent || rankBenefits[rank.level]?.bonus || 0,
+                salary: rank.monthly_salary || rankBenefits[rank.level]?.salary || 0,
+                reward: rank.levelup_reward || rankBenefits[rank.level]?.reward || 0
+              };
               const requirements = rankRequirements[rank.level];
               
               return (
@@ -463,11 +468,11 @@ const RankPage = () => {
                         </p>
                         {/* One-time Reward */}
                         <p className="text-xs text-[#0ECB81] font-semibold">
-                          Reward: ${rankBenefits[rank.level]?.reward || 0}
+                          Reward: ${rank.levelup_reward || rankBenefits[rank.level]?.reward || 0}
                         </p>
                         {/* Future Balance Required */}
                         <p className="text-xs text-[#F0B90B] font-semibold">
-                          Future Balance: ${selfDepositRequired[rank.level] || 50}
+                          Future Balance: ${rank.self_deposit_required || selfDepositRequired[rank.level] || 50}
                         </p>
                       </div>
                     </div>
@@ -607,7 +612,7 @@ const RankPage = () => {
                               border: '1px solid rgba(240, 185, 11, 0.3)'
                             }}
                           >
-                            <p className="text-[#F0B90B] text-lg font-bold">${selfDepositRequired[rank.level] >= 1000 ? (selfDepositRequired[rank.level]/1000) + 'K' : selfDepositRequired[rank.level]}</p>
+                            <p className="text-[#F0B90B] text-lg font-bold">${(rank.self_deposit_required || selfDepositRequired[rank.level]) >= 1000 ? ((rank.self_deposit_required || selfDepositRequired[rank.level])/1000) + 'K' : (rank.self_deposit_required || selfDepositRequired[rank.level])}</p>
                             <p className={`text-[10px] ${textMuted} mt-1`}>Future Bal</p>
                           </div>
                         </div>
