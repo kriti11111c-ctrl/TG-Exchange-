@@ -425,33 +425,33 @@ const WalletPage = () => {
         </div>
       </div>
 
-      {/* Action Buttons - Deposit, Withdraw, Transfer, History */}
+      {/* Action Buttons - Deposit, Withdraw, Transfer, History - COLORFUL */}
       <div className={`px-4 pb-6 ${cardBg}`}>
         <div className="flex justify-around">
-          {/* Deposit - Link to DepositPage */}
+          {/* Deposit - Gradient Green */}
           <Link to="/deposit" className="flex flex-col items-center gap-2 group">
-            <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:bg-[#00E5FF]/20 group-active:scale-95`}>
-              <ArrowDown size={24} className={`${text} transition-transform duration-300 group-hover:scale-110`} />
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#0ECB81] to-[#0ECB81]/70 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-[#0ECB81]/30 group-active:scale-95">
+              <ArrowDown size={24} className="text-white" weight="bold" />
             </div>
-            <span className={`${text} text-sm transition-colors duration-200 group-hover:text-[#00E5FF]`}>Deposit</span>
+            <span className={`text-sm font-medium transition-colors duration-200 group-hover:text-[#0ECB81] ${text}`}>Deposit</span>
           </Link>
 
-          {/* Withdraw - Link to WithdrawPage */}
+          {/* Withdraw - Gradient Orange/Red */}
           <Link to="/withdraw" className="flex flex-col items-center gap-2 group">
-            <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:bg-[#00E5FF]/20 group-active:scale-95`}>
-              <ArrowUp size={24} className={`${text} transition-transform duration-300 group-hover:scale-110`} />
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#F6465D] to-[#F6465D]/70 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-[#F6465D]/30 group-active:scale-95">
+              <ArrowUp size={24} className="text-white" weight="bold" />
             </div>
-            <span className={`${text} text-sm transition-colors duration-200 group-hover:text-[#00E5FF]`}>Withdraw</span>
+            <span className={`text-sm font-medium transition-colors duration-200 group-hover:text-[#F6465D] ${text}`}>Withdraw</span>
           </Link>
 
-          {/* Transfer */}
+          {/* Transfer - Gradient Blue */}
           <Dialog open={transferOpen} onOpenChange={setTransferOpen}>
             <DialogTrigger asChild>
               <button className="flex flex-col items-center gap-2 group" data-testid="transfer-btn">
-                <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:bg-[#00E5FF]/20 group-active:scale-95`}>
-                  <ArrowsDownUp size={24} className={`${text} transition-transform duration-300 group-hover:scale-110`} />
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#3B82F6]/70 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-[#3B82F6]/30 group-active:scale-95">
+                  <ArrowsDownUp size={24} className="text-white" weight="bold" />
                 </div>
-                <span className={`${text} text-sm transition-colors duration-200 group-hover:text-[#00E5FF]`}>Transfer</span>
+                <span className={`text-sm font-medium transition-colors duration-200 group-hover:text-[#3B82F6] ${text}`}>Transfer</span>
               </button>
             </DialogTrigger>
             <DialogContent className={`${dialogBg} ${border} max-w-sm max-h-[90vh] overflow-y-auto`}>
@@ -579,27 +579,27 @@ const WalletPage = () => {
             </DialogContent>
           </Dialog>
 
-          {/* History */}
-          <button onClick={() => navigate('/transactions')} className="flex flex-col items-center gap-2">
-            <div className={`w-14 h-14 rounded-full ${actionBtnBg} flex items-center justify-center ${actionBtnHover} transition-colors`}>
-              <ClockCounterClockwise size={24} className={text} />
+          {/* History - Gradient Purple */}
+          <button onClick={() => navigate('/transactions')} className="flex flex-col items-center gap-2 group">
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#A855F7] to-[#A855F7]/70 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-[#A855F7]/30 group-active:scale-95">
+              <ClockCounterClockwise size={24} className="text-white" weight="bold" />
             </div>
-            <span className={`${text} text-sm`}>History</span>
+            <span className={`text-sm font-medium transition-colors duration-200 group-hover:text-[#A855F7] ${text}`}>History</span>
           </button>
         </div>
       </div>
 
-      {/* Account Section - Spot & Futures Balances */}
+      {/* Account Section - Spot & Futures Balances - COLORFUL */}
       <div className={`px-4 pb-4 ${cardBg}`}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <span className={`${text} font-medium`}>Account</span>
+            <span className={`${text} font-semibold text-base`}>Account</span>
             <Info size={14} className={textMuted} />
           </div>
           <CaretDown size={16} className={textMuted} />
         </div>
         
-        {/* Progress Bar - Shows Spot vs Futures ratio */}
+        {/* Progress Bar - Colorful gradient */}
         {(() => {
           const spotBalance = wallet?.balances?.usdt || 0;
           const futuresBalance = wallet?.futures_balance || 0;
@@ -609,41 +609,53 @@ const WalletPage = () => {
           
           return (
             <>
-              <div className={`h-2 ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} rounded-full overflow-hidden mb-4 flex`}>
+              <div className={`h-2.5 ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} rounded-full overflow-hidden mb-4 flex shadow-inner`}>
                 {spotPercent > 0 && (
-                  <div className="h-full bg-[#3B82F6]" style={{ width: `${spotPercent}%` }} />
+                  <div className="h-full bg-gradient-to-r from-[#3B82F6] to-[#60A5FA] transition-all duration-500" style={{ width: `${spotPercent}%` }} />
                 )}
                 {futuresPercent > 0 && (
-                  <div className="h-full bg-[#10B981]" style={{ width: `${futuresPercent}%` }} />
+                  <div className="h-full bg-gradient-to-r from-[#10B981] to-[#34D399] transition-all duration-500" style={{ width: `${futuresPercent}%` }} />
                 )}
               </div>
               
-              {/* Spot & Futures Accounts */}
-              <div className="space-y-3">
-                {/* Spot Account */}
-                <div className="flex items-center justify-between py-2">
+              {/* Spot & Futures Accounts - Card style */}
+              <div className="space-y-2">
+                {/* Spot Account Card */}
+                <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-[#1E2329]/50' : 'bg-blue-50'} border ${isDark ? 'border-[#3B82F6]/20' : 'border-blue-200'} transition-all hover:border-[#3B82F6]/50`}>
                   <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-[#3B82F6]" />
-                    <span className={text}>Spot</span>
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#60A5FA] flex items-center justify-center shadow-md">
+                      <WalletIcon size={20} className="text-white" weight="fill" />
+                    </div>
+                    <div>
+                      <span className={`${text} font-semibold`}>Spot</span>
+                      <p className={`text-xs ${textMuted}`}>Trading Account</p>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <p className={`${text} font-mono`}>${showBalance ? spotBalance.toFixed(2) : '****'}</p>
-                    <p className={`text-xs ${textMuted}`}>{spotPercent.toFixed(2)}%</p>
+                    <p className={`${text} font-bold font-mono text-lg`}>${showBalance ? spotBalance.toFixed(2) : '****'}</p>
+                    <p className={`text-xs text-[#3B82F6] font-medium`}>{spotPercent.toFixed(1)}%</p>
                   </div>
                 </div>
                 
-                {/* Futures Account */}
-                <div className="flex items-center justify-between py-2">
+                {/* Futures Account Card */}
+                <div className={`flex items-center justify-between p-3 rounded-xl ${isDark ? 'bg-[#1E2329]/50' : 'bg-emerald-50'} border ${isDark ? 'border-[#10B981]/20' : 'border-emerald-200'} transition-all hover:border-[#10B981]/50`}>
                   <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-[#10B981]" />
-                    <span className={text}>Futures</span>
-                    {wallet?.welcome_bonus && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#00E5FF]/20 text-[#00E5FF]">Bonus</span>
-                    )}
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#10B981] to-[#34D399] flex items-center justify-center shadow-md">
+                      <ChartLineUp size={20} className="text-white" weight="fill" />
+                    </div>
+                    <div>
+                      <span className={`${text} font-semibold`}>Futures</span>
+                      <div className="flex items-center gap-1">
+                        <p className={`text-xs ${textMuted}`}>Derivatives</p>
+                        {wallet?.welcome_bonus && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-gradient-to-r from-[#00E5FF] to-[#00E5FF]/70 text-black font-bold">BONUS</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <p className={`${text} font-mono`}>${showBalance ? futuresBalance.toFixed(2) : '****'}</p>
-                    <p className={`text-xs ${textMuted}`}>{futuresPercent.toFixed(2)}%</p>
+                    <p className={`${text} font-bold font-mono text-lg`}>${showBalance ? futuresBalance.toFixed(2) : '****'}</p>
+                    <p className={`text-xs text-[#10B981] font-medium`}>{futuresPercent.toFixed(1)}%</p>
                   </div>
                 </div>
               </div>
@@ -655,11 +667,13 @@ const WalletPage = () => {
       {/* Divider */}
       <div className={`h-2 ${dividerBg}`} />
 
-      {/* Crypto Assets Section */}
+      {/* Crypto Assets Section - COLORFUL */}
       <div className={`px-4 py-4`}>
         <div className="flex items-center justify-between mb-4">
-          <span className={`${text} font-medium text-lg`}>My Assets</span>
-          <MagnifyingGlass size={20} className={textMuted} />
+          <span className={`${text} font-semibold text-lg`}>My Assets</span>
+          <div className={`p-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'} hover:bg-[#00E5FF]/20 transition-colors cursor-pointer`}>
+            <MagnifyingGlass size={18} className={textMuted} />
+          </div>
         </div>
         
         {/* Search */}
@@ -669,47 +683,55 @@ const WalletPage = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search coins"
-            className={`pl-9 ${inputBg} ${border} ${text}`}
+            className={`pl-9 ${inputBg} ${border} ${text} focus:border-[#00E5FF] transition-colors`}
           />
         </div>
         
-        {/* Simple Crypto List - Like Markets */}
-        <div className={`${cardBg} rounded-xl border ${border} overflow-hidden`}>
+        {/* Crypto List - Colorful Cards */}
+        <div className="space-y-2">
           {filteredCoins.map((coin, index) => {
             const balance = wallet?.balances?.[coin.id] || 0;
             const value = getCoinValue(coin.id, balance);
+            const price = getCoinPrice(coin.id);
             
             return (
               <div 
                 key={coin.id}
-                className={`flex items-center justify-between p-4 ${index !== filteredCoins.length - 1 ? `border-b ${border}` : ''} cursor-pointer hover:bg-[#00E5FF]/5 transition-colors`}
+                className={`flex items-center justify-between p-4 rounded-xl ${isDark ? 'bg-[#1E2329]/60' : 'bg-white'} border ${border} cursor-pointer transition-all duration-200 hover:border-[${coin.color}]/50 hover:shadow-md hover:scale-[1.01] active:scale-[0.99]`}
                 onClick={() => navigate(`/trade?coin=${coin.id}`)}
+                style={{ '--hover-color': coin.color }}
               >
                 {/* Left: Logo + Name */}
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center bg-white/10">
+                  <div 
+                    className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center shadow-md"
+                    style={{ background: `linear-gradient(135deg, ${coin.color}20, ${coin.color}40)` }}
+                  >
                     <img 
                       src={coin.logo} 
                       alt={coin.symbol}
                       className="w-8 h-8 object-contain"
                       onError={(e) => {
                         e.target.style.display = 'none';
-                        e.target.parentElement.innerHTML = `<span class="text-white font-bold">${coin.symbol.charAt(0)}</span>`;
+                        e.target.parentElement.innerHTML = `<span class="text-white font-bold text-lg">${coin.symbol.charAt(0)}</span>`;
                       }}
                     />
                   </div>
                   <div>
-                    <span className={`${text} font-semibold`}>{coin.symbol}</span>
+                    <div className="flex items-center gap-2">
+                      <span className={`${text} font-bold`}>{coin.symbol}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#0ECB81]/20 text-[#0ECB81] font-medium">{coin.apy}% APY</span>
+                    </div>
                     <p className={`${textMuted} text-xs`}>{coin.name}</p>
                   </div>
                 </div>
                 
-                {/* Right: Quantity */}
+                {/* Right: Balance & Value */}
                 <div className="text-right">
-                  <p className={`${text} font-mono font-semibold`}>
-                    {showBalance ? balance.toFixed(balance < 1 ? 4 : 2) : '****'} {coin.symbol}
+                  <p className={`${text} font-mono font-bold`}>
+                    {showBalance ? balance.toFixed(balance < 1 ? 6 : 4) : '****'}
                   </p>
-                  <p className={`${textMuted} text-xs`}>
+                  <p className={`text-xs font-medium`} style={{ color: coin.color }}>
                     ≈ ${showBalance ? value.toFixed(2) : '****'}
                   </p>
                 </div>
