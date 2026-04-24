@@ -130,6 +130,26 @@ const TeamRankPage = () => {
         </button>
       </div>
 
+      {/* Demotion Warning */}
+      {rankInfo?.demotion_message && (
+        <div className="px-4 mb-2">
+          <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/50">
+            <p className="text-red-400 text-sm font-medium">⚠️ Rank Demoted!</p>
+            <p className="text-red-300 text-xs mt-1">{rankInfo.demotion_message}</p>
+          </div>
+        </div>
+      )}
+      
+      {/* Salary Paused Warning */}
+      {rankInfo?.salary_paused && (
+        <div className="px-4 mb-2">
+          <div className="p-3 rounded-xl bg-yellow-500/20 border border-yellow-500/50">
+            <p className="text-yellow-400 text-sm font-medium">⏸️ Salary Paused</p>
+            <p className="text-yellow-300 text-xs mt-1">Your salary is paused due to rank demotion. Restore your rank to resume earning.</p>
+          </div>
+        </div>
+      )}
+
       {/* Current Rank Card */}
       <div className="px-4 py-4">
         <div 
@@ -166,8 +186,9 @@ const TeamRankPage = () => {
               {/* Monthly Salary Badge */}
               {rankInfo?.current_rank && (
                 <div className="text-right">
-                  <p className={`text-xs ${textMuted}`}>Monthly Salary</p>
-                  <p className="text-[#0ECB81] font-bold text-xl">${rankInfo.current_rank.monthly_salary}</p>
+                  <p className={`text-xs ${textMuted}`}>Daily Salary</p>
+                  <p className="text-[#0ECB81] font-bold text-xl">${rankInfo.daily_salary || (rankInfo.current_rank.monthly_salary / 30).toFixed(2)}/day</p>
+                  <p className={`text-[10px] ${textMuted}`}>(${rankInfo.current_rank.monthly_salary}/month)</p>
                 </div>
               )}
             </div>

@@ -403,11 +403,14 @@ TEAM_RANKS = [
 ]
 
 async def get_team_stats(user_id: str) -> dict:
-    """Get user's team statistics - counts users with $50+ FRESH DEPOSIT in Futures
-    Welcome bonus doesn't count, only real deposits that user transferred to Futures.
-    Optimized with MongoDB aggregation to avoid N+1 queries"""
+    """Get user's team statistics - counts users with $50+ FUTURES BALANCE
     
-    # Get direct referrals count with balance check using aggregation
+    NEW LOGIC: Directly check futures_balance >= 50
+    If user transfers from Futures to Spot, their futures_balance drops and they won't count anymore.
+    This enables rank demotion when team members move money out of futures.
+    """
+    
+    # Get direct referrals count with FUTURES BALANCE check using aggregation
     direct_pipeline = [
         {"$match": {"referrer_id": user_id, "level": 1}},
         {"$lookup": {
@@ -425,32 +428,18 @@ async def get_team_stats(user_id: str) -> dict:
         {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
         {"$unwind": {"path": "$user", "preserveNullAndEmptyArrays": True}},
         {"$addFields": {
-            # Calculate fresh deposit = futures_balance - welcome_bonus
-            # But if negative, use 0. Also check total_deposited field if available
+            # Direct futures balance check - if user transfers to spot, this drops
             "futures_balance": {"$ifNull": ["$wallet.futures_balance", 0]},
-            "welcome_bonus": {"$ifNull": ["$wallet.welcome_bonus", 0]},
-            "total_deposited": {"$ifNull": ["$wallet.total_deposited", 0]},
-            # Fresh deposit: Use total_deposited if > 0, otherwise calculate (futures - welcome)
-            "fresh_deposit": {"$max": [
-                0,
-                {"$cond": {
-                    "if": {"$gt": [{"$ifNull": ["$wallet.total_deposited", 0]}, 0]},
-                    "then": {"$ifNull": ["$wallet.total_deposited", 0]},
-                    "else": {"$subtract": [
-                        {"$ifNull": ["$wallet.futures_balance", 0]},
-                        {"$ifNull": ["$wallet.welcome_bonus", 0]}
-                    ]}
-                }}
-            ]},
             "rank_level": {"$ifNull": ["$user.team_rank_level", 0]}
         }},
         {"$group": {
             "_id": None,
             "total_direct": {"$sum": 1},
-            "valid_direct": {"$sum": {"$cond": [{"$gte": ["$fresh_deposit", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}},
+            # Count only those with futures_balance >= $50
+            "valid_direct": {"$sum": {"$cond": [{"$gte": ["$futures_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}},
             "bronze_members": {"$sum": {"$cond": [
                 {"$and": [
-                    {"$gte": ["$fresh_deposit", MIN_DEPOSIT_FOR_RANK]},
+                    {"$gte": ["$futures_balance", MIN_DEPOSIT_FOR_RANK]},
                     {"$gte": ["$rank_level", 1]}
                 ]}, 1, 0
             ]}}
@@ -460,7 +449,7 @@ async def get_team_stats(user_id: str) -> dict:
     direct_result = await db.referrals.aggregate(direct_pipeline).to_list(length=1)
     direct_stats = direct_result[0] if direct_result else {"total_direct": 0, "valid_direct": 0, "bronze_members": 0}
     
-    # Get all team count with balance check
+    # Get all team count with FUTURES BALANCE check
     team_pipeline = [
         {"$match": {"referrer_id": user_id}},
         {"$lookup": {
@@ -471,23 +460,14 @@ async def get_team_stats(user_id: str) -> dict:
         }},
         {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
         {"$addFields": {
-            # Fresh deposit: Use total_deposited if > 0, otherwise calculate (futures - welcome)
-            "fresh_deposit": {"$max": [
-                0,
-                {"$cond": {
-                    "if": {"$gt": [{"$ifNull": ["$wallet.total_deposited", 0]}, 0]},
-                    "then": {"$ifNull": ["$wallet.total_deposited", 0]},
-                    "else": {"$subtract": [
-                        {"$ifNull": ["$wallet.futures_balance", 0]},
-                        {"$ifNull": ["$wallet.welcome_bonus", 0]}
-                    ]}
-                }}
-            ]}
+            # Direct futures balance check
+            "futures_balance": {"$ifNull": ["$wallet.futures_balance", 0]}
         }},
         {"$group": {
             "_id": None,
             "total_team": {"$sum": 1},
-            "valid_team": {"$sum": {"$cond": [{"$gte": ["$fresh_deposit", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}}
+            # Count only those with futures_balance >= $50
+            "valid_team": {"$sum": {"$cond": [{"$gte": ["$futures_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}}
         }}
     ]
     
@@ -2555,43 +2535,49 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         now = datetime.now(timezone.utc)
         
         # Get user's saved data FIRST
-        user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0, "team_rank_level": 1, "claimed_rank_rewards": 1})
+        user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0, "team_rank_level": 1, "claimed_rank_rewards": 1, "salary_cycle_start": 1, "salary_paused": 1})
         saved_rank_level = user_doc.get("team_rank_level", 0) if user_doc else 0
         claimed_rewards = user_doc.get("claimed_rank_rewards", []) if user_doc else []
         
-        # Get team stats
+        # Get team stats first
         team_stats = await get_team_stats(user_id)
         
-        # Get team rank based on current stats
+        # Get team rank based on CURRENT stats (actual qualifications)
         rank_info = get_team_rank(
             team_stats["direct_referrals"], 
             team_stats["bronze_members"],
             team_stats["total_team"]
         )
         
-        # FORCE: If user has saved rank in database, ALWAYS use it
-        if saved_rank_level > 0:
-            for rank in TEAM_RANKS:
-                if rank["level"] == saved_rank_level:
-                    rank_info["current_rank"] = rank
-                    break
+        # Get the QUALIFIED rank level (what user actually qualifies for right now)
+        qualified_level = rank_info["current_rank"]["level"] if rank_info["current_rank"] else 0
         
-        # Current rank level
-        current_level = rank_info["current_rank"]["level"] if rank_info["current_rank"] else 0
+        # Current rank level starts as qualified level
+        current_level = qualified_level
         
         levelup_reward = 0
         demotion_message = None
         
-        # Check for demotion (current qualifications less than saved rank)
-        if current_level < saved_rank_level:
-            # User got demoted!
-            demotion_message = f"Rank demoted from level {saved_rank_level} to {current_level} due to team members below $50 balance"
+        # Check for demotion (saved rank > what user currently qualifies for)
+        if saved_rank_level > qualified_level:
+            # User got demoted! Rank breaks when team members' futures balance drops below $50
+            demotion_message = f"⚠️ Rank demoted! Some team members have less than $50 in Futures Balance. Your rank dropped from Level {saved_rank_level} to Level {qualified_level}."
             
-            # Update saved rank level to current (demoted)
+            # Update saved rank level to qualified (demoted) and STOP salary accumulation
             await db.users.update_one(
                 {"user_id": user_id},
-                {"$set": {"team_rank_level": current_level}}
+                {
+                    "$set": {
+                        "team_rank_level": qualified_level,
+                        "rank_demoted_at": now.isoformat(),
+                        "salary_paused": True  # Pause salary until rank is restored
+                    },
+                    "$unset": {"salary_cycle_start": ""}  # Reset salary cycle
+                }
             )
+            
+            # Update current_level to the demoted level
+            current_level = qualified_level
         
         # Check for level up (only give rewards for NEW levels not claimed before)
         elif current_level > saved_rank_level:
@@ -2603,9 +2589,15 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
                         levelup_reward += rank["levelup_reward"]
                         claimed_rewards.append(rank["level"])
             
-            # Start salary cycle when user first achieves a rank
-            salary_update = {"team_rank_level": current_level}
-            if not user_doc.get("salary_cycle_start"):
+            # Start/Restart salary cycle when user achieves or regains a rank
+            salary_update = {
+                "team_rank_level": current_level,
+                "salary_paused": False,  # Resume salary
+                "rank_restored_at": now.isoformat() if saved_rank_level > 0 else None  # Mark restoration if coming back from demotion
+            }
+            
+            # Only start NEW salary cycle if this is first time or was paused
+            if not user_doc.get("salary_cycle_start") or user_doc.get("salary_paused"):
                 salary_update["salary_cycle_start"] = now.isoformat()
             
             # Update user's rank level and claimed rewards
@@ -2750,8 +2742,10 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
             "bonus_percent": bonus_percent,
             "bonus_income": bonus_income,
             "monthly_salary": monthly_salary,
+            "daily_salary": round(monthly_salary / 30, 2) if monthly_salary > 0 else 0,  # Daily salary rate
             "levelup_reward_received": levelup_reward if levelup_reward > 0 else None,
             "demotion_message": demotion_message,
+            "salary_paused": user_doc.get("salary_paused", False) if user_doc else False,  # Is salary paused due to demotion
             # Salary info
             "accumulated_salary": accumulated_salary,
             "days_in_cycle": days_in_cycle,
