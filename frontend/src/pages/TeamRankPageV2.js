@@ -47,25 +47,31 @@ const TeamRankPage = () => {
 
   const fetchData = async () => {
     try {
-      const [rankRes, levelsRes, historyRes] = await Promise.all([
-        axios.get(`${API}/team-rank/info`, { withCredentials: true }),
-        axios.get(`${API}/team-rank/all-levels`, { withCredentials: true }),
-        axios.get(`${API}/team-rank/salary-history`, { withCredentials: true })
-      ]);
-      
-      // Debug: Log the actual response
-      console.log("RANK API RESPONSE:", JSON.stringify(rankRes.data));
-      
-      setRankInfo(rankRes.data);
+      // Fetch all-levels first (public endpoint - no auth required)
+      const levelsRes = await axios.get(`${API}/team-rank/all-levels`);
+      console.log("ALL LEVELS RESPONSE:", levelsRes.data);
       setAllRanks(levelsRes.data.ranks || []);
-      setSalaryHistory(historyRes.data.salaries || []);
       
-      // Show levelup reward notification
-      if (rankRes.data.levelup_reward_received) {
-        toast.success(`🎉 Congratulations! You received $${rankRes.data.levelup_reward_received} level-up reward!`);
+      // Fetch user-specific data (requires auth)
+      try {
+        const [rankRes, historyRes] = await Promise.all([
+          axios.get(`${API}/team-rank/info`, { withCredentials: true }),
+          axios.get(`${API}/team-rank/salary-history`, { withCredentials: true })
+        ]);
+        
+        console.log("RANK API RESPONSE:", JSON.stringify(rankRes.data));
+        setRankInfo(rankRes.data);
+        setSalaryHistory(historyRes.data.salaries || []);
+        
+        // Show levelup reward notification
+        if (rankRes.data.levelup_reward_received) {
+          toast.success(`🎉 Congratulations! You received $${rankRes.data.levelup_reward_received} level-up reward!`);
+        }
+      } catch (authError) {
+        console.log("Auth-specific data fetch failed (user may not be logged in):", authError.message);
       }
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching ranks data:", error);
     } finally {
       setLoading(false);
     }
