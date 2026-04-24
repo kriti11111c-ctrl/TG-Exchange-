@@ -315,122 +315,131 @@ const KuCoinHomePage = () => {
                 )}
               </button>
               
-              {/* Notification Dropdown - VPS Style */}
+              {/* Notification Dropdown - VPS Style - CENTERED */}
               {showNotifications && (
-                <div className="absolute right-0 top-12 w-80 rounded-2xl shadow-2xl z-50 overflow-hidden" style={{background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)', border: '1.5px solid #2a2a4a'}}>
-                  <div className="p-3 flex items-center justify-between" style={{borderBottom: '1px solid #2a2a4a'}}>
-                    <div className="flex items-center gap-2">
-                      <Bell size={18} className="text-[#00E5FF]" weight="fill" />
-                      <span className="font-bold text-white">Trade Codes</span>
-                    </div>
-                    <button onClick={() => setShowNotifications(false)}>
-                      <span className="text-gray-400 hover:text-white">✕</span>
-                    </button>
-                  </div>
+                <div className="fixed inset-0 z-50 flex items-start justify-center pt-20" onClick={() => setShowNotifications(false)}>
+                  {/* Backdrop */}
+                  <div className="absolute inset-0 bg-black/40" />
                   
-                  <div className="max-h-96 overflow-y-auto">
-                    {/* Schedule Info Box - Always show */}
-                    <div className="mx-3 mt-3 p-3 rounded-xl" style={{backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid #2a2a4a'}}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-[10px] mb-1 text-gray-400">
-                            {isCodeActive ? "⏰ Code Active Until" : "⏳ Next Code At"}
-                          </p>
-                          <p className="text-sm font-bold" style={{color: isCodeActive ? '#00C853' : '#FFD700'}}>
-                            {nextCodeTime || "Loading..."} IST
-                          </p>
-                        </div>
-                        {scheduleCountdown && (
-                          <div className="text-right">
-                            <p className="text-[10px] mb-1 text-gray-400">
-                              {isCodeActive ? "Expires In" : "Countdown"}
-                            </p>
-                            <p className="text-lg font-mono font-bold" style={{color: isCodeActive ? '#00C853' : '#FFD700'}}>
-                              {scheduleCountdown}
-                            </p>
-                          </div>
-                        )}
+                  {/* Popup - Centered */}
+                  <div className="relative w-80 rounded-2xl shadow-2xl overflow-hidden mx-4" style={{background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)', border: '1.5px solid #2a2a4a'}} onClick={(e) => e.stopPropagation()}>
+                    <div className="p-3 flex items-center justify-between" style={{borderBottom: '1px solid #2a2a4a'}}>
+                      <div className="flex items-center gap-2">
+                        <Bell size={18} className="text-[#00E5FF]" weight="fill" />
+                        <span className="font-bold text-white">Trade Codes</span>
                       </div>
-                      <div className="mt-2 pt-2" style={{borderTop: '1px dashed #3a3a5a'}}>
-                        <p className="text-[10px] text-center text-gray-400">
-                          📅 Daily Codes: <span className="text-yellow-400">10:45 AM</span> & <span className="text-yellow-400">8:30 PM</span> IST (Valid for 1 hour)
-                        </p>
-                      </div>
+                      <button onClick={() => setShowNotifications(false)}>
+                        <span className="text-gray-400 hover:text-white">✕</span>
+                      </button>
                     </div>
                     
-                    {activeOrScheduledCodes.length === 0 ? (
-                      <div className="p-6 text-center">
-                        <Bell size={40} className="text-gray-600 mx-auto mb-2" />
-                        <p className="text-gray-400">No active codes</p>
-                        <p className="text-[10px] text-gray-500 mt-1">Codes will appear at scheduled times</p>
-                      </div>
-                    ) : (
-                      activeOrScheduledCodes.map((code, idx) => {
-                        const isUsed = code.status === "used";
-                        const isExpired = code.is_expired;
-                        const isLive = code.is_live && !isUsed && !isExpired;
-                        const remaining = countdowns[`${code.code}_remaining`] || code.time_remaining;
-                        
-                        return (
-                          <div key={idx} className="mx-3 my-2 rounded-xl overflow-hidden" style={{backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid #2a2a4a'}}>
-                            {/* Status Banner */}
-                            <div className={`px-3 py-2 flex items-center gap-2 ${
-                              isLive ? 'bg-gradient-to-r from-green-600 to-green-500' : 
-                              isUsed ? 'bg-gradient-to-r from-green-700 to-green-600' :
-                              isExpired ? 'bg-gradient-to-r from-red-600 to-red-500' :
-                              'bg-gradient-to-r from-yellow-600 to-yellow-500'
-                            }`}>
-                              {isLive && <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>}
-                              {isUsed && <span className="text-white">✓</span>}
-                              {isExpired && <span className="text-white">✕</span>}
-                              <span className="text-white font-bold text-sm">
-                                {isLive ? 'LIVE NOW' : isUsed ? 'SUCCESS' : isExpired ? 'EXPIRED' : 'COMING SOON'}
-                              </span>
-                              {isLive && (
-                                <span className="ml-auto text-white text-xs font-mono bg-black/30 px-2 py-0.5 rounded">
-                                  {formatCountdown(remaining)}
-                                </span>
-                              )}
+                    <div className="max-h-96 overflow-y-auto">
+                      {/* Schedule Info Box - Always show - UTC TIME */}
+                      <div className="mx-3 mt-3 p-3 rounded-xl" style={{backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid #2a2a4a'}}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-[10px] mb-1 text-gray-400">
+                              {isCodeActive ? "⏰ Code Active Until" : "⏳ Next Code At"}
+                            </p>
+                            <p className="text-sm font-bold" style={{color: isCodeActive ? '#00C853' : '#FFD700'}}>
+                              {nextCodeTime === "10:45 AM" ? "05:15 UTC" : 
+                               nextCodeTime === "8:30 PM" ? "15:00 UTC" : 
+                               nextCodeTime === "10:45 AM (Tomorrow)" ? "05:15 UTC (Tomorrow)" :
+                               nextCodeTime || "Loading..."}
+                            </p>
+                          </div>
+                          {scheduleCountdown && (
+                            <div className="text-right">
+                              <p className="text-[10px] mb-1 text-gray-400">
+                                {isCodeActive ? "Expires In" : "Countdown"}
+                              </p>
+                              <p className="text-lg font-mono font-bold" style={{color: isCodeActive ? '#00C853' : '#FFD700'}}>
+                                {scheduleCountdown}
+                              </p>
                             </div>
-                            
-                            {/* Trade Code Display */}
-                            <div className="p-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="font-bold text-xl tracking-wider" style={{color: '#FF3B30'}}>
-                                  {code.code}
+                          )}
+                        </div>
+                        <div className="mt-2 pt-2" style={{borderTop: '1px dashed #3a3a5a'}}>
+                          <p className="text-[10px] text-center text-gray-400">
+                            📅 Daily Codes: <span className="text-yellow-400">05:15</span> & <span className="text-yellow-400">15:00</span> UTC (Valid for 1 hour)
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {activeOrScheduledCodes.length === 0 ? (
+                        <div className="p-6 text-center">
+                          <Bell size={40} className="text-gray-600 mx-auto mb-2" />
+                          <p className="text-gray-400">No active codes</p>
+                          <p className="text-[10px] text-gray-500 mt-1">Codes will appear at scheduled times</p>
+                        </div>
+                      ) : (
+                        activeOrScheduledCodes.map((code, idx) => {
+                          const isUsed = code.status === "used";
+                          const isExpired = code.is_expired;
+                          const isLive = code.is_live && !isUsed && !isExpired;
+                          const remaining = countdowns[`${code.code}_remaining`] || code.time_remaining;
+                          
+                          return (
+                            <div key={idx} className="mx-3 my-2 rounded-xl overflow-hidden" style={{backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid #2a2a4a'}}>
+                              {/* Status Banner */}
+                              <div className={`px-3 py-2 flex items-center gap-2 ${
+                                isLive ? 'bg-gradient-to-r from-green-600 to-green-500' : 
+                                isUsed ? 'bg-gradient-to-r from-green-700 to-green-600' :
+                                isExpired ? 'bg-gradient-to-r from-red-600 to-red-500' :
+                                'bg-gradient-to-r from-yellow-600 to-yellow-500'
+                              }`}>
+                                {isLive && <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>}
+                                {isUsed && <span className="text-white">✓</span>}
+                                {isExpired && <span className="text-white">✕</span>}
+                                <span className="text-white font-bold text-sm">
+                                  {isLive ? 'LIVE NOW' : isUsed ? 'SUCCESS' : isExpired ? 'EXPIRED' : 'COMING SOON'}
                                 </span>
                                 {isLive && (
-                                  <button 
-                                    onClick={() => copyCode(code.code)}
-                                    className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-green-500 to-green-400 hover:from-green-400 hover:to-green-300 transition-all"
-                                  >
-                                    COPY
-                                  </button>
+                                  <span className="ml-auto text-white text-xs font-mono bg-black/30 px-2 py-0.5 rounded">
+                                    {formatCountdown(remaining)}
+                                  </span>
                                 )}
                               </div>
                               
-                              {/* Trade Details */}
-                              {isUsed && code.profit && (
-                                <div className="space-y-1">
-                                  <p className="text-green-400 font-bold">+${code.profit?.toFixed(2)} Earned</p>
-                                  <p className="text-gray-400 text-xs">Traded ${code.amount?.toFixed(2)} at {code.multiplier || 1}x</p>
+                              {/* Trade Code Display */}
+                              <div className="p-3">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="font-bold text-xl tracking-wider" style={{color: '#FF3B30'}}>
+                                    {code.code}
+                                  </span>
+                                  {isLive && (
+                                    <button 
+                                      onClick={() => copyCode(code.code)}
+                                      className="px-4 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-green-500 to-green-400 hover:from-green-400 hover:to-green-300 transition-all"
+                                    >
+                                      COPY
+                                    </button>
+                                  )}
                                 </div>
-                              )}
-                              
-                              {/* Time */}
-                              <p className="text-gray-500 text-[10px] mt-2">
-                                {code.slot_name || code.created_at}
-                              </p>
+                                
+                                {/* Trade Details */}
+                                {isUsed && code.profit && (
+                                  <div className="space-y-1">
+                                    <p className="text-green-400 font-bold">+${code.profit?.toFixed(2)} Earned</p>
+                                    <p className="text-gray-400 text-xs">Traded ${code.amount?.toFixed(2)} at {code.multiplier || 1}x</p>
+                                  </div>
+                                )}
+                                
+                                {/* Time */}
+                                <p className="text-gray-500 text-[10px] mt-2">
+                                  {code.slot_name || code.created_at}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })
-                    )}
+                          );
+                        })
+                      )}
+                    </div>
+                    
+                    <Link to="/futures" className="block p-3 text-center font-semibold text-[#00E5FF] hover:bg-white/5 transition-colors" style={{borderTop: '1px solid #2a2a4a'}}>
+                      Go to Futures Trading →
+                    </Link>
                   </div>
-                  
-                  <Link to="/futures" className="block p-3 text-center font-semibold text-[#00E5FF] hover:bg-white/5 transition-colors" style={{borderTop: '1px solid #2a2a4a'}}>
-                    Go to Futures Trading →
-                  </Link>
                 </div>
               )}
             </div>
