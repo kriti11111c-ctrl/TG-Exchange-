@@ -702,7 +702,7 @@ const FuturesPage = () => {
                       <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                         trade.is_profit ? 'bg-[#0ECB81] text-white' : 'bg-[#F6465D] text-white'
                       }`}>
-                        {trade.is_profit ? 'WIN' : 'LOSS'}
+                        {trade.is_profit ? 'SUCCESS' : 'LOSS'}
                       </span>
                       <span className={`text-xs ${textMuted}`}>{trade.date}</span>
                     </div>
