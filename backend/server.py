@@ -482,6 +482,53 @@ async def get_team_stats(user_id: str) -> dict:
         "total_team_all": team_stats.get("total_team", 0)
     }
 
+async def get_team_members_with_balance(user_id: str) -> list:
+    """Get list of direct team members with their futures balance status
+    This helps user see who has low balance causing rank demotion
+    """
+    
+    pipeline = [
+        {"$match": {"referrer_id": user_id, "level": 1}},
+        {"$lookup": {
+            "from": "wallets",
+            "localField": "referred_id",
+            "foreignField": "user_id",
+            "as": "wallet"
+        }},
+        {"$lookup": {
+            "from": "users",
+            "localField": "referred_id",
+            "foreignField": "user_id",
+            "as": "user"
+        }},
+        {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
+        {"$unwind": {"path": "$user", "preserveNullAndEmptyArrays": True}},
+        {"$project": {
+            "_id": 0,
+            "user_id": "$referred_id",
+            "name": {"$ifNull": ["$user.name", "Unknown"]},
+            "email": {"$ifNull": ["$user.email", ""]},
+            "futures_balance": {"$ifNull": ["$wallet.futures_balance", 0]},
+            "is_valid": {"$gte": [{"$ifNull": ["$wallet.futures_balance", 0]}, MIN_DEPOSIT_FOR_RANK]},
+            "created_at": "$created_at"
+        }},
+        {"$sort": {"futures_balance": -1}}  # Sort by balance (highest first)
+    ]
+    
+    members = await db.referrals.aggregate(pipeline).to_list(length=100)
+    
+    # Mask email for privacy (show only first 3 chars + ***)
+    for member in members:
+        if member.get("email"):
+            email = member["email"]
+            if "@" in email:
+                username = email.split("@")[0]
+                domain = email.split("@")[1]
+                masked = username[:3] + "***@" + domain if len(username) > 3 else username + "***@" + domain
+                member["email"] = masked
+    
+    return members
+
 def get_team_rank(direct_referrals: int, bronze_members: int, total_team: int) -> dict:
     """Get user's team rank based on direct referrals, bronze members, and team size
     
@@ -2715,6 +2762,12 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         members_required = direct_required if (next_rank_for_balance and next_rank_for_balance.get("type") == "team") else bronze_required
         members_progress = min(100, (members_current / members_required) * 100) if members_required > 0 else 100
         
+        # Get team members list with balance status (for showing who has low balance)
+        team_members_list = await get_team_members_with_balance(user_id)
+        
+        # Count low balance members (causing rank issues)
+        low_balance_members = [m for m in team_members_list if not m.get("is_valid", False)]
+        
         return {
             "user_id": user_id,
             "direct_referrals": team_stats["direct_referrals"],
@@ -2737,6 +2790,10 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
             # Progress Bar 3 - Total Team
             "team_required": team_required,
             "team_progress": round(team_progress, 2),
+            # Team Members List (with balance status)
+            "team_members": team_members_list,
+            "low_balance_members": low_balance_members,
+            "low_balance_count": len(low_balance_members),
             # Other fields
             "team_level_income": team_income,
             "bonus_percent": bonus_percent,
