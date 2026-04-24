@@ -1,7 +1,7 @@
 # TG Exchange - Product Requirements Document
 
 ## Project Overview
-A full-stack centralized cryptocurrency exchange similar to Binance/WazirX called "TG Exchange".
+A full-stack centralized cryptocurrency exchange called "TG Exchange" (Trade Genius).
 
 ## Core Features Implemented
 
@@ -32,11 +32,13 @@ A full-stack centralized cryptocurrency exchange similar to Binance/WazirX calle
 - **Scheduled Trade Codes**: Coming Soon countdown with hidden profit %
 - **Martingale Leverage**: 1x default, 2x after forced loss
 
-### VIP/Team Rank System
+### VIP/Team Rank System ✅ UPDATED
 - 10 Team Ranks (Bronze to Immortal)
-- Bronze: 6 Team members with $50+ balance
+- Bronze: 6 Team members with $50+ futures balance (welcome bonus excluded)
 - One-time rank rewards ($20 Bronze, $100 Silver, etc.)
 - **10-Day Salary Income**: Locked salary pool, unlocks after 10 days
+- **Progress Bar**: Shows X/Y format (e.g., 3/6 = 50% for Bronze)
+- Progress type: "direct" for Bronze, "bronze" for Silver onwards
 
 ### Referral System
 - 10-Level referral structure
@@ -52,7 +54,7 @@ A full-stack centralized cryptocurrency exchange similar to Binance/WazirX calle
 - Global Bottom Navigation
 - Bell Icon notifications for Trade Codes
 - PWA ready (Add to Home Screen)
-- **KuCoin-Style Homepage** (New in this session)
+- **KuCoin-Style Homepage**
 
 ## Technical Stack
 - **Frontend:** React, Tailwind CSS, Shadcn/UI
@@ -67,50 +69,36 @@ A full-stack centralized cryptocurrency exchange similar to Binance/WazirX calle
 ## API Endpoints
 - `POST /api/wallet/transfer` - Transfer Spot ↔ Futures
 - `POST /api/trade/apply-code` - Execute trade code
-- `GET /api/team-rank/info` - Get rank + salary info
+- `GET /api/team-rank/info` - Get rank + salary + progress info
 - `POST /api/admin/trade-codes` - Create scheduled trade codes
 
 ## Changelog
 
+### April 24, 2026
+- **VIP Rank Progress Bar Fixed** - Now shows X/Y format (3/6 = 50%)
+- Added `progress_current`, `progress_target`, `progress_type` to API
+- Frontend updated to show proper progress indicator
+- Welcome bonus excluded from $50 qualification check
+
 ### April 23, 2026
-- **VIP Rank Testing Completed** - Mock data seeded, Bronze rank achieved
-- **E2E Demo Testing** - All pages verified working:
-  - Homepage (KuCoin-style)
-  - Team Rank page
-  - Deposit/Withdraw pages
-  - Profile/KYC pages
-  - Staking (Coming Soon)
+- VIP Rank Testing Completed - Mock data seeded
+- E2E Demo Testing - All pages verified
 
 ### March 29, 2025
-- **Spot/Futures Wallet Split** - Deposits to Spot, Bonus to Futures
-- **Transfer Modal** - From/To dropdowns, Max button, Swap accounts
-- Welcome Bonus now goes to Futures balance
-- Trade Code execution uses Futures balance
-- Futures page shows Futures Balance
+- Spot/Futures Wallet Split
+- Transfer Modal with Max button
 
 ### March 28, 2025
-- Bell Icon notification system for Trade Codes
-- Scheduled Trade Codes with Coming Soon countdown
-- Martingale Leverage system (1x → 2x on loss)
-- 10-Day Salary Income system
-- Flat 0.6% referral commission
-- Bronze rank now requires 6 Team members
-- One-time rank rewards
-
-### March 27, 2025
-- KYC Verification system
-- PWA setup
-- Auto-approve deposit
+- Bell Icon notifications
+- Scheduled Trade Codes
+- 10-Day Salary system
 
 ## Architecture Notes
 - `server.py` is monolithic (~7500 lines) - needs modularization
 - All backend routes prefixed with `/api`
-- Chart uses Canvas API for performance
 
 ## Backlog / Future Tasks
 - P0: Deploy approved frontend to user's Hostinger VPS
-- P1: Binance Chart "Failed to Load" fallback (rate limit handling)
-- P1: Withdrawal strictly from Spot balance enforcement
+- P1: Binance Chart fallback (rate limit handling)
 - P2: server.py refactoring into modules
-- P2: KYC document image upload
 - P2: Staking feature implementation

@@ -529,29 +529,50 @@ def get_team_rank(direct_referrals: int, bronze_members: int, total_team: int) -
             current_rank = rank
             next_rank = TEAM_RANKS[i + 1] if i + 1 < len(TEAM_RANKS) else None
     
-    # Calculate progress
+    # Calculate progress with detailed current/target info
     progress = 0
+    progress_current = 0
+    progress_target = 1
+    progress_type = "team"  # "team", "bronze", "direct"
+    
     if current_rank and next_rank:
         # Progress based on next rank requirements
         if next_rank["type"] == "bronze":
+            # Need more bronze members for next rank
+            progress_type = "bronze"
+            progress_target = next_rank["bronze_required"]
+            progress_current = bronze_members
             bronze_range = next_rank["bronze_required"] - (current_rank.get("bronze_required", 0))
             bronze_progress = bronze_members - (current_rank.get("bronze_required", 0))
             progress = min(100, (bronze_progress / bronze_range) * 100) if bronze_range > 0 else 100
         else:
+            # Need more team members
+            progress_type = "team"
+            progress_target = next_rank["team_required"]
+            progress_current = total_team
             team_range = next_rank["team_required"] - current_rank["team_required"]
             team_progress = total_team - current_rank["team_required"]
             progress = min(100, (team_progress / team_range) * 100) if team_range > 0 else 100
     elif not current_rank and next_rank:
-        # Progress to first rank (Bronze) - based on DIRECT referrals
+        # Progress to first rank (Bronze) - based on DIRECT referrals with $50+ deposit
         if next_rank["type"] == "team":
+            progress_type = "direct"
+            progress_target = next_rank["team_required"]
+            progress_current = direct_referrals
             progress = min(100, (direct_referrals / next_rank["team_required"]) * 100) if next_rank["team_required"] > 0 else 100
         elif next_rank["type"] == "direct":
+            progress_type = "direct"
+            progress_target = next_rank["direct_required"]
+            progress_current = direct_referrals
             progress = min(100, (direct_referrals / next_rank["direct_required"]) * 100) if next_rank["direct_required"] > 0 else 100
     
     return {
         "current_rank": current_rank,
         "next_rank": next_rank,
         "progress": progress,
+        "progress_current": progress_current,
+        "progress_target": progress_target,
+        "progress_type": progress_type,
         "direct_referrals": direct_referrals,
         "bronze_members": bronze_members,
         "total_team": total_team
@@ -2676,6 +2697,9 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
             "current_rank": rank_info["current_rank"],
             "next_rank": rank_info["next_rank"],
             "progress": rank_info["progress"],
+            "progress_current": rank_info.get("progress_current", 0),
+            "progress_target": rank_info.get("progress_target", 1),
+            "progress_type": rank_info.get("progress_type", "team"),
             "team_level_income": team_income,
             "bonus_percent": bonus_percent,
             "bonus_income": bonus_income,

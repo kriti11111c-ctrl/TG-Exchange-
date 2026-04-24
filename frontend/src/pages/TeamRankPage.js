@@ -195,7 +195,9 @@ const TeamRankPage = () => {
               <div className="mb-4">
                 <div className="flex justify-between text-xs mb-1">
                   <span className={textMuted}>Next: {rankInfo.next_rank.name}</span>
-                  <span className="text-[#00E5FF]">{rankInfo.progress?.toFixed(0)}%</span>
+                  <span className="text-[#00E5FF]">
+                    {rankInfo.progress_current || 0}/{rankInfo.progress_target || 0} ({rankInfo.progress?.toFixed(0)}%)
+                  </span>
                 </div>
                 <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
                   <div 
@@ -204,17 +206,44 @@ const TeamRankPage = () => {
                   />
                 </div>
                 <p className={`text-xs mt-1 ${textMuted}`}>
-                  Need: {rankInfo.next_rank.direct_required} direct (min $50 deposit) + {rankInfo.next_rank.team_required} team
+                  {rankInfo.progress_type === 'direct' && (
+                    <>Need: {rankInfo.progress_target} direct members (min $50 futures deposit)</>
+                  )}
+                  {rankInfo.progress_type === 'bronze' && (
+                    <>Need: {rankInfo.next_rank.bronze_required} Bronze members + {rankInfo.next_rank.team_required} total team</>
+                  )}
+                  {rankInfo.progress_type === 'team' && (
+                    <>Need: {rankInfo.next_rank.team_required} total team members</>
+                  )}
                 </p>
               </div>
             )}
             
-            {/* No rank yet - show first rank requirements */}
+            {/* No rank yet - show first rank requirements with progress */}
             {!rankInfo?.current_rank && (
-              <div className={`p-3 rounded-xl ${isDark ? 'bg-[#00E5FF]/10' : 'bg-yellow-50'} border border-[#00E5FF]/30 mb-4`}>
-                <p className={`text-sm ${text} font-medium`}>🎯 Get your first rank!</p>
-                <p className={`text-xs ${textMuted} mt-1`}>
-                  Invite 6 members who deposit minimum $50 each to unlock Bronze rank
+              <div className="mb-4">
+                <div className={`p-3 rounded-xl ${isDark ? 'bg-[#00E5FF]/10' : 'bg-yellow-50'} border border-[#00E5FF]/30 mb-3`}>
+                  <p className={`text-sm ${text} font-medium`}>🎯 Get your first rank!</p>
+                  <p className={`text-xs ${textMuted} mt-1`}>
+                    Invite 6 members who deposit minimum $50 each to unlock Bronze rank
+                  </p>
+                </div>
+                
+                {/* Progress to Bronze */}
+                <div className="flex justify-between text-xs mb-1">
+                  <span className={textMuted}>Progress to Bronze</span>
+                  <span className="text-[#00E5FF]">
+                    {rankInfo?.progress_current || 0}/{rankInfo?.progress_target || 6} ({rankInfo?.progress?.toFixed(0) || 0}%)
+                  </span>
+                </div>
+                <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                  <div 
+                    className="h-full rounded-full bg-gradient-to-r from-slate-400 to-slate-500"
+                    style={{ width: `${rankInfo?.progress || 0}%` }}
+                  />
+                </div>
+                <p className={`text-xs mt-1 ${textMuted}`}>
+                  {rankInfo?.progress_current || 0} members with $50+ futures balance (Welcome bonus excluded)
                 </p>
               </div>
             )}

@@ -2,11 +2,11 @@
 
 ## User Accounts
 
-### Demo User (Updated)
+### Demo User
 - **Email:** demo@tgexchange.com
 - **Password:** Demo123!
 - **Role:** User
-- **Team Rank:** Bronze (6 team members)
+- **Team Rank:** Bronze (6 team members with $50+ deposit)
 
 ## Admin Accounts
 
