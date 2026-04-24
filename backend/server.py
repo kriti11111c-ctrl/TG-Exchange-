@@ -538,11 +538,13 @@ async def get_team_members_with_balance(user_id: str, include_all_levels: bool =
     
     return members
 
-def get_team_rank(direct_referrals: int, bronze_members: int, total_team: int) -> dict:
-    """Get user's team rank based on direct referrals, bronze members, and team size
+def get_team_rank(direct_referrals: int, bronze_members: int, total_team: int, user_futures_balance: float = 0) -> dict:
+    """Get user's team rank based on direct referrals, bronze members, team size, AND user's own futures balance
     
-    Bronze: Requires 6 DIRECT referrals (Level 1 only) with $50+ fresh deposit
-    Silver onwards: Requires Bronze members + total team
+    Bronze: Requires 6 DIRECT referrals (Level 1 only) with $50+ fresh deposit + $50 self deposit
+    Silver onwards: Requires Bronze members + total team + self_deposit_required
+    
+    DEMOTION: If user's futures_balance drops below self_deposit_required, rank breaks!
     """
     current_rank = None
     next_rank = TEAM_RANKS[0]  # Default next rank is first rank
@@ -551,15 +553,18 @@ def get_team_rank(direct_referrals: int, bronze_members: int, total_team: int) -
         # Check if user qualifies for this rank
         qualifies = False
         
+        # Check self deposit requirement FIRST
+        self_deposit_met = user_futures_balance >= rank.get("self_deposit_required", 0)
+        
         if rank["type"] == "team":
-            # Bronze rank - needs 6 DIRECT referrals (Level 1 only) with $50+ deposit
-            qualifies = direct_referrals >= rank["team_required"]
+            # Bronze rank - needs 6 DIRECT referrals (Level 1 only) with $50+ deposit + self deposit
+            qualifies = direct_referrals >= rank["team_required"] and self_deposit_met
         elif rank["type"] == "direct":
-            # Needs direct referrals
-            qualifies = direct_referrals >= rank["direct_required"] and total_team >= rank["team_required"]
+            # Needs direct referrals + self deposit
+            qualifies = direct_referrals >= rank["direct_required"] and total_team >= rank["team_required"] and self_deposit_met
         else:
-            # Silver onwards - needs Bronze rank members + total team
-            qualifies = bronze_members >= rank["bronze_required"] and total_team >= rank["team_required"]
+            # Silver onwards - needs Bronze rank members + total team + self deposit
+            qualifies = bronze_members >= rank["bronze_required"] and total_team >= rank["team_required"] and self_deposit_met
         
         if qualifies:
             current_rank = rank
@@ -2681,14 +2686,19 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         saved_rank_level = user_doc.get("team_rank_level", 0) if user_doc else 0
         claimed_rewards = user_doc.get("claimed_rank_rewards", []) if user_doc else []
         
+        # Get user's wallet to check their own futures_balance for rank qualification
+        user_wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "futures_balance": 1})
+        user_futures_balance = user_wallet.get("futures_balance", 0) if user_wallet else 0
+        
         # Get team stats first
         team_stats = await get_team_stats(user_id)
         
-        # Get team rank based on CURRENT stats (actual qualifications)
+        # Get team rank based on CURRENT stats (actual qualifications) + user's own futures balance
         rank_info = get_team_rank(
             team_stats["direct_referrals"], 
             team_stats["bronze_members"],
-            team_stats["total_team"]
+            team_stats["total_team"],
+            user_futures_balance  # NEW: Check user's own balance for rank demotion
         )
         
         # Get the QUALIFIED rank level (what user actually qualifies for right now)
@@ -2702,8 +2712,13 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         
         # Check for demotion (saved rank > what user currently qualifies for)
         if saved_rank_level > qualified_level:
-            # User got demoted! Rank breaks when team members' futures balance drops below $50
-            demotion_message = f"⚠️ Rank demoted! Some team members have less than $50 in Futures Balance. Your rank dropped from Level {saved_rank_level} to Level {qualified_level}."
+            # User got demoted! Determine reason
+            # Check if it's due to team members or user's own balance
+            saved_rank_data = next((r for r in TEAM_RANKS if r["level"] == saved_rank_level), None)
+            if saved_rank_data and user_futures_balance < saved_rank_data.get("self_deposit_required", 0):
+                demotion_message = f"⚠️ Rank demoted! Your Futures Balance (${user_futures_balance:.0f}) dropped below the required ${saved_rank_data['self_deposit_required']} for your rank. Your rank dropped from Level {saved_rank_level} to Level {qualified_level}."
+            else:
+                demotion_message = f"⚠️ Rank demoted! Some team members have less than $50 in Futures Balance. Your rank dropped from Level {saved_rank_level} to Level {qualified_level}."
             
             # Update saved rank level to qualified (demoted) and STOP salary accumulation
             await db.users.update_one(
@@ -6513,14 +6528,21 @@ async def debug_team_stats(user_id: str):
     """Debug endpoint to check team stats for any user"""
     try:
         team_stats = await get_team_stats(user_id)
+        
+        # Get user's wallet balance
+        user_wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "futures_balance": 1})
+        user_futures_balance = user_wallet.get("futures_balance", 0) if user_wallet else 0
+        
         rank_info = get_team_rank(
             team_stats["direct_referrals"],
             team_stats["bronze_members"],
-            team_stats["total_team"]
+            team_stats["total_team"],
+            user_futures_balance
         )
         return {
             "team_stats": team_stats,
             "rank_info": rank_info,
+            "user_futures_balance": user_futures_balance,
             "qualifies_bronze": team_stats["total_team"] >= 6
         }
     except Exception as e:

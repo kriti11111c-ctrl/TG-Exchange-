@@ -75,17 +75,25 @@ A full-stack centralized cryptocurrency exchange called "TG Exchange" (Trade Gen
 ## Changelog
 
 ### April 24, 2026 (Session 2)
-- **VIP Rank E2E Testing COMPLETED** (Bronze → Master verified)
-  - Gold: $8.33/day, 75 team members ✅
-  - Platinum: $16.67/day, 150 team members ✅
-  - Diamond: $33.33/day, 300 team members ✅
-  - Master: $66.67/day, 600 team members ✅
-- **Demotion Logic VERIFIED**
-  - Rank drops when team members' futures_balance < $50
-  - "Salary Paused" banner displays correctly
-  - Demotion message shows previous vs current rank
-  - "45 Low" badge warns about team members with low balance
-- Test accounts created for all ranks (testbronze@, testsilver@, testgold@, etc.)
+- **VIP Rank E2E Testing COMPLETED** (ALL 10 Ranks verified: Bronze → Immortal)
+  - Bronze: $1/day, 6 team members, $50 self deposit ✅
+  - Silver: $3.33/day, 30 team members, $200 self deposit ✅
+  - Gold: $8.33/day, 75 team members, $500 self deposit ✅
+  - Platinum: $16.67/day, 150 team members, $800 self deposit ✅
+  - Diamond: $33.33/day, 300 team members, $1600 self deposit ✅
+  - Master: $66.67/day, 600 team members, $4000 self deposit ✅
+  - Grandmaster: $133.33/day, 1000 team members, $8000 self deposit ✅
+  - Champion: $233.33/day, 2000 team members, $12000 self deposit ✅
+  - Legend: $400/day, 4000 team members, $24000 self deposit ✅
+  - Immortal: $666.67/day, 8000 team members, $40000 self deposit ✅
+- **Demotion Logic FULLY VERIFIED**
+  - Rank drops when team members' futures_balance < $50 ✅
+  - **NEW: Rank drops when USER's OWN futures_balance < self_deposit_required** ✅
+  - "Salary Paused" banner displays correctly ✅
+  - Demotion message shows reason (team balance OR user balance) ✅
+  - "45 Low" badge warns about team members with low balance ✅
+- Backend updated: `get_team_rank()` now checks `user_futures_balance` against `self_deposit_required`
+- Test accounts created for all ranks (testbronze@, testsilver@, ..., testimmortal@)
 
 ### April 24, 2026 (Session 1)
 - **"All Team Members" Collapsible Section Added** - Shows full team hierarchy (not just direct referrals)
