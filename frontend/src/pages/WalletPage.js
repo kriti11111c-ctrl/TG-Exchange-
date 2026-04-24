@@ -59,7 +59,58 @@ const WalletHeader = ({ user, logout, isDark, toggleTheme }) => {
   return (
     <div className={`${bg} px-4 py-3 flex items-center justify-between`}>
       <Link to="/dashboard" className="flex items-center gap-2">
-        <img src="/images/tg-logo.png" alt="TG Exchange" className="w-7 h-7 rounded-full" />
+        {/* Logo with Cinematic Glow */}
+        <div className="relative" style={{width: '40px', height: '40px'}}>
+          {/* Outer Glow Ring - Pulsing */}
+          <div 
+            className="absolute rounded-full"
+            style={{
+              top: '-6px',
+              left: '-6px',
+              right: '-6px',
+              bottom: '-6px',
+              background: 'conic-gradient(from 0deg, rgba(255,215,0,0.8), rgba(218,165,32,0.4), rgba(255,215,0,0.8), rgba(184,134,11,0.4), rgba(255,215,0,0.8))',
+              filter: 'blur(6px)',
+              animation: 'logoShine 4s linear infinite',
+              opacity: 0.7
+            }}
+          />
+          {/* Main Glow */}
+          <div 
+            className="absolute rounded-full"
+            style={{
+              top: '-10px',
+              left: '-10px',
+              right: '-10px',
+              bottom: '-10px',
+              background: 'radial-gradient(circle, rgba(255,215,0,0.6) 0%, rgba(218,165,32,0.4) 30%, rgba(184,134,11,0.2) 50%, transparent 70%)',
+              filter: 'blur(8px)',
+              animation: 'logoGlow 2s ease-in-out infinite'
+            }}
+          />
+          {/* Secondary Glow */}
+          <div 
+            className="absolute rounded-full"
+            style={{
+              top: '-4px',
+              left: '-4px',
+              right: '-4px',
+              bottom: '-4px',
+              background: 'radial-gradient(circle, rgba(255,255,200,0.5) 0%, rgba(255,215,0,0.3) 40%, transparent 70%)',
+              filter: 'blur(4px)',
+              animation: 'logoGlow 3s ease-in-out infinite reverse'
+            }}
+          />
+          <img 
+            src="/tg-logo.png" 
+            alt="TG Exchange" 
+            className="w-10 h-10 rounded-full relative z-10 object-cover"
+            style={{
+              boxShadow: '0 0 12px rgba(255,215,0,0.7), 0 0 24px rgba(218,165,32,0.5), 0 0 36px rgba(184,134,11,0.3)',
+              border: '1.5px solid rgba(255,215,0,0.3)'
+            }}
+          />
+        </div>
         <span className={`font-bold text-lg ${text}`}>TG Exchange</span>
       </Link>
       <div className="flex items-center gap-3">

@@ -195,6 +195,27 @@ button:active, [role="button"]:active {
   animation: pulseGlow 2s ease-in-out infinite;
 }
 
+/* ===== TG LOGO CINEMATIC GLOW ===== */
+@keyframes logoGlow {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1.6);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(2);
+  }
+}
+
+@keyframes logoShine {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 /* ===== SMOOTH MODAL ===== */
 
 [data-state="open"] {
