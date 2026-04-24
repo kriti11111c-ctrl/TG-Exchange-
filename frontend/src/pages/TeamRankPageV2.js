@@ -393,11 +393,11 @@ const TeamRankPage = () => {
                 >
                   <div className="flex items-center gap-2">
                     <p className={`font-medium ${text}`}>👥 Team Members</p>
-                    <span className="px-2 py-0.5 rounded-full bg-[#0ECB81]/20 text-[#0ECB81] text-xs font-medium">
+                    <span className="px-2 py-0.5 rounded-md bg-[#0ECB81]/20 text-[#0ECB81] text-xs font-medium">
                       {rankInfo.direct_referrals || 0} Active
                     </span>
                     {rankInfo.low_balance_count > 0 && (
-                      <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-xs font-medium">
+                      <span className="px-2 py-0.5 rounded-md bg-red-500/20 text-red-400 text-xs font-medium">
                         ⚠️ {rankInfo.low_balance_count} Low
                       </span>
                     )}
@@ -487,7 +487,7 @@ const TeamRankPage = () => {
                 >
                   <div className="flex items-center gap-2">
                     <p className={`font-medium ${text}`}>🌐 All Team Members</p>
-                    <span className="px-2 py-0.5 rounded-full bg-[#3498DB]/20 text-[#3498DB] text-xs font-medium">
+                    <span className="px-2 py-0.5 rounded-md bg-[#3498DB]/20 text-[#3498DB] text-xs font-medium">
                       {rankInfo.all_team_members.length} Total
                     </span>
                   </div>
