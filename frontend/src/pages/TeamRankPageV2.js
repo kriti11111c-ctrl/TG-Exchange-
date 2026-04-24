@@ -33,6 +33,7 @@ const TeamRankPage = () => {
   const [claiming, setClaiming] = useState(false);
   const [showTeamMembers, setShowTeamMembers] = useState(false);  // Toggle for direct team members list
   const [showAllTeamMembers, setShowAllTeamMembers] = useState(false);  // Toggle for ALL team members (full hierarchy)
+  const [expandedRank, setExpandedRank] = useState(null);  // Track which rank card is expanded (null = only current rank expanded)
 
   // Theme colors
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
@@ -667,11 +668,12 @@ const TeamRankPage = () => {
       {/* Content */}
       <div className="px-4">
         {activeTab === "overview" && (
-          <div className="space-y-4">
-            {/* Rank Cards - KuCoin Style */}
+          <div className="space-y-3">
+            {/* Rank Cards - Collapsible KuCoin Style */}
             {allRanks.map((rank) => {
               const isCurrentRank = rankInfo?.current_rank?.level === rank.level;
               const isNextRank = rankInfo?.next_rank?.level === rank.level;
+              const isExpanded = expandedRank === rank.level || isCurrentRank;
               
               // Calculate progress for this rank
               const rankBalanceReq = rank.self_deposit_required || (rank.level === 1 ? 50 : rank.level === 2 ? 200 : rank.level === 3 ? 500 : rank.level === 4 ? 800 : rank.level === 5 ? 1600 : rank.level === 6 ? 4000 : rank.level === 7 ? 8000 : rank.level === 8 ? 12000 : rank.level === 9 ? 24000 : 40000);
@@ -698,17 +700,22 @@ const TeamRankPage = () => {
               return (
                 <div 
                   key={rank.level}
-                  className="rounded-2xl overflow-hidden"
+                  className="rounded-2xl overflow-hidden transition-all duration-300"
                   style={{
                     background: isDark ? '#1A1A1A' : '#FFFFFF',
                     border: isCurrentRank ? `2px solid ${currentRankColor.glow}` : `1.5px solid ${isDark ? '#333' : '#E0E0E0'}`,
                     boxShadow: isCurrentRank ? `0 0 20px ${currentRankColor.glow}40` : 'none'
                   }}
                 >
-                  {/* Header with Gradient */}
+                  {/* Header with Gradient - Always Visible, Clickable */}
                   <div 
-                    className="p-4 relative overflow-hidden"
+                    className={`p-4 relative overflow-hidden ${!isCurrentRank ? 'cursor-pointer active:opacity-80' : ''}`}
                     style={{ background: currentRankColor.bg }}
+                    onClick={() => {
+                      if (!isCurrentRank) {
+                        setExpandedRank(expandedRank === rank.level ? null : rank.level);
+                      }
+                    }}
                   >
                     {/* Decorative circles */}
                     <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-20" style={{backgroundColor: 'white'}}></div>
@@ -725,118 +732,133 @@ const TeamRankPage = () => {
                             <span className="text-white font-bold text-lg">{rank.name}</span>
                             {isCurrentRank && (
                               <span className="px-2 py-0.5 rounded-full bg-white/30 text-white text-[10px] font-bold">
-                                YOU
+                                YOUR RANK
                               </span>
                             )}
                           </div>
                           <span className="text-white/70 text-xs">
-                            {rank.bronze_required > 0 ? `${rank.bronze_required} Bronze / ` : ''}{rank.team_required} Team
+                            {rank.bronze_required > 0 ? `${rank.bronze_required} Bronze / ` : ''}{rank.team_required} Team • ${rank.monthly_salary}/mo
                           </span>
                         </div>
                       </div>
                       
-                      {/* Monthly Salary Badge */}
-                      <div className="bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-xl">
-                        <p className="text-white/70 text-[10px]">Monthly</p>
-                        <p className="text-white font-bold text-lg">${rank.monthly_salary}</p>
+                      {/* Expand/Collapse Indicator or Monthly Salary */}
+                      <div className="flex items-center gap-2">
+                        {isCurrentRank ? (
+                          <div className="bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-xl">
+                            <p className="text-white/70 text-[10px]">Monthly</p>
+                            <p className="text-white font-bold text-lg">${rank.monthly_salary}</p>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className="bg-white/20 backdrop-blur-sm px-2 py-1 rounded-lg">
+                              <p className="text-white font-bold text-sm">${rank.monthly_salary}</p>
+                            </div>
+                            <span className={`text-white text-lg transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                              ▼
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
                   
-                  {/* Body */}
-                  <div className="p-4">
-                    {/* Reward & Future Balance Tags */}
-                    <div className="flex gap-2 mb-4">
-                      <span className="px-3 py-1 rounded-full text-xs font-medium" style={{
-                        backgroundColor: isDark ? '#F0B90B20' : '#FFF8E1',
-                        color: '#F0B90B'
-                      }}>
-                        🎁 Reward: ${rank.one_time_reward || (rank.level === 1 ? 20 : rank.level === 2 ? 100 : rank.level * 80)}
-                      </span>
-                      <span className="px-3 py-1 rounded-full text-xs font-medium" style={{
-                        backgroundColor: isDark ? '#F0B90B20' : '#FFF8E1',
-                        color: '#F0B90B'
-                      }}>
-                        💰 Min Balance: ${rankBalanceReq}
-                      </span>
-                    </div>
-                    
-                    {/* 3 Progress Bars */}
-                    <div className="space-y-3">
-                      {/* Progress Bar 1 - Futures Balance (Yellow) */}
-                      <div className="p-3 rounded-xl" style={{backgroundColor: isDark ? '#1E1E1E' : '#F9FAFB'}}>
-                        <div className="flex justify-between text-xs mb-2">
-                          <span className={`font-medium ${text}`}>💰 Futures Balance</span>
-                          <span className="text-[#F0B90B] font-bold">${rankInfo?.futures_balance || 0} / ${rankBalanceReq}</span>
-                        </div>
-                        <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
-                          <div 
-                            className="h-full rounded-full bg-gradient-to-r from-[#F0B90B] to-[#FCD535] transition-all duration-500"
-                            style={{ width: `${balanceProgress}%` }}
-                          />
-                        </div>
-                        <p className={`text-[10px] mt-1 ${textMuted}`}>
-                          {balanceProgress >= 100 ? '✅ Completed' : `${(rankBalanceReq - (rankInfo?.futures_balance || 0)).toFixed(0)} more needed`}
-                        </p>
+                  {/* Body - Collapsible Content */}
+                  {isExpanded && (
+                    <div className="p-4 animate-in slide-in-from-top-2 duration-200">
+                      {/* Reward & Future Balance Tags */}
+                      <div className="flex gap-2 mb-4 flex-wrap">
+                        <span className="px-3 py-1 rounded-full text-xs font-medium" style={{
+                          backgroundColor: isDark ? '#F0B90B20' : '#FFF8E1',
+                          color: '#F0B90B'
+                        }}>
+                          🎁 Reward: ${rank.one_time_reward || (rank.level === 1 ? 20 : rank.level === 2 ? 100 : rank.level * 80)}
+                        </span>
+                        <span className="px-3 py-1 rounded-full text-xs font-medium" style={{
+                          backgroundColor: isDark ? '#F0B90B20' : '#FFF8E1',
+                          color: '#F0B90B'
+                        }}>
+                          💰 Min Balance: ${rankBalanceReq}
+                        </span>
                       </div>
                       
-                      {/* Progress Bar 2 - Bronze Members (Orange) - Only for Silver+ */}
-                      {rank.bronze_required > 0 && (
+                      {/* 3 Progress Bars */}
+                      <div className="space-y-3">
+                        {/* Progress Bar 1 - Futures Balance (Yellow) */}
                         <div className="p-3 rounded-xl" style={{backgroundColor: isDark ? '#1E1E1E' : '#F9FAFB'}}>
                           <div className="flex justify-between text-xs mb-2">
-                            <span className={`font-medium ${text}`}>🥉 Bronze Members</span>
-                            <span className="text-[#FF6B35] font-bold">{rankInfo?.bronze_members || 0} / {rank.bronze_required}</span>
+                            <span className={`font-medium ${text}`}>💰 Futures Balance</span>
+                            <span className="text-[#F0B90B] font-bold">${rankInfo?.futures_balance || 0} / ${rankBalanceReq}</span>
                           </div>
                           <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
                             <div 
-                              className="h-full rounded-full bg-gradient-to-r from-[#FF6B35] to-[#FF9F1C] transition-all duration-500"
-                              style={{ width: `${bronzeProgress}%` }}
+                              className="h-full rounded-full bg-gradient-to-r from-[#F0B90B] to-[#FCD535] transition-all duration-500"
+                              style={{ width: `${balanceProgress}%` }}
                             />
                           </div>
                           <p className={`text-[10px] mt-1 ${textMuted}`}>
-                            {bronzeProgress >= 100 ? '✅ Completed' : `${rank.bronze_required - (rankInfo?.bronze_members || 0)} more Bronze needed`}
+                            {balanceProgress >= 100 ? '✅ Completed' : `${(rankBalanceReq - (rankInfo?.futures_balance || 0)).toFixed(0)} more needed`}
                           </p>
                         </div>
-                      )}
+                        
+                        {/* Progress Bar 2 - Bronze Members (Orange) - Only for Silver+ */}
+                        {rank.bronze_required > 0 && (
+                          <div className="p-3 rounded-xl" style={{backgroundColor: isDark ? '#1E1E1E' : '#F9FAFB'}}>
+                            <div className="flex justify-between text-xs mb-2">
+                              <span className={`font-medium ${text}`}>🥉 Bronze Members</span>
+                              <span className="text-[#FF6B35] font-bold">{rankInfo?.bronze_members || 0} / {rank.bronze_required}</span>
+                            </div>
+                            <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                              <div 
+                                className="h-full rounded-full bg-gradient-to-r from-[#FF6B35] to-[#FF9F1C] transition-all duration-500"
+                                style={{ width: `${bronzeProgress}%` }}
+                              />
+                            </div>
+                            <p className={`text-[10px] mt-1 ${textMuted}`}>
+                              {bronzeProgress >= 100 ? '✅ Completed' : `${rank.bronze_required - (rankInfo?.bronze_members || 0)} more Bronze needed`}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {/* Progress Bar 3 - Team Members (Cyan) */}
+                        <div className="p-3 rounded-xl" style={{backgroundColor: isDark ? '#1E1E1E' : '#F9FAFB'}}>
+                          <div className="flex justify-between text-xs mb-2">
+                            <span className={`font-medium ${text}`}>👥 Team Members</span>
+                            <span className="text-[#00E5FF] font-bold">{rankInfo?.total_team || 0} / {rank.team_required}</span>
+                          </div>
+                          <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
+                            <div 
+                              className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#00B4D8] transition-all duration-500"
+                              style={{ width: `${teamProgress}%` }}
+                            />
+                          </div>
+                          <p className={`text-[10px] mt-1 ${textMuted}`}>
+                            {teamProgress >= 100 ? '✅ Completed' : `${rank.team_required - (rankInfo?.total_team || 0)} more needed`}
+                          </p>
+                        </div>
+                      </div>
                       
-                      {/* Progress Bar 3 - Team Members (Cyan) */}
-                      <div className="p-3 rounded-xl" style={{backgroundColor: isDark ? '#1E1E1E' : '#F9FAFB'}}>
-                        <div className="flex justify-between text-xs mb-2">
-                          <span className={`font-medium ${text}`}>👥 Team Members</span>
-                          <span className="text-[#00E5FF] font-bold">{rankInfo?.total_team || 0} / {rank.team_required}</span>
+                      {/* Bottom Stats Grid */}
+                      <div className="grid grid-cols-4 gap-2 mt-4">
+                        <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#00E5FF15' : '#E0F7FA', border: `1px solid ${isDark ? '#00E5FF30' : '#B2EBF2'}`}}>
+                          <p className="text-[#00E5FF] font-bold text-sm">{rank.bonus_percent || (rank.level * 0.5)}%</p>
+                          <p className={`text-[9px] ${textMuted}`}>Bonus</p>
                         </div>
-                        <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
-                          <div 
-                            className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#00B4D8] transition-all duration-500"
-                            style={{ width: `${teamProgress}%` }}
-                          />
+                        <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#0ECB8115' : '#E8F5E9', border: `1px solid ${isDark ? '#0ECB8130' : '#C8E6C9'}`}}>
+                          <p className="text-[#0ECB81] font-bold text-sm">${rank.monthly_salary}</p>
+                          <p className={`text-[9px] ${textMuted}`}>Monthly</p>
                         </div>
-                        <p className={`text-[10px] mt-1 ${textMuted}`}>
-                          {teamProgress >= 100 ? '✅ Completed' : `${rank.team_required - (rankInfo?.total_team || 0)} more needed`}
-                        </p>
+                        <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#F0B90B15' : '#FFF8E1', border: `1px solid ${isDark ? '#F0B90B30' : '#FFECB3'}`}}>
+                          <p className="text-[#F0B90B] font-bold text-sm">${rank.one_time_reward || (rank.level === 1 ? 20 : rank.level === 2 ? 100 : rank.level * 80)}</p>
+                          <p className={`text-[9px] ${textMuted}`}>Reward</p>
+                        </div>
+                        <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#F0B90B15' : '#FFF8E1', border: `1px solid ${isDark ? '#F0B90B30' : '#FFECB3'}`}}>
+                          <p className="text-[#F0B90B] font-bold text-sm">${rankBalanceReq}</p>
+                          <p className={`text-[9px] ${textMuted}`}>Future Bal</p>
+                        </div>
                       </div>
                     </div>
-                    
-                    {/* Bottom Stats Grid */}
-                    <div className="grid grid-cols-4 gap-2 mt-4">
-                      <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#00E5FF15' : '#E0F7FA', border: `1px solid ${isDark ? '#00E5FF30' : '#B2EBF2'}`}}>
-                        <p className="text-[#00E5FF] font-bold text-sm">{rank.bonus_percent || (rank.level * 0.5)}%</p>
-                        <p className={`text-[9px] ${textMuted}`}>Bonus</p>
-                      </div>
-                      <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#0ECB8115' : '#E8F5E9', border: `1px solid ${isDark ? '#0ECB8130' : '#C8E6C9'}`}}>
-                        <p className="text-[#0ECB81] font-bold text-sm">${rank.monthly_salary}</p>
-                        <p className={`text-[9px] ${textMuted}`}>Monthly</p>
-                      </div>
-                      <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#F0B90B15' : '#FFF8E1', border: `1px solid ${isDark ? '#F0B90B30' : '#FFECB3'}`}}>
-                        <p className="text-[#F0B90B] font-bold text-sm">${rank.one_time_reward || (rank.level === 1 ? 20 : rank.level === 2 ? 100 : rank.level * 80)}</p>
-                        <p className={`text-[9px] ${textMuted}`}>Reward</p>
-                      </div>
-                      <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#F0B90B15' : '#FFF8E1', border: `1px solid ${isDark ? '#F0B90B30' : '#FFECB3'}`}}>
-                        <p className="text-[#F0B90B] font-bold text-sm">${rankBalanceReq}</p>
-                        <p className={`text-[9px] ${textMuted}`}>Future Bal</p>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               );
             })}
