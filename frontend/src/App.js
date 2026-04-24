@@ -42,11 +42,66 @@ const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
 
 // Configure axios defaults for ULTRA FAST responses
-axios.defaults.timeout = 10000; // 10 second timeout (reduced for faster failure)
+axios.defaults.timeout = 8000; // 8 second timeout for faster failure detection
 
+// ==================== ULTRA FAST CACHING SYSTEM ====================
 // Response cache for frequently accessed data - AGGRESSIVE CACHING
 const responseCache = new Map();
-const CACHE_TTL = 10000; // 10 seconds cache (increased for speed)
+const CACHE_TTL = 30000; // 30 seconds cache for maximum speed
+
+// Prefetch cache - preload data before user needs it
+const prefetchCache = new Map();
+
+// Cache helper functions
+const getCachedResponse = (key) => {
+  const cached = responseCache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  responseCache.delete(key);
+  return null;
+};
+
+const setCachedResponse = (key, data) => {
+  responseCache.set(key, { data, timestamp: Date.now() });
+};
+
+// Prefetch important endpoints in background
+const prefetchEndpoints = [
+  '/wallet',
+  '/transactions',
+  '/trade-codes',
+  '/team-rank/info',
+  '/staking/positions'
+];
+
+const prefetchData = async (token) => {
+  if (!token) return;
+  
+  prefetchEndpoints.forEach(async (endpoint) => {
+    try {
+      const cacheKey = `prefetch_${endpoint}`;
+      if (!prefetchCache.has(cacheKey)) {
+        const response = await axios.get(`${API}${endpoint}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        prefetchCache.set(cacheKey, { data: response.data, timestamp: Date.now() });
+      }
+    } catch (e) {
+      // Silent fail for prefetch
+    }
+  });
+};
+
+// Get prefetched data instantly
+export const getPrefetchedData = (endpoint) => {
+  const cacheKey = `prefetch_${endpoint}`;
+  const cached = prefetchCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < 60000) { // 1 minute prefetch cache
+    return cached.data;
+  }
+  return null;
+};
 
 // Pending requests to prevent duplicate calls
 const pendingRequests = new Map();
@@ -91,6 +146,7 @@ export const cachedFetch = async (url, options = {}) => {
 export const clearApiCache = () => {
   responseCache.clear();
   pendingRequests.clear();
+  prefetchCache.clear();
 };
 
 // Axios interceptor to add auth token
@@ -201,6 +257,8 @@ const AuthProvider = ({ children }) => {
     if (newToken) {
       localStorage.setItem('auth_token', newToken);
       setToken(newToken);
+      // ULTRA FAST: Prefetch important data immediately after login
+      setTimeout(() => prefetchData(newToken), 100);
     }
   };
 

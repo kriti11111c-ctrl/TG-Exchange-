@@ -99,6 +99,9 @@ fast_cache = FastCache()
 # API Response cache for frequently accessed endpoints
 api_cache = FastCache()
 
+# User data cache for ULTRA FAST responses (10 million users support)
+user_cache = FastCache()
+
 # Simple in-memory cache for prices
 price_cache = {
     "data": None,
@@ -107,6 +110,40 @@ price_cache = {
 }
 
 chart_cache = {}
+
+# ==================== ULTRA FAST HELPER FUNCTIONS ====================
+
+async def get_user_cached(user_id: str, ttl: int = 30):
+    """Get user from cache or DB - ULTRA FAST"""
+    cache_key = f"user_{user_id}"
+    cached = user_cache.get(cache_key, ttl)
+    if cached:
+        return cached
+    
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "password_hash": 0})
+    if user:
+        user_cache.set(cache_key, user)
+    return user
+
+def invalidate_user_cache(user_id: str):
+    """Invalidate user cache when data changes"""
+    user_cache.delete(f"user_{user_id}")
+
+async def get_wallet_cached(user_id: str, ttl: int = 10):
+    """Get wallet data with caching - ULTRA FAST"""
+    cache_key = f"wallet_{user_id}"
+    cached = api_cache.get(cache_key, ttl)
+    if cached:
+        return cached
+    
+    user = await db.users.find_one(
+        {"user_id": user_id},
+        {"_id": 0, "spot_balance": 1, "futures_balance": 1, "margin_balance": 1, 
+         "staking_balance": 1, "bonus_balance": 1}
+    )
+    if user:
+        api_cache.set(cache_key, user)
+    return user
 
 # CoinGecko API Base URL
 COINGECKO_API_URL = "https://api.coingecko.com/api/v3"
@@ -937,7 +974,14 @@ async def create_referral_chain(new_user_id: str, direct_referrer_id: str, now: 
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login(credentials: UserLogin, response: Response):
-    user = await db.users.find_one({"email": credentials.email}, {"_id": 0})
+    """ULTRA FAST Login - Optimized for 10M+ users"""
+    # Use index on email for instant lookup
+    user = await db.users.find_one(
+        {"email": credentials.email}, 
+        {"_id": 0, "user_id": 1, "email": 1, "name": 1, "picture": 1, 
+         "password_hash": 1, "is_blocked": 1, "two_fa_enabled": 1, 
+         "two_fa_secret": 1, "created_at": 1}  # Only fetch needed fields
+    )
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
@@ -978,6 +1022,14 @@ async def login(credentials: UserLogin, response: Response):
         max_age=JWT_EXPIRATION_HOURS * 3600,
         path="/"
     )
+    
+    # Cache user data for subsequent requests
+    user_cache.set(f"user_{user['user_id']}", {
+        "user_id": user["user_id"],
+        "email": user["email"],
+        "name": user["name"],
+        "picture": user.get("picture")
+    })
     
     created_at = user.get("created_at")
     if isinstance(created_at, str):
