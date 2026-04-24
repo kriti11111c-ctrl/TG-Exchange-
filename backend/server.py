@@ -5854,6 +5854,16 @@ async def get_futures_history(
     # Format history items
     history = []
     
+    # Coin name mapping for display
+    coin_names = {
+        "BTC": "Bitcoin", "ETH": "Ethereum", "BNB": "BNB", "SOL": "Solana",
+        "XRP": "XRP", "DOGE": "Dogecoin", "ADA": "Cardano", "AVAX": "Avalanche",
+        "SHIB": "Shiba Inu", "DOT": "Polkadot", "LINK": "Chainlink", "TRX": "TRON",
+        "MATIC": "Polygon", "UNI": "Uniswap", "LTC": "Litecoin", "ATOM": "Cosmos",
+        "XLM": "Stellar", "NEAR": "NEAR", "APT": "Aptos", "FIL": "Filecoin",
+        "BEL": "Bella Protocol"
+    }
+    
     # Add trade code based trades
     for tc in trade_codes_used:
         # Find matching transaction for more details
@@ -5920,9 +5930,9 @@ async def get_futures_history(
             "id": tc.get("code"),
             "type": "trade_code",
             "status": "Opened",
-            "product": f"{coin}USDT",
+            "product": coin_names.get(coin.upper(), coin),
             "direction": trade_type,
-            "time_period": "60 seconds",
+            "time_period": f"10s({time_period_start}~{time_period_end})",
             "amount": round(amount, 2),
             "open_position_time": f"{formatted_date} {formatted_time}",
             "open_price": round(open_price, 6),
@@ -6001,13 +6011,14 @@ async def get_futures_history(
         amount = th.get("amount", 0)
         profit_percent = th.get("profit_percent", 0)
         
+        coin = th.get('coin', 'BTC').upper()
         history.append({
             "id": th.get("trade_id", th.get("trade_code", "N/A")),
             "type": "trade_code",
             "status": "Completed",
-            "product": f"{th.get('coin', 'BTC')}USDT",
+            "product": coin_names.get(coin, coin),
             "direction": th.get("trade_type", "CALL").upper(),
-            "time_period": "60 seconds",
+            "time_period": f"10s({time_period_start}~{time_period_end})",
             "amount": round(amount, 2),
             "open_position_time": f"{formatted_date} {formatted_time}",
             "open_price": round(th.get("open_price", th.get("price", 0)), 6),
