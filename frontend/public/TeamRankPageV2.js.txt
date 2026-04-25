@@ -382,6 +382,12 @@ const TeamRankPage = () => {
               </div>
             </div>
 
+            {/* SIMPLE TEST - NO CONDITION */}
+            <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl p-4 mb-4 text-white">
+              <p className="font-bold text-lg">👥 Team Members Section</p>
+              <p className="text-sm opacity-80">This section is working! Click Show to expand.</p>
+            </div>
+
             {/* Team Members List - ALWAYS SHOW, Collapsible, Sorted by Futures Balance (Highest First) */}
             {rankInfo && (
               <div 
