@@ -778,14 +778,18 @@ def create_jwt_token(user_id: str, email: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 async def get_current_user(request: Request) -> dict:
-    # Check cookie first
-    session_token = request.cookies.get("session_token")
+    # FIXED: Check Authorization header FIRST (localStorage token takes priority)
+    # This fixes the issue where stale cookies return wrong user data
+    session_token = None
     
-    # Then check Authorization header
+    # Priority 1: Authorization header (localStorage token from frontend)
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        session_token = auth_header.split(" ")[1]
+    
+    # Priority 2: Cookie (fallback for Google OAuth sessions)
     if not session_token:
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            session_token = auth_header.split(" ")[1]
+        session_token = request.cookies.get("session_token")
     
     if not session_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
