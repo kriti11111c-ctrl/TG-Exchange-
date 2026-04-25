@@ -2560,19 +2560,24 @@ async def get_referral_stats(user: dict = Depends(get_current_user)):
 async def debug_team_count(user: dict = Depends(get_current_user)):
     """DEBUG: Check referral counts for troubleshooting"""
     user_id = user["user_id"]
+    user_email = user.get("email", "unknown")
     
     # Direct count from referrals collection
     referrals_count = await db.referrals.count_documents({"referrer_id": user_id})
     direct_count = await db.referrals.count_documents({"referrer_id": user_id, "level": 1})
+    
+    # Get team_stats result
+    team_stats = await get_team_stats(user_id)
     
     # Sample referrals
     sample_refs = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).limit(5).to_list(length=5)
     
     return {
         "user_id": user_id,
-        "user_email": user.get("email"),
-        "total_referrals_in_db": referrals_count,
-        "direct_referrals_in_db": direct_count,
+        "user_email": user_email,
+        "db_count_total": referrals_count,
+        "db_count_direct": direct_count,
+        "team_stats_result": team_stats,
         "sample_referrals": sample_refs
     }
 
