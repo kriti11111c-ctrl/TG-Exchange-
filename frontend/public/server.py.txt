@@ -2808,11 +2808,13 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
     try:
         user_id = user["user_id"]
         
-        # Check cache first
-        cache_key = f"team_rank_info_{user_id}"
-        cached = api_cache.get(cache_key, ttl=30)  # Cache for 30 seconds
-        if cached:
-            return cached
+        # DISABLED CACHE FOR DEBUGGING
+        # cache_key = f"team_rank_info_{user_id}"
+        # cached = api_cache.get(cache_key, ttl=30)
+        # if cached:
+        #     return cached
+        
+        print(f"[team-rank/info] Processing request for user_id={user_id}")
         
         now = datetime.now(timezone.utc)
         
