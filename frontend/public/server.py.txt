@@ -6366,6 +6366,9 @@ async def get_futures_history(
     # Sort by timestamp descending
     unique_history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
     
+    # LIMIT: Keep only last 10 trades
+    unique_history = unique_history[:10]
+    
     return {
         "history": unique_history,
         "count": len(unique_history),
