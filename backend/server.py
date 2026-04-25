@@ -2551,6 +2551,27 @@ async def get_referral_stats(user: dict = Depends(get_current_user)):
     api_cache.set(cache_key, result)
     return result
 
+@api_router.get("/debug/team-count")
+async def debug_team_count(user: dict = Depends(get_current_user)):
+    """DEBUG: Check referral counts for troubleshooting"""
+    user_id = user["user_id"]
+    
+    # Direct count from referrals collection
+    referrals_count = await db.referrals.count_documents({"referrer_id": user_id})
+    direct_count = await db.referrals.count_documents({"referrer_id": user_id, "level": 1})
+    
+    # Sample referrals
+    sample_refs = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).limit(5).to_list(length=5)
+    
+    return {
+        "user_id": user_id,
+        "user_email": user.get("email"),
+        "total_referrals_in_db": referrals_count,
+        "direct_referrals_in_db": direct_count,
+        "sample_referrals": sample_refs
+    }
+
+
 @api_router.get("/referral/team")
 async def get_referral_team(user: dict = Depends(get_current_user), level: int = 0):
     """Get list of referred users - ULTRA OPTIMIZED with CACHING"""
