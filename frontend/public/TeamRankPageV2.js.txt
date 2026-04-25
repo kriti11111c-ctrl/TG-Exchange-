@@ -382,211 +382,136 @@ const TeamRankPage = () => {
               </div>
             </div>
 
-            {/* SIMPLE TEST - NO CONDITION */}
-            <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl p-4 mb-4 text-white">
-              <p className="font-bold text-lg">👥 Team Members Section</p>
-              <p className="text-sm opacity-80">This section is working! Click Show to expand.</p>
-            </div>
-
-            {/* Team Members List - ALWAYS SHOW, Collapsible, Sorted by Futures Balance (Highest First) */}
-            {rankInfo && (
-              <div 
-                className={`${cardBg} rounded-xl overflow-hidden mb-4`}
-                style={{
-                  border: isDark ? '1.5px solid #00E5FF50' : '1.5px solid #00E5FF80',
-                  boxShadow: isDark ? '0 4px 15px rgba(0, 229, 255, 0.15), inset 0 1px 0 rgba(255,255,255,0.1)' : '0 4px 15px rgba(0, 229, 255, 0.2)'
-                }}
+            {/* Team Members - Direct Referrals - NO CONDITION, ALWAYS SHOW */}
+            <div 
+              className={`${cardBg} rounded-xl overflow-hidden mb-4`}
+              style={{
+                border: isDark ? '1.5px solid #00E5FF50' : '1.5px solid #00E5FF80',
+                boxShadow: isDark ? '0 4px 15px rgba(0, 229, 255, 0.15)' : '0 4px 15px rgba(0, 229, 255, 0.2)'
+              }}
+            >
+              <button 
+                onClick={() => setShowTeamMembers(!showTeamMembers)}
+                className="w-full p-3 flex justify-between items-center"
+                data-testid="team-members-toggle"
               >
-                {/* Collapsible Header */}
-                <button 
-                  onClick={() => setShowTeamMembers(!showTeamMembers)}
-                  className="w-full p-3 flex justify-between items-center"
-                  data-testid="team-members-toggle"
-                >
-                  <div className="flex items-center gap-2">
-                    <p className={`font-medium ${text}`}>👥 Team Members</p>
-                    <span className="px-2 py-0.5 rounded-md bg-[#0ECB81]/20 text-[#0ECB81] text-xs font-medium">
-                      {rankInfo.direct_referrals || 0} Active
-                    </span>
-                    {rankInfo.low_balance_count > 0 && (
-                      <span className="px-2 py-0.5 rounded-md bg-red-500/20 text-red-400 text-xs font-medium">
-                        ⚠️ {rankInfo.low_balance_count} Low
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs ${textMuted}`}>
-                      {showTeamMembers ? 'Hide' : 'Show'}
-                    </span>
-                    <span className={`transition-transform duration-200 ${showTeamMembers ? 'rotate-180' : ''}`}>
-                      ▼
-                    </span>
-                  </div>
-                </button>
-                
-                {/* Collapsible Content */}
-                {showTeamMembers && (
-                  <div className="px-3 pb-3">
-                    <p className={`text-xs ${textMuted} mb-2`}>
-                      Sorted by Futures Balance (Highest First)
-                    </p>
-                    
-                    <div className="space-y-2 max-h-72 overflow-y-auto">
-                      {/* Show empty state if no team members */}
-                      {(!rankInfo.team_members || rankInfo.team_members.length === 0) ? (
-                        <div className={`p-4 rounded-lg text-center ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
-                          <p className={`text-sm ${textMuted}`}>👥 No team members yet</p>
-                          <p className={`text-xs ${textMuted} mt-1`}>Share your referral link to grow your team!</p>
-                        </div>
-                      ) : (
-                      /* Sort by futures_balance descending */
+                <div className="flex items-center gap-2">
+                  <p className={`font-medium ${text}`}>👥 Team Members</p>
+                  <span className="px-2 py-0.5 rounded-md bg-[#0ECB81]/20 text-[#0ECB81] text-xs font-medium">
+                    {rankInfo?.direct_referrals || 0} Active
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs ${textMuted}`}>{showTeamMembers ? 'Hide' : 'Show'}</span>
+                  <span className={`transition-transform duration-200 ${showTeamMembers ? 'rotate-180' : ''}`}>▼</span>
+                </div>
+              </button>
+              
+              {showTeamMembers && (
+                <div className="px-3 pb-3">
+                  <p className={`text-xs ${textMuted} mb-2`}>Sorted by Futures Balance (Highest First)</p>
+                  <div className="space-y-2 max-h-72 overflow-y-auto">
+                    {(!rankInfo?.team_members || rankInfo.team_members.length === 0) ? (
+                      <div className={`p-4 rounded-lg text-center ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
+                        <p className={`text-sm ${textMuted}`}>👥 No team members yet</p>
+                        <p className={`text-xs ${textMuted} mt-1`}>Share your referral link to grow your team!</p>
+                      </div>
+                    ) : (
                       [...rankInfo.team_members]
                         .sort((a, b) => (b.futures_balance || 0) - (a.futures_balance || 0))
-                        .map((member, index) => (
-                          <div 
-                            key={member.user_id || index}
-                            className="p-2 rounded-lg flex justify-between items-center"
-                            style={{
-                              backgroundColor: member.is_valid 
-                                ? (isDark ? 'rgba(14, 203, 129, 0.1)' : '#E8F5E9')
-                                : (isDark ? 'rgba(239, 68, 68, 0.1)' : '#FFEBEE'),
-                              border: `1px solid ${member.is_valid 
-                                ? (isDark ? 'rgba(14, 203, 129, 0.3)' : '#C8E6C9')
-                                : (isDark ? 'rgba(239, 68, 68, 0.3)' : '#FFCDD2')}`
-                            }}
-                          >
+                        .map((member, idx) => (
+                          <div key={idx} className={`p-2 rounded-lg flex items-center justify-between ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
                             <div className="flex items-center gap-2">
-                              {/* Rank Badge */}
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                                member.is_valid ? 'bg-[#0ECB81]/20 text-[#0ECB81]' : 'bg-red-500/20 text-red-400'
-                              }`}>
-                                #{index + 1}
+                              <span className={`text-sm font-bold ${text}`}>#{idx + 1}</span>
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00E5FF] to-[#0ECB81] flex items-center justify-center text-white text-xs font-bold">
+                                {(member.name || member.email || 'U')[0].toUpperCase()}
                               </div>
                               <div>
-                                <p className={`text-sm font-medium ${text}`}>{member.name || 'User'}</p>
-                                <p className={`text-xs ${textMuted}`}>{member.email || ''}</p>
+                                <p className={`text-sm font-medium ${text}`}>{member.name || member.email?.split('@')[0] || 'Member'}</p>
+                                <p className={`text-xs ${textMuted}`}>Level {member.level || 1}</p>
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className={`text-sm font-bold ${member.is_valid ? 'text-[#0ECB81]' : 'text-red-400'}`}>
-                                ${member.futures_balance?.toFixed(2) || '0.00'}
+                              <p className={`text-sm font-bold ${(member.futures_balance || 0) >= 50 ? 'text-[#0ECB81]' : 'text-red-400'}`}>
+                                ${(member.futures_balance || 0).toFixed(2)}
                               </p>
-                              <p className={`text-[10px] ${textMuted}`}>
-                                {member.is_valid ? '✅ Valid' : '❌ < $50'}
+                              <p className={`text-xs ${(member.futures_balance || 0) >= 50 ? 'text-[#0ECB81]' : 'text-red-400'}`}>
+                                {(member.futures_balance || 0) >= 50 ? '✅ Valid' : '⚠️ Low'}
                               </p>
                             </div>
                           </div>
                         ))
-                      )}
-                    </div>
-                    
-                    {rankInfo.low_balance_count > 0 && (
-                      <p className="text-xs text-red-400 mt-2 p-2 rounded bg-red-500/10">
-                        ⚠️ {rankInfo.low_balance_count} member(s) have less than $50 in Futures. This is affecting your rank!
-                      </p>
                     )}
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
 
-            {/* ALL Team Members (Full Hierarchy) - ALWAYS SHOW, Collapsible List */}
-            {rankInfo && (
-              <div 
-                className={`${cardBg} rounded-xl overflow-hidden mb-4`}
-                style={{
-                  border: isDark ? '1.5px solid #3498DB50' : '1.5px solid #3498DB80',
-                  boxShadow: isDark ? '0 4px 15px rgba(52, 152, 219, 0.15), inset 0 1px 0 rgba(255,255,255,0.1)' : '0 4px 15px rgba(52, 152, 219, 0.2)'
-                }}
+            {/* All Team Members - Full Hierarchy - NO CONDITION, ALWAYS SHOW */}
+            <div 
+              className={`${cardBg} rounded-xl overflow-hidden mb-4`}
+              style={{
+                border: isDark ? '1.5px solid #3498DB50' : '1.5px solid #3498DB80',
+                boxShadow: isDark ? '0 4px 15px rgba(52, 152, 219, 0.15)' : '0 4px 15px rgba(52, 152, 219, 0.2)'
+              }}
+            >
+              <button 
+                onClick={() => setShowAllTeamMembers(!showAllTeamMembers)}
+                className="w-full p-3 flex justify-between items-center"
+                data-testid="all-team-members-toggle"
               >
-                {/* Collapsible Header */}
-                <button 
-                  onClick={() => setShowAllTeamMembers(!showAllTeamMembers)}
-                  className="w-full p-3 flex justify-between items-center"
-                  data-testid="all-team-members-toggle"
-                >
-                  <div className="flex items-center gap-2">
-                    <p className={`font-medium ${text}`}>🌐 All Team Members</p>
-                    <span className="px-2 py-0.5 rounded-md bg-[#3498DB]/20 text-[#3498DB] text-xs font-medium">
-                      {rankInfo.all_team_members?.length || rankInfo.total_team || 0} Total
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs ${textMuted}`}>
-                      {showAllTeamMembers ? 'Hide' : 'Show'}
-                    </span>
-                    <span className={`transition-transform duration-200 ${showAllTeamMembers ? 'rotate-180' : ''}`}>
-                      ▼
-                    </span>
-                  </div>
-                </button>
-                
-                {/* Collapsible Content */}
-                {showAllTeamMembers && (
-                  <div className="px-3 pb-3">
-                    <p className={`text-xs ${textMuted} mb-2`}>
-                      Full team hierarchy sorted by Futures Balance (Highest First)
-                    </p>
-                    
-                    <div className="space-y-2 max-h-80 overflow-y-auto">
-                      {/* Show empty state if no team members */}
-                      {(!rankInfo.all_team_members || rankInfo.all_team_members.length === 0) ? (
-                        <div className={`p-4 rounded-lg text-center ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
-                          <p className={`text-sm ${textMuted}`}>🌐 No team members in hierarchy</p>
-                          <p className={`text-xs ${textMuted} mt-1`}>Build your direct team to grow your network!</p>
-                        </div>
-                      ) : (
+                <div className="flex items-center gap-2">
+                  <p className={`font-medium ${text}`}>🌐 All Team Members</p>
+                  <span className="px-2 py-0.5 rounded-md bg-[#3498DB]/20 text-[#3498DB] text-xs font-medium">
+                    {rankInfo?.all_team_members?.length || rankInfo?.total_team || 0} Total
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs ${textMuted}`}>{showAllTeamMembers ? 'Hide' : 'Show'}</span>
+                  <span className={`transition-transform duration-200 ${showAllTeamMembers ? 'rotate-180' : ''}`}>▼</span>
+                </div>
+              </button>
+              
+              {showAllTeamMembers && (
+                <div className="px-3 pb-3">
+                  <p className={`text-xs ${textMuted} mb-2`}>Full team hierarchy sorted by Balance</p>
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    {(!rankInfo?.all_team_members || rankInfo.all_team_members.length === 0) ? (
+                      <div className={`p-4 rounded-lg text-center ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
+                        <p className={`text-sm ${textMuted}`}>🌐 No team members in hierarchy</p>
+                        <p className={`text-xs ${textMuted} mt-1`}>Build your direct team to grow your network!</p>
+                      </div>
+                    ) : (
                       [...rankInfo.all_team_members]
                         .sort((a, b) => (b.futures_balance || 0) - (a.futures_balance || 0))
-                        .map((member, index) => (
-                          <div 
-                            key={member.user_id || `all-${index}`}
-                            className="p-2 rounded-lg flex justify-between items-center"
-                            style={{
-                              backgroundColor: member.is_valid 
-                                ? (isDark ? 'rgba(14, 203, 129, 0.1)' : '#E8F5E9')
-                                : (isDark ? 'rgba(239, 68, 68, 0.1)' : '#FFEBEE'),
-                              border: `1px solid ${member.is_valid 
-                                ? (isDark ? 'rgba(14, 203, 129, 0.3)' : '#C8E6C9')
-                                : (isDark ? 'rgba(239, 68, 68, 0.3)' : '#FFCDD2')}`
-                            }}
-                            data-testid={`all-team-member-${index}`}
-                          >
+                        .map((member, idx) => (
+                          <div key={idx} className={`p-2 rounded-lg flex items-center justify-between ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
                             <div className="flex items-center gap-2">
-                              {/* Rank Badge */}
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                                member.is_valid ? 'bg-[#3498DB]/20 text-[#3498DB]' : 'bg-red-500/20 text-red-400'
+                              <span className={`text-sm font-bold ${text}`}>#{idx + 1}</span>
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${
+                                member.level === 1 ? 'bg-gradient-to-br from-[#00E5FF] to-[#0ECB81]' :
+                                member.level === 2 ? 'bg-gradient-to-br from-[#F0B90B] to-[#FCD535]' :
+                                'bg-gradient-to-br from-[#9B59B6] to-[#8E44AD]'
                               }`}>
-                                #{index + 1}
+                                L{member.level || 1}
                               </div>
                               <div>
-                                <div className="flex items-center gap-1">
-                                  <p className={`text-sm font-medium ${text}`}>{member.name || 'User'}</p>
-                                  {member.level && (
-                                    <span className="px-1.5 py-0.5 rounded bg-[#00E5FF]/20 text-[#00E5FF] text-[9px] font-medium">
-                                      L{member.level}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className={`text-xs ${textMuted}`}>{member.email || ''}</p>
+                                <p className={`text-sm font-medium ${text}`}>{member.name || member.email?.split('@')[0] || 'Member'}</p>
+                                <p className={`text-xs ${textMuted}`}>Level {member.level || 1}</p>
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className={`text-sm font-bold ${member.is_valid ? 'text-[#0ECB81]' : 'text-red-400'}`}>
-                                ${member.futures_balance?.toFixed(2) || '0.00'}
-                              </p>
-                              <p className={`text-[10px] ${textMuted}`}>
-                                {member.is_valid ? '✅ Valid' : '❌ < $50'}
+                              <p className={`text-sm font-bold ${(member.futures_balance || 0) >= 50 ? 'text-[#0ECB81]' : 'text-red-400'}`}>
+                                ${(member.futures_balance || 0).toFixed(2)}
                               </p>
                             </div>
                           </div>
                         ))
-                      )}
-                    </div>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
 
             {/* Monthly Royalty Card - Shows for users WITH rank */}
             {rankInfo?.current_rank && (
