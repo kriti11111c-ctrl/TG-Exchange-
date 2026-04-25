@@ -513,87 +513,66 @@ TEAM_RANKS = [
 ]
 
 async def get_team_stats(user_id: str) -> dict:
-    """Get user's team statistics - counts users with $50+ FUTURES BALANCE
+    """Get user's team statistics - SIMPLIFIED VERSION for better MongoDB Atlas compatibility
     
-    NEW LOGIC: Directly check futures_balance >= 50
-    If user transfers from Futures to Spot, their futures_balance drops and they won't count anymore.
-    This enables rank demotion when team members move money out of futures.
+    Shows ALL referrals for display, tracks valid ($50+) separately for rank qualification.
     """
     
-    # Get direct referrals count with FUTURES BALANCE check using aggregation
-    direct_pipeline = [
-        {"$match": {"referrer_id": user_id, "level": 1}},
-        {"$lookup": {
-            "from": "wallets",
-            "localField": "referred_id",
-            "foreignField": "user_id",
-            "as": "wallet"
-        }},
-        {"$lookup": {
-            "from": "users",
-            "localField": "referred_id",
-            "foreignField": "user_id",
-            "as": "user"
-        }},
-        {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
-        {"$unwind": {"path": "$user", "preserveNullAndEmptyArrays": True}},
-        {"$addFields": {
-            # Direct futures balance check - if user transfers to spot, this drops
-            "futures_balance": {"$ifNull": ["$wallet.futures_balance", 0]},
-            "rank_level": {"$ifNull": ["$user.team_rank_level", 0]}
-        }},
-        {"$group": {
-            "_id": None,
-            "total_direct": {"$sum": 1},
-            # Count only those with futures_balance >= $50
-            "valid_direct": {"$sum": {"$cond": [{"$gte": ["$futures_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}},
-            "bronze_members": {"$sum": {"$cond": [
-                {"$and": [
-                    {"$gte": ["$futures_balance", MIN_DEPOSIT_FOR_RANK]},
-                    {"$gte": ["$rank_level", 1]}
-                ]}, 1, 0
-            ]}}
-        }}
-    ]
+    # SIMPLE QUERY - Get all referrals for this user (same as referral/stats uses)
+    all_referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0, "referred_id": 1, "level": 1}).to_list(length=2000)
     
-    direct_result = await db.referrals.aggregate(direct_pipeline).to_list(length=1)
-    direct_stats = direct_result[0] if direct_result else {"total_direct": 0, "valid_direct": 0, "bronze_members": 0}
+    # Direct referrals = level 1 only
+    direct_referrals = [r for r in all_referrals if r.get("level") == 1]
+    total_direct = len(direct_referrals)
+    total_team = len(all_referrals)
     
-    # Get all team count with FUTURES BALANCE check
-    team_pipeline = [
-        {"$match": {"referrer_id": user_id}},
-        {"$lookup": {
-            "from": "wallets",
-            "localField": "referred_id",
-            "foreignField": "user_id",
-            "as": "wallet"
-        }},
-        {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
-        {"$addFields": {
-            # Direct futures balance check
-            "futures_balance": {"$ifNull": ["$wallet.futures_balance", 0]}
-        }},
-        {"$group": {
-            "_id": None,
-            "total_team": {"$sum": 1},
-            # Count only those with futures_balance >= $50
-            "valid_team": {"$sum": {"$cond": [{"$gte": ["$futures_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}}
-        }}
-    ]
+    # Get wallets for balance check
+    referred_ids = [r.get("referred_id") for r in all_referrals if r.get("referred_id")]
     
-    team_result = await db.referrals.aggregate(team_pipeline).to_list(length=1)
-    team_stats = team_result[0] if team_result else {"total_team": 0, "valid_team": 0}
+    valid_direct = 0
+    valid_team = 0
+    bronze_members = 0
+    
+    if referred_ids:
+        # Batch fetch wallets
+        wallets = await db.wallets.find(
+            {"user_id": {"$in": referred_ids}},
+            {"_id": 0, "user_id": 1, "futures_balance": 1}
+        ).to_list(length=2000)
+        
+        wallets_map = {w["user_id"]: w.get("futures_balance", 0) or 0 for w in wallets}
+        
+        # Batch fetch users for rank level
+        users = await db.users.find(
+            {"user_id": {"$in": referred_ids}},
+            {"_id": 0, "user_id": 1, "team_rank_level": 1}
+        ).to_list(length=2000)
+        
+        users_map = {u["user_id"]: u.get("team_rank_level", 0) or 0 for u in users}
+        
+        # Count valid members
+        for ref in all_referrals:
+            ref_id = ref.get("referred_id")
+            futures_bal = wallets_map.get(ref_id, 0)
+            rank_level = users_map.get(ref_id, 0)
+            
+            if futures_bal >= MIN_DEPOSIT_FOR_RANK:
+                valid_team += 1
+                if ref.get("level") == 1:
+                    valid_direct += 1
+                    if rank_level >= 1:
+                        bronze_members += 1
     
     return {
-        # Show ALL referrals (not just $50+ valid ones) for display
-        "direct_referrals": direct_stats.get("total_direct", 0),
-        "bronze_members": direct_stats.get("bronze_members", 0),
-        "total_team": team_stats.get("total_team", 0),
+        # Show ALL referrals for display
+        "direct_referrals": total_direct,
+        "bronze_members": bronze_members,
+        "total_team": total_team,
         # Keep valid counts for rank qualification only
-        "valid_direct": direct_stats.get("valid_direct", 0),
-        "valid_team": team_stats.get("valid_team", 0),
-        "total_direct_all": direct_stats.get("total_direct", 0),
-        "total_team_all": team_stats.get("total_team", 0)
+        "valid_direct": valid_direct,
+        "valid_team": valid_team,
+        "total_direct_all": total_direct,
+        "total_team_all": total_team
     }
 
 async def get_team_members_with_balance(user_id: str, include_all_levels: bool = False) -> list:
