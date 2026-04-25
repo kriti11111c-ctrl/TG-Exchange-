@@ -3041,6 +3041,9 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
             "direct_referrals": team_stats["direct_referrals"],
             "bronze_members": team_stats["bronze_members"],
             "total_team": team_stats["total_team"],
+            # VALID COUNTS for progress bars (only $50+ members)
+            "valid_direct": team_stats["valid_direct"],
+            "valid_team": team_stats["valid_team"],
             "current_rank": rank_info["current_rank"],
             "next_rank": rank_info["next_rank"],
             "progress": rank_info["progress"],
