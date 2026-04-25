@@ -778,21 +778,32 @@ def create_jwt_token(user_id: str, email: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 async def get_current_user(request: Request) -> dict:
-    # FIXED: Check Authorization header FIRST (localStorage token takes priority)
-    # This fixes the issue where stale cookies return wrong user data
-    session_token = None
+    # CRITICAL FIX: Authorization header ALWAYS takes priority
+    # If Authorization header exists, ONLY use that (ignore cookies completely)
+    # This prevents stale cookies from overriding valid JWT tokens
     
-    # Priority 1: Authorization header (localStorage token from frontend)
     auth_header = request.headers.get("Authorization")
+    
+    # If Authorization header exists, use ONLY JWT authentication
     if auth_header and auth_header.startswith("Bearer "):
-        session_token = auth_header.split(" ")[1]
+        jwt_token = auth_header.split(" ")[1]
+        try:
+            payload = jwt.decode(jwt_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            user_id = payload.get("sub")
+            user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+            if not user:
+                raise HTTPException(status_code=401, detail="User not found")
+            print(f"[AUTH] JWT auth successful for user_id={user_id}")
+            return user
+        except JWTError as e:
+            print(f"[AUTH] JWT decode failed: {e}")
+            raise HTTPException(status_code=401, detail="Invalid token")
     
-    # Priority 2: Cookie (fallback for Google OAuth sessions)
-    if not session_token:
-        session_token = request.cookies.get("session_token")
+    # No Authorization header - fall back to cookie/session (for Google OAuth only)
+    session_token = request.cookies.get("session_token")
     
     if not session_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        raise HTTPException(status_code=401, detail="Not authenticated - no token provided")
     
     # Check if it's a Google OAuth session
     session = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
@@ -808,18 +819,10 @@ async def get_current_user(request: Request) -> dict:
         user = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
+        print(f"[AUTH] Session auth successful for user_id={session['user_id']}")
         return user
     
-    # Try JWT token
-    try:
-        payload = jwt.decode(session_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        user_id = payload.get("sub")
-        user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
-        if not user:
-            raise HTTPException(status_code=401, detail="User not found")
-        return user
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    raise HTTPException(status_code=401, detail="Invalid session")
 
 # ================= AUTH ROUTES =================
 
