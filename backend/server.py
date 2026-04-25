@@ -5547,12 +5547,21 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
         
         # Check scheduled start time
         if code_data.get("scheduled_start"):
-            scheduled_start = datetime.fromisoformat(code_data["scheduled_start"].replace('Z', '+00:00'))
+            # Handle both datetime object and string format
+            scheduled_start_raw = code_data["scheduled_start"]
+            if isinstance(scheduled_start_raw, str):
+                scheduled_start = datetime.fromisoformat(scheduled_start_raw.replace('Z', '+00:00'))
+            else:
+                scheduled_start = scheduled_start_raw
             if scheduled_start.tzinfo is None:
                 scheduled_start = scheduled_start.replace(tzinfo=timezone.utc)
             
-            # Check expiry
-            expires_at = datetime.fromisoformat(code_data["expires_at"].replace('Z', '+00:00'))
+            # Check expiry - handle both datetime object and string format
+            expires_at_raw = code_data["expires_at"]
+            if isinstance(expires_at_raw, str):
+                expires_at = datetime.fromisoformat(expires_at_raw.replace('Z', '+00:00'))
+            else:
+                expires_at = expires_at_raw
             if expires_at.tzinfo is None:
                 expires_at = expires_at.replace(tzinfo=timezone.utc)
             
