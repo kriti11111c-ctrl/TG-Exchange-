@@ -47,26 +47,32 @@ const TeamRankPage = () => {
 
   const fetchData = async () => {
     try {
-      // Get auth token from localStorage
+      // CRITICAL FIX: Get auth token from localStorage and use ONLY Authorization header
+      // DO NOT use withCredentials as it sends stale cookies that override the correct user
       const authToken = localStorage.getItem('auth_token');
-      const authHeaders = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+      
+      if (!authToken) {
+        console.log("No auth token found - user not logged in");
+        setLoading(false);
+        return;
+      }
+      
+      // Create axios instance WITHOUT withCredentials to avoid cookie conflicts
+      const authConfig = {
+        headers: { Authorization: `Bearer ${authToken}` }
+        // NO withCredentials - this prevents stale cookie from overriding token
+      };
       
       // Fetch all-levels first (public endpoint - no auth required)
       const levelsRes = await axios.get(`${API}/team-rank/all-levels`);
       console.log("ALL LEVELS RESPONSE:", levelsRes.data);
       setAllRanks(levelsRes.data.ranks || []);
       
-      // Fetch user-specific data (requires auth)
+      // Fetch user-specific data (requires auth) - using ONLY Authorization header
       try {
         const [rankRes, historyRes] = await Promise.all([
-          axios.get(`${API}/team-rank/info`, { 
-            headers: authHeaders,
-            withCredentials: true 
-          }),
-          axios.get(`${API}/team-rank/salary-history`, { 
-            headers: authHeaders,
-            withCredentials: true 
-          })
+          axios.get(`${API}/team-rank/info`, authConfig),
+          axios.get(`${API}/team-rank/salary-history`, authConfig)
         ]);
         
         console.log("RANK API RESPONSE:", JSON.stringify(rankRes.data));
@@ -78,7 +84,7 @@ const TeamRankPage = () => {
           toast.success(`🎉 Congratulations! You received $${rankRes.data.levelup_reward_received} level-up reward!`);
         }
       } catch (authError) {
-        console.log("Auth-specific data fetch failed (user may not be logged in):", authError.message);
+        console.log("Auth-specific data fetch failed:", authError.message);
       }
     } catch (error) {
       console.error("Error fetching ranks data:", error);
