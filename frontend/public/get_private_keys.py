@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-Extract private keys for deposits not forwarded to admin
+Extract private keys for deposits not forwarded to admin - FIXED
 Run: python3 get_private_keys.py
-WARNING: This contains sensitive data - keep secure!
 """
 
 import asyncio
@@ -52,7 +51,15 @@ async def get_private_keys():
     deposit_addresses = list(set(d.get("deposit_address") for d in not_forwarded if d.get("deposit_address")))
     print(f"📋 Unique Deposit Addresses: {len(deposit_addresses)}")
     
-    # Get private keys from deposit_addresses collection
+    # Get all private keys from deposit_addresses collection first
+    all_addr_docs = await db.deposit_addresses.find(
+        {"address": {"$in": deposit_addresses}},
+        {"_id": 0, "address": 1, "private_key": 1}
+    ).to_list(500)
+    
+    # Create address to private key map
+    addr_to_key = {doc.get("address"): doc.get("private_key") for doc in all_addr_docs}
+    
     print(f"\n🔑 Private Keys:\n")
     
     total_amount = 0
@@ -63,25 +70,28 @@ async def get_private_keys():
         network = deposit.get("network", "N/A")
         total_amount += amount
         
-        # Get private key from deposit_addresses collection
-        addr_doc = await db.deposit_addresses.find_one(
-            {"address": address},
-            {"_id": 0, "private_key": 1, "address": 1}
-        )
+        # Get private key from our map
+        private_key = addr_to_key.get(address, "NOT FOUND")
         
-        # Also check wallets collection
-        if not addr_doc:
+        # If not found, try wallets collection
+        if private_key == "NOT FOUND":
             wallet = await db.wallets.find_one(
                 {"user_id": user_id},
                 {"_id": 0, "deposit_addresses": 1}
             )
             if wallet and wallet.get("deposit_addresses"):
-                for addr_info in wallet.get("deposit_addresses", []):
-                    if addr_info.get("address") == address:
-                        addr_doc = addr_info
-                        break
-        
-        private_key = addr_doc.get("private_key", "NOT FOUND") if addr_doc else "NOT FOUND"
+                dep_addrs = wallet.get("deposit_addresses", {})
+                # Could be dict or list
+                if isinstance(dep_addrs, dict):
+                    for net, addr_info in dep_addrs.items():
+                        if isinstance(addr_info, dict) and addr_info.get("address") == address:
+                            private_key = addr_info.get("private_key", "NOT FOUND")
+                            break
+                elif isinstance(dep_addrs, list):
+                    for addr_info in dep_addrs:
+                        if isinstance(addr_info, dict) and addr_info.get("address") == address:
+                            private_key = addr_info.get("private_key", "NOT FOUND")
+                            break
         
         print(f"[{i}] User: {user_id}")
         print(f"    Amount: ${amount}")
