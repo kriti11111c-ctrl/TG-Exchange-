@@ -382,8 +382,8 @@ const TeamRankPage = () => {
               </div>
             </div>
 
-            {/* Team Members List - Collapsible, Sorted by Futures Balance (Highest First) */}
-            {rankInfo?.team_members && rankInfo.team_members.length > 0 && (
+            {/* Team Members List - ALWAYS SHOW, Collapsible, Sorted by Futures Balance (Highest First) */}
+            {rankInfo && (
               <div 
                 className={`${cardBg} rounded-xl overflow-hidden mb-4`}
                 style={{
@@ -426,8 +426,15 @@ const TeamRankPage = () => {
                     </p>
                     
                     <div className="space-y-2 max-h-72 overflow-y-auto">
-                      {/* Sort by futures_balance descending */}
-                      {[...rankInfo.team_members]
+                      {/* Show empty state if no team members */}
+                      {(!rankInfo.team_members || rankInfo.team_members.length === 0) ? (
+                        <div className={`p-4 rounded-lg text-center ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
+                          <p className={`text-sm ${textMuted}`}>👥 No team members yet</p>
+                          <p className={`text-xs ${textMuted} mt-1`}>Share your referral link to grow your team!</p>
+                        </div>
+                      ) : (
+                      /* Sort by futures_balance descending */
+                      [...rankInfo.team_members]
                         .sort((a, b) => (b.futures_balance || 0) - (a.futures_balance || 0))
                         .map((member, index) => (
                           <div 
@@ -463,7 +470,8 @@ const TeamRankPage = () => {
                               </p>
                             </div>
                           </div>
-                        ))}
+                        ))
+                      )}
                     </div>
                     
                     {rankInfo.low_balance_count > 0 && (
@@ -476,8 +484,8 @@ const TeamRankPage = () => {
               </div>
             )}
 
-            {/* ALL Team Members (Full Hierarchy) - Collapsible List */}
-            {rankInfo?.all_team_members && rankInfo.all_team_members.length > 0 && (
+            {/* ALL Team Members (Full Hierarchy) - ALWAYS SHOW, Collapsible List */}
+            {rankInfo && (
               <div 
                 className={`${cardBg} rounded-xl overflow-hidden mb-4`}
                 style={{
@@ -494,7 +502,7 @@ const TeamRankPage = () => {
                   <div className="flex items-center gap-2">
                     <p className={`font-medium ${text}`}>🌐 All Team Members</p>
                     <span className="px-2 py-0.5 rounded-md bg-[#3498DB]/20 text-[#3498DB] text-xs font-medium">
-                      {rankInfo.all_team_members.length} Total
+                      {rankInfo.all_team_members?.length || rankInfo.total_team || 0} Total
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -515,7 +523,14 @@ const TeamRankPage = () => {
                     </p>
                     
                     <div className="space-y-2 max-h-80 overflow-y-auto">
-                      {[...rankInfo.all_team_members]
+                      {/* Show empty state if no team members */}
+                      {(!rankInfo.all_team_members || rankInfo.all_team_members.length === 0) ? (
+                        <div className={`p-4 rounded-lg text-center ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
+                          <p className={`text-sm ${textMuted}`}>🌐 No team members in hierarchy</p>
+                          <p className={`text-xs ${textMuted} mt-1`}>Build your direct team to grow your network!</p>
+                        </div>
+                      ) : (
+                      [...rankInfo.all_team_members]
                         .sort((a, b) => (b.futures_balance || 0) - (a.futures_balance || 0))
                         .map((member, index) => (
                           <div 
@@ -559,7 +574,8 @@ const TeamRankPage = () => {
                               </p>
                             </div>
                           </div>
-                        ))}
+                        ))
+                      )}
                     </div>
                   </div>
                 )}
