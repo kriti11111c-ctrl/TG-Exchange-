@@ -585,9 +585,13 @@ async def get_team_stats(user_id: str) -> dict:
     team_stats = team_result[0] if team_result else {"total_team": 0, "valid_team": 0}
     
     return {
-        "direct_referrals": direct_stats.get("valid_direct", 0),
+        # Show ALL referrals (not just $50+ valid ones) for display
+        "direct_referrals": direct_stats.get("total_direct", 0),
         "bronze_members": direct_stats.get("bronze_members", 0),
-        "total_team": team_stats.get("valid_team", 0),
+        "total_team": team_stats.get("total_team", 0),
+        # Keep valid counts for rank qualification only
+        "valid_direct": direct_stats.get("valid_direct", 0),
+        "valid_team": team_stats.get("valid_team", 0),
         "total_direct_all": direct_stats.get("total_direct", 0),
         "total_team_all": team_stats.get("total_team", 0)
     }
@@ -631,10 +635,10 @@ async def get_team_members_with_balance(user_id: str, include_all_levels: bool =
             "created_at": "$created_at"
         }},
         {"$sort": {"futures_balance": -1}},  # Sort by balance (highest first)
-        {"$limit": 100}  # Limit to prevent server overload
+        {"$limit": 500}  # Increased limit for larger teams
     ]
     
-    members = await db.referrals.aggregate(pipeline).to_list(length=100)
+    members = await db.referrals.aggregate(pipeline).to_list(length=500)
     
     # Mask email for privacy (show only first 3 chars + ***)
     for member in members:
