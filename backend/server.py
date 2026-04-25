@@ -1289,11 +1289,18 @@ async def get_wallet(user: dict = Depends(get_current_user)):
     
     # Get futures balance
     futures_balance = wallet.get("futures_balance", 0)
+    real_futures_balance = wallet.get("real_futures_balance", 0)
+    welcome_bonus_amount = wallet.get("welcome_bonus", 0)
+    
+    # Calculate locked amount (welcome bonus that cannot be withdrawn)
+    locked_balance = max(0, futures_balance - real_futures_balance)
     
     result = {
         "user_id": wallet["user_id"],
         "balances": wallet["balances"],  # Spot balances
-        "futures_balance": futures_balance,  # Futures USDT balance
+        "futures_balance": futures_balance,  # Total Futures USDT balance (for display)
+        "real_futures_balance": real_futures_balance,  # Withdrawable balance (deposits + profits)
+        "locked_balance": locked_balance,  # Welcome bonus - cannot withdraw
         "welcome_bonus": welcome_bonus_info,
         "updated_at": updated_at.isoformat() if updated_at else None
     }
@@ -1349,21 +1356,36 @@ async def transfer_funds(transfer: TransferRequest, user: dict = Depends(get_cur
         
     elif direction == "futures_to_spot":
         # Transfer from Futures to Spot
-        if futures_balance < amount:
-            raise HTTPException(status_code=400, detail="Insufficient Futures balance")
+        # IMPORTANT: Only real_futures_balance can be transferred out!
+        # Welcome bonus is LOCKED in futures and cannot be withdrawn
         
-        # Get current real_futures_balance
-        current_real = wallet.get("real_futures_balance", 0)
-        # Only deduct from real_futures_balance if it has balance
-        real_deduction = min(amount, current_real)
+        real_futures_balance = wallet.get("real_futures_balance", 0)
         
+        # Check if user has enough REAL balance (not welcome bonus)
+        if real_futures_balance < amount:
+            # Calculate how much is locked (welcome bonus)
+            welcome_bonus = wallet.get("welcome_bonus", 0)
+            locked_amount = max(0, futures_balance - real_futures_balance)
+            
+            if real_futures_balance <= 0:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Cannot withdraw Welcome Bonus! Your ${welcome_bonus:.2f} bonus is locked for trading only. Earn profits through Trade Codes to withdraw."
+                )
+            else:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Insufficient withdrawable balance! Available: ${real_futures_balance:.2f} (${locked_amount:.2f} is locked Welcome Bonus)"
+                )
+        
+        # Proceed with transfer - only real balance can be moved
         await db.wallets.update_one(
             {"user_id": user_id},
             {
                 "$inc": {
                     "futures_balance": -amount,
                     "balances.usdt": amount,
-                    "real_futures_balance": -real_deduction  # Deduct from real balance too
+                    "real_futures_balance": -amount  # Deduct from real balance
                 },
                 "$set": {"updated_at": now.isoformat()}
             }
