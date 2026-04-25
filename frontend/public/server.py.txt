@@ -2807,6 +2807,7 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
     """Get user's team rank information with demotion support - CACHED"""
     try:
         user_id = user["user_id"]
+        user_email = user.get("email", "unknown")
         
         # DISABLED CACHE FOR DEBUGGING
         # cache_key = f"team_rank_info_{user_id}"
@@ -2814,7 +2815,11 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         # if cached:
         #     return cached
         
-        print(f"[team-rank/info] Processing request for user_id={user_id}")
+        print(f"[team-rank/info] Processing request for user_id={user_id}, email={user_email}")
+        
+        # EXTRA DEBUG: Direct count from referrals collection
+        direct_count = await db.referrals.count_documents({"referrer_id": user_id})
+        print(f"[team-rank/info] Direct DB count for {user_id}: {direct_count} referrals")
         
         now = datetime.now(timezone.utc)
         
