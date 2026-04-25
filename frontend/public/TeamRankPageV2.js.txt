@@ -210,6 +210,7 @@ const TeamRankPage = () => {
                   <span className={`text-xs ${textMuted}`}>Direct Referrals</span>
                 </div>
                 <p className={`text-lg font-bold ${text}`}>{rankInfo?.direct_referrals || 0}</p>
+                <p className={`text-xs ${textMuted}`}>({rankInfo?.valid_direct ?? 0} active $50+)</p>
               </div>
               <div className={`${cardBg} rounded-xl p-3`}>
                 <div className="flex items-center gap-2 mb-1">
@@ -217,6 +218,7 @@ const TeamRankPage = () => {
                   <span className={`text-xs ${textMuted}`}>Total Team</span>
                 </div>
                 <p className={`text-lg font-bold ${text}`}>{rankInfo?.total_team || 0}</p>
+                <p className={`text-xs ${textMuted}`}>({rankInfo?.valid_team ?? 0} active $50+)</p>
               </div>
             </div>
 
@@ -323,41 +325,41 @@ const TeamRankPage = () => {
                     </p>
                   </div>
                   
-                  {/* Progress Bar 2 - Direct Members (Orange) */}
+                  {/* Progress Bar 2 - Direct Members (Orange) - Only $50+ VALID members count */}
                   <div>
                     <div className="flex justify-between text-xs mb-1">
                       <span className={textMuted}>👥 Direct Members</span>
                       <span className="text-[#FF6B35]">
-                        {rankInfo?.members_current || rankInfo?.direct_referrals || 0}/{rankInfo?.members_required || 6}
+                        {rankInfo?.valid_direct ?? rankInfo?.members_current ?? 0}/{rankInfo?.members_required || 6}
                       </span>
                     </div>
                     <div className={`h-2.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
                       <div 
                         className="h-full rounded-full bg-gradient-to-r from-[#FF6B35] to-[#FF9F1C]"
-                        style={{ width: `${Math.min(rankInfo?.members_progress || rankInfo?.progress || 0, 100)}%` }}
+                        style={{ width: `${Math.min(((rankInfo?.valid_direct ?? 0) / (rankInfo?.members_required || 6)) * 100, 100)}%` }}
                       />
                     </div>
                     <p className={`text-xs mt-0.5 ${textMuted}`}>
-                      {(rankInfo?.members_progress || rankInfo?.progress || 0) >= 100 ? '✅ Members requirement met!' : `${((rankInfo?.members_required || 6) - (rankInfo?.members_current || rankInfo?.direct_referrals || 0))} more direct members needed`}
+                      {(rankInfo?.valid_direct ?? 0) >= (rankInfo?.members_required || 6) ? '✅ Members requirement met!' : `${((rankInfo?.members_required || 6) - (rankInfo?.valid_direct ?? 0))} more direct members needed ($50+ balance)`}
                     </p>
                   </div>
                   
-                  {/* Progress Bar 3 - Total Team (Cyan/Blue) */}
+                  {/* Progress Bar 3 - Total Team (Cyan/Blue) - Only $50+ VALID members count */}
                   <div>
                     <div className="flex justify-between text-xs mb-1">
                       <span className={textMuted}>👥 Total Team</span>
                       <span className="text-[#00E5FF]">
-                        {rankInfo?.total_team || 0}/{rankInfo?.team_required || 6}
+                        {rankInfo?.valid_team ?? rankInfo?.total_team ?? 0}/{rankInfo?.team_required || 6}
                       </span>
                     </div>
                     <div className={`h-2.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
                       <div 
                         className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#00B4D8]"
-                        style={{ width: `${Math.min(rankInfo?.team_progress || 0, 100)}%` }}
+                        style={{ width: `${Math.min(((rankInfo?.valid_team ?? 0) / (rankInfo?.team_required || 6)) * 100, 100)}%` }}
                       />
                     </div>
                     <p className={`text-xs mt-0.5 ${textMuted}`}>
-                      {(rankInfo?.team_progress || 0) >= 100 ? '✅ Team requirement met!' : `${((rankInfo?.team_required || 6) - (rankInfo?.total_team || 0))} more team members needed`}
+                      {(rankInfo?.valid_team ?? 0) >= (rankInfo?.team_required || 6) ? '✅ Team requirement met!' : `${((rankInfo?.team_required || 6) - (rankInfo?.valid_team ?? 0))} more team members needed ($50+ balance)`}
                     </p>
                   </div>
                 </div>
@@ -398,7 +400,10 @@ const TeamRankPage = () => {
                 <div className="flex items-center gap-2">
                   <p className={`font-medium ${text}`}>👥 Team Members</p>
                   <span className="px-2 py-0.5 rounded-md bg-[#0ECB81]/20 text-[#0ECB81] text-xs font-medium">
-                    {rankInfo?.direct_referrals || 0} Active
+                    {rankInfo?.valid_direct ?? 0} Active
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-[#F6465D]/20 text-[#F6465D] text-xs font-medium">
+                    {(rankInfo?.direct_referrals || 0) - (rankInfo?.valid_direct ?? 0)} Inactive
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -462,8 +467,11 @@ const TeamRankPage = () => {
               >
                 <div className="flex items-center gap-2">
                   <p className={`font-medium ${text}`}>🌐 All Team Members</p>
+                  <span className="px-2 py-0.5 rounded-md bg-[#0ECB81]/20 text-[#0ECB81] text-xs font-medium">
+                    {rankInfo?.valid_team ?? 0} Active
+                  </span>
                   <span className="px-2 py-0.5 rounded-md bg-[#3498DB]/20 text-[#3498DB] text-xs font-medium">
-                    {rankInfo?.all_team_members?.length || rankInfo?.total_team || 0} Total
+                    {rankInfo?.total_team || 0} Total
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
