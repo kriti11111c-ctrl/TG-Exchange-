@@ -2537,16 +2537,35 @@ async def get_referral_stats(request: Request, user: dict = Depends(get_current_
     # For period-based business, fetch deposits within the time range
     period_business = 0.0
     if date_filter and referred_ids:
-        # Fetch deposits made by referred users within the period
-        deposits_cursor = await db.deposits.find(
-            {
-                "user_id": {"$in": referred_ids},
-                "status": "completed",
-                "created_at": {"$gte": date_filter}
-            },
-            {"_id": 0, "amount": 1}
-        ).to_list(length=100000)
-        period_business = sum(d.get("amount", 0) for d in deposits_cursor)
+        # Try multiple timestamp field names (created_at, timestamp, completed_at)
+        # Also handle both string and datetime formats
+        from datetime import datetime
+        
+        # Build flexible date query - check multiple fields
+        date_query = {
+            "user_id": {"$in": referred_ids},
+            "status": "completed",
+            "$or": [
+                {"created_at": {"$gte": date_filter}},
+                {"timestamp": {"$gte": date_filter}},
+                {"completed_at": {"$gte": date_filter}},
+                # Also try with datetime object for MongoDB
+                {"created_at": {"$gte": datetime.fromisoformat(date_filter.replace('Z', '+00:00')) if isinstance(date_filter, str) else date_filter}},
+            ]
+        }
+        
+        try:
+            deposits_cursor = await db.deposits.find(
+                date_query,
+                {"_id": 0, "amount": 1, "usd_amount": 1}
+            ).to_list(length=100000)
+            
+            # Sum amount or usd_amount
+            period_business = sum(d.get("usd_amount", d.get("amount", 0)) or 0 for d in deposits_cursor)
+        except Exception as e:
+            print(f"[referral/stats] Error fetching period deposits: {e}")
+            # Fallback: just use total business
+            period_business = 0.0
     
     # Calculate stats per level
     level_stats = []
