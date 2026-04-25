@@ -521,10 +521,15 @@ async def get_team_stats(user_id: str) -> dict:
     # SIMPLE QUERY - Get all referrals for this user (same as referral/stats uses)
     all_referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0, "referred_id": 1, "level": 1}).to_list(length=2000)
     
+    # DEBUG LOG
+    print(f"[get_team_stats] user_id={user_id}, found {len(all_referrals)} referrals")
+    
     # Direct referrals = level 1 only
     direct_referrals = [r for r in all_referrals if r.get("level") == 1]
     total_direct = len(direct_referrals)
     total_team = len(all_referrals)
+    
+    print(f"[get_team_stats] total_direct={total_direct}, total_team={total_team}")
     
     # Get wallets for balance check
     referred_ids = [r.get("referred_id") for r in all_referrals if r.get("referred_id")]
