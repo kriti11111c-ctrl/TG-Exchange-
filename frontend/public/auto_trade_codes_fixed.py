@@ -1,0 +1,272 @@
+#!/usr/bin/env python3
+"""
+Automatic Trade Code Generation Service - FIXED VERSION
+Generates trade codes for all eligible users at scheduled times:
+- 10:45 AM IST (05:15 UTC) - Morning slot
+- 8:30 PM IST (15:00 UTC) - Evening slot
+
+FIX: Using APScheduler with explicit UTC timezone instead of schedule library
+"""
+
+import asyncio
+import random
+import string
+import os
+from datetime import datetime, timezone, timedelta
+from motor.motor_asyncio import AsyncIOMotorClient
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+import pytz
+import time
+
+# MongoDB connection
+MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+DB_NAME = os.environ.get("DB_NAME", "tgexchange")
+
+client = None
+db = None
+
+async def get_database():
+    global client, db
+    if client is None:
+        client = AsyncIOMotorClient(MONGO_URL)
+        db = client[DB_NAME]
+    return db
+
+async def generate_codes_for_all_users(slot: str):
+    """Generate trade codes for all eligible users"""
+    try:
+        db = await get_database()
+        now = datetime.now(timezone.utc)
+        today = now.date()
+        
+        # Determine scheduled time based on slot
+        if slot == "morning":
+            scheduled_hour = 5
+            scheduled_minute = 15
+            slot_name = "10:45 AM IST"
+        else:  # evening
+            scheduled_hour = 15
+            scheduled_minute = 0
+            slot_name = "8:30 PM IST"
+        
+        # Create scheduled start time
+        scheduled_start = datetime.combine(today, datetime.min.time().replace(
+            hour=scheduled_hour, 
+            minute=scheduled_minute
+        )).replace(tzinfo=timezone.utc)
+        
+        # Code expires 1 hour after scheduled start
+        expires_at = scheduled_start + timedelta(hours=1)
+        
+        # Get all active users with futures balance > 0
+        users = await db.users.find({
+            "is_active": {"$ne": False}
+        }).to_list(length=None)
+        
+        print(f"\n{'='*60}")
+        print(f"[{now.isoformat()}] Generating {slot_name} trade codes for {len(users)} users")
+        print(f"{'='*60}")
+        
+        codes_generated = 0
+        codes_skipped = 0
+        
+        for user in users:
+            user_id = user.get("user_id")
+            email = user.get("email", "unknown")
+            
+            # Check if user already has an active code for this slot today
+            existing_code = await db.trade_codes.find_one({
+                "user_id": user_id,
+                "scheduled_start": scheduled_start,
+                "status": {"$in": ["pending", "active", "scheduled"]}
+            })
+            
+            if existing_code:
+                codes_skipped += 1
+                continue
+            
+            # Get user's wallet for futures balance
+            wallet = await db.wallets.find_one({"user_id": user_id})
+            futures_balance = wallet.get("futures_balance", 0) if wallet else 0
+            
+            # Only generate codes for users with futures balance
+            if futures_balance <= 0:
+                codes_skipped += 1
+                continue
+            
+            # Generate unique code
+            code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
+            
+            # Generate random profit percentage between 60-65%
+            profit_percent = round(60 + random.random() * 5, 2)
+            
+            # Check user's last trade for Martingale multiplier
+            last_trade = await db.trade_codes.find_one(
+                {"user_id": user_id, "status": "completed"},
+                sort=[("created_at", -1)]
+            )
+            
+            multiplier = 1.0
+            if last_trade and last_trade.get("result") == "loss":
+                multiplier = 2.0
+            
+            # Calculate trade amount (user's futures balance * multiplier, capped)
+            trade_amount = min(futures_balance * multiplier, futures_balance)
+            potential_profit = trade_amount * (profit_percent / 100)
+            
+            # TOP 20 COINS with realistic fallback prices (April 2026)
+            TOP_20_COINS = [
+                {"symbol": "btc", "name": "Bitcoin", "price": 69500},
+                {"symbol": "eth", "name": "Ethereum", "price": 2100},
+                {"symbol": "bnb", "name": "BNB", "price": 625},
+                {"symbol": "sol", "name": "Solana", "price": 88},
+                {"symbol": "xrp", "name": "XRP", "price": 1.38},
+                {"symbol": "doge", "name": "Dogecoin", "price": 0.092},
+                {"symbol": "ada", "name": "Cardano", "price": 0.26},
+                {"symbol": "avax", "name": "Avalanche", "price": 9.85},
+                {"symbol": "shib", "name": "Shiba Inu", "price": 0.0000085},
+                {"symbol": "dot", "name": "Polkadot", "price": 1.33},
+                {"symbol": "link", "name": "Chainlink", "price": 13.5},
+                {"symbol": "trx", "name": "TRON", "price": 0.124},
+                {"symbol": "matic", "name": "Polygon", "price": 0.22},
+                {"symbol": "uni", "name": "Uniswap", "price": 6.15},
+                {"symbol": "ltc", "name": "Litecoin", "price": 68.5},
+                {"symbol": "atom", "name": "Cosmos", "price": 4.50},
+                {"symbol": "xlm", "name": "Stellar", "price": 0.092},
+                {"symbol": "near", "name": "NEAR Protocol", "price": 2.45},
+                {"symbol": "apt", "name": "Aptos", "price": 5.25},
+                {"symbol": "fil", "name": "Filecoin", "price": 2.80},
+            ]
+            
+            # Assign DIFFERENT coin based on user index (codes_generated)
+            coin_data = TOP_20_COINS[codes_generated % len(TOP_20_COINS)]
+            
+            # Random trade type (call/put)
+            trade_type = random.choice(["call", "put"])
+            
+            # Create trade code with COIN ASSIGNMENT
+            trade_code = {
+                "code": code,
+                "user_id": user_id,
+                "user_email": email,
+                "coin": coin_data["symbol"],
+                "coin_name": coin_data["name"],
+                "price": coin_data["price"],
+                "trade_type": trade_type,
+                "scheduled_slot": slot,
+                "slot_name": slot_name,
+                "scheduled_start": scheduled_start.isoformat(),
+                "expires_at": expires_at.isoformat(),
+                "profit_percent": profit_percent,
+                "fund_percent": 1.0 * multiplier,
+                "trade_amount": trade_amount,
+                "potential_profit": potential_profit,
+                "multiplier": multiplier,
+                "will_fail": False,
+                "status": "active",
+                "created_at": now.isoformat(),
+                "auto_generated": True
+            }
+            
+            await db.trade_codes.insert_one(trade_code)
+            codes_generated += 1
+            print(f"  [+] Code for {email}: {code} ({coin_data['symbol'].upper()})")
+        
+        print(f"\n[{datetime.now(timezone.utc).isoformat()}] Generated: {codes_generated}, Skipped: {codes_skipped}")
+        print(f"{'='*60}\n")
+        
+        return codes_generated
+        
+    except Exception as e:
+        print(f"[ERROR] Failed to generate trade codes: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return 0
+
+def run_morning_generation():
+    """Run morning trade code generation (05:15 UTC / 10:45 AM IST)"""
+    print(f"\n[{datetime.now(timezone.utc).isoformat()}] TRIGGER: MORNING trade code generation...")
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(generate_codes_for_all_users("morning"))
+    finally:
+        loop.close()
+
+def run_evening_generation():
+    """Run evening trade code generation (15:00 UTC / 8:30 PM IST)"""
+    print(f"\n[{datetime.now(timezone.utc).isoformat()}] TRIGGER: EVENING trade code generation...")
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(generate_codes_for_all_users("evening"))
+    finally:
+        loop.close()
+
+def main():
+    print("="*60)
+    print("TG Exchange - Automatic Trade Code Generation Service")
+    print("="*60)
+    print(f"Started at: {datetime.now(timezone.utc).isoformat()} UTC")
+    print(f"Server local time: {datetime.now().isoformat()}")
+    print("")
+    print("Scheduled times (using APScheduler with UTC):")
+    print("  - Morning: 10:45 AM IST (05:15 UTC)")
+    print("  - Evening: 8:30 PM IST (15:00 UTC)")
+    print("="*60)
+    
+    # Create scheduler with UTC timezone
+    scheduler = BackgroundScheduler(timezone=pytz.UTC)
+    
+    # Schedule morning generation at 05:15 UTC
+    scheduler.add_job(
+        run_morning_generation,
+        CronTrigger(hour=5, minute=15, timezone=pytz.UTC),
+        id='morning_codes',
+        name='Morning Trade Code Generation (05:15 UTC)'
+    )
+    
+    # Schedule evening generation at 15:00 UTC
+    scheduler.add_job(
+        run_evening_generation,
+        CronTrigger(hour=15, minute=0, timezone=pytz.UTC),
+        id='evening_codes',
+        name='Evening Trade Code Generation (15:00 UTC)'
+    )
+    
+    # Start the scheduler
+    scheduler.start()
+    
+    # Print next run times
+    print("\nNext scheduled runs:")
+    for job in scheduler.get_jobs():
+        print(f"  - {job.name}: {job.next_run_time}")
+    
+    # Also run immediately if within 5 minutes of scheduled time
+    now = datetime.now(timezone.utc)
+    current_hour = now.hour
+    current_minute = now.minute
+    
+    # Check if we should run immediately (within 5 min window)
+    if current_hour == 5 and 10 <= current_minute <= 20:
+        print("\n[INFO] Within morning window - generating codes now...")
+        run_morning_generation()
+    elif current_hour == 15 and 0 <= current_minute <= 5:
+        print("\n[INFO] Within evening window - generating codes now...")
+        run_evening_generation()
+    
+    print(f"\n[{datetime.now(timezone.utc).isoformat()}] Scheduler running... Press Ctrl+C to stop.")
+    
+    try:
+        # Keep the main thread alive
+        while True:
+            time.sleep(60)
+            # Print heartbeat every minute
+            print(f"[HEARTBEAT] {datetime.now(timezone.utc).isoformat()} UTC - Scheduler active")
+    except KeyboardInterrupt:
+        print("\n[INFO] Shutting down scheduler...")
+        scheduler.shutdown()
+
+if __name__ == "__main__":
+    main()
