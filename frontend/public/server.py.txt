@@ -2505,15 +2505,15 @@ async def get_referral_stats(request: Request, user: dict = Depends(get_current_
             {"$set": {"referral_code": referral_code}}
         )
     
-    # Calculate date filter based on period
+    # Calculate date filter based on period - use datetime object NOT string
     now = datetime.now(timezone.utc)
     date_filter = None
     if period == "24h":
-        date_filter = (now - timedelta(hours=24)).isoformat()
+        date_filter = now - timedelta(hours=24)
     elif period == "7d":
-        date_filter = (now - timedelta(days=7)).isoformat()
+        date_filter = now - timedelta(days=7)
     elif period == "30d":
-        date_filter = (now - timedelta(days=30)).isoformat()
+        date_filter = now - timedelta(days=30)
     # "all" means no date filter
     
     # Get all referrals where this user is the referrer - LIMIT 1 LAKH (100000)
