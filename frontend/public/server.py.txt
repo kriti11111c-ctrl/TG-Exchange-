@@ -519,8 +519,8 @@ async def get_team_stats(user_id: str) -> dict:
     """
     
     # SIMPLE QUERY - Get all referrals for this user (same as referral/stats uses)
-    # INCREASED LIMIT to 10000 for users with large communities
-    all_referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0, "referred_id": 1, "level": 1}).to_list(length=10000)
+    # LIMIT 1 LAKH (100000) for users with large communities
+    all_referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0, "referred_id": 1, "level": 1}).to_list(length=100000)
     
     # DEBUG LOG
     print(f"[get_team_stats] user_id={user_id}, found {len(all_referrals)} referrals")
@@ -540,19 +540,19 @@ async def get_team_stats(user_id: str) -> dict:
     bronze_members = 0
     
     if referred_ids:
-        # Batch fetch wallets - INCREASED LIMIT to 10000
+        # Batch fetch wallets - LIMIT 1 LAKH (100000)
         wallets = await db.wallets.find(
             {"user_id": {"$in": referred_ids}},
             {"_id": 0, "user_id": 1, "futures_balance": 1}
-        ).to_list(length=10000)
+        ).to_list(length=100000)
         
         wallets_map = {w["user_id"]: w.get("futures_balance", 0) or 0 for w in wallets}
         
-        # Batch fetch users for rank level - INCREASED LIMIT to 10000
+        # Batch fetch users for rank level - LIMIT 1 LAKH (100000)
         users = await db.users.find(
             {"user_id": {"$in": referred_ids}},
             {"_id": 0, "user_id": 1, "team_rank_level": 1}
-        ).to_list(length=10000)
+        ).to_list(length=100000)
         
         users_map = {u["user_id"]: u.get("team_rank_level", 0) or 0 for u in users}
         
@@ -2516,15 +2516,15 @@ async def get_referral_stats(request: Request, user: dict = Depends(get_current_
         date_filter = (now - timedelta(days=30)).isoformat()
     # "all" means no date filter
     
-    # Get all referrals where this user is the referrer - INCREASED LIMIT to 10000
-    referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=10000)
+    # Get all referrals where this user is the referrer - LIMIT 1 LAKH (100000)
+    referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=100000)
     
     # OPTIMIZATION: Batch fetch all wallets at once instead of one by one
     referred_ids = list(set(r.get("referred_id") for r in referrals if r.get("referred_id")))
     wallets_cursor = await db.wallets.find(
         {"user_id": {"$in": referred_ids}},
         {"_id": 0, "user_id": 1, "futures_balance": 1, "welcome_bonus": 1}
-    ).to_list(length=10000)
+    ).to_list(length=100000)
     
     # Calculate REAL balance = futures_balance - welcome_bonus
     wallets_map = {}
@@ -2545,7 +2545,7 @@ async def get_referral_stats(request: Request, user: dict = Depends(get_current_
                 "created_at": {"$gte": date_filter}
             },
             {"_id": 0, "amount": 1}
-        ).to_list(length=10000)
+        ).to_list(length=100000)
         period_business = sum(d.get("amount", 0) for d in deposits_cursor)
     
     # Calculate stats per level
