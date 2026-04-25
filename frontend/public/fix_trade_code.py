@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 FIX TRADE CODE - Insert a working global trade code
+FIXED VERSION - Reads from .env file automatically
 Run: python3 fix_trade_code.py
 """
 
@@ -10,10 +11,32 @@ from datetime import datetime, timezone, timedelta
 import os
 import random
 import string
+from pathlib import Path
 
-# MongoDB connection
-MONGO_URL = os.environ.get('MONGO_URL', 'YOUR_MONGO_URL_HERE')
+# Load .env file from same directory
+env_path = Path(__file__).parent / '.env'
+if env_path.exists():
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, value = line.split('=', 1)
+                os.environ[key] = value
+    print(f"✅ Loaded .env from {env_path}")
+else:
+    print(f"⚠️ No .env found at {env_path}")
+
+# Get MongoDB credentials from environment
+MONGO_URL = os.environ.get('MONGO_URL')
 DB_NAME = os.environ.get('DB_NAME', 'tgx_exchange')
+
+if not MONGO_URL:
+    print("❌ ERROR: MONGO_URL not found in environment!")
+    print("   Make sure .env file exists with MONGO_URL=...")
+    exit(1)
+
+print(f"📦 DB Name: {DB_NAME}")
+print(f"🔗 Connecting to MongoDB...")
 
 async def fix_trade_code():
     client = AsyncIOMotorClient(MONGO_URL)
