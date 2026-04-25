@@ -5657,6 +5657,27 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     from datetime import timedelta
     import random
     
+    user_id = user["user_id"]
+    
+    # RATE LIMITER: Prevent same user from trading within 10 seconds
+    last_trade = await db.futures_history.find_one(
+        {"user_id": user_id},
+        sort=[("execution_timestamp", -1)]
+    )
+    if last_trade:
+        last_timestamp = last_trade.get("execution_timestamp", 0)
+        current_timestamp = datetime.now(timezone.utc).timestamp()
+        if current_timestamp - last_timestamp < 10:  # 10 seconds cooldown
+            raise HTTPException(status_code=429, detail="Please wait 10 seconds between trades")
+    
+    # CHECK: Has this code already been used by this user?
+    existing_trade = await db.futures_history.find_one({
+        "user_id": user_id,
+        "trade_code": data.code.upper()
+    })
+    if existing_trade:
+        raise HTTPException(status_code=400, detail="You have already used this trade code!")
+    
     # ATOMIC: Find AND update trade code status in single operation
     # This prevents duplicate trades by immediately marking code as "processing"
     # STRONGER CHECK: Also ensure current_uses < max_uses
