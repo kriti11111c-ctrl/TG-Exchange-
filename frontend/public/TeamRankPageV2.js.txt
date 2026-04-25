@@ -47,6 +47,10 @@ const TeamRankPage = () => {
 
   const fetchData = async () => {
     try {
+      // Get auth token from localStorage
+      const authToken = localStorage.getItem('auth_token');
+      const authHeaders = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+      
       // Fetch all-levels first (public endpoint - no auth required)
       const levelsRes = await axios.get(`${API}/team-rank/all-levels`);
       console.log("ALL LEVELS RESPONSE:", levelsRes.data);
@@ -55,8 +59,14 @@ const TeamRankPage = () => {
       // Fetch user-specific data (requires auth)
       try {
         const [rankRes, historyRes] = await Promise.all([
-          axios.get(`${API}/team-rank/info`, { withCredentials: true }),
-          axios.get(`${API}/team-rank/salary-history`, { withCredentials: true })
+          axios.get(`${API}/team-rank/info`, { 
+            headers: authHeaders,
+            withCredentials: true 
+          }),
+          axios.get(`${API}/team-rank/salary-history`, { 
+            headers: authHeaders,
+            withCredentials: true 
+          })
         ]);
         
         console.log("RANK API RESPONSE:", JSON.stringify(rankRes.data));
