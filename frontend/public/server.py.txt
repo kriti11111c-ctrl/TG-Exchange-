@@ -2580,18 +2580,38 @@ async def get_referral_stats(request: Request, user: dict = Depends(get_current_
         
         total_referrals += count
         total_earnings += earnings
-        total_business += level_futures  # Total Business = Sum of all futures_balance
+        total_business += level_futures  # For reference only
     
-    # Use period_business if date filter is set, otherwise use total_business
-    final_business = period_business if date_filter else total_business
+    # ALWAYS fetch REAL deposits from deposit_history for Total Business
+    all_time_real_deposits = 0.0
+    if referred_ids:
+        try:
+            # Get ALL TIME real deposits from deposit_history
+            all_deposits_cursor = await db.deposit_history.find(
+                {
+                    "user_id": {"$in": referred_ids},
+                    "status": {"$in": ["completed", "confirmed", "success"]}
+                },
+                {"_id": 0, "amount": 1}
+            ).to_list(length=100000)
+            all_time_real_deposits = sum(float(d.get("amount", 0) or 0) for d in all_deposits_cursor)
+            print(f"[referral/stats] All-time real deposits: ${all_time_real_deposits}")
+        except Exception as e:
+            print(f"[referral/stats] Error fetching all-time deposits: {e}")
+    
+    # Use period_business for period filter, all_time_real_deposits for MAX
+    if date_filter:
+        final_business = period_business
+    else:
+        final_business = all_time_real_deposits  # MAX shows real deposits, not futures_balance
     
     result = {
         "user_id": user_id,
         "referral_code": referral_code,
         "total_referrals": total_referrals,
         "total_earnings": total_earnings,
-        "total_business": final_business,
-        "all_time_business": total_business,  # Always include all-time for reference
+        "total_business": final_business,  # NOW shows REAL DEPOSITS only
+        "all_time_business": all_time_real_deposits,  # Real deposits all time
         "period": period,
         "level_stats": level_stats
     }
