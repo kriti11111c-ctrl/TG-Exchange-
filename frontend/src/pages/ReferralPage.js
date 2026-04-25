@@ -58,8 +58,8 @@ const ReferralPage = () => {
       try {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const [statsRes, profileRes] = await Promise.all([
-          axios.get(`${API}/referral/stats`, { withCredentials: false, headers, timeout: 10000 }),
-          axios.get(`${API}/auth/me`, { withCredentials: false, headers, timeout: 10000 })
+          axios.get(`${API}/referral/stats`, { withCredentials: true, headers, timeout: 10000 }),
+          axios.get(`${API}/auth/me`, { withCredentials: true, headers, timeout: 10000 })
         ]);
         
         setStats(statsRes.data);
@@ -102,7 +102,7 @@ const ReferralPage = () => {
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await axios.get(`${API}/auth/me`, { 
-        withCredentials: false,
+        withCredentials: true,
         headers,
         timeout: 10000
       });
@@ -119,7 +119,7 @@ const ReferralPage = () => {
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await axios.get(`${API}/referral/stats`, { 
-        withCredentials: false,
+        withCredentials: true,
         headers,
         timeout: 10000
       });
@@ -153,7 +153,7 @@ const ReferralPage = () => {
         ? `${API}/referral/team?level=${level}` 
         : `${API}/referral/team`;
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await axios.get(url, { withCredentials: false, headers });
+      const response = await axios.get(url, { withCredentials: true, headers });
       setTeam(response.data.team_members || []);
     } catch (error) {
       console.error("Error fetching team:", error);
@@ -167,7 +167,7 @@ const ReferralPage = () => {
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await axios.get(`${API}/referral/stats?period=${period}`, { 
-        withCredentials: false, 
+        withCredentials: true, 
         headers 
       });
       setPeriodBusiness(prev => ({
@@ -276,7 +276,7 @@ const ReferralPage = () => {
     
     setClaiming(true);
     try {
-      const response = await axios.post(`${API}/referral/claim-commission`, {}, { withCredentials: false });
+      const response = await axios.post(`${API}/referral/claim-commission`, {}, { withCredentials: true });
       toast.success(response.data.message);
       fetchStats();
     } catch (error) {

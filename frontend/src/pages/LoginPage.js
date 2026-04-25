@@ -43,7 +43,7 @@ const LoginPage = () => {
         payload.totp_code = totpCode;
       }
 
-      const response = await axios.post(`${API}/auth/login`, payload, { withCredentials: false });
+      const response = await axios.post(`${API}/auth/login`, payload, { withCredentials: true });
 
       login(response.data.user, response.data.access_token);
       toast.success("Login successful!");

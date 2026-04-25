@@ -60,7 +60,7 @@ const ProfilePage = () => {
 
   const fetchRankInfo = async () => {
     try {
-      const response = await axios.get(`${API}/rank/info`, { withCredentials: false });
+      const response = await axios.get(`${API}/rank/info`, { withCredentials: true });
       setRankInfo(response.data);
     } catch (error) {
       console.error("Error fetching rank:", error);
@@ -69,7 +69,7 @@ const ProfilePage = () => {
 
   const fetchKycStatus = async () => {
     try {
-      const response = await axios.get(`${API}/user/kyc/status`, { withCredentials: false });
+      const response = await axios.get(`${API}/user/kyc/status`, { withCredentials: true });
       setKycStatus(response.data.status || "unverified");
     } catch (error) {
       setKycStatus("unverified");

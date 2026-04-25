@@ -194,10 +194,10 @@ const WalletPage = () => {
     try {
       // All fetches in parallel for maximum speed
       const [walletRes, pricesRes, depositLimitsRes, withdrawLimitsRes] = await Promise.all([
-        axios.get(`${API}/wallet`, { withCredentials: false }),
+        axios.get(`${API}/wallet`, { withCredentials: true }),
         axios.get(`${API}/market/prices`, { timeout: 5000 }),
-        axios.get(`${API}/wallet/deposit-limits`, { withCredentials: false }),
-        axios.get(`${API}/wallet/withdrawal-limits`, { withCredentials: false })
+        axios.get(`${API}/wallet/deposit-limits`, { withCredentials: true }),
+        axios.get(`${API}/wallet/withdrawal-limits`, { withCredentials: true })
       ]);
       setWallet(walletRes.data);
       setPrices(pricesRes.data);
@@ -254,7 +254,7 @@ const WalletPage = () => {
         coin: selectedCoin,
         amount: depositAmount,
         tx_hash: txHash || `tx_${Date.now()}`
-      }, { withCredentials: false });
+      }, { withCredentials: true });
       toast.success(`Deposited $${depositAmount} ${selectedCoin.toUpperCase()} successfully!`);
       setDepositOpen(false);
       setAmount("");
@@ -291,7 +291,7 @@ const WalletPage = () => {
         coin: selectedCoin,
         amount: withdrawAmount,
         address: address
-      }, { withCredentials: false });
+      }, { withCredentials: true });
       toast.success(`Withdrawal of $${withdrawAmount} ${selectedCoin.toUpperCase()} initiated!`);
       setWithdrawOpen(false);
       setAmount("");
@@ -331,7 +331,7 @@ const WalletPage = () => {
       const response = await axios.post(`${API}/wallet/transfer`, {
         amount: transferAmount,
         direction: direction
-      }, { withCredentials: false });
+      }, { withCredentials: true });
       
       toast.success(response.data.message || `Transferred $${transferAmount} successfully!`);
       setTransferOpen(false);

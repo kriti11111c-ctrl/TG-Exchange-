@@ -114,10 +114,10 @@ const FuturesPage = () => {
   const fetchFuturesData = async () => {
     try {
       const [accountRes, positionsRes, walletRes, tradeCodesRes] = await Promise.all([
-        axios.get(`${API}/futures/account`, { withCredentials: false }),
-        axios.get(`${API}/futures/positions`, { withCredentials: false }),
-        axios.get(`${API}/wallet`, { withCredentials: false }),
-        axios.get(`${API}/user/trade-codes`, { withCredentials: false })
+        axios.get(`${API}/futures/account`, { withCredentials: true }),
+        axios.get(`${API}/futures/positions`, { withCredentials: true }),
+        axios.get(`${API}/wallet`, { withCredentials: true }),
+        axios.get(`${API}/user/trade-codes`, { withCredentials: true })
       ]);
       setFuturesAccount(accountRes.data);
       setPositions(positionsRes.data.positions || []);
@@ -137,7 +137,7 @@ const FuturesPage = () => {
     try {
       const res = await axios.get(`${API}/futures/history`, {
         params: { start_date: startDate, end_date: endDate },
-        withCredentials: false
+        withCredentials: true
       });
       setTradeHistory(res.data.history || []);
     } catch (error) {
@@ -188,7 +188,7 @@ const FuturesPage = () => {
         leverage: leverage,
         amount: tradeAmount,
         entry_price: currentPrice
-      }, { withCredentials: false });
+      }, { withCredentials: true });
       
       if (res.data.success) {
         toast.success(res.data.message);
@@ -207,7 +207,7 @@ const FuturesPage = () => {
     try {
       const res = await axios.post(`${API}/futures/close`, {
         position_id: positionId
-      }, { withCredentials: false });
+      }, { withCredentials: true });
       
       if (res.data.success) {
         toast.success(res.data.message);
@@ -438,7 +438,7 @@ const FuturesPage = () => {
                 try {
                   const res = await axios.post(`${API}/trade/apply-code`, {
                     code: tradeCode
-                  }, { withCredentials: false });
+                  }, { withCredentials: true });
                   
                   toast.success("🎉 " + res.data.message, {
                     duration: 5000,

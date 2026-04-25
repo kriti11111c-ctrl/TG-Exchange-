@@ -89,7 +89,7 @@ const KuCoinHomePage = () => {
   // Fetch data
   const fetchTradeCodes = async () => {
     try {
-      const res = await axios.get(`${API}/user/trade-codes`, { withCredentials: false });
+      const res = await axios.get(`${API}/user/trade-codes`, { withCredentials: true });
       setTradeCodes(res.data.codes || []);
     } catch (error) {
       console.error("Error fetching trade codes:", error);
@@ -227,7 +227,7 @@ const KuCoinHomePage = () => {
     const fetchData = async () => {
       try {
         const [walletRes, pricesRes] = await Promise.all([
-          axios.get(`${API}/wallet`, { withCredentials: false }),
+          axios.get(`${API}/wallet`, { withCredentials: true }),
           axios.get(`${API}/market/prices`, { timeout: 5000 })
         ]);
         setWallet(walletRes.data);

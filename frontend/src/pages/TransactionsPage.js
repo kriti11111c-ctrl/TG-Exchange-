@@ -39,7 +39,7 @@ const TransactionsPage = () => {
     setLoading(true);
     try {
       const res = await axios.get(`${API}/wallet/all-history`, {
-        withCredentials: false
+        withCredentials: true
       });
       setHistory(res.data.history || []);
       setStats({

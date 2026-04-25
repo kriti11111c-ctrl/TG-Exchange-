@@ -96,7 +96,7 @@ const TeamRankPage = () => {
   const handleClaimSalary = async () => {
     setClaiming(true);
     try {
-      const response = await axios.post(`${API}/team-rank/claim-salary`, {}, { withCredentials: false });
+      const response = await axios.post(`${API}/team-rank/claim-salary`, {}, { withCredentials: true });
       toast.success(response.data.message);
       fetchData();
     } catch (error) {

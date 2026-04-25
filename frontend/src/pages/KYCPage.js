@@ -43,7 +43,7 @@ const KYCPage = () => {
   const fetchKycStatus = async () => {
     try {
       const response = await axios.get(`${API}/user/kyc/status`, {
-        withCredentials: false
+        withCredentials: true
       });
       setKycStatus(response.data);
     } catch (error) {
@@ -74,7 +74,7 @@ const KYCPage = () => {
     setSubmitting(true);
     try {
       const response = await axios.post(`${API}/user/kyc/submit`, formData, {
-        withCredentials: false
+        withCredentials: true
       });
       toast.success(response.data.message);
       fetchKycStatus();

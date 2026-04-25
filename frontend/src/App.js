@@ -227,7 +227,7 @@ const AuthProvider = ({ children }) => {
       // Check for auth_token in localStorage (for admin impersonation)
       const authToken = localStorage.getItem('auth_token');
       const config = {
-        withCredentials: false
+        withCredentials: true
       };
       
       // If auth_token exists, add Authorization header

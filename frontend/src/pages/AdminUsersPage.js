@@ -78,7 +78,7 @@ const AdminUsersPage = () => {
         { user_id: userId }, 
         { 
           headers: { Authorization: `Bearer ${adminToken}` },
-          withCredentials: false  // Important: Allow cookie to be set
+          withCredentials: true  // Important: Allow cookie to be set
         }
       );
       

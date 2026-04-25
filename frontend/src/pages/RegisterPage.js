@@ -69,7 +69,7 @@ const RegisterPage = () => {
         email: activeTab === "email" ? email : `${phone}@phone.tgxchange.com`,
         password,
         referral_code: referralCode.trim()
-      }, { withCredentials: false });
+      }, { withCredentials: true });
 
       login(response.data.user, response.data.access_token);
       toast.success("Account created! You received $200 USDT Welcome Bonus!");
