@@ -25,7 +25,7 @@ MONGO_URL = os.environ.get('MONGO_URL')
 DB_NAME = os.environ.get('DB_NAME', 'tgx_exchange')
 
 # Test user - the one with 3787 referrals
-TEST_USER_EMAIL = "kriti1111la@gmail.com"
+TEST_USER_EMAIL = "kriti11111a@gmail.com"
 
 async def debug_referred_deposits():
     client = AsyncIOMotorClient(MONGO_URL)
