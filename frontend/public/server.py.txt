@@ -6352,12 +6352,23 @@ async def get_futures_history(
             "trade_code": th.get("trade_code", "")
         })
     
+    # DEDUPLICATE: Remove duplicate entries based on trade_code
+    seen_codes = set()
+    unique_history = []
+    for item in history:
+        code = item.get("trade_code") or item.get("id")
+        if code and code not in seen_codes:
+            seen_codes.add(code)
+            unique_history.append(item)
+        elif not code:
+            unique_history.append(item)
+    
     # Sort by timestamp descending
-    history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    unique_history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
     
     return {
-        "history": history,
-        "count": len(history),
+        "history": unique_history,
+        "count": len(unique_history),
         "start_date": start_date,
         "end_date": end_date
     }
