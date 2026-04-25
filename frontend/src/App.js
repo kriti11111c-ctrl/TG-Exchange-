@@ -227,7 +227,7 @@ const AuthProvider = ({ children }) => {
       // Check for auth_token in localStorage (for admin impersonation)
       const authToken = localStorage.getItem('auth_token');
       const config = {
-        withCredentials: true
+        withCredentials: false
       };
       
       // If auth_token exists, add Authorization header
@@ -270,7 +270,7 @@ const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
+      await axios.post(`${API}/auth/logout`, {});
     } catch (error) {
       console.error("Logout error:", error);
     }
@@ -378,7 +378,7 @@ const AuthCallback = () => {
       try {
         const response = await axios.post(`${API}/auth/session`, {
           session_id: sessionId
-        }, { withCredentials: true });
+        });
 
         login(response.data);
         toast.success("Login successful!");

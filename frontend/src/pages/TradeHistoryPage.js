@@ -30,7 +30,7 @@ const TradeHistoryPage = () => {
   useEffect(() => {
     const fetchTrades = async () => {
       try {
-        const response = await axios.get(`${API}/transactions`, { withCredentials: true });
+        const response = await axios.get(`${API}/transactions`, { withCredentials: false });
         // Filter for buy/sell trades
         const tradeTransactions = response.data.filter(t => 
           t.type === 'buy' || t.type === 'sell'

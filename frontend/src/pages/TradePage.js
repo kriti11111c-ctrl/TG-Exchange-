@@ -1167,7 +1167,7 @@ const OrdersPanel = ({ wallet, selectedCoin, prices, isDark }) => {
     const fetchTrades = async () => {
       setLoadingTrades(true);
       try {
-        const response = await axios.get(`${API}/transactions`, { withCredentials: true });
+        const response = await axios.get(`${API}/transactions`, { withCredentials: false });
         const tradeTransactions = response.data.filter(t => t.type === 'buy' || t.type === 'sell');
         setTrades(tradeTransactions);
       } catch (error) {
@@ -1456,7 +1456,7 @@ const TradePage = () => {
   const fetchData = async () => {
     try {
       const [walletRes, pricesRes] = await Promise.all([
-        axios.get(`${API}/wallet`, { withCredentials: true }),
+        axios.get(`${API}/wallet`, { withCredentials: false }),
         axios.get(`${API}/market/prices`)
       ]);
       setWallet(walletRes.data);
@@ -1521,7 +1521,7 @@ const TradePage = () => {
         coin: selectedCoin,
         amount: parseFloat(amount),
         trade_type: tradeType
-      }, { withCredentials: true });
+      }, { withCredentials: false });
 
       const action = tradeType === 'buy' ? 'Bought' : 'Sold';
       toast.success(`${action} ${amount} ${selectedCoin.toUpperCase()} for $${response.data.total_usd.toFixed(2)}`);

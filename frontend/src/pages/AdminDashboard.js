@@ -180,7 +180,7 @@ const AdminDashboard = () => {
         reason: action === "block" ? "Blocked by admin" : ""
       }, {
         headers: { Authorization: `Bearer ${adminToken}` },
-        withCredentials: true
+        withCredentials: false
       });
       
       if (response.data.success) {

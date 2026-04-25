@@ -134,8 +134,8 @@ const RankPage = () => {
   const fetchRankInfo = async () => {
     try {
       const [rankRes, teamRes] = await Promise.all([
-        axios.get(`${API}/rank/info`, { withCredentials: true }),
-        axios.get(`${API}/team-rank/info`, { withCredentials: true }).catch(() => ({ data: {} }))
+        axios.get(`${API}/rank/info`, { }),
+        axios.get(`${API}/team-rank/info`, { }).catch(() => ({ data: {} }))
       ]);
       
       // Use team rank info for display (this contains actual rank based on team)
@@ -165,7 +165,7 @@ const RankPage = () => {
 
   const claimSalary = async () => {
     try {
-      const response = await axios.post(`${API}/team-rank/claim-salary`, {}, { withCredentials: true });
+      const response = await axios.post(`${API}/team-rank/claim-salary`, {}, { });
       toast.success(response.data.message);
       fetchRankInfo(); // Refresh data
     } catch (error) {
@@ -175,7 +175,7 @@ const RankPage = () => {
 
   const fetchAllRanks = async () => {
     try {
-      const response = await axios.get(`${API}/team-rank/all-levels`, { withCredentials: true });
+      const response = await axios.get(`${API}/team-rank/all-levels`, { });
       setAllRanks(response.data.ranks || []);
     } catch (error) {
       console.error("Error fetching ranks:", error);
@@ -184,7 +184,7 @@ const RankPage = () => {
 
   const fetchLeaderboard = async () => {
     try {
-      const response = await axios.get(`${API}/rank/leaderboard`, { withCredentials: true });
+      const response = await axios.get(`${API}/rank/leaderboard`, { });
       setLeaderboard(response.data.leaderboard || []);
     } catch (error) {
       console.error("Error fetching leaderboard:", error);

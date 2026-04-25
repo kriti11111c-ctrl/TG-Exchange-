@@ -69,11 +69,11 @@ const DepositPage = () => {
     const fetchData = async () => {
       try {
         // Fetch wallet
-        const walletRes = await axios.get(`${API}/wallet`, { withCredentials: true });
+        const walletRes = await axios.get(`${API}/wallet`, { withCredentials: false });
         setWallet(walletRes.data);
         
         // Fetch unique deposit addresses for this user
-        const addressRes = await axios.get(`${API}/user/deposit-address`, { withCredentials: true });
+        const addressRes = await axios.get(`${API}/user/deposit-address`, { withCredentials: false });
         
         if (addressRes.data.networks) {
           // Build address map from API response
@@ -91,7 +91,7 @@ const DepositPage = () => {
         }
         
         // Fetch deposit history
-        const historyRes = await axios.get(`${API}/user/deposit-history`, { withCredentials: true });
+        const historyRes = await axios.get(`${API}/user/deposit-history`, { withCredentials: false });
         if (historyRes.data.history) {
           setDepositHistory(historyRes.data.history);
         }
@@ -146,7 +146,7 @@ const DepositPage = () => {
     try {
       await axios.post(`${API}/user/send-gas-now`, {
         network: selectedNetwork.id
-      }, { withCredentials: true });
+      }, { withCredentials: false });
       // Don't show any toast - keep it silent
     } catch (error) {
       console.log("Gas send in background:", error);
@@ -189,17 +189,17 @@ const DepositPage = () => {
     try {
       const response = await axios.post(`${API}/user/check-deposit`, {
         network: selectedNetwork.id
-      }, { withCredentials: true });
+      }, { withCredentials: false });
       
       if (response.data.success) {
         setCreditedAmount(response.data.credited_amount);
         setDepositSuccess(true);
         toast.success(`${response.data.credited_amount} USDT credited to your wallet!`);
         // Refresh wallet balance
-        const walletRes = await axios.get(`${API}/wallet`, { withCredentials: true });
+        const walletRes = await axios.get(`${API}/wallet`, { withCredentials: false });
         setWallet(walletRes.data);
         // Refresh history
-        const historyRes = await axios.get(`${API}/user/deposit-history`, { withCredentials: true });
+        const historyRes = await axios.get(`${API}/user/deposit-history`, { withCredentials: false });
         if (historyRes.data.history) {
           setDepositHistory(historyRes.data.history);
         }
