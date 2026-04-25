@@ -5659,14 +5659,20 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     
     # ATOMIC: Find AND update trade code status in single operation
     # This prevents duplicate trades by immediately marking code as "processing"
+    # STRONGER CHECK: Also ensure current_uses < max_uses
     trade_code = await db.trade_codes.find_one_and_update(
         {
             "code": data.code.upper(),
             "status": {"$in": ["active", "scheduled", "live"]},  # Only unused codes
-            "used_by": {"$exists": False}  # Extra check - not used by anyone
+            "$or": [
+                {"used_by": {"$exists": False}},
+                {"used_by": None}
+            ],
+            "$expr": {"$lt": [{"$ifNull": ["$current_uses", 0]}, {"$ifNull": ["$max_uses", 1]}]}  # current_uses < max_uses
         },
         {
-            "$set": {"status": "processing", "used_by": user["user_id"], "processing_at": datetime.now(timezone.utc).isoformat()}
+            "$set": {"status": "processing", "used_by": user["user_id"], "processing_at": datetime.now(timezone.utc).isoformat()},
+            "$inc": {"current_uses": 1}  # Immediately increment to prevent race condition
         },
         return_document=True
     )
@@ -5879,26 +5885,33 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     }
     await db.transactions.insert_one(transaction)
     
-    # Also record in futures_history for Historical Orders tab with full price data
-    futures_trade = {
-        "trade_id": f"ft_{uuid.uuid4().hex[:12]}",
+    # DUPLICATE CHECK: Don't insert if trade with same code already exists for this user
+    existing_futures_trade = await db.futures_history.find_one({
         "user_id": user["user_id"],
-        "coin": coin.upper(),
-        "coin_name": trade_code.get("coin_name", coin.upper()),
-        "trade_type": trade_type,
-        "amount": round(trade_amount_usdt, 2),
-        "open_price": round(open_price, 6),  # Opening price at execution
-        "settlement_price": round(settlement_price, 6),  # Settlement price
-        "profit": round(profit_usdt, 2),
-        "profit_percent": profit_percent,
-        "status": "completed",
-        "result": "win",
-        "trade_code": data.code.upper(),
-        "created_at": now.isoformat(),
-        "completed_at": now.isoformat(),
-        "execution_timestamp": now.timestamp()  # Unix timestamp for sorting
-    }
-    await db.futures_history.insert_one(futures_trade)
+        "trade_code": data.code.upper()
+    })
+    
+    if not existing_futures_trade:
+        # Also record in futures_history for Historical Orders tab with full price data
+        futures_trade = {
+            "trade_id": f"ft_{uuid.uuid4().hex[:12]}",
+            "user_id": user["user_id"],
+            "coin": coin.upper(),
+            "coin_name": trade_code.get("coin_name", coin.upper()),
+            "trade_type": trade_type,
+            "amount": round(trade_amount_usdt, 2),
+            "open_price": round(open_price, 6),  # Opening price at execution
+            "settlement_price": round(settlement_price, 6),  # Settlement price
+            "profit": round(profit_usdt, 2),
+            "profit_percent": profit_percent,
+            "status": "completed",
+            "result": "win",
+            "trade_code": data.code.upper(),
+            "created_at": now.isoformat(),
+            "completed_at": now.isoformat(),
+            "execution_timestamp": now.timestamp()  # Unix timestamp for sorting
+        }
+        await db.futures_history.insert_one(futures_trade)
     
     # Get updated futures balance
     updated_wallet = await db.wallets.find_one({"user_id": user["user_id"]})
