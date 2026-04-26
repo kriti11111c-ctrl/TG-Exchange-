@@ -42,35 +42,74 @@ const TeamRankPage = () => {
   const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    console.log("[TeamRank] useEffect triggered. User:", user?.email);
+    if (user) {
+      fetchData();
+    } else {
+      console.log("[TeamRank] No user, skipping fetch");
+      setLoading(false);
+    }
+  }, [user]);
 
   const fetchData = async () => {
     try {
-      // Get auth token from localStorage
+      // ULTRA FIX FOR OLD USERS: Create completely fresh axios instance
+      // This bypasses ALL global interceptors and cookies
       const authToken = localStorage.getItem('auth_token');
-      const authHeaders = authToken ? { Authorization: `Bearer ${authToken}` } : {};
       
-      // Fetch all-levels first (public endpoint - no auth required)
-      const levelsRes = await axios.get(`${API}/team-rank/all-levels`);
-      console.log("ALL LEVELS RESPONSE:", levelsRes.data);
+      console.log("[TeamRank] Starting fetchData - ULTRA FIX v2...");
+      console.log("[TeamRank] Auth token exists:", !!authToken);
+      console.log("[TeamRank] Token preview:", authToken ? authToken.substring(0, 20) + "..." : "NONE");
+      
+      if (!authToken) {
+        console.error("[TeamRank] ERROR: No auth token found");
+        toast.error("Please login to view team data");
+        setLoading(false);
+        return;
+      }
+      
+      // Create FRESH axios instance - completely isolated from global config
+      const freshAxios = axios.create({
+        baseURL: API,
+        timeout: 15000,
+        withCredentials: false,  // CRITICAL: No cookies!
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      // Fetch all-levels first (public endpoint)
+      console.log("[TeamRank] Fetching all-levels...");
+      const levelsRes = await freshAxios.get('/team-rank/all-levels');
+      console.log("[TeamRank] ALL LEVELS:", levelsRes.data?.ranks?.length, "ranks");
       setAllRanks(levelsRes.data.ranks || []);
       
-      // Fetch user-specific data (requires auth)
+      // Fetch user-specific data with FRESH axios instance
+      console.log("[TeamRank] Fetching team-rank/info...");
       try {
         const [rankRes, historyRes] = await Promise.all([
-          axios.get(`${API}/team-rank/info`, { 
-            headers: authHeaders,
-            withCredentials: true 
-          }),
-          axios.get(`${API}/team-rank/salary-history`, { 
-            headers: authHeaders,
-            withCredentials: true 
-          })
+          freshAxios.get('/team-rank/info'),
+          freshAxios.get('/team-rank/salary-history')
         ]);
         
-        console.log("RANK API RESPONSE:", JSON.stringify(rankRes.data));
-        setRankInfo(rankRes.data);
+        console.log("[TeamRank] === API SUCCESS ===");
+        console.log("[TeamRank] direct_referrals:", rankRes.data?.direct_referrals);
+        console.log("[TeamRank] total_team:", rankRes.data?.total_team);
+        console.log("[TeamRank] valid_direct:", rankRes.data?.valid_direct);
+        console.log("[TeamRank] valid_team:", rankRes.data?.valid_team);
+        console.log("[TeamRank] current_rank:", rankRes.data?.current_rank?.name);
+        
+        // Verify data is not null/undefined
+        if (rankRes.data) {
+          setRankInfo(rankRes.data);
+          console.log("[TeamRank] State updated with rankInfo");
+        } else {
+          console.error("[TeamRank] WARNING: Empty response from API");
+        }
+        
         setSalaryHistory(historyRes.data.salaries || []);
         
         // Show levelup reward notification
@@ -78,11 +117,23 @@ const TeamRankPage = () => {
           toast.success(`🎉 Congratulations! You received $${rankRes.data.levelup_reward_received} level-up reward!`);
         }
       } catch (authError) {
-        console.log("Auth-specific data fetch failed (user may not be logged in):", authError.message);
+        console.error("[TeamRank] AUTH ERROR:", authError.message);
+        console.error("[TeamRank] Error response:", authError.response?.data);
+        console.error("[TeamRank] Error status:", authError.response?.status);
+        
+        // Show user-friendly error
+        if (authError.response?.status === 401) {
+          toast.error("Session expired. Please login again.");
+        } else {
+          toast.error("Failed to load team data. Please refresh.");
+        }
       }
     } catch (error) {
-      console.error("Error fetching ranks data:", error);
+      console.error("[TeamRank] FETCH ERROR:", error.message);
+      console.error("[TeamRank] Error details:", error.response?.data);
+      toast.error("Network error. Please check your connection.");
     } finally {
+      console.log("[TeamRank] fetchData complete. Loading set to false.");
       setLoading(false);
     }
   };
@@ -90,7 +141,10 @@ const TeamRankPage = () => {
   const handleClaimSalary = async () => {
     setClaiming(true);
     try {
-      const response = await axios.post(`${API}/team-rank/claim-salary`, {}, { withCredentials: true });
+      const authToken = localStorage.getItem('auth_token');
+      const response = await axios.post(`${API}/team-rank/claim-salary`, {}, { 
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
       toast.success(response.data.message);
       fetchData();
     } catch (error) {

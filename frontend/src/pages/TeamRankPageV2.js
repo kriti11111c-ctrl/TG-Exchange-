@@ -53,47 +53,63 @@ const TeamRankPage = () => {
 
   const fetchData = async () => {
     try {
-      // CRITICAL FIX: Get auth token from localStorage and use ONLY Authorization header
-      // DO NOT use withCredentials as it sends stale cookies that override the correct user
+      // ULTRA FIX FOR OLD USERS: Create completely fresh axios instance
+      // This bypasses ALL global interceptors and cookies
       const authToken = localStorage.getItem('auth_token');
       
-      console.log("[TeamRank] Starting fetchData...");
+      console.log("[TeamRank] Starting fetchData - ULTRA FIX v2...");
       console.log("[TeamRank] Auth token exists:", !!authToken);
-      console.log("[TeamRank] API URL:", API);
+      console.log("[TeamRank] Token preview:", authToken ? authToken.substring(0, 20) + "..." : "NONE");
       
       if (!authToken) {
-        console.error("[TeamRank] ERROR: No auth token found - user not logged in");
+        console.error("[TeamRank] ERROR: No auth token found");
         toast.error("Please login to view team data");
         setLoading(false);
         return;
       }
       
-      // Create axios instance WITHOUT withCredentials to avoid cookie conflicts
-      const authConfig = {
-        headers: { Authorization: `Bearer ${authToken}` }
-        // NO withCredentials - this prevents stale cookie from overriding token
-      };
+      // Create FRESH axios instance - completely isolated from global config
+      const freshAxios = axios.create({
+        baseURL: API,
+        timeout: 15000,
+        withCredentials: false,  // CRITICAL: No cookies!
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
       
-      // Fetch all-levels first (public endpoint - no auth required)
+      // Fetch all-levels first (public endpoint)
       console.log("[TeamRank] Fetching all-levels...");
-      const levelsRes = await axios.get(`${API}/team-rank/all-levels`);
-      console.log("[TeamRank] ALL LEVELS RESPONSE:", levelsRes.data);
+      const levelsRes = await freshAxios.get('/team-rank/all-levels');
+      console.log("[TeamRank] ALL LEVELS:", levelsRes.data?.ranks?.length, "ranks");
       setAllRanks(levelsRes.data.ranks || []);
       
-      // Fetch user-specific data (requires auth) - using ONLY Authorization header
-      console.log("[TeamRank] Fetching team-rank/info with token...");
+      // Fetch user-specific data with FRESH axios instance
+      console.log("[TeamRank] Fetching team-rank/info...");
       try {
         const [rankRes, historyRes] = await Promise.all([
-          axios.get(`${API}/team-rank/info`, authConfig),
-          axios.get(`${API}/team-rank/salary-history`, authConfig)
+          freshAxios.get('/team-rank/info'),
+          freshAxios.get('/team-rank/salary-history')
         ]);
         
-        console.log("[TeamRank] RANK API SUCCESS!");
+        console.log("[TeamRank] === API SUCCESS ===");
         console.log("[TeamRank] direct_referrals:", rankRes.data?.direct_referrals);
         console.log("[TeamRank] total_team:", rankRes.data?.total_team);
-        console.log("[TeamRank] Full response:", JSON.stringify(rankRes.data));
+        console.log("[TeamRank] valid_direct:", rankRes.data?.valid_direct);
+        console.log("[TeamRank] valid_team:", rankRes.data?.valid_team);
+        console.log("[TeamRank] current_rank:", rankRes.data?.current_rank?.name);
         
-        setRankInfo(rankRes.data);
+        // Verify data is not null/undefined
+        if (rankRes.data) {
+          setRankInfo(rankRes.data);
+          console.log("[TeamRank] State updated with rankInfo");
+        } else {
+          console.error("[TeamRank] WARNING: Empty response from API");
+        }
+        
         setSalaryHistory(historyRes.data.salaries || []);
         
         // Show levelup reward notification
