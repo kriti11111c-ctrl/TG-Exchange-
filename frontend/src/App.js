@@ -150,15 +150,16 @@ export const clearApiCache = () => {
 };
 
 // Axios interceptor to add auth token
-// FIXED: Removed withCredentials to prevent stale cookies from overriding Authorization header
+// CRITICAL FIX: Force withCredentials to false to prevent stale cookies
 axios.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    // NOTE: withCredentials removed - using only Authorization header for auth
+    // FORCE withCredentials to false - prevents ALL cookie sending
     // This fixes the issue where old accounts show 0 referrals due to stale cookies
+    config.withCredentials = false;
     return config;
   },
   (error) => {
