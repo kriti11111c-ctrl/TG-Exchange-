@@ -3129,12 +3129,9 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
                 accumulation_days = min(days_in_cycle, 10)
                 accumulated_salary = round(daily_salary * accumulation_days, 2)
         
-        # FINAL SAFETY CHECK: Ensure current_rank is never null if user has saved rank
-        if rank_info["current_rank"] is None and saved_rank_level > 0:
-            for rank in TEAM_RANKS:
-                if rank["level"] == saved_rank_level:
-                    rank_info["current_rank"] = rank
-                    break
+        # REMOVED SAFETY CHECK: This was causing demoted users to still show their old rank
+        # The rank should ONLY be what they currently qualify for
+        # If user doesn't qualify for any rank (qualified_level = 0), current_rank should be None
         
         # Get user's futures balance for balance progress bar
         wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "futures_balance": 1, "welcome_bonus": 1, "total_deposited": 1, "real_futures_balance": 1})
