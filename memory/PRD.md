@@ -127,13 +127,24 @@ A full-stack centralized cryptocurrency exchange called "TG Exchange" (Trade Gen
 - 10-Day Salary system
 
 ## Architecture Notes
-- `server.py` is monolithic (~7500 lines) - needs modularization
+- `server.py` is monolithic (~8300+ lines) - needs modularization
 - All backend routes prefixed with `/api`
+- **Database:** MongoDB (Local 127.0.0.1:27017 on VPS)
+
+## Changelog
+
+### April 26, 2026 - Withdrawal Card UI Update ✅
+- **Withdrawal Card Enhanced with S/F Balance Display:**
+  - Blue "S" circle showing Spot Balance
+  - Orange "F" circle showing Futures Balance
+  - Total Deposited amount in cyan color
+- **Verified/Unverified Badge Added:**
+  - Green "Verified" badge with checkmark → User has real deposit (total_deposited > 0)
+  - Red "Unverified" badge → User has no real deposit
+- Backend API updated: `/api/admin/withdrawal-requests` now returns wallet info
+- Welcome Bonus remains locked in Futures (cannot transfer to Spot) ✅
 
 ## Backlog / Future Tasks
-- P0: Deploy approved frontend to user's Hostinger VPS (wait for user confirmation)
-- P1: Staking Page E2E verification (Flexible/Locked flow)
-- P1: Withdraw Pages E2E verification
+- P1: Code cleanup and `server.py` modularization (8300+ lines → modular routers)
+- P2: Staking Page E2E verification (Flexible/Locked flow)
 - P2: Profile/KYC Page verification
-- P2: server.py refactoring into modules (~7700 lines → modular routers)
-- P2: Grandmaster/Legend/Immortal ranks need real test users (not dummy referrals)

@@ -5199,12 +5199,31 @@ async def get_all_withdrawal_requests(
     status: Optional[str] = None,
     admin: dict = Depends(get_current_admin)
 ):
-    """Admin: Get all withdrawal requests"""
+    """Admin: Get all withdrawal requests with user wallet details"""
     query = {}
     if status:
         query["status"] = status
     
     requests = await db.withdrawal_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    
+    # Enrich each request with user's wallet info (spot/futures/total_deposited)
+    enriched_requests = []
+    for req in requests:
+        user_id = req.get("user_id")
+        wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0})
+        
+        # Get balances
+        spot_balance = wallet.get("balances", {}).get("usdt", 0) if wallet else 0
+        futures_balance = wallet.get("futures_balance", 0) if wallet else 0
+        total_deposited = wallet.get("total_deposited", 0) if wallet else 0
+        
+        # Add wallet info to request
+        req["spot_balance"] = spot_balance
+        req["futures_balance"] = futures_balance
+        req["total_deposited"] = total_deposited
+        req["is_verified"] = total_deposited > 0
+        
+        enriched_requests.append(req)
     
     # Get stats
     total = await db.withdrawal_requests.count_documents({})
@@ -5213,7 +5232,7 @@ async def get_all_withdrawal_requests(
     rejected = await db.withdrawal_requests.count_documents({"status": "rejected"})
     
     return {
-        "requests": requests,
+        "requests": enriched_requests,
         "stats": {
             "total": total,
             "pending": pending,

@@ -9,7 +9,9 @@ import {
   Clock, 
   ArrowsClockwise,
   MagnifyingGlass,
-  Copy
+  Copy,
+  SealCheck,
+  SealWarning
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -207,11 +209,38 @@ const AdminWithdrawalsPage = () => {
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                   {/* Left - Details */}
                   <div className="space-y-3 flex-1">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <span className="text-2xl font-bold text-red-400">
                         -{withdrawal.amount} {withdrawal.coin}
                       </span>
                       {getStatusBadge(withdrawal.status)}
+                      
+                      {/* Verified/Unverified Badge */}
+                      {withdrawal.is_verified ? (
+                        <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-400">
+                          <SealCheck size={14} weight="fill" />
+                          Verified
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-400">
+                          <SealWarning size={14} weight="fill" />
+                          Unverified
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Spot & Futures Balance */}
+                    <div className="flex items-center gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs font-bold">S</span>
+                        <span className="text-gray-400">Spot:</span>
+                        <span className="text-white font-semibold">${(withdrawal.spot_balance || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center text-xs font-bold">F</span>
+                        <span className="text-gray-400">Futures:</span>
+                        <span className="text-white font-semibold">${(withdrawal.futures_balance || 0).toFixed(2)}</span>
+                      </div>
                     </div>
 
                     {/* Fee Info */}
@@ -224,6 +253,12 @@ const AdminWithdrawalsPage = () => {
                         <span className="text-gray-500">To Send:</span>
                         <span className="text-green-400 ml-1 font-bold">${(withdrawal.net_amount || withdrawal.amount * 0.9).toFixed(2)}</span>
                       </div>
+                      {withdrawal.total_deposited > 0 && (
+                        <div>
+                          <span className="text-gray-500">Total Deposited:</span>
+                          <span className="text-cyan-400 ml-1 font-bold">${(withdrawal.total_deposited || 0).toFixed(2)}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
