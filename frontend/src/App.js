@@ -224,20 +224,25 @@ const AuthProvider = ({ children }) => {
     }
 
     try {
-      // Check for auth_token in localStorage (for admin impersonation)
+      // Check for auth_token in localStorage
       const authToken = localStorage.getItem('auth_token');
-      const config = {
-        withCredentials: true
-      };
       
-      // If auth_token exists, add Authorization header
-      if (authToken) {
-        config.headers = {
-          Authorization: `Bearer ${authToken}`
-        };
-        setToken(authToken);
+      // CRITICAL FIX: Only use Authorization header, NO cookies
+      // withCredentials causes stale cookies to override correct JWT token
+      if (!authToken) {
+        setUser(null);
+        setLoading(false);
+        return;
       }
       
+      const config = {
+        headers: {
+          Authorization: `Bearer ${authToken}`
+        }
+        // NO withCredentials - prevents cookie conflicts
+      };
+      
+      setToken(authToken);
       const response = await axios.get(`${API}/auth/me`, config);
       setUser(response.data);
     } catch (error) {
