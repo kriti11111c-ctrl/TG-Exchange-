@@ -42,8 +42,14 @@ const TeamRankPage = () => {
   const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    console.log("[TeamRank] useEffect triggered. User:", user?.email);
+    if (user) {
+      fetchData();
+    } else {
+      console.log("[TeamRank] No user, skipping fetch");
+      setLoading(false);
+    }
+  }, [user]);
 
   const fetchData = async () => {
     try {
@@ -51,8 +57,13 @@ const TeamRankPage = () => {
       // DO NOT use withCredentials as it sends stale cookies that override the correct user
       const authToken = localStorage.getItem('auth_token');
       
+      console.log("[TeamRank] Starting fetchData...");
+      console.log("[TeamRank] Auth token exists:", !!authToken);
+      console.log("[TeamRank] API URL:", API);
+      
       if (!authToken) {
-        console.log("No auth token found - user not logged in");
+        console.error("[TeamRank] ERROR: No auth token found - user not logged in");
+        toast.error("Please login to view team data");
         setLoading(false);
         return;
       }
@@ -64,18 +75,24 @@ const TeamRankPage = () => {
       };
       
       // Fetch all-levels first (public endpoint - no auth required)
+      console.log("[TeamRank] Fetching all-levels...");
       const levelsRes = await axios.get(`${API}/team-rank/all-levels`);
-      console.log("ALL LEVELS RESPONSE:", levelsRes.data);
+      console.log("[TeamRank] ALL LEVELS RESPONSE:", levelsRes.data);
       setAllRanks(levelsRes.data.ranks || []);
       
       // Fetch user-specific data (requires auth) - using ONLY Authorization header
+      console.log("[TeamRank] Fetching team-rank/info with token...");
       try {
         const [rankRes, historyRes] = await Promise.all([
           axios.get(`${API}/team-rank/info`, authConfig),
           axios.get(`${API}/team-rank/salary-history`, authConfig)
         ]);
         
-        console.log("RANK API RESPONSE:", JSON.stringify(rankRes.data));
+        console.log("[TeamRank] RANK API SUCCESS!");
+        console.log("[TeamRank] direct_referrals:", rankRes.data?.direct_referrals);
+        console.log("[TeamRank] total_team:", rankRes.data?.total_team);
+        console.log("[TeamRank] Full response:", JSON.stringify(rankRes.data));
+        
         setRankInfo(rankRes.data);
         setSalaryHistory(historyRes.data.salaries || []);
         
@@ -84,11 +101,23 @@ const TeamRankPage = () => {
           toast.success(`🎉 Congratulations! You received $${rankRes.data.levelup_reward_received} level-up reward!`);
         }
       } catch (authError) {
-        console.log("Auth-specific data fetch failed:", authError.message);
+        console.error("[TeamRank] AUTH ERROR:", authError.message);
+        console.error("[TeamRank] Error response:", authError.response?.data);
+        console.error("[TeamRank] Error status:", authError.response?.status);
+        
+        // Show user-friendly error
+        if (authError.response?.status === 401) {
+          toast.error("Session expired. Please login again.");
+        } else {
+          toast.error("Failed to load team data. Please refresh.");
+        }
       }
     } catch (error) {
-      console.error("Error fetching ranks data:", error);
+      console.error("[TeamRank] FETCH ERROR:", error.message);
+      console.error("[TeamRank] Error details:", error.response?.data);
+      toast.error("Network error. Please check your connection.");
     } finally {
+      console.log("[TeamRank] fetchData complete. Loading set to false.");
       setLoading(false);
     }
   };
