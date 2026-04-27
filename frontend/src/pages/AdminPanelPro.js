@@ -35,6 +35,8 @@ const AdminPanelPro = () => {
   
   // Data states
   const [users, setUsers] = useState([]);
+  const [searchedUsers, setSearchedUsers] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [deposits, setDeposits] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
   const [addresses, setAddresses] = useState([]);
@@ -143,9 +145,37 @@ const AdminPanelPro = () => {
     setActiveSection(sectionId);
     setMenuOpen(false);
     setSearchQuery("");
+    setSearchedUsers([]);
+    setIsSearching(false);
     if (sectionId !== "dashboard") {
       fetchSectionData(sectionId);
     }
+  };
+
+  // Search users in all system
+  const handleUserSearch = async (query) => {
+    setSearchQuery(query);
+    if (!query || query.length < 2) {
+      setSearchedUsers([]);
+      setIsSearching(false);
+      return;
+    }
+    
+    setIsSearching(true);
+    try {
+      const headers = { Authorization: `Bearer ${adminToken}` };
+      const res = await axios.get(`${API}/admin/users/search?q=${encodeURIComponent(query)}`, { headers });
+      setSearchedUsers(res.data.users || []);
+    } catch (error) {
+      console.error("Search failed:", error);
+      // Fallback to local search
+      setSearchedUsers(users.filter(u => 
+        u.email?.toLowerCase().includes(query.toLowerCase()) ||
+        u.name?.toLowerCase().includes(query.toLowerCase()) ||
+        u.user_id?.toLowerCase().includes(query.toLowerCase())
+      ));
+    }
+    setIsSearching(false);
   };
 
   const handleLogout = () => {
@@ -316,9 +346,16 @@ const AdminPanelPro = () => {
             <Input 
               placeholder="Search by name, email, address..." 
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                if (activeSection === "users") {
+                  handleUserSearch(e.target.value);
+                } else {
+                  setSearchQuery(e.target.value);
+                }
+              }}
               className="pl-10 bg-[#111] border-[#333] text-white w-full"
             />
+            {isSearching && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-cyan-400 text-xs">Searching...</span>}
           </div>
         </div>
 
@@ -331,13 +368,12 @@ const AdminPanelPro = () => {
 
         {/* Users */}
         {activeSection === "users" && (
-          <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
-            {users.filter(u => 
-              !searchQuery || 
-              u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-              u.user_id?.toLowerCase().includes(searchQuery.toLowerCase())
-            ).map((user, idx) => (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500 mb-2">
+              {searchQuery ? `Search results: ${searchedUsers.length} users found` : `Showing first 100 users (Total: ${stats?.total_users || users.length})`}
+            </p>
+            <div className="space-y-2 max-h-[calc(100vh-380px)] overflow-y-auto">
+            {(searchQuery && searchQuery.length >= 2 ? searchedUsers : users.slice(0, 100)).map((user, idx) => (
               <div key={idx} className="bg-[#111] border border-[#222] rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -356,7 +392,11 @@ const AdminPanelPro = () => {
                 </div>
               </div>
             ))}
-            {users.length === 0 && <p className="text-gray-500 text-center py-8">No users found</p>}
+            {searchQuery && searchQuery.length >= 2 && searchedUsers.length === 0 && !isSearching && (
+              <p className="text-gray-500 text-center py-8">No users found for "{searchQuery}"</p>
+            )}
+            {!searchQuery && users.length === 0 && <p className="text-gray-500 text-center py-8">No users found</p>}
+            </div>
           </div>
         )}
 

@@ -4888,6 +4888,36 @@ async def get_all_users(admin: dict = Depends(get_current_admin)):
         "total": len(users)
     }
 
+
+@api_router.get("/admin/users/search")
+async def search_all_users(q: str, admin: dict = Depends(get_current_admin)):
+    """Admin: Search all users by name, email, or user_id"""
+    if not q or len(q) < 2:
+        return {"users": []}
+    
+    # Search in users collection with regex
+    query = {
+        "$or": [
+            {"email": {"$regex": q, "$options": "i"}},
+            {"name": {"$regex": q, "$options": "i"}},
+            {"user_id": {"$regex": q, "$options": "i"}}
+        ]
+    }
+    
+    users = await db.users.find(query, {"_id": 0}).limit(50).to_list(50)
+    
+    # Get wallet info for these users
+    user_ids = [u.get("user_id") for u in users]
+    wallets = await db.wallets.find({"user_id": {"$in": user_ids}}, {"_id": 0}).to_list(50)
+    wallet_map = {w.get("user_id"): w for w in wallets}
+    
+    for user in users:
+        user["wallet"] = wallet_map.get(user["user_id"], {"balances": {}})
+    
+    return {"users": users, "total": len(users)}
+
+
+
 @api_router.post("/admin/block-user")
 async def admin_block_user(data: dict, admin: dict = Depends(get_current_admin)):
     """Admin: Block or unblock a user"""
