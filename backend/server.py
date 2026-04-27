@@ -6207,15 +6207,12 @@ async def get_futures_history(
         # Try to get actual data from futures_history (more accurate)
         fh = next((f for f in trade_code_history if f.get("trade_code") == tc.get("code")), None)
         if fh:
-            # Override with actual values from futures_history
-            if fh.get("settlement_price", 0) > 0:
-                settlement_price = fh.get("settlement_price")
-            if fh.get("open_price", 0) > 0:
-                open_price = fh.get("open_price")
-            if fh.get("profit", 0) > 0:
-                profit = fh.get("profit")
-            if fh.get("amount", 0) > 0:
-                amount = fh.get("amount")
+            # Override with actual values from futures_history - ALWAYS use if available
+            settlement_price = fh.get("settlement_price", fh.get("exit_price", 0))
+            open_price = fh.get("open_price", fh.get("entry_price", 0))
+            profit = fh.get("profit", fh.get("pnl", fh.get("profit_loss", 0)))
+            amount = fh.get("amount", fh.get("margin", 0))
+            profit_percent = fh.get("profit_percent", 60)
         else:
             # Calculate visible settlement price difference (0.8% - 1.5% movement)
             import random
