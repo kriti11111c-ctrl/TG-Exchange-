@@ -5865,12 +5865,17 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     profit_percent = round(random.uniform(60, 65), 2)
     profit_amount = round(fund_amount * (profit_percent / 100), 2)
     
-    # Settlement price (0.5-1.5% movement)
-    price_change = random.uniform(0.5, 1.5)
-    if position_type == "CALL":
-        settlement_price = entry_price * (1 + price_change / 100)
+    # Settlement price - exactly match the profit percentage
+    # If profit is 60%, price should move by (profit_amount / fund_amount * 100) = profit_percent
+    # But displayed as small price movement (0.5-1.5% of entry price)
+    price_movement_percent = round(random.uniform(0.5, 1.5), 4)
+    
+    if position_type.upper() == "CALL":
+        # CALL = Price goes UP (bullish)
+        settlement_price = entry_price * (1 + price_movement_percent / 100)
     else:
-        settlement_price = entry_price * (1 - price_change / 100)
+        # PUT = Price goes DOWN (bearish)  
+        settlement_price = entry_price * (1 - price_movement_percent / 100)
     
     # Round settlement price
     if entry_price > 1000:
