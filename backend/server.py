@@ -5739,322 +5739,205 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
 
 @api_router.post("/trade/apply-code")
 async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_current_user)):
-    """User applies a trade code to execute trade with profit calculation
-    
-    NEW LOGIC:
-    - Fetches LIVE price at execution time
-    - Shows actual opening and closing prices
-    - Records execution timestamp for unique results
-    - ATOMIC: Prevents duplicate trade execution
     """
-    from datetime import timedelta
-    import random
+    SIMPLE Trade Code Apply - Clean Implementation
+    
+    1. Verify code is valid and belongs to user
+    2. Take 1% of futures balance as fund
+    3. Calculate 60-65% random profit
+    4. Pick random coin from top 20
+    5. Show real-time price
+    6. Update balance & save history
+    """
     
     user_id = user["user_id"]
+    code = data.code.upper().strip()
     
-    # RATE LIMITER: Prevent same user from trading within 10 seconds
-    last_trade = await db.futures_history.find_one(
-        {"user_id": user_id},
-        sort=[("execution_timestamp", -1)]
-    )
-    if last_trade:
-        last_timestamp = last_trade.get("execution_timestamp", 0)
-        current_timestamp = datetime.now(timezone.utc).timestamp()
-        if current_timestamp - last_timestamp < 10:  # 10 seconds cooldown
-            raise HTTPException(status_code=429, detail="Please wait 10 seconds between trades")
+    logger.info(f"Apply code request: code={code}, user={user_id}")
     
-    # CHECK: Has this code already been used by this user?
-    existing_trade = await db.futures_history.find_one({
-        "user_id": user_id,
-        "trade_code": data.code.upper()
-    })
-    if existing_trade:
-        raise HTTPException(status_code=400, detail="You have already used this trade code!")
+    # Top 20 coins with fallback prices
+    TOP_20_COINS = {
+        "BTC": {"name": "Bitcoin", "price": 77500},
+        "ETH": {"name": "Ethereum", "price": 3200},
+        "BNB": {"name": "BNB", "price": 590},
+        "SOL": {"name": "Solana", "price": 145},
+        "XRP": {"name": "Ripple", "price": 0.52},
+        "DOGE": {"name": "Dogecoin", "price": 0.15},
+        "ADA": {"name": "Cardano", "price": 0.45},
+        "AVAX": {"name": "Avalanche", "price": 35},
+        "SHIB": {"name": "Shiba Inu", "price": 0.000025},
+        "DOT": {"name": "Polkadot", "price": 7.2},
+        "LINK": {"name": "Chainlink", "price": 14},
+        "TRX": {"name": "Tron", "price": 0.12},
+        "MATIC": {"name": "Polygon", "price": 0.55},
+        "UNI": {"name": "Uniswap", "price": 7.5},
+        "LTC": {"name": "Litecoin", "price": 82},
+        "ATOM": {"name": "Cosmos", "price": 8.2},
+        "NEAR": {"name": "NEAR", "price": 5.5},
+        "APT": {"name": "Aptos", "price": 8.8},
+        "ARB": {"name": "Arbitrum", "price": 1.1},
+        "OP": {"name": "Optimism", "price": 2.3}
+    }
     
-    # ATOMIC: Find AND update trade code status in single operation
-    # This prevents duplicate trades by immediately marking code as "processing"
-    # STRONGER CHECK: Also ensure current_uses < max_uses
-    trade_code = await db.trade_codes.find_one_and_update(
-        {
-            "code": data.code.upper(),
-            "status": {"$in": ["active", "scheduled", "live"]},  # Only unused codes
-            "$or": [
-                {"used_by": {"$exists": False}},
-                {"used_by": None}
-            ],
-            "$expr": {"$lt": [{"$ifNull": ["$current_uses", 0]}, {"$ifNull": ["$max_uses", 1]}]}  # current_uses < max_uses
-        },
-        {
-            "$set": {"status": "processing", "used_by": user["user_id"], "processing_at": datetime.now(timezone.utc).isoformat()},
-            "$inc": {"current_uses": 1}  # Immediately increment to prevent race condition
-        },
-        return_document=True
-    )
-    
-    # Remove _id from response if exists
-    if trade_code and "_id" in trade_code:
-        del trade_code["_id"]
+    # 1. Find and validate code
+    logger.info(f"Looking for code: {code}")
+    trade_code = await db.trade_codes.find_one({"code": code, "status": "active"})
+    logger.info(f"Found trade_code: {trade_code is not None}")
     
     if not trade_code:
-        # Check if code exists but already used
-        existing_code = await db.trade_codes.find_one({"code": data.code.upper()})
-        if existing_code:
-            if existing_code.get("status") == "used":
-                raise HTTPException(status_code=400, detail="Trade code already used! Each code can only be used once.")
-            elif existing_code.get("status") == "expired":
-                raise HTTPException(status_code=400, detail="Trade code has expired")
-            elif existing_code.get("status") == "processing":
-                raise HTTPException(status_code=400, detail="Trade is being processed. Please wait.")
-        raise HTTPException(status_code=400, detail="Invalid trade code")
+        existing = await db.trade_codes.find_one({"code": code})
+        logger.info(f"Existing code check: {existing}")
+        if existing:
+            if existing.get("status") == "used":
+                raise HTTPException(status_code=400, detail="Code already used!")
+            elif existing.get("status") == "expired":
+                raise HTTPException(status_code=400, detail="Code has expired!")
+        raise HTTPException(status_code=400, detail="Invalid code!")
     
-    # Check if code is user-specific or global
-    # Global codes (no user_id or is_global=True) can be used by anyone
-    is_global_code = not trade_code.get("user_id") or trade_code.get("is_global", False)
+    # Check if code belongs to this user
+    logger.info(f"Code user_id: {trade_code.get('user_id')}, Request user_id: {user_id}")
+    if trade_code.get("user_id") and trade_code.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="This code is not for your account!")
     
-    if not is_global_code and trade_code.get("user_id") != user["user_id"]:
-        # Revert the processing status since this user can't use this code
-        await db.trade_codes.update_one(
-            {"code": data.code.upper()},
-            {"$set": {"status": "active"}, "$unset": {"used_by": "", "processing_at": ""}}
-        )
-        raise HTTPException(status_code=403, detail="This code is not for your account")
-    
-    now = datetime.now(timezone.utc)
-    
-    # Check if code is live (scheduled_start has passed)
-    if trade_code.get("scheduled_start"):
-        scheduled_start = datetime.fromisoformat(trade_code["scheduled_start"].replace('Z', '+00:00'))
-        if scheduled_start.tzinfo is None:
-            scheduled_start = scheduled_start.replace(tzinfo=timezone.utc)
-        
-        if now < scheduled_start:
-            time_to_live = int((scheduled_start - now).total_seconds())
-            mins = time_to_live // 60
-            secs = time_to_live % 60
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Code not yet live. Starts in {mins}m {secs}s"
-            )
-    
-    # Check if code has expired
+    # Check expiry
     if trade_code.get("expires_at"):
-        expires_at = datetime.fromisoformat(trade_code["expires_at"].replace('Z', '+00:00'))
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
-    else:
-        created_at = datetime.fromisoformat(trade_code["created_at"].replace('Z', '+00:00'))
-        if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-        expires_at = created_at + timedelta(hours=1)
+        try:
+            expires_at = datetime.fromisoformat(trade_code["expires_at"].replace('Z', '+00:00'))
+            if datetime.now(timezone.utc) > expires_at:
+                await db.trade_codes.update_one({"code": code}, {"$set": {"status": "expired"}})
+                raise HTTPException(status_code=400, detail="Code has expired!")
+        except:
+            pass
     
-    if now > expires_at:
-        await db.trade_codes.update_one(
-            {"code": data.code.upper()},
-            {"$set": {"status": "expired"}}
-        )
-        raise HTTPException(status_code=400, detail="Trade code has expired")
-    
-    # Get user's wallet
-    wallet = await db.wallets.find_one({"user_id": user["user_id"]})
+    # 2. Get wallet
+    wallet = await db.wallets.find_one({"user_id": user_id})
     if not wallet:
-        # Revert processing status
-        await db.trade_codes.update_one(
-            {"code": data.code.upper()},
-            {"$set": {"status": "active"}, "$unset": {"used_by": "", "processing_at": ""}}
-        )
-        raise HTTPException(status_code=404, detail="Wallet not found")
+        raise HTTPException(status_code=404, detail="Wallet not found!")
     
-    # Check if coin is assigned to this code
-    coin = trade_code.get("coin")
-    if not coin:
-        # Revert processing status - code has no coin assigned
-        await db.trade_codes.update_one(
-            {"code": data.code.upper()},
-            {"$set": {"status": "active"}, "$unset": {"used_by": "", "processing_at": ""}}
-        )
-        raise HTTPException(status_code=400, detail="Trade code has no coin assigned. Please contact admin.")
+    futures_balance = wallet.get("futures_balance", 0)
+    if futures_balance <= 0:
+        raise HTTPException(status_code=400, detail="Insufficient futures balance! Transfer funds from Spot to Futures first.")
     
-    # FETCH LIVE PRICE at execution time
-    coin_id_map = {
-        "btc": "bitcoin", "eth": "ethereum", "bnb": "binancecoin", "sol": "solana",
-        "xrp": "ripple", "doge": "dogecoin", "ada": "cardano", "avax": "avalanche-2",
-        "shib": "shiba-inu", "dot": "polkadot", "link": "chainlink", "trx": "tron",
-        "matic": "matic-network", "uni": "uniswap", "ltc": "litecoin", "atom": "cosmos",
-        "xlm": "stellar", "near": "near", "apt": "aptos", "fil": "filecoin"
-    }
+    # 3. Get coin and price
+    coin_symbol = trade_code.get("coin", random.choice(list(TOP_20_COINS.keys())))
+    coin_data = TOP_20_COINS.get(coin_symbol, {"name": coin_symbol, "price": 100})
+    coin_name = trade_code.get("coin_name", coin_data["name"])
     
-    coin_id = coin_id_map.get(coin.lower(), "bitcoin")
-    
-    # Realistic fallback prices (updated April 2026)
-    realistic_fallback_prices = {
-        "btc": 69500, "eth": 2100, "bnb": 625, "sol": 88, "xrp": 1.38,
-        "doge": 0.092, "ada": 0.26, "avax": 9.85, "shib": 0.0000085,
-        "dot": 1.33, "link": 13.5, "trx": 0.124, "matic": 0.22,
-        "uni": 6.15, "ltc": 68.5, "atom": 4.50, "xlm": 0.092,
-        "near": 2.45, "apt": 5.25, "fil": 2.80, "pepe": 0.0000068, "sui": 1.85
-    }
-    
-    # Use realistic fallback based on coin, NOT $1000
-    open_price = realistic_fallback_prices.get(coin.lower(), trade_code.get("price", 100))
-    
+    # Try to get live price from Binance
+    entry_price = coin_data["price"]
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd",
-                timeout=10.0
+                f"https://api.binance.com/api/v3/ticker/price?symbol={coin_symbol}USDT",
+                timeout=5.0
             )
             if response.status_code == 200:
                 price_data = response.json()
-                live_price = price_data.get(coin_id, {}).get("usd")
-                if live_price and live_price > 0:
-                    open_price = live_price  # Use LIVE price as opening price
-    except Exception as e:
-        logger.warning(f"CoinGecko API failed for {coin}, using fallback price: {e}")
+                entry_price = float(price_data.get("price", entry_price))
+    except:
+        pass
     
-    # Trade is ALWAYS successful - calculate based on fund_percent (1% * multiplier)
-    futures_balance = wallet.get("futures_balance", 0)
-    fund_percent = trade_code.get("fund_percent", 1.0)
-    multiplier = trade_code.get("multiplier", 1)
-    trade_amount_usdt = futures_balance * (fund_percent / 100)
+    # 4. Calculate trade
+    position_type = trade_code.get("position_type", random.choice(["CALL", "PUT"]))
     
-    # Check if user has enough futures balance
-    if futures_balance <= 0:
-        raise HTTPException(status_code=400, detail="Insufficient Futures balance. Please transfer funds from Spot to Futures first.")
+    # 1% fund
+    fund_amount = futures_balance * 0.01
     
-    # Calculate coin amount from USDT
-    amount = trade_amount_usdt / open_price if open_price > 0 else 0
+    # 60-65% random profit
+    profit_percent = round(random.uniform(60, 65), 2)
+    profit_amount = round(fund_amount * (profit_percent / 100), 2)
     
-    # Get profit percentage (60-65%)
-    profit_percent = trade_code.get("profit_percent", round(60 + random.random() * 5, 2))
-    
-    # Calculate profit and settlement price
-    profit_usdt = trade_amount_usdt * (profit_percent / 100)
-    
-    trade_type = trade_code["trade_type"]
-    
-    # Calculate settlement price with VISIBLE difference
-    # For realistic trading display, show meaningful price movement
-    # Price movement should be proportional to profit (roughly 1-2% movement)
-    price_movement_percent = random.uniform(0.8, 1.5)  # 0.8% to 1.5% price change
-    
-    if trade_type == "call":
-        # CALL = price goes UP = settlement > open
-        settlement_price = open_price * (1 + price_movement_percent / 100)
+    # Settlement price (0.5-1.5% movement)
+    price_change = random.uniform(0.5, 1.5)
+    if position_type == "CALL":
+        settlement_price = entry_price * (1 + price_change / 100)
     else:
-        # PUT = price goes DOWN = settlement < open  
-        settlement_price = open_price * (1 - price_movement_percent / 100)
+        settlement_price = entry_price * (1 - price_change / 100)
     
-    # Round settlement price appropriately based on coin value
-    if open_price > 1000:
-        settlement_price = round(settlement_price, 2)  # BTC, ETH
-    elif open_price > 1:
-        settlement_price = round(settlement_price, 4)  # SOL, BNB
+    # Round settlement price
+    if entry_price > 1000:
+        settlement_price = round(settlement_price, 2)
+    elif entry_price > 1:
+        settlement_price = round(settlement_price, 4)
     else:
-        settlement_price = round(settlement_price, 6)  # DOGE, SHIB
+        settlement_price = round(settlement_price, 8)
     
-    # Execute trade - add the profit to FUTURES balance (not Spot)
-    # Also track trading_profit separately so it can be withdrawn
-    # IMPORTANT: Profit goes to BOTH futures_balance AND real_futures_balance
-    # real_futures_balance = actual deposits + profits (excludes welcome bonus)
+    # 5. Update wallet
+    new_balance = round(futures_balance + profit_amount, 2)
     await db.wallets.update_one(
-        {"user_id": user["user_id"]},
+        {"user_id": user_id},
         {
+            "$set": {"futures_balance": new_balance},
             "$inc": {
-                "futures_balance": profit_usdt,
-                "real_futures_balance": profit_usdt,  # Profit counts as REAL balance for rank
-                "trading_profit": profit_usdt  # Track profit separately - this is withdrawable
+                "trading_profit": profit_amount,
+                "real_futures_balance": profit_amount
             }
         }
     )
     
-    # Mark code as used with success result
+    # 6. Mark code as used
+    now = datetime.now(timezone.utc)
     await db.trade_codes.update_one(
-        {"code": data.code.upper()},
+        {"code": code},
         {
             "$set": {
                 "status": "used",
-                "used_at": now.isoformat(),
-                "result": "success",
-                "actual_profit": profit_usdt,
-                "actual_trade_amount": trade_amount_usdt
+                "used_by": user_id,
+                "used_at": now.isoformat()
             }
         }
     )
     
-    # Record transaction with LIVE price data
-    transaction = {
-        "transaction_id": f"tc_{uuid.uuid4().hex[:12]}",
-        "user_id": user["user_id"],
-        "type": "trade_code",
-        "coin": coin,
-        "coin_name": trade_code.get("coin_name", coin.upper()),
-        "amount": amount,
-        "trade_amount_usdt": trade_amount_usdt,
-        "multiplier": multiplier,
+    # 7. Save to futures_history
+    trade_id = f"ft_{uuid.uuid4().hex[:12]}"
+    await db.futures_history.insert_one({
+        "trade_id": trade_id,
+        "user_id": user_id,
+        "trade_code": code,
+        "coin": coin_symbol,
+        "coin_name": coin_name,
+        "trade_type": position_type.lower(),
+        "position_type": position_type,
+        "amount": round(fund_amount, 2),
+        "open_price": round(entry_price, 6),
+        "entry_price": round(entry_price, 6),
+        "settlement_price": round(settlement_price, 6),
+        "profit": profit_amount,
         "profit_percent": profit_percent,
-        "profit_usdt": profit_usdt,
-        "open_price": open_price,  # Live price at execution
-        "settlement_price": settlement_price,  # Calculated settlement
-        "trade_code": data.code.upper(),
-        "result": "success",
-        "timestamp": now.isoformat(),
-        "execution_time": now.isoformat()  # Exact execution time for uniqueness
-    }
-    await db.transactions.insert_one(transaction)
-    
-    # DUPLICATE CHECK: Don't insert if trade with same code already exists for this user
-    existing_futures_trade = await db.futures_history.find_one({
-        "user_id": user["user_id"],
-        "trade_code": data.code.upper()
+        "status": "completed",
+        "result": "win",
+        "created_at": now.isoformat(),
+        "completed_at": now.isoformat(),
+        "execution_timestamp": now.timestamp()
     })
     
-    if not existing_futures_trade:
-        # Also record in futures_history for Historical Orders tab with full price data
-        futures_trade = {
-            "trade_id": f"ft_{uuid.uuid4().hex[:12]}",
-            "user_id": user["user_id"],
-            "coin": coin.upper(),
-            "coin_name": trade_code.get("coin_name", coin.upper()),
-            "trade_type": trade_type,
-            "amount": round(trade_amount_usdt, 2),
-            "open_price": round(open_price, 6),  # Opening price at execution
-            "settlement_price": round(settlement_price, 6),  # Settlement price
-            "profit": round(profit_usdt, 2),
-            "profit_percent": profit_percent,
-            "status": "completed",
-            "result": "win",
-            "trade_code": data.code.upper(),
-            "created_at": now.isoformat(),
-            "completed_at": now.isoformat(),
-            "execution_timestamp": now.timestamp()  # Unix timestamp for sorting
-        }
-        await db.futures_history.insert_one(futures_trade)
-    
-    # Get updated futures balance
-    updated_wallet = await db.wallets.find_one({"user_id": user["user_id"]})
-    new_futures_balance = updated_wallet.get("futures_balance", 0) if updated_wallet else futures_balance + profit_usdt
-    
+    # 8. Return success
     return {
         "success": True,
-        "trade_type": trade_type,
-        "coin": coin.upper(),
-        "coin_name": trade_code.get("coin_name", coin.upper()),
-        "trade_amount": round(trade_amount_usdt, 2),
-        "multiplier": multiplier,
+        "message": f"Trade successful! +${profit_amount} ({profit_percent}% profit)",
+        "trade_id": trade_id,
+        "coin": coin_symbol,
+        "coin_name": coin_name,
+        "trade_type": position_type.lower(),
+        "position_type": position_type,
+        "fund_amount": round(fund_amount, 2),
+        "trade_amount": round(fund_amount, 2),
+        "entry_price": round(entry_price, 6),
+        "open_price": round(entry_price, 6),
+        "settlement_price": round(settlement_price, 6),
         "profit_percent": profit_percent,
-        "profit_usdt": round(profit_usdt, 2),
-        "new_balance": round(new_futures_balance, 2),
-        "message": f"Trade completed! +${round(profit_usdt, 2)} ({profit_percent}% profit)",
+        "profit_usdt": profit_amount,
+        "profit": profit_amount,
+        "previous_balance": round(futures_balance, 2),
+        "new_balance": new_balance,
         "trade_details": {
-            "trade_type": trade_type,
-            "coin": coin.upper(),
-            "coin_name": trade_code.get("coin_name", coin.upper()),
-            "amount": round(amount, 8),
-            "trade_amount_usdt": round(trade_amount_usdt, 2),
-            "multiplier": multiplier,
+            "trade_type": position_type.lower(),
+            "coin": coin_symbol,
+            "coin_name": coin_name,
+            "trade_amount_usdt": round(fund_amount, 2),
             "profit_percent": profit_percent,
-            "profit_usdt": round(profit_usdt, 2),
-            "open_price": round(open_price, 6),
+            "profit_usdt": profit_amount,
+            "open_price": round(entry_price, 6),
             "settlement_price": round(settlement_price, 6),
             "execution_time": now.isoformat()
         }
