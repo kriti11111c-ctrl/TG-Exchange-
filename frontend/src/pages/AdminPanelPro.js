@@ -280,166 +280,225 @@ const AdminPanelPro = () => {
       {/* Main Content */}
       <main className="p-4">
         
+        {/* Top Cards - Always Visible */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <StatCard label="Total Users" value={stats?.total_users || 0} color="cyan" />
+          <StatCard label="Total Deposits" value={`$${(stats?.total_deposit_value || 0).toLocaleString()}`} color="green" />
+          <StatCard label="Pending Deposits" value={stats?.pending_deposits || 0} color="orange" />
+          <StatCard label="Today Signups" value={stats?.today_signups || 0} color="purple" />
+        </div>
+
+        {/* Refresh + Search Bar */}
+        <div className="flex gap-2 mb-4">
+          <Button 
+            onClick={() => { fetchStats(); if(activeSection !== 'dashboard') fetchSectionData(activeSection); }}
+            className="bg-[#222] hover:bg-[#333] text-white"
+          >
+            <ArrowsClockwise size={18} className="mr-1" /> Refresh
+          </Button>
+          <div className="relative flex-1">
+            <MagnifyingGlass size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <Input 
+              placeholder="Search by name, email, address..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 bg-[#111] border-[#333] text-white w-full"
+            />
+          </div>
+        </div>
+
         {/* Dashboard */}
         {activeSection === "dashboard" && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <StatCard label="Total Users" value={stats?.total_users || 0} color="cyan" />
-              <StatCard label="Total Deposits" value={`$${(stats?.total_deposit_value || 0).toLocaleString()}`} color="green" />
-              <StatCard label="Pending Deposits" value={stats?.pending_deposits || 0} color="orange" />
-              <StatCard label="Today Signups" value={stats?.today_signups || 0} color="purple" />
-            </div>
+          <div className="text-center py-8">
+            <p className="text-gray-500">Select a section from menu</p>
           </div>
         )}
 
         {/* Users */}
         {activeSection === "users" && (
-          <div className="space-y-3">
-            <div className="relative">
-              <MagnifyingGlass size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-              <Input 
-                placeholder="Search users..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-[#111] border-[#333] text-white"
-              />
-            </div>
-            <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
-              {users.filter(u => 
-                !searchQuery || 
-                u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                u.name?.toLowerCase().includes(searchQuery.toLowerCase())
-              ).map((user, idx) => (
-                <div key={idx} className="bg-[#111] border border-[#222] rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-white font-semibold">{user.name}</p>
-                      <p className="text-xs text-gray-400">{user.email}</p>
-                      <p className="text-xs text-green-400 mt-1">S: ${(user.wallet?.balances?.usdt || 0).toFixed(2)} | F: ${(user.wallet?.futures_balance || 0).toFixed(2)}</p>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() => handleLoginAsUser(user.user_id, user.email)}
-                      disabled={loggingInAs === user.user_id}
-                      className="bg-cyan-600 hover:bg-cyan-700 text-white"
-                    >
-                      {loggingInAs === user.user_id ? "..." : "Login"}
-                    </Button>
+          <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
+            {users.filter(u => 
+              !searchQuery || 
+              u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              u.user_id?.toLowerCase().includes(searchQuery.toLowerCase())
+            ).map((user, idx) => (
+              <div key={idx} className="bg-[#111] border border-[#222] rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-white font-semibold">{user.name}</p>
+                    <p className="text-xs text-gray-400">{user.email}</p>
+                    <p className="text-xs text-green-400 mt-1">S: ${(user.wallet?.balances?.usdt || 0).toFixed(2)} | F: ${(user.wallet?.futures_balance || 0).toFixed(2)}</p>
                   </div>
+                  <Button
+                    size="sm"
+                    onClick={() => handleLoginAsUser(user.user_id, user.email)}
+                    disabled={loggingInAs === user.user_id}
+                    className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                  >
+                    {loggingInAs === user.user_id ? "..." : "Login"}
+                  </Button>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+            {users.length === 0 && <p className="text-gray-500 text-center py-8">No users found</p>}
           </div>
         )}
 
         {/* Deposit */}
         {activeSection === "deposit" && (
-          <div className="space-y-2 max-h-[calc(100vh-150px)] overflow-y-auto">
-            {deposits.map((dep, idx) => (
-              <div key={idx} className="bg-[#111] border border-[#222] rounded-xl p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <p className="text-green-400 font-bold text-xl">+${dep.amount}</p>
-                    <p className="text-sm text-gray-400">{dep.user_email}</p>
-                    <p className="text-xs text-gray-500 uppercase">{dep.network}</p>
+          <div className="space-y-4">
+            {/* Pending Deposits */}
+            <div>
+              <h3 className="text-orange-400 font-semibold mb-2 flex items-center gap-2">
+                <span className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></span>
+                Pending Deposits ({deposits.filter(d => d.status === 'pending').length})
+              </h3>
+              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                {deposits.filter(d => d.status === 'pending').filter(dep =>
+                  !searchQuery || 
+                  dep.user_email?.toLowerCase().includes(searchQuery.toLowerCase())
+                ).map((dep, idx) => (
+                  <div key={idx} className="bg-[#111] border border-orange-500/30 rounded-xl p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <p className="text-green-400 font-bold text-xl">+${dep.amount}</p>
+                        <p className="text-sm text-gray-400">{dep.user_email}</p>
+                        <p className="text-xs text-gray-500 uppercase">{dep.network}</p>
+                      </div>
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-orange-500/20 text-orange-400">PENDING</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => handleDepositAction(dep.request_id, 'approve')} disabled={processingId === dep.request_id} className="bg-green-600 text-white flex-1">
+                        <CheckCircle size={16} className="mr-1" /> Approve
+                      </Button>
+                      <Button size="sm" onClick={() => handleDepositAction(dep.request_id, 'reject')} disabled={processingId === dep.request_id} variant="outline" className="border-red-500 text-red-400 flex-1">
+                        <XCircle size={16} className="mr-1" /> Reject
+                      </Button>
+                    </div>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    dep.status === 'pending' ? 'bg-orange-500/20 text-orange-400' :
-                    dep.status === 'approved' ? 'bg-green-500/20 text-green-400' :
-                    'bg-red-500/20 text-red-400'
-                  }`}>{dep.status?.toUpperCase()}</span>
-                </div>
-                {dep.status === 'pending' && (
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={() => handleDepositAction(dep.request_id, 'approve')} disabled={processingId === dep.request_id} className="bg-green-600 text-white flex-1">
-                      <CheckCircle size={16} className="mr-1" /> Approve
-                    </Button>
-                    <Button size="sm" onClick={() => handleDepositAction(dep.request_id, 'reject')} disabled={processingId === dep.request_id} variant="outline" className="border-red-500 text-red-400 flex-1">
-                      <XCircle size={16} className="mr-1" /> Reject
-                    </Button>
-                  </div>
-                )}
+                ))}
+                {deposits.filter(d => d.status === 'pending').length === 0 && <p className="text-gray-500 text-center py-4">No pending deposits</p>}
               </div>
-            ))}
-            {deposits.length === 0 && <p className="text-gray-500 text-center py-12">No deposit requests</p>}
+            </div>
+
+            {/* Completed Deposits History */}
+            <div>
+              <h3 className="text-green-400 font-semibold mb-2">Completed Deposits History</h3>
+              <div className="space-y-2 max-h-[calc(100vh-500px)] overflow-y-auto">
+                {deposits.filter(d => d.status !== 'pending').filter(dep =>
+                  !searchQuery || 
+                  dep.user_email?.toLowerCase().includes(searchQuery.toLowerCase())
+                ).map((dep, idx) => (
+                  <div key={idx} className="bg-[#111] border border-[#222] rounded-xl p-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-green-400 font-bold">+${dep.amount}</p>
+                        <p className="text-xs text-gray-400">{dep.user_email}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        dep.status === 'approved' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                      }`}>{dep.status?.toUpperCase()}</span>
+                    </div>
+                  </div>
+                ))}
+                {deposits.filter(d => d.status !== 'pending').length === 0 && <p className="text-gray-500 text-center py-4">No deposit history</p>}
+              </div>
+            </div>
           </div>
         )}
 
         {/* Withdrawal */}
         {activeSection === "withdrawal" && (
-          <div className="space-y-2 max-h-[calc(100vh-150px)] overflow-y-auto">
-            {withdrawals.map((wd, idx) => (
-              <div key={idx} className="bg-[#111] border border-[#222] rounded-xl p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <p className="text-red-400 font-bold text-xl">-${wd.amount}</p>
-                    <p className="text-sm text-gray-400">{wd.user_name}</p>
-                    <p className="text-xs text-gray-500">{wd.user_email}</p>
-                  </div>
-                  <div className="text-right">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      wd.status === 'pending' ? 'bg-orange-500/20 text-orange-400' :
-                      wd.status === 'approved' ? 'bg-green-500/20 text-green-400' :
-                      'bg-red-500/20 text-red-400'
-                    }`}>{wd.status?.toUpperCase()}</span>
-                  </div>
-                </div>
-                
-                {/* Balance Info */}
-                <div className="flex gap-2 mb-2">
-                  <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">S: ${(wd.spot_balance || 0).toFixed(2)}</span>
-                  <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded-full">F: ${(wd.futures_balance || 0).toFixed(2)}</span>
-                  {wd.is_verified ? (
-                    <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">✓ Verified</span>
-                  ) : (
-                    <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-full">✗ Unverified</span>
-                  )}
-                </div>
-                
-                <p className="text-xs text-gray-500 font-mono break-all mb-3">{wd.wallet_address}</p>
-                
-                {wd.status === 'pending' && (
-                  <div className="space-y-2">
-                    <Input 
-                      placeholder="TX Hash..." 
-                      value={txHashInputs[wd.request_id] || ""}
-                      onChange={(e) => setTxHashInputs({...txHashInputs, [wd.request_id]: e.target.value})}
-                      className="bg-[#0a0a0a] border-[#333] text-white text-xs"
-                    />
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={() => handleWithdrawalAction(wd.request_id, 'approve')} disabled={processingId === wd.request_id} className="bg-green-600 text-white flex-1">
-                        Approve
-                      </Button>
-                      <Button size="sm" onClick={() => handleWithdrawalAction(wd.request_id, 'reject')} disabled={processingId === wd.request_id} variant="outline" className="border-red-500 text-red-400 flex-1">
-                        Reject
-                      </Button>
+          <div className="space-y-4">
+            {/* Pending Withdrawals */}
+            <div>
+              <h3 className="text-orange-400 font-semibold mb-2 flex items-center gap-2">
+                <span className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></span>
+                Pending Withdrawals ({withdrawals.filter(w => w.status === 'pending').length})
+              </h3>
+              <div className="space-y-2 max-h-[250px] overflow-y-auto">
+                {withdrawals.filter(w => w.status === 'pending').filter(wd =>
+                  !searchQuery || 
+                  wd.user_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  wd.user_name?.toLowerCase().includes(searchQuery.toLowerCase())
+                ).map((wd, idx) => (
+                  <div key={idx} className="bg-[#111] border border-orange-500/30 rounded-xl p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <p className="text-red-400 font-bold text-xl">-${wd.amount}</p>
+                        <p className="text-sm text-gray-400">{wd.user_name}</p>
+                        <p className="text-xs text-gray-500">{wd.user_email}</p>
+                      </div>
+                      <span className="px-3 py-1 rounded-full text-xs font-semibold bg-orange-500/20 text-orange-400">PENDING</span>
+                    </div>
+                    <div className="flex gap-2 mb-2">
+                      <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">S: ${(wd.spot_balance || 0).toFixed(2)}</span>
+                      <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded-full">F: ${(wd.futures_balance || 0).toFixed(2)}</span>
+                      {wd.is_verified ? (
+                        <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">✓ Verified</span>
+                      ) : (
+                        <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-full">✗ Unverified</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 font-mono break-all mb-3">{wd.wallet_address}</p>
+                    <div className="space-y-2">
+                      <Input 
+                        placeholder="TX Hash..." 
+                        value={txHashInputs[wd.request_id] || ""}
+                        onChange={(e) => setTxHashInputs({...txHashInputs, [wd.request_id]: e.target.value})}
+                        className="bg-[#0a0a0a] border-[#333] text-white text-xs"
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => handleWithdrawalAction(wd.request_id, 'approve')} disabled={processingId === wd.request_id} className="bg-green-600 text-white flex-1">
+                          Approve
+                        </Button>
+                        <Button size="sm" onClick={() => handleWithdrawalAction(wd.request_id, 'reject')} disabled={processingId === wd.request_id} variant="outline" className="border-red-500 text-red-400 flex-1">
+                          Reject
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                )}
+                ))}
+                {withdrawals.filter(w => w.status === 'pending').length === 0 && <p className="text-gray-500 text-center py-4">No pending withdrawals</p>}
               </div>
-            ))}
-            {withdrawals.length === 0 && <p className="text-gray-500 text-center py-12">No withdrawal requests</p>}
+            </div>
+
+            {/* Completed Withdrawals */}
+            <div>
+              <h3 className="text-green-400 font-semibold mb-2">Completed Withdrawals</h3>
+              <div className="space-y-2 max-h-[calc(100vh-550px)] overflow-y-auto">
+                {withdrawals.filter(w => w.status !== 'pending').filter(wd =>
+                  !searchQuery || 
+                  wd.user_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  wd.user_name?.toLowerCase().includes(searchQuery.toLowerCase())
+                ).map((wd, idx) => (
+                  <div key={idx} className="bg-[#111] border border-[#222] rounded-xl p-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-red-400 font-bold">-${wd.amount}</p>
+                        <p className="text-xs text-gray-400">{wd.user_name} - {wd.user_email}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        wd.status === 'approved' || wd.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                      }`}>{wd.status?.toUpperCase()}</span>
+                    </div>
+                  </div>
+                ))}
+                {withdrawals.filter(w => w.status !== 'pending').length === 0 && <p className="text-gray-500 text-center py-4">No completed withdrawals</p>}
+              </div>
+            </div>
           </div>
         )}
 
         {/* Address & Private Key */}
         {activeSection === "address" && (
-          <div className="space-y-3">
-            <div className="relative">
-              <MagnifyingGlass size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-              <Input 
-                placeholder="Search by email or address..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-[#111] border-[#333] text-white"
-              />
-            </div>
-            <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
-              {addresses.filter(a => 
-                !searchQuery || 
-                a.user_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                a.address?.toLowerCase().includes(searchQuery.toLowerCase())
-              ).map((addr, idx) => (
+          <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
+            {addresses.filter(a => 
+              !searchQuery || 
+              a.user_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              a.address?.toLowerCase().includes(searchQuery.toLowerCase())
+            ).map((addr, idx) => (
                 <div key={idx} className="bg-[#111] border border-[#222] rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
@@ -480,8 +539,7 @@ const AdminPanelPro = () => {
                   )}
                 </div>
               ))}
-              {addresses.length === 0 && <p className="text-gray-500 text-center py-12">No addresses found</p>}
-            </div>
+              {addresses.length === 0 && <p className="text-gray-500 text-center py-8">No addresses found</p>}
           </div>
         )}
 
