@@ -5841,8 +5841,21 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     coin_data = TOP_20_COINS.get(coin_symbol, {"name": coin_symbol, "price": 100})
     coin_name = trade_code.get("coin_name", coin_data["name"])
     
-    # Try to get live price from Binance
+    # Try to get live price - Binance first, then CryptoCompare, then CoinGecko fallback
     entry_price = coin_data["price"]
+    
+    # CoinGecko ID mapping
+    COINGECKO_IDS = {
+        "BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin", "SOL": "solana",
+        "XRP": "ripple", "DOGE": "dogecoin", "ADA": "cardano", "AVAX": "avalanche-2",
+        "SHIB": "shiba-inu", "DOT": "polkadot", "LINK": "chainlink", "TRX": "tron",
+        "MATIC": "matic-network", "UNI": "uniswap", "LTC": "litecoin", "ATOM": "cosmos",
+        "NEAR": "near", "APT": "aptos", "ARB": "arbitrum", "OP": "optimism"
+    }
+    
+    price_fetched = False
+    
+    # Try Binance first
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
@@ -5851,9 +5864,50 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
             )
             if response.status_code == 200:
                 price_data = response.json()
-                entry_price = float(price_data.get("price", entry_price))
+                if "price" in price_data:
+                    entry_price = float(price_data["price"])
+                    price_fetched = True
+                    logger.info(f"Got Binance price for {coin_symbol}: {entry_price}")
     except:
         pass
+    
+    # Try CryptoCompare if Binance failed
+    if not price_fetched:
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"https://min-api.cryptocompare.com/data/price?fsym={coin_symbol}&tsyms=USD",
+                    timeout=5.0
+                )
+                if response.status_code == 200:
+                    price_data = response.json()
+                    if "USD" in price_data:
+                        entry_price = float(price_data["USD"])
+                        price_fetched = True
+                        logger.info(f"Got CryptoCompare price for {coin_symbol}: {entry_price}")
+        except:
+            pass
+    
+    # Try CoinGecko if others failed
+    if not price_fetched:
+        try:
+            cg_id = COINGECKO_IDS.get(coin_symbol.upper(), coin_symbol.lower())
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"https://api.coingecko.com/api/v3/simple/price?ids={cg_id}&vs_currencies=usd",
+                    timeout=5.0
+                )
+                if response.status_code == 200:
+                    price_data = response.json()
+                    if cg_id in price_data:
+                        entry_price = float(price_data[cg_id]["usd"])
+                        price_fetched = True
+                        logger.info(f"Got CoinGecko price for {coin_symbol}: {entry_price}")
+        except:
+            pass
+    
+    if not price_fetched:
+        logger.warning(f"Using fallback price for {coin_symbol}: {entry_price}")
     
     # 4. Calculate trade
     position_type = trade_code.get("position_type", random.choice(["CALL", "PUT"]))
