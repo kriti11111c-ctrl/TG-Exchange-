@@ -96,7 +96,22 @@ const AdminPanelPro = () => {
           break;
         case "deposit":
           const depRes = await axios.get(`${API}/admin/deposit-requests`, { headers });
-          setDeposits(depRes.data.requests || []);
+          // Also fetch deposit transactions for history
+          try {
+            const txRes = await axios.get(`${API}/admin/deposit-history`, { headers });
+            const allDeposits = [...(depRes.data.requests || []), ...(txRes.data.deposits || [])];
+            // Remove duplicates based on request_id or tx_id
+            const seen = new Set();
+            const uniqueDeposits = allDeposits.filter(d => {
+              const key = d.request_id || d.tx_id || d._id;
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+            setDeposits(uniqueDeposits);
+          } catch {
+            setDeposits(depRes.data.requests || []);
+          }
           break;
         case "withdrawal":
           const wdRes = await axios.get(`${API}/admin/withdrawal-requests`, { headers });
@@ -363,7 +378,8 @@ const AdminPanelPro = () => {
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <p className="text-green-400 font-bold text-xl">+${dep.amount}</p>
-                        <p className="text-sm text-gray-400">{dep.user_email}</p>
+                        <p className="text-sm text-white">{dep.user_name || 'Unknown'}</p>
+                        <p className="text-xs text-gray-400">{dep.user_email}</p>
                         <p className="text-xs text-gray-500 uppercase">{dep.network}</p>
                       </div>
                       <span className="px-3 py-1 rounded-full text-xs font-semibold bg-orange-500/20 text-orange-400">PENDING</span>
@@ -384,21 +400,24 @@ const AdminPanelPro = () => {
 
             {/* Completed Deposits History */}
             <div>
-              <h3 className="text-green-400 font-semibold mb-2">Completed Deposits History</h3>
+              <h3 className="text-green-400 font-semibold mb-2">Completed Deposits History ({deposits.filter(d => d.status !== 'pending').length})</h3>
               <div className="space-y-2 max-h-[calc(100vh-500px)] overflow-y-auto">
                 {deposits.filter(d => d.status !== 'pending').filter(dep =>
                   !searchQuery || 
-                  dep.user_email?.toLowerCase().includes(searchQuery.toLowerCase())
+                  dep.user_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  dep.user_name?.toLowerCase().includes(searchQuery.toLowerCase())
                 ).map((dep, idx) => (
                   <div key={idx} className="bg-[#111] border border-[#222] rounded-xl p-3">
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-green-400 font-bold">+${dep.amount}</p>
-                        <p className="text-xs text-gray-400">{dep.user_email}</p>
+                        <p className="text-green-400 font-bold text-lg">+${dep.amount || dep.total_usd || 0}</p>
+                        <p className="text-sm text-white">{dep.user_name || 'Unknown'}</p>
+                        <p className="text-xs text-gray-400">{dep.user_email || 'N/A'}</p>
+                        <p className="text-xs text-gray-500 mt-1">{dep.created_at?.slice(0, 10) || ''}</p>
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        dep.status === 'approved' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                      }`}>{dep.status?.toUpperCase()}</span>
+                        dep.status === 'approved' || dep.status === 'completed' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                      }`}>{dep.status?.toUpperCase() || 'COMPLETED'}</span>
                     </div>
                   </div>
                 ))}

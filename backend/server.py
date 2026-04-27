@@ -4745,6 +4745,39 @@ async def get_all_deposit_requests(
         }
     }
 
+
+@api_router.get("/admin/deposit-history")
+async def get_admin_deposit_history(admin: dict = Depends(get_current_admin)):
+    """Admin: Get all deposit history with user details"""
+    # Get from deposit_history collection
+    deposits = await db.deposit_history.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    
+    # Get from transactions collection (type deposit)
+    transactions = await db.transactions.find(
+        {"type": {"$in": ["deposit", "admin_deposit", "admin_adjustment"]}},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
+    
+    # Combine and add user details
+    all_deposits = []
+    user_cache = {}
+    
+    for dep in deposits + transactions:
+        user_id = dep.get("user_id")
+        if user_id and user_id not in user_cache:
+            user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "name": 1, "email": 1})
+            user_cache[user_id] = user or {}
+        
+        user_info = user_cache.get(user_id, {})
+        dep["user_name"] = user_info.get("name", "Unknown")
+        dep["user_email"] = user_info.get("email", "Unknown")
+        dep["status"] = dep.get("status", "completed")
+        all_deposits.append(dep)
+    
+    return {"deposits": all_deposits}
+
+
+
 @api_router.post("/admin/deposit-requests/action")
 async def process_deposit_request(approval: DepositApproval, admin: dict = Depends(get_current_admin)):
     """Admin: Approve or reject a deposit request"""
