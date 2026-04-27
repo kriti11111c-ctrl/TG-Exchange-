@@ -38,6 +38,23 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
+      // First try admin login if email contains 'admin'
+      if (email.toLowerCase().includes('admin')) {
+        try {
+          const adminResponse = await axios.post(`${API}/admin/login`, { email, password });
+          if (adminResponse.data.access_token) {
+            localStorage.setItem("admin_token", adminResponse.data.access_token);
+            localStorage.setItem("admin_data", JSON.stringify(adminResponse.data.admin));
+            toast.success("Admin login successful!");
+            navigate("/admin/pro");
+            return;
+          }
+        } catch (adminError) {
+          // If admin login fails, continue with regular user login
+          console.log("Not an admin account, trying user login...");
+        }
+      }
+
       const payload = { email, password };
       if (requires2FA && totpCode) {
         payload.totp_code = totpCode;
