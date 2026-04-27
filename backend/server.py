@@ -1750,12 +1750,12 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
         if isinstance(created_at, datetime):
             created_at = created_at.isoformat()
         
-        # Parse for IST display
+        # Parse for UTC display (exchange standard)
         try:
             dt = datetime.fromisoformat(str(created_at).replace('Z', '+00:00'))
-            ist_dt = dt + timedelta(hours=5, minutes=30)
-            date_str = ist_dt.strftime("%Y-%m-%d")
-            time_str = ist_dt.strftime("%H:%M:%S")
+            # Keep UTC - no IST conversion
+            date_str = dt.strftime("%Y-%m-%d")
+            time_str = dt.strftime("%H:%M:%S")
         except:
             date_str = "N/A"
             time_str = "N/A"
@@ -1794,9 +1794,9 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
         created_at = dep.get("approved_at") or dep.get("created_at", "")
         try:
             dt = datetime.fromisoformat(str(created_at).replace('Z', '+00:00'))
-            ist_dt = dt + timedelta(hours=5, minutes=30)
-            date_str = ist_dt.strftime("%Y-%m-%d")
-            time_str = ist_dt.strftime("%H:%M:%S")
+            # Keep UTC - no IST conversion
+            date_str = dt.strftime("%Y-%m-%d")
+            time_str = dt.strftime("%H:%M:%S")
         except:
             date_str = "N/A"
             time_str = "N/A"
@@ -1829,9 +1829,9 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
         created_at = wd.get("processed_at") or wd.get("created_at", "")
         try:
             dt = datetime.fromisoformat(str(created_at).replace('Z', '+00:00'))
-            ist_dt = dt + timedelta(hours=5, minutes=30)
-            date_str = ist_dt.strftime("%Y-%m-%d")
-            time_str = ist_dt.strftime("%H:%M:%S")
+            # Keep UTC - no IST conversion
+            date_str = dt.strftime("%Y-%m-%d")
+            time_str = dt.strftime("%H:%M:%S")
         except:
             date_str = "N/A"
             time_str = "N/A"
@@ -1869,9 +1869,9 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
         created_at = tc.get("used_at") or tc.get("created_at", "")
         try:
             dt = datetime.fromisoformat(str(created_at).replace('Z', '+00:00'))
-            ist_dt = dt + timedelta(hours=5, minutes=30)
-            date_str = ist_dt.strftime("%Y-%m-%d")
-            time_str = ist_dt.strftime("%H:%M:%S")
+            # Keep UTC - no IST conversion
+            date_str = dt.strftime("%Y-%m-%d")
+            time_str = dt.strftime("%H:%M:%S")
         except:
             date_str = "N/A"
             time_str = "N/A"
@@ -1915,9 +1915,9 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
         bonus_date = user_record.get("welcome_bonus_date") or user_record.get("created_at", "")
         try:
             dt = datetime.fromisoformat(str(bonus_date).replace('Z', '+00:00'))
-            ist_dt = dt + timedelta(hours=5, minutes=30)
-            date_str = ist_dt.strftime("%Y-%m-%d")
-            time_str = ist_dt.strftime("%H:%M:%S")
+            # Keep UTC - no IST conversion
+            date_str = dt.strftime("%Y-%m-%d")
+            time_str = dt.strftime("%H:%M:%S")
         except:
             date_str = "N/A"
             time_str = "N/A"
