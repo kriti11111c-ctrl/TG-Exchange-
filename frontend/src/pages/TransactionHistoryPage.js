@@ -251,7 +251,7 @@ const TransactionHistoryPage = () => {
                         }`}>
                           {item.category}
                         </span>
-                        <span className={`text-xs ${textMuted}`}>{item.time}</span>
+                        <span className={`text-xs ${textMuted}`}>{item.time} UTC</span>
                       </div>
                     </div>
                   </div>

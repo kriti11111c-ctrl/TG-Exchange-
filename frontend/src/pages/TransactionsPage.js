@@ -244,7 +244,7 @@ const TransactionsPage = () => {
                         <span className={`text-[10px] px-2 py-0.5 rounded-full ${getBgColor(item.type)} font-medium`}>
                           {item.category}
                         </span>
-                        <span className={`text-xs ${textMuted}`}>{item.time}</span>
+                        <span className={`text-xs ${textMuted}`}>{item.time} UTC</span>
                       </div>
                     </div>
                   </div>
