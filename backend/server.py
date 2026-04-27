@@ -5892,18 +5892,26 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     trade_id = f"ft_{uuid.uuid4().hex[:12]}"
     await db.futures_history.insert_one({
         "trade_id": trade_id,
+        "position_id": trade_id,
         "user_id": user_id,
         "trade_code": code,
         "coin": coin_symbol,
         "coin_name": coin_name,
         "trade_type": position_type.lower(),
+        "side": position_type.lower(),
         "position_type": position_type,
         "amount": round(fund_amount, 2),
+        "margin": round(fund_amount, 2),
+        "leverage": 1,
         "open_price": round(entry_price, 6),
         "entry_price": round(entry_price, 6),
         "settlement_price": round(settlement_price, 6),
+        "exit_price": round(settlement_price, 6),
         "profit": profit_amount,
+        "pnl": profit_amount,
+        "profit_loss": profit_amount,
         "profit_percent": profit_percent,
+        "is_profit": True,
         "status": "completed",
         "result": "win",
         "created_at": now.isoformat(),
@@ -6196,11 +6204,18 @@ async def get_futures_history(
         profit = tc.get("actual_profit", tx.get("profit_usdt", 0) if tx else 0)
         amount = tc.get("actual_trade_amount", tx.get("trade_amount_usdt", 0) if tx else 0)
         
-        # Try to get actual settlement price from futures_history
+        # Try to get actual data from futures_history (more accurate)
         fh = next((f for f in trade_code_history if f.get("trade_code") == tc.get("code")), None)
-        if fh and fh.get("settlement_price", 0) > 0:
-            settlement_price = fh.get("settlement_price")
-            open_price = fh.get("open_price", open_price)
+        if fh:
+            # Override with actual values from futures_history
+            if fh.get("settlement_price", 0) > 0:
+                settlement_price = fh.get("settlement_price")
+            if fh.get("open_price", 0) > 0:
+                open_price = fh.get("open_price")
+            if fh.get("profit", 0) > 0:
+                profit = fh.get("profit")
+            if fh.get("amount", 0) > 0:
+                amount = fh.get("amount")
         else:
             # Calculate visible settlement price difference (0.8% - 1.5% movement)
             import random
