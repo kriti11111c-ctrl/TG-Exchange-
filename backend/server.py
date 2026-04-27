@@ -1853,11 +1853,17 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
                 "details": wd
             })
     
-    # 4. Get trade codes (used)
+    # 4. Get trade codes (used) - with futures_history for accurate profit
     trade_codes = await db.trade_codes.find(
         {"user_id": user_id, "status": "used"},
         {"_id": 0}
     ).sort("used_at", -1).to_list(limit)
+    
+    # Get futures_history for accurate profit data
+    futures_history_records = await db.futures_history.find(
+        {"user_id": user_id},
+        {"_id": 0}
+    ).to_list(limit * 2)
     
     for tc in trade_codes:
         created_at = tc.get("used_at") or tc.get("created_at", "")
@@ -1871,13 +1877,25 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
             time_str = "N/A"
         
         tc_id = tc.get("code", "")
+        
+        # Get accurate profit from futures_history
+        fh = next((f for f in futures_history_records if f.get("trade_code") == tc_id), None)
+        if fh:
+            profit_amount = fh.get("profit", fh.get("pnl", 0))
+            trade_amount = fh.get("amount", fh.get("margin", 0))
+            profit_percent = fh.get("profit_percent", 60)
+        else:
+            profit_amount = tc.get("actual_profit", 0)
+            trade_amount = tc.get("actual_trade_amount", 0)
+            profit_percent = tc.get("profit_percent", 0)
+        
         if not any(h.get("id") == tc_id for h in history):
             history.append({
                 "id": tc_id,
                 "type": "trade_profit",
                 "category": "Trade Profit",
-                "description": f"Trade {tc.get('trade_type', 'CALL').upper()} - {tc.get('coin', 'BTC').upper()}USDT",
-                "amount": float(tc.get("actual_profit", 0)),
+                "description": f"Trade {tc.get('trade_type', tc.get('position_type', 'CALL')).upper()} - {tc.get('coin', 'BTC').upper()}USDT",
+                "amount": float(profit_amount),
                 "coin": tc.get("coin", "BTC").upper(),
                 "is_income": True,
                 "status": "completed",
@@ -1885,9 +1903,9 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
                 "time": time_str,
                 "timestamp": created_at,
                 "details": {
-                    "profit_percent": tc.get("profit_percent"),
-                    "trade_amount": tc.get("actual_trade_amount"),
-                    "trade_type": tc.get("trade_type")
+                    "profit_percent": profit_percent,
+                    "trade_amount": trade_amount,
+                    "trade_type": tc.get("trade_type", tc.get("position_type"))
                 }
             })
     
