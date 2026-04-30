@@ -372,22 +372,70 @@ const AdminPanelPro = () => {
             <p className="text-xs text-gray-500 mb-2">
               {searchQuery ? `Search results: ${searchedUsers.length} users found` : `Showing first 100 users (Total: ${stats?.total_users || users.length})`}
             </p>
-            <div className="space-y-2 max-h-[calc(100vh-380px)] overflow-y-auto">
+            <div className="space-y-3 max-h-[calc(100vh-380px)] overflow-y-auto">
             {(searchQuery && searchQuery.length >= 2 ? searchedUsers : users.slice(0, 100)).map((user, idx) => (
-              <div key={idx} className="bg-[#111] border border-[#222] rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white font-semibold">{user.name}</p>
-                    <p className="text-xs text-gray-400">{user.email}</p>
-                    <p className="text-xs text-green-400 mt-1">S: ${(user.wallet?.balances?.usdt || 0).toFixed(2)} | F: ${(user.wallet?.futures_balance || 0).toFixed(2)}</p>
+              <div key={idx} className={`bg-[#111] border rounded-xl p-4 ${user.is_blocked ? 'border-red-500/50' : 'border-[#222]'}`}>
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-white font-semibold">{user.name || 'Unknown'}</p>
+                      {user.is_blocked && (
+                        <span className="px-2 py-0.5 rounded-full text-xs bg-red-500/20 text-red-400">BLOCKED</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">{user.email}</p>
+                    <div className="flex gap-2 mt-2">
+                      <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">S: ${(user.wallet?.balances?.usdt || 0).toFixed(2)}</span>
+                      <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded-full">F: ${(user.wallet?.futures_balance || 0).toFixed(2)}</span>
+                    </div>
                   </div>
+                </div>
+                <div className="flex gap-2 flex-wrap">
                   <Button
                     size="sm"
                     onClick={() => handleLoginAsUser(user.user_id, user.email)}
                     disabled={loggingInAs === user.user_id}
-                    className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                    className="bg-cyan-600 hover:bg-cyan-700 text-white text-xs"
                   >
                     {loggingInAs === user.user_id ? "..." : "Login"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      const newPass = prompt(`Enter new password for ${user.name || user.email}:`);
+                      if (newPass && newPass.length >= 6) {
+                        const headers = { Authorization: `Bearer ${adminToken}` };
+                        axios.post(`${API}/admin/change-user-password`, { user_id: user.user_id, new_password: newPass }, { headers })
+                          .then((res) => toast.success(res.data.message || 'Password changed successfully!'))
+                          .catch((e) => toast.error(e.response?.data?.detail || 'Failed to change password'));
+                      } else if (newPass) {
+                        toast.error('Password must be at least 6 characters');
+                      }
+                    }}
+                    className="bg-orange-500 hover:bg-orange-600 text-white text-xs"
+                  >
+                    Change Pass
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      const action = user.is_blocked ? 'unblock' : 'block';
+                      const confirmMsg = user.is_blocked 
+                        ? `Unblock ${user.name || user.email}?` 
+                        : `Block ${user.name || user.email}? They won't be able to login.`;
+                      if (window.confirm(confirmMsg)) {
+                        const headers = { Authorization: `Bearer ${adminToken}` };
+                        axios.post(`${API}/admin/block-user`, { user_id: user.user_id, action }, { headers })
+                          .then((res) => {
+                            toast.success(res.data.message || `User ${action}ed successfully!`);
+                            fetchSectionData('users');
+                          })
+                          .catch((e) => toast.error(e.response?.data?.detail || `Failed to ${action} user`));
+                      }
+                    }}
+                    className={user.is_blocked ? "bg-green-500 hover:bg-green-600 text-white text-xs" : "bg-red-500 hover:bg-red-600 text-white text-xs"}
+                  >
+                    {user.is_blocked ? 'Unblock' : 'Block'}
                   </Button>
                 </div>
               </div>
