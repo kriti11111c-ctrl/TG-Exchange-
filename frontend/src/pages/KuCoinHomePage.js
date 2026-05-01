@@ -366,62 +366,118 @@ const KuCoinHomePage = () => {
                 )}
               </button>
               
-              {/* Notification Dropdown - VPS Style - CENTERED */}
+              {/* Notification Dropdown - PREMIUM 3D DESIGN with HISTORY */}
               {showNotifications && (
-                <div className="fixed inset-0 z-50 flex items-start justify-center pt-20" onClick={() => setShowNotifications(false)}>
-                  {/* Backdrop */}
-                  <div className="absolute inset-0 bg-black/40" />
+                <div className="fixed inset-0 z-50 flex items-start justify-center pt-16" onClick={() => setShowNotifications(false)}>
+                  {/* Backdrop with blur */}
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
                   
-                  {/* Popup - Centered */}
-                  <div className="relative w-80 rounded-2xl shadow-2xl overflow-hidden mx-4" style={{background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)', border: '1.5px solid #2a2a4a'}} onClick={(e) => e.stopPropagation()}>
-                    <div className="p-3 flex items-center justify-between" style={{borderBottom: '1px solid #2a2a4a'}}>
-                      <div className="flex items-center gap-2">
-                        <Bell size={18} className="text-[#00E5FF]" weight="fill" />
-                        <span className="font-bold text-white">Trade Codes</span>
+                  {/* Main Card - 3D Premium Design */}
+                  <div 
+                    className="relative w-[340px] rounded-3xl shadow-2xl overflow-hidden mx-4 transform perspective-1000"
+                    style={{
+                      background: 'linear-gradient(145deg, #0a0f1a 0%, #1a1f3a 50%, #0d1225 100%)',
+                      border: '2px solid transparent',
+                      borderImage: 'linear-gradient(135deg, #00d4ff, #7c3aed, #f97316, #00d4ff) 1',
+                      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 40px rgba(0, 212, 255, 0.15), inset 0 1px 0 rgba(255,255,255,0.1)'
+                    }} 
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Header - Glowing Effect */}
+                    <div className="relative p-4" style={{
+                      background: 'linear-gradient(90deg, rgba(0,212,255,0.1) 0%, rgba(124,58,237,0.1) 50%, rgba(249,115,22,0.1) 100%)',
+                      borderBottom: '1px solid rgba(255,255,255,0.1)'
+                    }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{
+                            background: 'linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%)',
+                            boxShadow: '0 4px 15px rgba(0,212,255,0.4)'
+                          }}>
+                            <Bell size={20} className="text-white" weight="fill" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-white text-lg">Trade Codes</h3>
+                            <p className="text-xs text-gray-400">Profit Signals</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => setShowNotifications(false)}
+                          className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
+                        >
+                          <span className="text-gray-400 hover:text-white text-xl">✕</span>
+                        </button>
                       </div>
-                      <button onClick={() => setShowNotifications(false)}>
-                        <span className="text-gray-400 hover:text-white">✕</span>
-                      </button>
                     </div>
                     
-                    <div className="max-h-96 overflow-y-auto">
-                      {/* Schedule Info Box - Always show - UTC TIME */}
-                      <div className="mx-3 mt-3 p-3 rounded-xl" style={{backgroundColor: 'rgba(0,0,0,0.3)', border: '1px solid #2a2a4a'}}>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-[10px] mb-1 text-gray-400">
-                              {isCodeActive ? "⏰ Code Active Until" : "⏳ Next Code At"}
-                            </p>
-                            <p className="text-sm font-bold" style={{color: isCodeActive ? '#00C853' : '#FFD700'}}>
-                              {nextCodeTime === "10:45 AM" ? "05:15 UTC" : 
-                               nextCodeTime === "8:30 PM" ? "15:00 UTC" : 
-                               nextCodeTime === "10:45 AM (Tomorrow)" ? "05:15 UTC (Tomorrow)" :
-                               nextCodeTime || "Loading..."}
-                            </p>
-                          </div>
-                          {scheduleCountdown && (
-                            <div className="text-right">
-                              <p className="text-[10px] mb-1 text-gray-400">
-                                {isCodeActive ? "Expires In" : "Countdown"}
-                              </p>
-                              <p className="text-lg font-mono font-bold" style={{color: isCodeActive ? '#00C853' : '#FFD700'}}>
-                                {scheduleCountdown}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                        <div className="mt-2 pt-2" style={{borderTop: '1px dashed #3a3a5a'}}>
-                          <p className="text-[10px] text-center text-gray-400">
-                            📅 Daily Codes: <span className="text-yellow-400">05:15</span> & <span className="text-yellow-400">15:00</span> UTC (Valid for 1 hour)
+                    {/* Timer Section - Animated Gradient Border */}
+                    <div className="mx-4 mt-4 p-4 rounded-2xl relative overflow-hidden" style={{
+                      background: 'linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.2) 100%)',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}>
+                      {/* Animated glow */}
+                      <div className="absolute inset-0 opacity-30" style={{
+                        background: isCodeActive 
+                          ? 'radial-gradient(circle at 50% 50%, rgba(0,200,83,0.3) 0%, transparent 70%)'
+                          : 'radial-gradient(circle at 50% 50%, rgba(255,215,0,0.3) 0%, transparent 70%)'
+                      }}></div>
+                      
+                      <div className="relative flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-gray-400 mb-1">
+                            {isCodeActive ? "⚡ CODE ACTIVE UNTIL" : "⏳ NEXT CODE AT"}
+                          </p>
+                          <p className="text-xl font-bold" style={{
+                            color: isCodeActive ? '#00C853' : '#FFD700',
+                            textShadow: isCodeActive ? '0 0 20px rgba(0,200,83,0.5)' : '0 0 20px rgba(255,215,0,0.5)'
+                          }}>
+                            {nextCodeTime === "10:45 AM" ? "05:15 UTC" : 
+                             nextCodeTime === "8:30 PM" ? "15:00 UTC" : 
+                             nextCodeTime === "10:45 AM (Tomorrow)" ? "05:15 UTC (Tomorrow)" :
+                             nextCodeTime || "Loading..."}
                           </p>
                         </div>
+                        {scheduleCountdown && (
+                          <div className="text-right">
+                            <p className="text-xs text-gray-400 mb-1">
+                              {isCodeActive ? "EXPIRES IN" : "STARTS IN"}
+                            </p>
+                            <p className="text-2xl font-mono font-black" style={{
+                              color: isCodeActive ? '#00C853' : '#FFD700',
+                              textShadow: isCodeActive ? '0 0 30px rgba(0,200,83,0.6)' : '0 0 30px rgba(255,215,0,0.6)'
+                            }}>
+                              {scheduleCountdown}
+                            </p>
+                          </div>
+                        )}
                       </div>
                       
+                      {/* Schedule Pills */}
+                      <div className="mt-3 flex items-center justify-center gap-2 pt-3" style={{borderTop: '1px dashed rgba(255,255,255,0.1)'}}>
+                        <span className="px-3 py-1 rounded-full text-xs font-bold" style={{
+                          background: 'linear-gradient(90deg, #00d4ff 0%, #00a8cc 100%)',
+                          boxShadow: '0 2px 10px rgba(0,212,255,0.3)'
+                        }}>05:15 UTC</span>
+                        <span className="text-gray-500">&</span>
+                        <span className="px-3 py-1 rounded-full text-xs font-bold" style={{
+                          background: 'linear-gradient(90deg, #f97316 0%, #ea580c 100%)',
+                          boxShadow: '0 2px 10px rgba(249,115,22,0.3)'
+                        }}>15:00 UTC</span>
+                      </div>
+                    </div>
+                    
+                    {/* Active Codes Section */}
+                    <div className="max-h-64 overflow-y-auto px-4 py-3">
                       {activeOrScheduledCodes.length === 0 ? (
-                        <div className="p-6 text-center">
-                          <Bell size={40} className="text-gray-600 mx-auto mb-2" />
-                          <p className="text-gray-400">No active codes</p>
-                          <p className="text-[10px] text-gray-500 mt-1">Codes will appear at scheduled times</p>
+                        <div className="py-8 text-center">
+                          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center" style={{
+                            background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
+                            border: '1px dashed rgba(255,255,255,0.1)'
+                          }}>
+                            <Bell size={32} className="text-gray-600" />
+                          </div>
+                          <p className="text-gray-400 font-medium">No Active Codes</p>
+                          <p className="text-xs text-gray-500 mt-1">Wait for scheduled time</p>
                         </div>
                       ) : (
                         activeOrScheduledCodes.map((code, idx) => {
@@ -433,73 +489,89 @@ const KuCoinHomePage = () => {
                           const isComingSoon = !isLive && !isUsed && !isExpired && countdownToLive > 0;
                           
                           return (
-                            <div key={idx} className="mx-3 my-2 rounded-xl overflow-hidden" style={{backgroundColor: 'rgba(0,0,0,0.2)', border: '1px solid #2a2a4a'}}>
-                              {/* Status Banner */}
-                              <div className={`px-3 py-2 flex items-center gap-2 ${
-                                isLive ? 'bg-gradient-to-r from-green-600 to-green-500' : 
-                                isUsed ? 'bg-gradient-to-r from-green-700 to-green-600' :
-                                isExpired ? 'bg-gradient-to-r from-red-600 to-red-500' :
-                                'bg-gradient-to-r from-yellow-600 to-yellow-500'
-                              }`}>
-                                {isLive && <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>}
-                                {isUsed && <span className="text-white">✓</span>}
-                                {isExpired && <span className="text-white">✕</span>}
-                                {isComingSoon && <span className="w-2 h-2 rounded-full bg-white animate-bounce"></span>}
-                                <span className="text-white font-bold text-sm">
-                                  {isLive ? 'LIVE NOW' : isUsed ? 'SUCCESS' : isExpired ? 'EXPIRED' : 'COMING SOON'}
+                            <div 
+                              key={idx} 
+                              className="mb-3 rounded-2xl overflow-hidden transform transition-all hover:scale-[1.02]"
+                              style={{
+                                background: isLive 
+                                  ? 'linear-gradient(135deg, rgba(0,200,83,0.15) 0%, rgba(0,100,50,0.1) 100%)'
+                                  : isUsed 
+                                    ? 'linear-gradient(135deg, rgba(0,200,83,0.1) 0%, rgba(0,50,25,0.1) 100%)'
+                                    : isExpired
+                                      ? 'linear-gradient(135deg, rgba(255,59,48,0.15) 0%, rgba(150,30,20,0.1) 100%)'
+                                      : 'linear-gradient(135deg, rgba(255,215,0,0.15) 0%, rgba(150,100,0,0.1) 100%)',
+                                border: `1px solid ${isLive ? 'rgba(0,200,83,0.3)' : isUsed ? 'rgba(0,200,83,0.2)' : isExpired ? 'rgba(255,59,48,0.3)' : 'rgba(255,215,0,0.3)'}`,
+                                boxShadow: isLive ? '0 4px 20px rgba(0,200,83,0.2)' : 'none'
+                              }}
+                            >
+                              {/* Status Badge */}
+                              <div className={`px-4 py-2 flex items-center gap-2`} style={{
+                                background: isLive 
+                                  ? 'linear-gradient(90deg, #00C853 0%, #00E676 100%)'
+                                  : isUsed
+                                    ? 'linear-gradient(90deg, #2E7D32 0%, #388E3C 100%)'
+                                    : isExpired
+                                      ? 'linear-gradient(90deg, #D32F2F 0%, #F44336 100%)'
+                                      : 'linear-gradient(90deg, #F9A825 0%, #FBC02D 100%)'
+                              }}>
+                                {isLive && <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse shadow-lg shadow-white/50"></span>}
+                                {isUsed && <span className="text-white text-lg">✓</span>}
+                                {isExpired && <span className="text-white text-lg">✕</span>}
+                                {isComingSoon && <span className="w-2.5 h-2.5 rounded-full bg-white animate-bounce"></span>}
+                                <span className="text-white font-black text-sm tracking-wide">
+                                  {isLive ? '🔥 LIVE NOW' : isUsed ? '✅ SUCCESS' : isExpired ? '❌ MISSED' : '⏰ COMING'}
                                 </span>
                                 {isLive && (
-                                  <span className="ml-auto text-white text-xs font-mono bg-black/30 px-2 py-0.5 rounded">
+                                  <span className="ml-auto text-white text-xs font-mono bg-black/30 px-2 py-1 rounded-lg">
                                     {formatCountdown(remaining)}
                                   </span>
                                 )}
                               </div>
                               
-                              {/* Content - Different for COMING SOON vs LIVE */}
-                              <div className="p-3">
+                              <div className="p-4">
                                 {isComingSoon ? (
-                                  /* COMING SOON - Show countdown only, NO code */
                                   <div className="text-center py-2">
-                                    <p className="text-gray-400 text-xs mb-2">Code generates in</p>
-                                    <p className="text-3xl font-mono font-bold text-yellow-400">
+                                    <p className="text-gray-400 text-xs mb-2">Code unlocks in</p>
+                                    <p className="text-3xl font-mono font-black text-yellow-400" style={{
+                                      textShadow: '0 0 30px rgba(255,215,0,0.5)'
+                                    }}>
                                       {formatCountdown(countdownToLive)}
-                                    </p>
-                                    <p className="text-gray-500 text-[10px] mt-2">
-                                      {code.slot_name || 'Scheduled'}
                                     </p>
                                   </div>
                                 ) : (
-                                  /* LIVE / SUCCESS / EXPIRED - Show code */
                                   <>
                                     <div className="flex items-center justify-between mb-2">
-                                      <span className="font-bold text-xl tracking-wider" style={{color: '#FF3B30'}}>
+                                      <span className="font-black text-2xl tracking-widest" style={{
+                                        color: isExpired ? '#FF6B6B' : '#FF3B30',
+                                        textShadow: '0 0 20px rgba(255,59,48,0.3)'
+                                      }}>
                                         {code.code}
                                       </span>
                                       {isLive && (
                                         <button 
                                           onClick={() => copyCode(code.code)}
-                                          className={`px-4 py-1.5 rounded-lg text-xs font-bold text-white transition-all ${
-                                            copiedCode === code.code 
-                                              ? 'bg-gradient-to-r from-blue-500 to-blue-400' 
-                                              : 'bg-gradient-to-r from-green-500 to-green-400 hover:from-green-400 hover:to-green-300'
-                                          }`}
+                                          className="px-5 py-2 rounded-xl text-sm font-bold text-white transform transition-all active:scale-95"
+                                          style={{
+                                            background: copiedCode === code.code 
+                                              ? 'linear-gradient(90deg, #00d4ff 0%, #0088cc 100%)'
+                                              : 'linear-gradient(90deg, #00C853 0%, #00E676 100%)',
+                                            boxShadow: '0 4px 15px rgba(0,200,83,0.4)'
+                                          }}
                                         >
-                                          {copiedCode === code.code ? '✓ COPIED!' : 'COPY'}
+                                          {copiedCode === code.code ? '✓ COPIED!' : '📋 COPY'}
                                         </button>
                                       )}
                                     </div>
                                     
-                                    {/* Trade Details */}
                                     {isUsed && code.profit && (
-                                      <div className="space-y-1">
-                                        <p className="text-green-400 font-bold">+${code.profit?.toFixed(2)} Earned</p>
-                                        <p className="text-gray-400 text-xs">Traded ${code.amount?.toFixed(2)} at {code.multiplier || 1}x</p>
+                                      <div className="mt-2 p-2 rounded-xl" style={{background: 'rgba(0,200,83,0.1)'}}>
+                                        <p className="text-green-400 font-bold text-lg">+${code.profit?.toFixed(2)} Profit! 🎉</p>
+                                        <p className="text-gray-400 text-xs">Traded ${code.amount?.toFixed(2)} @ {code.multiplier || 1}x leverage</p>
                                       </div>
                                     )}
                                     
-                                    {/* Time */}
-                                    <p className="text-gray-500 text-[10px] mt-2">
-                                      {code.slot_name || code.created_at}
+                                    <p className="text-gray-500 text-[10px] mt-2 flex items-center gap-1">
+                                      <span>🕐</span> {code.slot_name || code.created_at}
                                     </p>
                                   </>
                                 )}
@@ -510,8 +582,56 @@ const KuCoinHomePage = () => {
                       )}
                     </div>
                     
-                    <Link to="/futures" className="block p-3 text-center font-semibold text-[#00E5FF] hover:bg-white/5 transition-colors" style={{borderTop: '1px solid #2a2a4a'}}>
-                      Go to Futures Trading →
+                    {/* HISTORY SECTION - NEW */}
+                    <div className="mx-4 mb-4 p-3 rounded-2xl" style={{
+                      background: 'linear-gradient(135deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.2) 100%)',
+                      border: '1px solid rgba(255,255,255,0.05)'
+                    }}>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                          <span>📊</span> Trade History
+                        </h4>
+                        <span className="text-xs text-gray-500">Last 10</span>
+                      </div>
+                      
+                      <div className="space-y-2 max-h-32 overflow-y-auto">
+                        {/* Sample history items - will be populated from API */}
+                        {[
+                          {code: 'X7KM9P', status: 'success', time: '15:00 UTC', profit: '+$12.50'},
+                          {code: 'A3BN2L', status: 'missed', time: '05:15 UTC', profit: '-'},
+                          {code: 'H8YT5R', status: 'success', time: '15:00 UTC', profit: '+$8.20'},
+                          {code: 'K2WQ7M', status: 'success', time: '05:15 UTC', profit: '+$15.00'},
+                          {code: 'P9XC3N', status: 'missed', time: '15:00 UTC', profit: '-'},
+                        ].map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between py-1.5 px-2 rounded-lg" style={{
+                            background: item.status === 'success' 
+                              ? 'rgba(0,200,83,0.1)' 
+                              : 'rgba(255,59,48,0.1)'
+                          }}>
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${item.status === 'success' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                              <span className="font-mono text-xs text-gray-300">{item.code}</span>
+                            </div>
+                            <span className="text-[10px] text-gray-500">{item.time}</span>
+                            <span className={`text-xs font-bold ${item.status === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                              {item.profit}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Footer - CTA Button */}
+                    <Link 
+                      to="/futures" 
+                      className="block p-4 text-center font-bold transition-all"
+                      style={{
+                        background: 'linear-gradient(90deg, #7c3aed 0%, #a855f7 50%, #7c3aed 100%)',
+                        backgroundSize: '200% 100%',
+                        animation: 'shimmer 2s linear infinite'
+                      }}
+                    >
+                      <span className="text-white">🚀 Go to Futures Trading</span>
                     </Link>
                   </div>
                 </div>
