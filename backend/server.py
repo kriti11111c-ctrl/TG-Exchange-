@@ -5618,6 +5618,17 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     from datetime import timedelta
     import random
     
+    # First check if code exists at all (including used codes)
+    any_code = await db.trade_codes.find_one({
+        "code": {"$in": [data.code.upper(), data.code, data.code.lower()]}
+    })
+    
+    if any_code and any_code.get("status") == "used":
+        raise HTTPException(status_code=400, detail="This code has already been used")
+    
+    if any_code and any_code.get("status") == "expired":
+        raise HTTPException(status_code=400, detail="This code has expired")
+    
     # Find the trade code (can be live, active, or scheduled)
     # Try both uppercase and original case for backward compatibility
     trade_code = await db.trade_codes.find_one({
@@ -5626,7 +5637,7 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     })
     
     if not trade_code:
-        raise HTTPException(status_code=400, detail="Invalid or expired trade code")
+        raise HTTPException(status_code=400, detail="Invalid trade code")
     
     # Check if code is user-specific or global
     # Global codes (no user_id or is_global=True) can be used by anyone
