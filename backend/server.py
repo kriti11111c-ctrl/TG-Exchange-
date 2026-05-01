@@ -5295,12 +5295,13 @@ async def get_all_withdrawal_requests(
     status: Optional[str] = None,
     admin: dict = Depends(get_current_admin)
 ):
-    """Admin: Get all withdrawal requests"""
+    """Admin: Get all withdrawal requests - NO LIMIT for full history"""
     query = {}
     if status:
         query["status"] = status
     
-    requests = await db.withdrawal_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    # Fetch ALL withdrawal requests (no limit) for complete history
+    requests = await db.withdrawal_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(100000)
     
     # Add user wallet balances and name to each request
     for req in requests:
