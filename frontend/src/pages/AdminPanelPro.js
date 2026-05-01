@@ -619,6 +619,7 @@ const AdminPanelPro = () => {
                   const spotBalance = w.spot_balance || 0;
                   const totalDeposited = w.total_deposited || 0;
                   const isVerified = totalDeposited >= 50;
+                  const payAmount = (w.amount * 0.9).toFixed(2); // 10% deducted
                   
                   return (
                     <div key={idx} className={`bg-[#111] border rounded-xl p-4 ${isVerified ? 'border-green-900/50' : 'border-red-900/50'}`}>
@@ -626,6 +627,7 @@ const AdminPanelPro = () => {
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <span className="text-2xl font-bold text-red-400">-${w.amount}</span>
+                          <p className="text-lg font-bold text-green-400">Pay: ${payAmount}</p>
                           <p className="text-sm text-gray-400 mt-1">{w.user_email || w.user_name || 'Unknown User'}</p>
                         </div>
                         <div className="flex flex-col items-end gap-2">
