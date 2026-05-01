@@ -710,9 +710,24 @@ const AdminPanelPro = () => {
                   </div>
                 </div>
 
-                {/* Withdrawal Cards - Filtered by status AND today toggle */}
-                {withdrawals.filter(w => w.status === withdrawalFilter && (!showTodayOnly || isToday(w.created_at))).length > 0 ? 
-                  withdrawals.filter(w => w.status === withdrawalFilter && (!showTodayOnly || isToday(w.created_at))).map((w, idx) => {
+                {/* Withdrawal Cards - Filtered by status AND today toggle, SORTED: Verified first */}
+                {withdrawals
+                  .filter(w => w.status === withdrawalFilter && (!showTodayOnly || isToday(w.created_at)))
+                  .sort((a, b) => {
+                    // Verified (total_deposited >= 50) should come first
+                    const aVerified = (a.total_deposited || 0) >= 50 ? 1 : 0;
+                    const bVerified = (b.total_deposited || 0) >= 50 ? 1 : 0;
+                    return bVerified - aVerified; // Verified first
+                  })
+                  .length > 0 ? 
+                  withdrawals
+                    .filter(w => w.status === withdrawalFilter && (!showTodayOnly || isToday(w.created_at)))
+                    .sort((a, b) => {
+                      const aVerified = (a.total_deposited || 0) >= 50 ? 1 : 0;
+                      const bVerified = (b.total_deposited || 0) >= 50 ? 1 : 0;
+                      return bVerified - aVerified;
+                    })
+                    .map((w, idx) => {
                   // Get balance directly from withdrawal request (added by backend)
                   const futuresBalance = w.futures_balance || 0;
                   const spotBalance = w.spot_balance || 0;
