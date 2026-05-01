@@ -59,8 +59,8 @@ const WithdrawPage = () => {
     const fetchData = async () => {
       try {
         const [walletRes, requestsRes] = await Promise.all([
-          axios.get(`${API}/wallet`, { }),
-          axios.get(`${API}/user/withdraw-requests`, { })
+          axios.get(`${API}/wallet`, { withCredentials: true }),
+          axios.get(`${API}/user/withdraw-requests`, { withCredentials: true })
         ]);
         setWallet(walletRes.data);
         setWithdrawalRequests(requestsRes.data.requests || []);
@@ -98,7 +98,7 @@ const WithdrawPage = () => {
         coin: "USDT",
         amount: parseFloat(amount),
         wallet_address: walletAddress
-      }, { });
+      }, { withCredentials: true });
 
       // Show success screen with data
       setSuccessData({
@@ -116,7 +116,7 @@ const WithdrawPage = () => {
       setWalletAddress("");
       
       // Refresh requests
-      const res = await axios.get(`${API}/user/withdraw-requests`, { });
+      const res = await axios.get(`${API}/user/withdraw-requests`, { withCredentials: true });
       setWithdrawalRequests(res.data.requests || []);
     } catch (error) {
       toast.error(error.response?.data?.detail || "Failed to submit request");

@@ -42,98 +42,31 @@ const TeamRankPage = () => {
   const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
 
   useEffect(() => {
-    console.log("[TeamRank] useEffect triggered. User:", user?.email);
-    if (user) {
-      fetchData();
-    } else {
-      console.log("[TeamRank] No user, skipping fetch");
-      setLoading(false);
-    }
-  }, [user]);
+    fetchData();
+  }, []);
 
   const fetchData = async () => {
     try {
-      // ULTRA FIX FOR OLD USERS: Create completely fresh axios instance
-      // This bypasses ALL global interceptors and cookies
-      const authToken = localStorage.getItem('auth_token');
+      const [rankRes, levelsRes, historyRes] = await Promise.all([
+        axios.get(`${API}/team-rank/info`, { withCredentials: true }),
+        axios.get(`${API}/team-rank/all-levels`, { withCredentials: true }),
+        axios.get(`${API}/team-rank/salary-history`, { withCredentials: true })
+      ]);
       
-      console.log("[TeamRank] Starting fetchData - ULTRA FIX v2...");
-      console.log("[TeamRank] Auth token exists:", !!authToken);
-      console.log("[TeamRank] Token preview:", authToken ? authToken.substring(0, 20) + "..." : "NONE");
+      // Debug: Log the actual response
+      console.log("RANK API RESPONSE:", JSON.stringify(rankRes.data));
       
-      if (!authToken) {
-        console.error("[TeamRank] ERROR: No auth token found");
-        toast.error("Please login to view team data");
-        setLoading(false);
-        return;
-      }
-      
-      // Create FRESH axios instance - completely isolated from global config
-      const freshAxios = axios.create({
-        baseURL: API,
-        timeout: 15000,
-        withCredentials: false,  // CRITICAL: No cookies!
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
-      });
-      
-      // Fetch all-levels first (public endpoint)
-      console.log("[TeamRank] Fetching all-levels...");
-      const levelsRes = await freshAxios.get('/team-rank/all-levels');
-      console.log("[TeamRank] ALL LEVELS:", levelsRes.data?.ranks?.length, "ranks");
+      setRankInfo(rankRes.data);
       setAllRanks(levelsRes.data.ranks || []);
+      setSalaryHistory(historyRes.data.salaries || []);
       
-      // Fetch user-specific data with FRESH axios instance
-      console.log("[TeamRank] Fetching team-rank/info...");
-      try {
-        const [rankRes, historyRes] = await Promise.all([
-          freshAxios.get('/team-rank/info'),
-          freshAxios.get('/team-rank/salary-history')
-        ]);
-        
-        console.log("[TeamRank] === API SUCCESS ===");
-        console.log("[TeamRank] direct_referrals:", rankRes.data?.direct_referrals);
-        console.log("[TeamRank] total_team:", rankRes.data?.total_team);
-        console.log("[TeamRank] valid_direct:", rankRes.data?.valid_direct);
-        console.log("[TeamRank] valid_team:", rankRes.data?.valid_team);
-        console.log("[TeamRank] current_rank:", rankRes.data?.current_rank?.name);
-        
-        // Verify data is not null/undefined
-        if (rankRes.data) {
-          setRankInfo(rankRes.data);
-          console.log("[TeamRank] State updated with rankInfo");
-        } else {
-          console.error("[TeamRank] WARNING: Empty response from API");
-        }
-        
-        setSalaryHistory(historyRes.data.salaries || []);
-        
-        // Show levelup reward notification
-        if (rankRes.data.levelup_reward_received) {
-          toast.success(`🎉 Congratulations! You received $${rankRes.data.levelup_reward_received} level-up reward!`);
-        }
-      } catch (authError) {
-        console.error("[TeamRank] AUTH ERROR:", authError.message);
-        console.error("[TeamRank] Error response:", authError.response?.data);
-        console.error("[TeamRank] Error status:", authError.response?.status);
-        
-        // Show user-friendly error
-        if (authError.response?.status === 401) {
-          toast.error("Session expired. Please login again.");
-        } else {
-          toast.error("Failed to load team data. Please refresh.");
-        }
+      // Show levelup reward notification
+      if (rankRes.data.levelup_reward_received) {
+        toast.success(`🎉 Congratulations! You received $${rankRes.data.levelup_reward_received} level-up reward!`);
       }
     } catch (error) {
-      console.error("[TeamRank] FETCH ERROR:", error.message);
-      console.error("[TeamRank] Error details:", error.response?.data);
-      toast.error("Network error. Please check your connection.");
+      console.error("Error fetching data:", error);
     } finally {
-      console.log("[TeamRank] fetchData complete. Loading set to false.");
       setLoading(false);
     }
   };
@@ -141,10 +74,7 @@ const TeamRankPage = () => {
   const handleClaimSalary = async () => {
     setClaiming(true);
     try {
-      const authToken = localStorage.getItem('auth_token');
-      const response = await axios.post(`${API}/team-rank/claim-salary`, {}, { 
-        headers: { Authorization: `Bearer ${authToken}` }
-      });
+      const response = await axios.post(`${API}/team-rank/claim-salary`, {}, { withCredentials: true });
       toast.success(response.data.message);
       fetchData();
     } catch (error) {
@@ -274,7 +204,6 @@ const TeamRankPage = () => {
                   <span className={`text-xs ${textMuted}`}>Direct Referrals</span>
                 </div>
                 <p className={`text-lg font-bold ${text}`}>{rankInfo?.direct_referrals || 0}</p>
-                <p className={`text-xs ${textMuted}`}>({rankInfo?.valid_direct ?? 0} active $50+)</p>
               </div>
               <div className={`${cardBg} rounded-xl p-3`}>
                 <div className="flex items-center gap-2 mb-1">
@@ -282,7 +211,6 @@ const TeamRankPage = () => {
                   <span className={`text-xs ${textMuted}`}>Total Team</span>
                 </div>
                 <p className={`text-lg font-bold ${text}`}>{rankInfo?.total_team || 0}</p>
-                <p className={`text-xs ${textMuted}`}>({rankInfo?.valid_team ?? 0} active $50+)</p>
               </div>
             </div>
 
@@ -389,41 +317,41 @@ const TeamRankPage = () => {
                     </p>
                   </div>
                   
-                  {/* Progress Bar 2 - Direct Members (Orange) - Only $50+ VALID members count */}
+                  {/* Progress Bar 2 - Direct Members (Orange) */}
                   <div>
                     <div className="flex justify-between text-xs mb-1">
                       <span className={textMuted}>👥 Direct Members</span>
                       <span className="text-[#FF6B35]">
-                        {rankInfo?.valid_direct ?? rankInfo?.members_current ?? 0}/{rankInfo?.members_required || 6}
+                        {rankInfo?.members_current || rankInfo?.direct_referrals || 0}/{rankInfo?.members_required || 6}
                       </span>
                     </div>
                     <div className={`h-2.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
                       <div 
                         className="h-full rounded-full bg-gradient-to-r from-[#FF6B35] to-[#FF9F1C]"
-                        style={{ width: `${Math.min(((rankInfo?.valid_direct ?? 0) / (rankInfo?.members_required || 6)) * 100, 100)}%` }}
+                        style={{ width: `${Math.min(rankInfo?.members_progress || rankInfo?.progress || 0, 100)}%` }}
                       />
                     </div>
                     <p className={`text-xs mt-0.5 ${textMuted}`}>
-                      {(rankInfo?.valid_direct ?? 0) >= (rankInfo?.members_required || 6) ? '✅ Members requirement met!' : `${((rankInfo?.members_required || 6) - (rankInfo?.valid_direct ?? 0))} more direct members needed ($50+ balance)`}
+                      {(rankInfo?.members_progress || rankInfo?.progress || 0) >= 100 ? '✅ Members requirement met!' : `${((rankInfo?.members_required || 6) - (rankInfo?.members_current || rankInfo?.direct_referrals || 0))} more direct members needed`}
                     </p>
                   </div>
                   
-                  {/* Progress Bar 3 - Total Team (Cyan/Blue) - Only $50+ VALID members count */}
+                  {/* Progress Bar 3 - Total Team (Cyan/Blue) */}
                   <div>
                     <div className="flex justify-between text-xs mb-1">
                       <span className={textMuted}>👥 Total Team</span>
                       <span className="text-[#00E5FF]">
-                        {rankInfo?.valid_team ?? rankInfo?.total_team ?? 0}/{rankInfo?.team_required || 6}
+                        {rankInfo?.total_team || 0}/{rankInfo?.team_required || 6}
                       </span>
                     </div>
                     <div className={`h-2.5 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
                       <div 
                         className="h-full rounded-full bg-gradient-to-r from-[#00E5FF] to-[#00B4D8]"
-                        style={{ width: `${Math.min(((rankInfo?.valid_team ?? 0) / (rankInfo?.team_required || 6)) * 100, 100)}%` }}
+                        style={{ width: `${Math.min(rankInfo?.team_progress || 0, 100)}%` }}
                       />
                     </div>
                     <p className={`text-xs mt-0.5 ${textMuted}`}>
-                      {(rankInfo?.valid_team ?? 0) >= (rankInfo?.team_required || 6) ? '✅ Team requirement met!' : `${((rankInfo?.team_required || 6) - (rankInfo?.valid_team ?? 0))} more team members needed ($50+ balance)`}
+                      {(rankInfo?.team_progress || 0) >= 100 ? '✅ Team requirement met!' : `${((rankInfo?.team_required || 6) - (rankInfo?.total_team || 0))} more team members needed`}
                     </p>
                   </div>
                 </div>
@@ -448,142 +376,189 @@ const TeamRankPage = () => {
               </div>
             </div>
 
-            {/* Team Members - Direct Referrals - NO CONDITION, ALWAYS SHOW */}
-            <div 
-              className={`${cardBg} rounded-xl overflow-hidden mb-4`}
-              style={{
-                border: isDark ? '1.5px solid #00E5FF50' : '1.5px solid #00E5FF80',
-                boxShadow: isDark ? '0 4px 15px rgba(0, 229, 255, 0.15)' : '0 4px 15px rgba(0, 229, 255, 0.2)'
-              }}
-            >
-              <button 
-                onClick={() => setShowTeamMembers(!showTeamMembers)}
-                className="w-full p-3 flex justify-between items-center"
-                data-testid="team-members-toggle"
+            {/* Team Members List - Collapsible, Sorted by Futures Balance (Highest First) */}
+            {rankInfo?.team_members && rankInfo.team_members.length > 0 && (
+              <div 
+                className={`${cardBg} rounded-xl overflow-hidden mb-4`}
+                style={{
+                  border: isDark ? '1.5px solid #00E5FF50' : '1.5px solid #00E5FF80',
+                  boxShadow: isDark ? '0 4px 15px rgba(0, 229, 255, 0.15), inset 0 1px 0 rgba(255,255,255,0.1)' : '0 4px 15px rgba(0, 229, 255, 0.2)'
+                }}
               >
-                <div className="flex items-center gap-2">
-                  <p className={`font-medium ${text}`}>👥 Team Members</p>
-                  <span className="px-2 py-0.5 rounded-md bg-[#0ECB81]/20 text-[#0ECB81] text-xs font-medium">
-                    {rankInfo?.valid_direct ?? 0} Active
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-[#F6465D]/20 text-[#F6465D] text-xs font-medium">
-                    {(rankInfo?.direct_referrals || 0) - (rankInfo?.valid_direct ?? 0)} Inactive
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs ${textMuted}`}>{showTeamMembers ? 'Hide' : 'Show'}</span>
-                  <span className={`transition-transform duration-200 ${showTeamMembers ? 'rotate-180' : ''}`}>▼</span>
-                </div>
-              </button>
-              
-              {showTeamMembers && (
-                <div className="px-3 pb-3">
-                  <p className={`text-xs ${textMuted} mb-2`}>Sorted by Futures Balance (Highest First)</p>
-                  <div className="space-y-2 max-h-72 overflow-y-auto">
-                    {(!rankInfo?.team_members || rankInfo.team_members.length === 0) ? (
-                      <div className={`p-4 rounded-lg text-center ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
-                        <p className={`text-sm ${textMuted}`}>👥 No team members yet</p>
-                        <p className={`text-xs ${textMuted} mt-1`}>Share your referral link to grow your team!</p>
-                      </div>
-                    ) : (
-                      [...rankInfo.team_members]
-                        .sort((a, b) => (b.futures_balance || 0) - (a.futures_balance || 0))
-                        .map((member, idx) => (
-                          <div key={idx} className={`p-2 rounded-lg flex items-center justify-between ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
-                            <div className="flex items-center gap-2">
-                              <span className={`text-sm font-bold ${text}`}>#{idx + 1}</span>
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00E5FF] to-[#0ECB81] flex items-center justify-center text-white text-xs font-bold">
-                                {(member.name || member.email || 'U')[0].toUpperCase()}
-                              </div>
-                              <div>
-                                <p className={`text-sm font-medium ${text}`}>{member.name || member.email?.split('@')[0] || 'Member'}</p>
-                                <p className={`text-xs ${textMuted}`}>Level {member.level || 1}</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className={`text-sm font-bold ${(member.futures_balance || 0) >= 50 ? 'text-[#0ECB81]' : 'text-red-400'}`}>
-                                ${(member.futures_balance || 0).toFixed(2)}
-                              </p>
-                              <p className={`text-xs ${(member.futures_balance || 0) >= 50 ? 'text-[#0ECB81]' : 'text-red-400'}`}>
-                                {(member.futures_balance || 0) >= 50 ? '✅ Valid' : '⚠️ Low'}
-                              </p>
-                            </div>
-                          </div>
-                        ))
+                {/* Collapsible Header */}
+                <button 
+                  onClick={() => setShowTeamMembers(!showTeamMembers)}
+                  className="w-full p-3 flex justify-between items-center"
+                  data-testid="team-members-toggle"
+                >
+                  <div className="flex items-center gap-2">
+                    <p className={`font-medium ${text}`}>👥 Team Members</p>
+                    <span className="px-2 py-0.5 rounded-md bg-[#0ECB81]/20 text-[#0ECB81] text-xs font-medium">
+                      {rankInfo.direct_referrals || 0} Active
+                    </span>
+                    {rankInfo.low_balance_count > 0 && (
+                      <span className="px-2 py-0.5 rounded-md bg-red-500/20 text-red-400 text-xs font-medium">
+                        ⚠️ {rankInfo.low_balance_count} Low
+                      </span>
                     )}
                   </div>
-                </div>
-              )}
-            </div>
-
-            {/* All Team Members - Full Hierarchy - NO CONDITION, ALWAYS SHOW */}
-            <div 
-              className={`${cardBg} rounded-xl overflow-hidden mb-4`}
-              style={{
-                border: isDark ? '1.5px solid #3498DB50' : '1.5px solid #3498DB80',
-                boxShadow: isDark ? '0 4px 15px rgba(52, 152, 219, 0.15)' : '0 4px 15px rgba(52, 152, 219, 0.2)'
-              }}
-            >
-              <button 
-                onClick={() => setShowAllTeamMembers(!showAllTeamMembers)}
-                className="w-full p-3 flex justify-between items-center"
-                data-testid="all-team-members-toggle"
-              >
-                <div className="flex items-center gap-2">
-                  <p className={`font-medium ${text}`}>🌐 All Team Members</p>
-                  <span className="px-2 py-0.5 rounded-md bg-[#0ECB81]/20 text-[#0ECB81] text-xs font-medium">
-                    {rankInfo?.valid_team ?? 0} Active
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-[#3498DB]/20 text-[#3498DB] text-xs font-medium">
-                    {rankInfo?.total_team || 0} Total
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs ${textMuted}`}>{showAllTeamMembers ? 'Hide' : 'Show'}</span>
-                  <span className={`transition-transform duration-200 ${showAllTeamMembers ? 'rotate-180' : ''}`}>▼</span>
-                </div>
-              </button>
-              
-              {showAllTeamMembers && (
-                <div className="px-3 pb-3">
-                  <p className={`text-xs ${textMuted} mb-2`}>Full team hierarchy sorted by Balance</p>
-                  <div className="space-y-2 max-h-80 overflow-y-auto">
-                    {(!rankInfo?.all_team_members || rankInfo.all_team_members.length === 0) ? (
-                      <div className={`p-4 rounded-lg text-center ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
-                        <p className={`text-sm ${textMuted}`}>🌐 No team members in hierarchy</p>
-                        <p className={`text-xs ${textMuted} mt-1`}>Build your direct team to grow your network!</p>
-                      </div>
-                    ) : (
-                      [...rankInfo.all_team_members]
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs ${textMuted}`}>
+                      {showTeamMembers ? 'Hide' : 'Show'}
+                    </span>
+                    <span className={`transition-transform duration-200 ${showTeamMembers ? 'rotate-180' : ''}`}>
+                      ▼
+                    </span>
+                  </div>
+                </button>
+                
+                {/* Collapsible Content */}
+                {showTeamMembers && (
+                  <div className="px-3 pb-3">
+                    <p className={`text-xs ${textMuted} mb-2`}>
+                      Sorted by Futures Balance (Highest First)
+                    </p>
+                    
+                    <div className="space-y-2 max-h-72 overflow-y-auto">
+                      {/* Sort by futures_balance descending */}
+                      {[...rankInfo.team_members]
                         .sort((a, b) => (b.futures_balance || 0) - (a.futures_balance || 0))
-                        .map((member, idx) => (
-                          <div key={idx} className={`p-2 rounded-lg flex items-center justify-between ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
+                        .map((member, index) => (
+                          <div 
+                            key={member.user_id || index}
+                            className="p-2 rounded-lg flex justify-between items-center"
+                            style={{
+                              backgroundColor: member.is_valid 
+                                ? (isDark ? 'rgba(14, 203, 129, 0.1)' : '#E8F5E9')
+                                : (isDark ? 'rgba(239, 68, 68, 0.1)' : '#FFEBEE'),
+                              border: `1px solid ${member.is_valid 
+                                ? (isDark ? 'rgba(14, 203, 129, 0.3)' : '#C8E6C9')
+                                : (isDark ? 'rgba(239, 68, 68, 0.3)' : '#FFCDD2')}`
+                            }}
+                          >
                             <div className="flex items-center gap-2">
-                              <span className={`text-sm font-bold ${text}`}>#{idx + 1}</span>
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                                member.level === 1 ? 'bg-gradient-to-br from-[#00E5FF] to-[#0ECB81]' :
-                                member.level === 2 ? 'bg-gradient-to-br from-[#F0B90B] to-[#FCD535]' :
-                                'bg-gradient-to-br from-[#9B59B6] to-[#8E44AD]'
+                              {/* Rank Badge */}
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                                member.is_valid ? 'bg-[#0ECB81]/20 text-[#0ECB81]' : 'bg-red-500/20 text-red-400'
                               }`}>
-                                L{member.level || 1}
+                                #{index + 1}
                               </div>
                               <div>
-                                <p className={`text-sm font-medium ${text}`}>{member.name || member.email?.split('@')[0] || 'Member'}</p>
-                                <p className={`text-xs ${textMuted}`}>Level {member.level || 1}</p>
+                                <p className={`text-sm font-medium ${text}`}>{member.name || 'User'}</p>
+                                <p className={`text-xs ${textMuted}`}>{member.email || ''}</p>
                               </div>
                             </div>
                             <div className="text-right">
-                              <p className={`text-sm font-bold ${(member.futures_balance || 0) >= 50 ? 'text-[#0ECB81]' : 'text-red-400'}`}>
-                                ${(member.futures_balance || 0).toFixed(2)}
+                              <p className={`text-sm font-bold ${member.is_valid ? 'text-[#0ECB81]' : 'text-red-400'}`}>
+                                ${member.futures_balance?.toFixed(2) || '0.00'}
+                              </p>
+                              <p className={`text-[10px] ${textMuted}`}>
+                                {member.is_valid ? '✅ Valid' : '❌ < $50'}
                               </p>
                             </div>
                           </div>
-                        ))
+                        ))}
+                    </div>
+                    
+                    {rankInfo.low_balance_count > 0 && (
+                      <p className="text-xs text-red-400 mt-2 p-2 rounded bg-red-500/10">
+                        ⚠️ {rankInfo.low_balance_count} member(s) have less than $50 in Futures. This is affecting your rank!
+                      </p>
                     )}
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
+
+            {/* ALL Team Members (Full Hierarchy) - Collapsible List */}
+            {rankInfo?.all_team_members && rankInfo.all_team_members.length > 0 && (
+              <div 
+                className={`${cardBg} rounded-xl overflow-hidden mb-4`}
+                style={{
+                  border: isDark ? '1.5px solid #3498DB50' : '1.5px solid #3498DB80',
+                  boxShadow: isDark ? '0 4px 15px rgba(52, 152, 219, 0.15), inset 0 1px 0 rgba(255,255,255,0.1)' : '0 4px 15px rgba(52, 152, 219, 0.2)'
+                }}
+              >
+                {/* Collapsible Header */}
+                <button 
+                  onClick={() => setShowAllTeamMembers(!showAllTeamMembers)}
+                  className="w-full p-3 flex justify-between items-center"
+                  data-testid="all-team-members-toggle"
+                >
+                  <div className="flex items-center gap-2">
+                    <p className={`font-medium ${text}`}>🌐 All Team Members</p>
+                    <span className="px-2 py-0.5 rounded-md bg-[#3498DB]/20 text-[#3498DB] text-xs font-medium">
+                      {rankInfo.all_team_members.length} Total
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs ${textMuted}`}>
+                      {showAllTeamMembers ? 'Hide' : 'Show'}
+                    </span>
+                    <span className={`transition-transform duration-200 ${showAllTeamMembers ? 'rotate-180' : ''}`}>
+                      ▼
+                    </span>
+                  </div>
+                </button>
+                
+                {/* Collapsible Content */}
+                {showAllTeamMembers && (
+                  <div className="px-3 pb-3">
+                    <p className={`text-xs ${textMuted} mb-2`}>
+                      Full team hierarchy sorted by Futures Balance (Highest First)
+                    </p>
+                    
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {[...rankInfo.all_team_members]
+                        .sort((a, b) => (b.futures_balance || 0) - (a.futures_balance || 0))
+                        .map((member, index) => (
+                          <div 
+                            key={member.user_id || `all-${index}`}
+                            className="p-2 rounded-lg flex justify-between items-center"
+                            style={{
+                              backgroundColor: member.is_valid 
+                                ? (isDark ? 'rgba(14, 203, 129, 0.1)' : '#E8F5E9')
+                                : (isDark ? 'rgba(239, 68, 68, 0.1)' : '#FFEBEE'),
+                              border: `1px solid ${member.is_valid 
+                                ? (isDark ? 'rgba(14, 203, 129, 0.3)' : '#C8E6C9')
+                                : (isDark ? 'rgba(239, 68, 68, 0.3)' : '#FFCDD2')}`
+                            }}
+                            data-testid={`all-team-member-${index}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              {/* Rank Badge */}
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                                member.is_valid ? 'bg-[#3498DB]/20 text-[#3498DB]' : 'bg-red-500/20 text-red-400'
+                              }`}>
+                                #{index + 1}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-1">
+                                  <p className={`text-sm font-medium ${text}`}>{member.name || 'User'}</p>
+                                  {member.level && (
+                                    <span className="px-1.5 py-0.5 rounded bg-[#00E5FF]/20 text-[#00E5FF] text-[9px] font-medium">
+                                      L{member.level}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className={`text-xs ${textMuted}`}>{member.email || ''}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className={`text-sm font-bold ${member.is_valid ? 'text-[#0ECB81]' : 'text-red-400'}`}>
+                                ${member.futures_balance?.toFixed(2) || '0.00'}
+                              </p>
+                              <p className={`text-[10px] ${textMuted}`}>
+                                {member.is_valid ? '✅ Valid' : '❌ < $50'}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Monthly Royalty Card - Shows for users WITH rank */}
             {rankInfo?.current_rank && (

@@ -405,14 +405,6 @@ const FuturesPage = () => {
                     <span className="text-white font-bold">${codeSuccess.trade_amount_usdt?.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center p-2 rounded-lg bg-black/20">
-                    <span className="text-white/60 text-xs">Open Price</span> 
-                    <span className="text-[#F0B90B] font-bold">${codeSuccess.open_price?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6})}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-2 rounded-lg bg-black/20">
-                    <span className="text-white/60 text-xs">Settlement Price (10s)</span> 
-                    <span className="text-[#F0B90B] font-bold">${codeSuccess.settlement_price?.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 6})}</span>
-                  </div>
-                  <div className="flex justify-between items-center p-2 rounded-lg bg-black/20">
                     <span className="text-white/60 text-xs">Profit Earned</span> 
                     <span className="text-[#0ECB81] font-bold text-lg">+${codeSuccess.profit_usdt?.toFixed(2)}</span>
                   </div>

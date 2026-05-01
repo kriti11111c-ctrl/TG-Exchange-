@@ -47,50 +47,30 @@ const ReferralPage = () => {
   const hoverBg = isDark ? 'hover:bg-[#2B3139]' : 'hover:bg-gray-100';
 
   useEffect(() => {
-    // Try to load cached referral code first for instant display
-    const cachedCode = localStorage.getItem('user_referral_code');
-    if (cachedCode) {
-      setUserReferralCode(cachedCode);
-    }
-
-    // Parallel fetch for faster loading with retry
-    const loadData = async (retryCount = 0) => {
+    // Parallel fetch for faster loading
+    const loadData = async () => {
       try {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const [statsRes, profileRes] = await Promise.all([
-          axios.get(`${API}/referral/stats`, { withCredentials: true, headers, timeout: 10000 }),
-          axios.get(`${API}/auth/me`, { withCredentials: true, headers, timeout: 10000 })
+          axios.get(`${API}/referral/stats`, { withCredentials: true, headers }),
+          axios.get(`${API}/auth/me`, { withCredentials: true, headers })
         ]);
         
         setStats(statsRes.data);
-        
-        // Save referral code from either source
-        const code = statsRes.data?.referral_code || profileRes.data?.referral_code;
-        if (code) {
-          setUserReferralCode(code);
-          localStorage.setItem('user_referral_code', code); // Cache it
+        if (statsRes.data?.referral_code) {
+          setUserReferralCode(statsRes.data.referral_code);
+        }
+        if (profileRes.data?.referral_code) {
+          setUserReferralCode(profileRes.data.referral_code);
         }
       } catch (error) {
         console.error("Error fetching referral data:", error);
-        
-        // Retry up to 2 times on failure
-        if (retryCount < 2) {
-          console.log(`Retrying... attempt ${retryCount + 2}`);
-          setTimeout(() => loadData(retryCount + 1), 1500);
-          return;
-        }
-        
-        // Final fallback - use cached code or show error state
-        const fallbackCode = cachedCode || localStorage.getItem('user_referral_code');
         setStats({
-          referral_code: fallbackCode || "Error - Please Refresh",
+          referral_code: userReferralCode || "Loading...",
           total_referrals: 0,
           total_earnings: 0,
           level_stats: []
         });
-        if (fallbackCode) {
-          setUserReferralCode(fallbackCode);
-        }
       } finally {
         setLoading(false);
       }
@@ -103,12 +83,10 @@ const ReferralPage = () => {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await axios.get(`${API}/auth/me`, { 
         withCredentials: true,
-        headers,
-        timeout: 10000
+        headers 
       });
       if (response.data?.referral_code) {
         setUserReferralCode(response.data.referral_code);
-        localStorage.setItem('user_referral_code', response.data.referral_code);
       }
     } catch (error) {
       console.error("Error fetching user profile:", error);
@@ -120,28 +98,22 @@ const ReferralPage = () => {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const response = await axios.get(`${API}/referral/stats`, { 
         withCredentials: true,
-        headers,
-        timeout: 10000
+        headers
       });
       console.log("Referral stats response:", response.data);
       setStats(response.data);
       if (response.data?.referral_code) {
         setUserReferralCode(response.data.referral_code);
-        localStorage.setItem('user_referral_code', response.data.referral_code);
       }
     } catch (error) {
       console.error("Error fetching referral stats:", error);
-      // Use cached code as fallback
-      const cachedCode = localStorage.getItem('user_referral_code');
+      // Set a fallback to show something if API fails
       setStats({
-        referral_code: cachedCode || userReferralCode || "Error - Please Refresh",
+        referral_code: userReferralCode || "Loading...",
         total_referrals: 0,
         total_earnings: 0,
         level_stats: []
       });
-      if (cachedCode) {
-        setUserReferralCode(cachedCode);
-      }
     } finally {
       setLoading(false);
     }

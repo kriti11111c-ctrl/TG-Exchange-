@@ -34,8 +34,6 @@ const SupportPage = lazy(() => import("./pages/SupportPage"));
 // Admin Pages (lazy loaded)
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
-const AdminDashboardNew = lazy(() => import("./pages/AdminDashboardNew"));
-const AdminPanelPro = lazy(() => import("./pages/AdminPanelPro"));
 const AdminDepositsPage = lazy(() => import("./pages/AdminDepositsPage"));
 const AdminUsersPage = lazy(() => import("./pages/AdminUsersPage"));
 const AdminWithdrawalsPage = lazy(() => import("./pages/AdminWithdrawalsPage"));
@@ -152,16 +150,13 @@ export const clearApiCache = () => {
 };
 
 // Axios interceptor to add auth token
-// CRITICAL FIX: Force withCredentials to false to prevent stale cookies
 axios.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    // FORCE withCredentials to false - prevents ALL cookie sending
-    // This fixes the issue where old accounts show 0 referrals due to stale cookies
-    config.withCredentials = false;
+    config.withCredentials = true;
     return config;
   },
   (error) => {
@@ -227,25 +222,20 @@ const AuthProvider = ({ children }) => {
     }
 
     try {
-      // Check for auth_token in localStorage
+      // Check for auth_token in localStorage (for admin impersonation)
       const authToken = localStorage.getItem('auth_token');
-      
-      // CRITICAL FIX: Only use Authorization header, NO cookies
-      // withCredentials causes stale cookies to override correct JWT token
-      if (!authToken) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-      
       const config = {
-        headers: {
-          Authorization: `Bearer ${authToken}`
-        }
-        // NO withCredentials - prevents cookie conflicts
+        withCredentials: true
       };
       
-      setToken(authToken);
+      // If auth_token exists, add Authorization header
+      if (authToken) {
+        config.headers = {
+          Authorization: `Bearer ${authToken}`
+        };
+        setToken(authToken);
+      }
+      
       const response = await axios.get(`${API}/auth/me`, config);
       setUser(response.data);
     } catch (error) {
@@ -270,22 +260,17 @@ const AuthProvider = ({ children }) => {
       // ULTRA FAST: Prefetch important data immediately after login
       setTimeout(() => prefetchData(newToken), 100);
     }
-    // Cache referral code for faster loading on Referral page
-    if (userData?.referral_code) {
-      localStorage.setItem('user_referral_code', userData.referral_code);
-    }
   };
 
   const logout = async () => {
     try {
-      await axios.post(`${API}/auth/logout`, {});
+      await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
     } catch (error) {
       console.error("Logout error:", error);
     }
     setUser(null);
     setToken(null);
     localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_referral_code'); // Clear cached referral code
   };
 
   return (
@@ -386,7 +371,7 @@ const AuthCallback = () => {
       try {
         const response = await axios.post(`${API}/auth/session`, {
           session_id: sessionId
-        });
+        }, { withCredentials: true });
 
         login(response.data);
         toast.success("Login successful!");
@@ -536,8 +521,6 @@ function AppRouter() {
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLoginPage />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/panel" element={<AdminDashboardNew />} />
-        <Route path="/admin/pro" element={<AdminPanelPro />} />
         <Route path="/admin/deposits" element={<AdminDepositsPage />} />
         <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />

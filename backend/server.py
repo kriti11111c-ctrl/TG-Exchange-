@@ -513,81 +513,83 @@ TEAM_RANKS = [
 ]
 
 async def get_team_stats(user_id: str) -> dict:
-    """Get user's team statistics - SIMPLIFIED VERSION for better MongoDB Atlas compatibility
+    """Get user's team statistics - counts users with $50+ FUTURES BALANCE
     
-    Shows ALL referrals for display, tracks valid ($50+) separately for rank qualification.
+    NEW LOGIC: Directly check futures_balance >= 50
+    If user transfers from Futures to Spot, their futures_balance drops and they won't count anymore.
+    This enables rank demotion when team members move money out of futures.
     """
     
-    # SIMPLE QUERY - Get all referrals for this user (same as referral/stats uses)
-    # LIMIT 1 LAKH (100000) for users with large communities
-    all_referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0, "referred_id": 1, "level": 1}).to_list(length=100000)
+    # Get direct referrals count with FUTURES BALANCE check using aggregation
+    direct_pipeline = [
+        {"$match": {"referrer_id": user_id, "level": 1}},
+        {"$lookup": {
+            "from": "wallets",
+            "localField": "referred_id",
+            "foreignField": "user_id",
+            "as": "wallet"
+        }},
+        {"$lookup": {
+            "from": "users",
+            "localField": "referred_id",
+            "foreignField": "user_id",
+            "as": "user"
+        }},
+        {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
+        {"$unwind": {"path": "$user", "preserveNullAndEmptyArrays": True}},
+        {"$addFields": {
+            # Direct futures balance check - if user transfers to spot, this drops
+            "futures_balance": {"$ifNull": ["$wallet.futures_balance", 0]},
+            "rank_level": {"$ifNull": ["$user.team_rank_level", 0]}
+        }},
+        {"$group": {
+            "_id": None,
+            "total_direct": {"$sum": 1},
+            # Count only those with futures_balance >= $50
+            "valid_direct": {"$sum": {"$cond": [{"$gte": ["$futures_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}},
+            "bronze_members": {"$sum": {"$cond": [
+                {"$and": [
+                    {"$gte": ["$futures_balance", MIN_DEPOSIT_FOR_RANK]},
+                    {"$gte": ["$rank_level", 1]}
+                ]}, 1, 0
+            ]}}
+        }}
+    ]
     
-    # DEBUG LOG
-    print(f"[get_team_stats] user_id={user_id}, found {len(all_referrals)} referrals")
+    direct_result = await db.referrals.aggregate(direct_pipeline).to_list(length=1)
+    direct_stats = direct_result[0] if direct_result else {"total_direct": 0, "valid_direct": 0, "bronze_members": 0}
     
-    # Direct referrals = level 1 only
-    direct_referrals = [r for r in all_referrals if r.get("level") == 1]
-    total_direct = len(direct_referrals)
-    total_team = len(all_referrals)
+    # Get all team count with FUTURES BALANCE check
+    team_pipeline = [
+        {"$match": {"referrer_id": user_id}},
+        {"$lookup": {
+            "from": "wallets",
+            "localField": "referred_id",
+            "foreignField": "user_id",
+            "as": "wallet"
+        }},
+        {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
+        {"$addFields": {
+            # Direct futures balance check
+            "futures_balance": {"$ifNull": ["$wallet.futures_balance", 0]}
+        }},
+        {"$group": {
+            "_id": None,
+            "total_team": {"$sum": 1},
+            # Count only those with futures_balance >= $50
+            "valid_team": {"$sum": {"$cond": [{"$gte": ["$futures_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}}
+        }}
+    ]
     
-    print(f"[get_team_stats] total_direct={total_direct}, total_team={total_team}")
-    
-    # Get wallets for balance check
-    referred_ids = [r.get("referred_id") for r in all_referrals if r.get("referred_id")]
-    
-    valid_direct = 0
-    valid_team = 0
-    bronze_members = 0
-    
-    if referred_ids:
-        # Batch fetch wallets - LIMIT 1 LAKH (100000)
-        # Include real_futures_balance for proper rank calculation
-        wallets = await db.wallets.find(
-            {"user_id": {"$in": referred_ids}},
-            {"_id": 0, "user_id": 1, "futures_balance": 1, "real_futures_balance": 1, "welcome_bonus": 1}
-        ).to_list(length=100000)
-        
-        # Use real_futures_balance for rank calculation (excludes welcome bonus)
-        def get_real_balance(w):
-            real_bal = w.get("real_futures_balance")
-            if real_bal is not None:
-                return real_bal
-            # Fallback for old wallets
-            return max(0, (w.get("futures_balance", 0) or 0) - (w.get("welcome_bonus", 0) or 0))
-        
-        wallets_map = {w["user_id"]: get_real_balance(w) for w in wallets}
-        
-        # Batch fetch users for rank level - LIMIT 1 LAKH (100000)
-        users = await db.users.find(
-            {"user_id": {"$in": referred_ids}},
-            {"_id": 0, "user_id": 1, "team_rank_level": 1}
-        ).to_list(length=100000)
-        
-        users_map = {u["user_id"]: u.get("team_rank_level", 0) or 0 for u in users}
-        
-        # Count valid members based on REAL balance (not including welcome bonus)
-        for ref in all_referrals:
-            ref_id = ref.get("referred_id")
-            real_balance = wallets_map.get(ref_id, 0)
-            rank_level = users_map.get(ref_id, 0)
-            
-            if real_balance >= MIN_DEPOSIT_FOR_RANK:
-                valid_team += 1
-                if ref.get("level") == 1:
-                    valid_direct += 1
-                    if rank_level >= 1:
-                        bronze_members += 1
+    team_result = await db.referrals.aggregate(team_pipeline).to_list(length=1)
+    team_stats = team_result[0] if team_result else {"total_team": 0, "valid_team": 0}
     
     return {
-        # Show ALL referrals for display
-        "direct_referrals": total_direct,
-        "bronze_members": bronze_members,
-        "total_team": total_team,
-        # Keep valid counts for rank qualification only
-        "valid_direct": valid_direct,
-        "valid_team": valid_team,
-        "total_direct_all": total_direct,
-        "total_team_all": total_team
+        "direct_referrals": direct_stats.get("valid_direct", 0),
+        "bronze_members": direct_stats.get("bronze_members", 0),
+        "total_team": team_stats.get("valid_team", 0),
+        "total_direct_all": direct_stats.get("total_direct", 0),
+        "total_team_all": team_stats.get("total_team", 0)
     }
 
 async def get_team_members_with_balance(user_id: str, include_all_levels: bool = False) -> list:
@@ -618,36 +620,21 @@ async def get_team_members_with_balance(user_id: str, include_all_levels: bool =
         }},
         {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
         {"$unwind": {"path": "$user", "preserveNullAndEmptyArrays": True}},
-        {"$addFields": {
-            # Calculate real_balance: use real_futures_balance if available, else (futures_balance - welcome_bonus)
-            "real_balance": {
-                "$cond": {
-                    "if": {"$ne": [{"$ifNull": ["$wallet.real_futures_balance", None]}, None]},
-                    "then": {"$ifNull": ["$wallet.real_futures_balance", 0]},
-                    "else": {
-                        "$max": [0, {"$subtract": [
-                            {"$ifNull": ["$wallet.futures_balance", 0]},
-                            {"$ifNull": ["$wallet.welcome_bonus", 0]}
-                        ]}]
-                    }
-                }
-            }
-        }},
         {"$project": {
             "_id": 0,
             "user_id": "$referred_id",
             "name": {"$ifNull": ["$user.name", "Unknown"]},
             "email": {"$ifNull": ["$user.email", ""]},
-            "futures_balance": "$real_balance",  # Show real balance (not including welcome bonus)
-            "is_valid": {"$gte": ["$real_balance", MIN_DEPOSIT_FOR_RANK]},
+            "futures_balance": {"$ifNull": ["$wallet.futures_balance", 0]},
+            "is_valid": {"$gte": [{"$ifNull": ["$wallet.futures_balance", 0]}, MIN_DEPOSIT_FOR_RANK]},
             "level": "$level",
             "created_at": "$created_at"
         }},
         {"$sort": {"futures_balance": -1}},  # Sort by balance (highest first)
-        {"$limit": 500}  # Increased limit for larger teams
+        {"$limit": 100}  # Limit to prevent server overload
     ]
     
-    members = await db.referrals.aggregate(pipeline).to_list(length=500)
+    members = await db.referrals.aggregate(pipeline).to_list(length=100)
     
     # Mask email for privacy (show only first 3 chars + ***)
     for member in members:
@@ -802,28 +789,43 @@ def create_jwt_token(user_id: str, email: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 async def get_current_user(request: Request) -> dict:
-    # CRITICAL FIX: ONLY use Authorization header - NO cookies
-    # This completely removes the cookie conflict issue
+    # Check cookie first
+    session_token = request.cookies.get("session_token")
     
-    auth_header = request.headers.get("Authorization")
+    # Then check Authorization header
+    if not session_token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            session_token = auth_header.split(" ")[1]
     
-    # Authorization header MUST exist
-    if not auth_header or not auth_header.startswith("Bearer "):
-        print(f"[AUTH] No Authorization header - rejecting request")
-        raise HTTPException(status_code=401, detail="Not authenticated - Authorization header required")
+    if not session_token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     
-    # Use JWT authentication ONLY
-    jwt_token = auth_header.split(" ")[1]
+    # Check if it's a Google OAuth session
+    session = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
+    if session:
+        expires_at = session.get("expires_at")
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at)
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if expires_at < datetime.now(timezone.utc):
+            raise HTTPException(status_code=401, detail="Session expired")
+        
+        user = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    
+    # Try JWT token
     try:
-        payload = jwt.decode(jwt_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(session_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user_id = payload.get("sub")
         user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
-        print(f"[AUTH] JWT auth successful for user_id={user_id}")
         return user
-    except JWTError as e:
-        print(f"[AUTH] JWT decode failed: {e}")
+    except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 # ================= AUTH ROUTES =================
@@ -905,7 +907,6 @@ async def register(user_data: UserCreate, response: Response):
             "sol": 0.0
         },
         "futures_balance": WELCOME_BONUS_AMOUNT,  # Welcome bonus goes to Futures
-        "real_futures_balance": 0.0,  # Real balance (deposits + profits) - NO welcome bonus
         "welcome_bonus": WELCOME_BONUS_AMOUNT,
         "welcome_bonus_expires_at": welcome_bonus_expires.isoformat(),
         "first_deposit_done": False,  # Track if first deposit bonus given
@@ -1267,18 +1268,11 @@ async def get_wallet(user: dict = Depends(get_current_user)):
     
     # Get futures balance
     futures_balance = wallet.get("futures_balance", 0)
-    real_futures_balance = wallet.get("real_futures_balance", 0)
-    welcome_bonus_amount = wallet.get("welcome_bonus", 0)
-    
-    # Calculate locked amount (welcome bonus that cannot be withdrawn)
-    locked_balance = max(0, futures_balance - real_futures_balance)
     
     result = {
         "user_id": wallet["user_id"],
         "balances": wallet["balances"],  # Spot balances
-        "futures_balance": futures_balance,  # Total Futures USDT balance (for display)
-        "real_futures_balance": real_futures_balance,  # Withdrawable balance (deposits + profits)
-        "locked_balance": locked_balance,  # Welcome bonus - cannot withdraw
+        "futures_balance": futures_balance,  # Futures USDT balance
         "welcome_bonus": welcome_bonus_info,
         "updated_at": updated_at.isoformat() if updated_at else None
     }
@@ -1317,14 +1311,12 @@ async def transfer_funds(transfer: TransferRequest, user: dict = Depends(get_cur
         if spot_balance < amount:
             raise HTTPException(status_code=400, detail="Insufficient Spot balance")
         
-        # Spot to Futures = REAL deposit, counts for rank
         await db.wallets.update_one(
             {"user_id": user_id},
             {
                 "$inc": {
                     "balances.usdt": -amount,
-                    "futures_balance": amount,
-                    "real_futures_balance": amount  # Real deposit counts for rank
+                    "futures_balance": amount
                 },
                 "$set": {"updated_at": now.isoformat()}
             }
@@ -1334,36 +1326,15 @@ async def transfer_funds(transfer: TransferRequest, user: dict = Depends(get_cur
         
     elif direction == "futures_to_spot":
         # Transfer from Futures to Spot
-        # IMPORTANT: Only real_futures_balance can be transferred out!
-        # Welcome bonus is LOCKED in futures and cannot be withdrawn
+        if futures_balance < amount:
+            raise HTTPException(status_code=400, detail="Insufficient Futures balance")
         
-        real_futures_balance = wallet.get("real_futures_balance", 0)
-        
-        # Check if user has enough REAL balance (not welcome bonus)
-        if real_futures_balance < amount:
-            # Calculate how much is locked (welcome bonus)
-            welcome_bonus = wallet.get("welcome_bonus", 0)
-            locked_amount = max(0, futures_balance - real_futures_balance)
-            
-            if real_futures_balance <= 0:
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"Cannot withdraw Welcome Bonus! Your ${welcome_bonus:.2f} bonus is locked for trading only. Earn profits through Trade Codes to withdraw."
-                )
-            else:
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"Insufficient withdrawable balance! Available: ${real_futures_balance:.2f} (${locked_amount:.2f} is locked Welcome Bonus)"
-                )
-        
-        # Proceed with transfer - only real balance can be moved
         await db.wallets.update_one(
             {"user_id": user_id},
             {
                 "$inc": {
                     "futures_balance": -amount,
-                    "balances.usdt": amount,
-                    "real_futures_balance": -amount  # Deduct from real balance
+                    "balances.usdt": amount
                 },
                 "$set": {"updated_at": now.isoformat()}
             }
@@ -1750,12 +1721,12 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
         if isinstance(created_at, datetime):
             created_at = created_at.isoformat()
         
-        # Parse for UTC display (exchange standard)
+        # Parse for IST display
         try:
             dt = datetime.fromisoformat(str(created_at).replace('Z', '+00:00'))
-            # Keep UTC - no IST conversion
-            date_str = dt.strftime("%Y-%m-%d")
-            time_str = dt.strftime("%H:%M:%S")
+            ist_dt = dt + timedelta(hours=5, minutes=30)
+            date_str = ist_dt.strftime("%Y-%m-%d")
+            time_str = ist_dt.strftime("%H:%M:%S")
         except:
             date_str = "N/A"
             time_str = "N/A"
@@ -1794,9 +1765,9 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
         created_at = dep.get("approved_at") or dep.get("created_at", "")
         try:
             dt = datetime.fromisoformat(str(created_at).replace('Z', '+00:00'))
-            # Keep UTC - no IST conversion
-            date_str = dt.strftime("%Y-%m-%d")
-            time_str = dt.strftime("%H:%M:%S")
+            ist_dt = dt + timedelta(hours=5, minutes=30)
+            date_str = ist_dt.strftime("%Y-%m-%d")
+            time_str = ist_dt.strftime("%H:%M:%S")
         except:
             date_str = "N/A"
             time_str = "N/A"
@@ -1829,9 +1800,9 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
         created_at = wd.get("processed_at") or wd.get("created_at", "")
         try:
             dt = datetime.fromisoformat(str(created_at).replace('Z', '+00:00'))
-            # Keep UTC - no IST conversion
-            date_str = dt.strftime("%Y-%m-%d")
-            time_str = dt.strftime("%H:%M:%S")
+            ist_dt = dt + timedelta(hours=5, minutes=30)
+            date_str = ist_dt.strftime("%Y-%m-%d")
+            time_str = ist_dt.strftime("%H:%M:%S")
         except:
             date_str = "N/A"
             time_str = "N/A"
@@ -1853,49 +1824,31 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
                 "details": wd
             })
     
-    # 4. Get trade codes (used) - with futures_history for accurate profit
+    # 4. Get trade codes (used)
     trade_codes = await db.trade_codes.find(
         {"user_id": user_id, "status": "used"},
         {"_id": 0}
     ).sort("used_at", -1).to_list(limit)
     
-    # Get futures_history for accurate profit data
-    futures_history_records = await db.futures_history.find(
-        {"user_id": user_id},
-        {"_id": 0}
-    ).to_list(limit * 2)
-    
     for tc in trade_codes:
         created_at = tc.get("used_at") or tc.get("created_at", "")
         try:
             dt = datetime.fromisoformat(str(created_at).replace('Z', '+00:00'))
-            # Keep UTC - no IST conversion
-            date_str = dt.strftime("%Y-%m-%d")
-            time_str = dt.strftime("%H:%M:%S")
+            ist_dt = dt + timedelta(hours=5, minutes=30)
+            date_str = ist_dt.strftime("%Y-%m-%d")
+            time_str = ist_dt.strftime("%H:%M:%S")
         except:
             date_str = "N/A"
             time_str = "N/A"
         
         tc_id = tc.get("code", "")
-        
-        # Get accurate profit from futures_history
-        fh = next((f for f in futures_history_records if f.get("trade_code") == tc_id), None)
-        if fh:
-            profit_amount = fh.get("profit", fh.get("pnl", 0))
-            trade_amount = fh.get("amount", fh.get("margin", 0))
-            profit_percent = fh.get("profit_percent", 60)
-        else:
-            profit_amount = tc.get("actual_profit", 0)
-            trade_amount = tc.get("actual_trade_amount", 0)
-            profit_percent = tc.get("profit_percent", 0)
-        
         if not any(h.get("id") == tc_id for h in history):
             history.append({
                 "id": tc_id,
                 "type": "trade_profit",
                 "category": "Trade Profit",
-                "description": f"Trade {tc.get('trade_type', tc.get('position_type', 'CALL')).upper()} - {tc.get('coin', 'BTC').upper()}USDT",
-                "amount": float(profit_amount),
+                "description": f"Trade {tc.get('trade_type', 'CALL').upper()} - {tc.get('coin', 'BTC').upper()}USDT",
+                "amount": float(tc.get("actual_profit", 0)),
                 "coin": tc.get("coin", "BTC").upper(),
                 "is_income": True,
                 "status": "completed",
@@ -1903,9 +1856,9 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
                 "time": time_str,
                 "timestamp": created_at,
                 "details": {
-                    "profit_percent": profit_percent,
-                    "trade_amount": trade_amount,
-                    "trade_type": tc.get("trade_type", tc.get("position_type"))
+                    "profit_percent": tc.get("profit_percent"),
+                    "trade_amount": tc.get("actual_trade_amount"),
+                    "trade_type": tc.get("trade_type")
                 }
             })
     
@@ -1915,9 +1868,9 @@ async def get_all_wallet_history(request: Request, limit: int = 100):
         bonus_date = user_record.get("welcome_bonus_date") or user_record.get("created_at", "")
         try:
             dt = datetime.fromisoformat(str(bonus_date).replace('Z', '+00:00'))
-            # Keep UTC - no IST conversion
-            date_str = dt.strftime("%Y-%m-%d")
-            time_str = dt.strftime("%H:%M:%S")
+            ist_dt = dt + timedelta(hours=5, minutes=30)
+            date_str = ist_dt.strftime("%Y-%m-%d")
+            time_str = ist_dt.strftime("%H:%M:%S")
         except:
             date_str = "N/A"
             time_str = "N/A"
@@ -2535,18 +2488,12 @@ async def root():
 # ================= REFERRAL ROUTES =================
 
 @api_router.get("/referral/stats")
-async def get_referral_stats(request: Request, user: dict = Depends(get_current_user)):
-    """Get referral statistics for the current user - ULTRA OPTIMIZED with CACHING
-    
-    Supports period filter: ?period=24h, 7d, 30d, all
-    """
+async def get_referral_stats(user: dict = Depends(get_current_user)):
+    """Get referral statistics for the current user - ULTRA OPTIMIZED with CACHING"""
     user_id = user["user_id"]
     
-    # Get period from query params
-    period = request.query_params.get("period", "all")
-    
-    # Check cache first (include period in cache key)
-    cache_key = f"referral_stats_{user_id}_{period}"
+    # Check cache first
+    cache_key = f"referral_stats_{user_id}"
     cached = api_cache.get(cache_key, ttl=30)  # Cache for 30 seconds
     if cached:
         return cached
@@ -2563,26 +2510,15 @@ async def get_referral_stats(request: Request, user: dict = Depends(get_current_
             {"$set": {"referral_code": referral_code}}
         )
     
-    # Calculate date filter based on period - use datetime object NOT string
-    now = datetime.now(timezone.utc)
-    date_filter = None
-    if period == "24h":
-        date_filter = now - timedelta(hours=24)
-    elif period == "7d":
-        date_filter = now - timedelta(days=7)
-    elif period == "30d":
-        date_filter = now - timedelta(days=30)
-    # "all" means no date filter
-    
-    # Get all referrals where this user is the referrer - LIMIT 1 LAKH (100000)
-    referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=100000)
+    # Get all referrals where this user is the referrer
+    referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=1000)
     
     # OPTIMIZATION: Batch fetch all wallets at once instead of one by one
     referred_ids = list(set(r.get("referred_id") for r in referrals if r.get("referred_id")))
     wallets_cursor = await db.wallets.find(
         {"user_id": {"$in": referred_ids}},
         {"_id": 0, "user_id": 1, "futures_balance": 1, "welcome_bonus": 1}
-    ).to_list(length=100000)
+    ).to_list(length=1000)
     
     # Calculate REAL balance = futures_balance - welcome_bonus
     wallets_map = {}
@@ -2591,27 +2527,6 @@ async def get_referral_stats(request: Request, user: dict = Depends(get_current_
         welcome_bonus = w.get("welcome_bonus", 0) or 0
         real_balance = max(0, futures_bal - welcome_bonus)
         wallets_map[w["user_id"]] = real_balance
-    
-    # For period-based business, fetch from deposit_history collection
-    period_business = 0.0
-    if date_filter and referred_ids:
-        try:
-            # Query deposit_history for completed deposits within the period
-            deposits_cursor = await db.deposit_history.find(
-                {
-                    "user_id": {"$in": referred_ids},
-                    "status": {"$in": ["completed", "confirmed", "success"]},
-                    "created_at": {"$gte": date_filter}
-                },
-                {"_id": 0, "amount": 1, "usd_amount": 1}
-            ).to_list(length=100000)
-            
-            # Sum amount (could be usd_amount in some cases)
-            period_business = sum(float(d.get("usd_amount", d.get("amount", 0)) or 0) for d in deposits_cursor)
-            print(f"[referral/stats] Period {period}: Found {len(deposits_cursor)} deposits, total=${period_business}")
-        except Exception as e:
-            print(f"[referral/stats] Error fetching period deposits: {e}")
-            period_business = 0.0
     
     # Calculate stats per level
     level_stats = []
@@ -2638,71 +2553,20 @@ async def get_referral_stats(request: Request, user: dict = Depends(get_current_
         
         total_referrals += count
         total_earnings += earnings
-        total_business += level_futures  # For reference only
-    
-    # ALWAYS fetch REAL deposits from deposit_history for Total Business
-    all_time_real_deposits = 0.0
-    if referred_ids:
-        try:
-            # Get ALL TIME real deposits from deposit_history
-            all_deposits_cursor = await db.deposit_history.find(
-                {
-                    "user_id": {"$in": referred_ids},
-                    "status": {"$in": ["completed", "confirmed", "success"]}
-                },
-                {"_id": 0, "amount": 1}
-            ).to_list(length=100000)
-            all_time_real_deposits = sum(float(d.get("amount", 0) or 0) for d in all_deposits_cursor)
-            print(f"[referral/stats] All-time real deposits: ${all_time_real_deposits}")
-        except Exception as e:
-            print(f"[referral/stats] Error fetching all-time deposits: {e}")
-    
-    # Use period_business for period filter, all_time_real_deposits for MAX
-    if date_filter:
-        final_business = period_business
-    else:
-        final_business = all_time_real_deposits  # MAX shows real deposits, not futures_balance
+        total_business += level_futures  # Total Business = Sum of all futures_balance
     
     result = {
         "user_id": user_id,
         "referral_code": referral_code,
         "total_referrals": total_referrals,
         "total_earnings": total_earnings,
-        "total_business": final_business,  # NOW shows REAL DEPOSITS only
-        "all_time_business": all_time_real_deposits,  # Real deposits all time
-        "period": period,
+        "total_business": total_business,
         "level_stats": level_stats
     }
     
     # Cache the result
     api_cache.set(cache_key, result)
     return result
-
-@api_router.get("/debug/team-count")
-async def debug_team_count(user: dict = Depends(get_current_user)):
-    """DEBUG: Check referral counts for troubleshooting"""
-    user_id = user["user_id"]
-    user_email = user.get("email", "unknown")
-    
-    # Direct count from referrals collection
-    referrals_count = await db.referrals.count_documents({"referrer_id": user_id})
-    direct_count = await db.referrals.count_documents({"referrer_id": user_id, "level": 1})
-    
-    # Get team_stats result
-    team_stats = await get_team_stats(user_id)
-    
-    # Sample referrals
-    sample_refs = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).limit(5).to_list(length=5)
-    
-    return {
-        "user_id": user_id,
-        "user_email": user_email,
-        "db_count_total": referrals_count,
-        "db_count_direct": direct_count,
-        "team_stats_result": team_stats,
-        "sample_referrals": sample_refs
-    }
-
 
 @api_router.get("/referral/team")
 async def get_referral_team(user: dict = Depends(get_current_user), level: int = 0):
@@ -2929,52 +2793,17 @@ async def get_rank_leaderboard():
 
 # ================= TEAM RANK ROUTES =================
 
-@api_router.get("/team-rank/debug-auth")
-async def debug_auth(request: Request):
-    """Debug endpoint to check what auth info is received"""
-    auth_header = request.headers.get("Authorization", "NONE")
-    cookie_session = request.cookies.get("session_token", "NONE")
-    all_cookies = dict(request.cookies)
-    
-    result = {
-        "auth_header_present": auth_header != "NONE",
-        "auth_header_starts_with_bearer": auth_header.startswith("Bearer ") if auth_header != "NONE" else False,
-        "auth_header_value": auth_header[:50] + "..." if len(auth_header) > 50 else auth_header,
-        "session_cookie_present": cookie_session != "NONE",
-        "all_cookies": list(all_cookies.keys()),
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
-    
-    # If auth header exists, try to decode
-    if auth_header.startswith("Bearer "):
-        try:
-            jwt_token = auth_header.split(" ")[1]
-            payload = jwt.decode(jwt_token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-            result["jwt_decoded_user_id"] = payload.get("sub")
-            result["jwt_decoded_email"] = payload.get("email")
-        except Exception as e:
-            result["jwt_decode_error"] = str(e)
-    
-    return result
-
 @api_router.get("/team-rank/info")
 async def get_team_rank_info(user: dict = Depends(get_current_user)):
     """Get user's team rank information with demotion support - CACHED"""
     try:
         user_id = user["user_id"]
-        user_email = user.get("email", "unknown")
         
-        # DISABLED CACHE FOR DEBUGGING
-        # cache_key = f"team_rank_info_{user_id}"
-        # cached = api_cache.get(cache_key, ttl=30)
-        # if cached:
-        #     return cached
-        
-        print(f"[team-rank/info] Processing request for user_id={user_id}, email={user_email}")
-        
-        # EXTRA DEBUG: Direct count from referrals collection
-        direct_count = await db.referrals.count_documents({"referrer_id": user_id})
-        print(f"[team-rank/info] Direct DB count for {user_id}: {direct_count} referrals")
+        # Check cache first
+        cache_key = f"team_rank_info_{user_id}"
+        cached = api_cache.get(cache_key, ttl=30)  # Cache for 30 seconds
+        if cached:
+            return cached
         
         now = datetime.now(timezone.utc)
         
@@ -2983,30 +2812,19 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         saved_rank_level = user_doc.get("team_rank_level", 0) if user_doc else 0
         claimed_rewards = user_doc.get("claimed_rank_rewards", []) if user_doc else []
         
-        # Get user's wallet to check their own REAL futures_balance for rank qualification
-        # IMPORTANT: Use real_futures_balance (deposits + profits) NOT total futures_balance (which includes welcome bonus)
-        user_wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "futures_balance": 1, "real_futures_balance": 1, "welcome_bonus": 1})
-        # Use real_futures_balance if available, otherwise fallback to (futures_balance - welcome_bonus)
-        if user_wallet:
-            real_futures = user_wallet.get("real_futures_balance")
-            if real_futures is None:
-                # Fallback for old wallets without real_futures_balance field
-                real_futures = max(0, user_wallet.get("futures_balance", 0) - user_wallet.get("welcome_bonus", 0))
-            user_futures_balance = real_futures
-        else:
-            user_futures_balance = 0
+        # Get user's wallet to check their own futures_balance for rank qualification
+        user_wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "futures_balance": 1})
+        user_futures_balance = user_wallet.get("futures_balance", 0) if user_wallet else 0
         
         # Get team stats first
         team_stats = await get_team_stats(user_id)
         
         # Get team rank based on CURRENT stats (actual qualifications) + user's own futures balance
-        # CRITICAL FIX: Use valid_direct (members with $50+ balance) NOT total direct_referrals
-        # This ensures rank is calculated based on ACTIVE team members only
         rank_info = get_team_rank(
-            team_stats["valid_direct"],  # FIX: Only count direct referrals with $50+ balance
+            team_stats["direct_referrals"], 
             team_stats["bronze_members"],
-            team_stats["valid_team"],    # FIX: Only count team members with $50+ balance  
-            user_futures_balance  # Check user's own balance for rank demotion
+            team_stats["total_team"],
+            user_futures_balance  # NEW: Check user's own balance for rank demotion
         )
         
         # Get the QUALIFIED rank level (what user actually qualifies for right now)
@@ -3147,23 +2965,22 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
                 accumulation_days = min(days_in_cycle, 10)
                 accumulated_salary = round(daily_salary * accumulation_days, 2)
         
-        # REMOVED SAFETY CHECK: This was causing demoted users to still show their old rank
-        # The rank should ONLY be what they currently qualify for
-        # If user doesn't qualify for any rank (qualified_level = 0), current_rank should be None
+        # FINAL SAFETY CHECK: Ensure current_rank is never null if user has saved rank
+        if rank_info["current_rank"] is None and saved_rank_level > 0:
+            for rank in TEAM_RANKS:
+                if rank["level"] == saved_rank_level:
+                    rank_info["current_rank"] = rank
+                    break
         
         # Get user's futures balance for balance progress bar
-        wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "futures_balance": 1, "welcome_bonus": 1, "total_deposited": 1, "real_futures_balance": 1})
+        wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "futures_balance": 1, "welcome_bonus": 1, "total_deposited": 1})
         futures_balance = wallet.get("futures_balance", 0) if wallet else 0
         welcome_bonus = wallet.get("welcome_bonus", 0) if wallet else 0
         total_deposited = wallet.get("total_deposited", 0) if wallet else 0
         
-        # Real futures = real_futures_balance if available, else (futures_balance - welcome_bonus)
-        # Welcome bonus NEVER counts for rank - only real deposits + profits
-        real_futures_field = wallet.get("real_futures_balance") if wallet else None
-        if real_futures_field is not None:
-            real_futures = real_futures_field
-        else:
-            real_futures = max(0, futures_balance - welcome_bonus)
+        # Real futures = futures_balance - welcome_bonus (Welcome bonus NEVER counts for rank)
+        # Only real deposits count towards rank requirement
+        real_futures = max(0, futures_balance - welcome_bonus)
         
         # Get required balance for next rank (or current rank if no rank yet)
         next_rank_for_balance = rank_info["next_rank"] if rank_info["next_rank"] else TEAM_RANKS[0]
@@ -3175,9 +2992,9 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         # Calculate balance progress
         balance_progress = min(100, (real_futures / balance_required) * 100) if balance_required > 0 else 100
         
-        # Team members progress - USE VALID COUNTS (only $50+ members)
+        # Team members progress
         team_required = next_rank_for_balance.get("team_required", 6) if next_rank_for_balance else 6
-        team_progress = min(100, (team_stats["valid_team"] / team_required) * 100) if team_required > 0 else 100
+        team_progress = min(100, (team_stats["total_team"] / team_required) * 100) if team_required > 0 else 100
         
         # Bronze/Direct members progress  
         bronze_required = next_rank_for_balance.get("bronze_required", 0) if next_rank_for_balance else 0
@@ -3185,8 +3002,7 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         
         # For Bronze rank (type=team), need direct referrals with $50+
         # For Silver onwards (type=bronze), need bronze members
-        # CRITICAL FIX: Use valid_direct (with $50+) NOT total direct_referrals
-        members_current = team_stats["valid_direct"] if (next_rank_for_balance and next_rank_for_balance.get("type") == "team") else team_stats["bronze_members"]
+        members_current = team_stats["direct_referrals"] if (next_rank_for_balance and next_rank_for_balance.get("type") == "team") else team_stats["bronze_members"]
         members_required = direct_required if (next_rank_for_balance and next_rank_for_balance.get("type") == "team") else bronze_required
         members_progress = min(100, (members_current / members_required) * 100) if members_required > 0 else 100
         
@@ -3204,9 +3020,6 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
             "direct_referrals": team_stats["direct_referrals"],
             "bronze_members": team_stats["bronze_members"],
             "total_team": team_stats["total_team"],
-            # VALID COUNTS for progress bars (only $50+ members)
-            "valid_direct": team_stats["valid_direct"],
-            "valid_team": team_stats["valid_team"],
             "current_rank": rank_info["current_rank"],
             "next_rank": rank_info["next_rank"],
             "progress": rank_info["progress"],
@@ -4745,39 +4558,6 @@ async def get_all_deposit_requests(
         }
     }
 
-
-@api_router.get("/admin/deposit-history")
-async def get_admin_deposit_history(admin: dict = Depends(get_current_admin)):
-    """Admin: Get all deposit history with user details"""
-    # Get from deposit_history collection
-    deposits = await db.deposit_history.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
-    
-    # Get from transactions collection (type deposit)
-    transactions = await db.transactions.find(
-        {"type": {"$in": ["deposit", "admin_deposit", "admin_adjustment"]}},
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(500)
-    
-    # Combine and add user details
-    all_deposits = []
-    user_cache = {}
-    
-    for dep in deposits + transactions:
-        user_id = dep.get("user_id")
-        if user_id and user_id not in user_cache:
-            user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "name": 1, "email": 1})
-            user_cache[user_id] = user or {}
-        
-        user_info = user_cache.get(user_id, {})
-        dep["user_name"] = user_info.get("name", "Unknown")
-        dep["user_email"] = user_info.get("email", "Unknown")
-        dep["status"] = dep.get("status", "completed")
-        all_deposits.append(dep)
-    
-    return {"deposits": all_deposits}
-
-
-
 @api_router.post("/admin/deposit-requests/action")
 async def process_deposit_request(approval: DepositApproval, admin: dict = Depends(get_current_admin)):
     """Admin: Approve or reject a deposit request"""
@@ -4887,36 +4667,6 @@ async def get_all_users(admin: dict = Depends(get_current_admin)):
         "users": users,
         "total": len(users)
     }
-
-
-@api_router.get("/admin/users/search")
-async def search_all_users(q: str, admin: dict = Depends(get_current_admin)):
-    """Admin: Search all users by name, email, or user_id"""
-    if not q or len(q) < 2:
-        return {"users": []}
-    
-    # Search in users collection with regex
-    query = {
-        "$or": [
-            {"email": {"$regex": q, "$options": "i"}},
-            {"name": {"$regex": q, "$options": "i"}},
-            {"user_id": {"$regex": q, "$options": "i"}}
-        ]
-    }
-    
-    users = await db.users.find(query, {"_id": 0}).limit(50).to_list(50)
-    
-    # Get wallet info for these users
-    user_ids = [u.get("user_id") for u in users]
-    wallets = await db.wallets.find({"user_id": {"$in": user_ids}}, {"_id": 0}).to_list(50)
-    wallet_map = {w.get("user_id"): w for w in wallets}
-    
-    for user in users:
-        user["wallet"] = wallet_map.get(user["user_id"], {"balances": {}})
-    
-    return {"users": users, "total": len(users)}
-
-
 
 @api_router.post("/admin/block-user")
 async def admin_block_user(data: dict, admin: dict = Depends(get_current_admin)):
@@ -5280,31 +5030,12 @@ async def get_all_withdrawal_requests(
     status: Optional[str] = None,
     admin: dict = Depends(get_current_admin)
 ):
-    """Admin: Get all withdrawal requests with user wallet details"""
+    """Admin: Get all withdrawal requests"""
     query = {}
     if status:
         query["status"] = status
     
     requests = await db.withdrawal_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
-    
-    # Enrich each request with user's wallet info (spot/futures/total_deposited)
-    enriched_requests = []
-    for req in requests:
-        user_id = req.get("user_id")
-        wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0})
-        
-        # Get balances
-        spot_balance = wallet.get("balances", {}).get("usdt", 0) if wallet else 0
-        futures_balance = wallet.get("futures_balance", 0) if wallet else 0
-        total_deposited = wallet.get("total_deposited", 0) if wallet else 0
-        
-        # Add wallet info to request
-        req["spot_balance"] = spot_balance
-        req["futures_balance"] = futures_balance
-        req["total_deposited"] = total_deposited
-        req["is_verified"] = total_deposited > 0
-        
-        enriched_requests.append(req)
     
     # Get stats
     total = await db.withdrawal_requests.count_documents({})
@@ -5313,7 +5044,7 @@ async def get_all_withdrawal_requests(
     rejected = await db.withdrawal_requests.count_documents({"status": "rejected"})
     
     return {
-        "requests": enriched_requests,
+        "requests": requests,
         "stats": {
             "total": total,
             "pending": pending,
@@ -5697,10 +5428,10 @@ async def get_trade_codes(admin: dict = Depends(get_current_admin)):
 
 @api_router.get("/user/trade-codes")
 async def get_user_trade_codes(user: dict = Depends(get_current_user)):
-    """Get all trade codes for current user with live/scheduled status + HISTORY"""
+    """Get all trade codes for current user with live/scheduled status"""
     from datetime import timedelta
     
-    # Get ALL trade codes for user - including used and expired for HISTORY
+    # Get GLOBAL trade codes (not user-specific) that are active or scheduled
     codes = await db.trade_codes.find(
         {
             "$or": [
@@ -5708,10 +5439,10 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
                 {"user_id": {"$exists": False}},  # Global codes without user_id
                 {"is_global": True}  # Explicitly marked global codes
             ],
-            "status": {"$in": ["active", "scheduled", "live", "used", "expired"]}  # Include ALL statuses for history
+            "status": {"$in": ["active", "scheduled"]}
         },
         {"_id": 0}
-    ).sort("created_at", -1).to_list(100)  # Increased limit for history
+    ).sort("created_at", -1).to_list(50)
     
     now = datetime.now(timezone.utc)
     
@@ -5728,29 +5459,19 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
         
         # Check scheduled start time
         if code_data.get("scheduled_start"):
-            # Handle both datetime object and string format
-            scheduled_start_raw = code_data["scheduled_start"]
-            if isinstance(scheduled_start_raw, str):
-                scheduled_start = datetime.fromisoformat(scheduled_start_raw.replace('Z', '+00:00'))
-            else:
-                scheduled_start = scheduled_start_raw
+            scheduled_start = datetime.fromisoformat(code_data["scheduled_start"].replace('Z', '+00:00'))
             if scheduled_start.tzinfo is None:
                 scheduled_start = scheduled_start.replace(tzinfo=timezone.utc)
             
-            # Check expiry - handle both datetime object and string format
-            expires_at_raw = code_data["expires_at"]
-            if isinstance(expires_at_raw, str):
-                expires_at = datetime.fromisoformat(expires_at_raw.replace('Z', '+00:00'))
-            else:
-                expires_at = expires_at_raw
+            # Check expiry
+            expires_at = datetime.fromisoformat(code_data["expires_at"].replace('Z', '+00:00'))
             if expires_at.tzinfo is None:
                 expires_at = expires_at.replace(tzinfo=timezone.utc)
             
             # Determine status
             if code_data["status"] == "used":
                 code_data["is_live"] = False
-                code_data["is_expired"] = False  # Not expired, successfully used
-                code_data["is_success"] = True  # Mark as success
+                code_data["is_expired"] = True
                 code_data["time_remaining"] = 0
                 code_data["countdown_to_live"] = 0
             elif now < scheduled_start:
@@ -5773,19 +5494,11 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
                     )
                     code_data["status"] = "active"
             else:
-                # Expired - mark in database too
+                # Expired
                 code_data["is_live"] = False
                 code_data["is_expired"] = True
-                code_data["is_success"] = False
                 code_data["time_remaining"] = 0
                 code_data["countdown_to_live"] = 0
-                # Update status to expired in database
-                if code_data["status"] not in ["used", "expired"]:
-                    await db.trade_codes.update_one(
-                        {"code": code_data["code"]},
-                        {"$set": {"status": "expired"}}
-                    )
-                    code_data["status"] = "expired"
         else:
             # Legacy codes - treat as already active
             if code_data.get("expires_at"):
@@ -5820,272 +5533,233 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
 
 @api_router.post("/trade/apply-code")
 async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_current_user)):
+    """User applies a trade code to execute trade with profit calculation
+    
+    NEW LOGIC:
+    - Fetches LIVE price at execution time
+    - Shows actual opening and closing prices
+    - Records execution timestamp for unique results
     """
-    SIMPLE Trade Code Apply - Clean Implementation
+    from datetime import timedelta
+    import random
     
-    1. Verify code is valid and belongs to user
-    2. Take 1% of futures balance as fund
-    3. Calculate 60-65% random profit
-    4. Pick random coin from top 20
-    5. Show real-time price
-    6. Update balance & save history
-    """
-    
-    user_id = user["user_id"]
-    code = data.code.upper().strip()
-    
-    logger.info(f"Apply code request: code={code}, user={user_id}")
-    
-    # Top 20 coins with fallback prices
-    TOP_20_COINS = {
-        "BTC": {"name": "Bitcoin", "price": 77500},
-        "ETH": {"name": "Ethereum", "price": 3200},
-        "BNB": {"name": "BNB", "price": 590},
-        "SOL": {"name": "Solana", "price": 145},
-        "XRP": {"name": "Ripple", "price": 0.52},
-        "DOGE": {"name": "Dogecoin", "price": 0.15},
-        "ADA": {"name": "Cardano", "price": 0.45},
-        "AVAX": {"name": "Avalanche", "price": 35},
-        "SHIB": {"name": "Shiba Inu", "price": 0.000025},
-        "DOT": {"name": "Polkadot", "price": 7.2},
-        "LINK": {"name": "Chainlink", "price": 14},
-        "TRX": {"name": "Tron", "price": 0.12},
-        "MATIC": {"name": "Polygon", "price": 0.55},
-        "UNI": {"name": "Uniswap", "price": 7.5},
-        "LTC": {"name": "Litecoin", "price": 82},
-        "ATOM": {"name": "Cosmos", "price": 8.2},
-        "NEAR": {"name": "NEAR", "price": 5.5},
-        "APT": {"name": "Aptos", "price": 8.8},
-        "ARB": {"name": "Arbitrum", "price": 1.1},
-        "OP": {"name": "Optimism", "price": 2.3}
-    }
-    
-    # 1. Find and validate code
-    logger.info(f"Looking for code: {code}")
-    trade_code = await db.trade_codes.find_one({"code": code, "status": "active"})
-    logger.info(f"Found trade_code: {trade_code is not None}")
+    # Find the trade code (can be live, active, or scheduled)
+    trade_code = await db.trade_codes.find_one({
+        "code": data.code.upper(),
+        "status": {"$in": ["active", "scheduled", "live"]}  # Added "live" status
+    })
     
     if not trade_code:
-        existing = await db.trade_codes.find_one({"code": code})
-        logger.info(f"Existing code check: {existing}")
-        if existing:
-            if existing.get("status") == "used":
-                raise HTTPException(status_code=400, detail="Code already used!")
-            elif existing.get("status") == "expired":
-                raise HTTPException(status_code=400, detail="Code has expired!")
-        raise HTTPException(status_code=400, detail="Invalid code!")
+        raise HTTPException(status_code=400, detail="Invalid or expired trade code")
     
-    # Check if code belongs to this user
-    logger.info(f"Code user_id: {trade_code.get('user_id')}, Request user_id: {user_id}")
-    if trade_code.get("user_id") and trade_code.get("user_id") != user_id:
-        raise HTTPException(status_code=403, detail="This code is not for your account!")
+    # Check if code is user-specific or global
+    # Global codes (no user_id or is_global=True) can be used by anyone
+    is_global_code = not trade_code.get("user_id") or trade_code.get("is_global", False)
     
-    # Check expiry
+    if not is_global_code and trade_code.get("user_id") != user["user_id"]:
+        raise HTTPException(status_code=403, detail="This code is not for your account")
+    
+    now = datetime.now(timezone.utc)
+    
+    # Check if code is live (scheduled_start has passed)
+    if trade_code.get("scheduled_start"):
+        scheduled_start = datetime.fromisoformat(trade_code["scheduled_start"].replace('Z', '+00:00'))
+        if scheduled_start.tzinfo is None:
+            scheduled_start = scheduled_start.replace(tzinfo=timezone.utc)
+        
+        if now < scheduled_start:
+            time_to_live = int((scheduled_start - now).total_seconds())
+            mins = time_to_live // 60
+            secs = time_to_live % 60
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Code not yet live. Starts in {mins}m {secs}s"
+            )
+    
+    # Check if code has expired
     if trade_code.get("expires_at"):
-        try:
-            expires_at = datetime.fromisoformat(trade_code["expires_at"].replace('Z', '+00:00'))
-            if datetime.now(timezone.utc) > expires_at:
-                await db.trade_codes.update_one({"code": code}, {"$set": {"status": "expired"}})
-                raise HTTPException(status_code=400, detail="Code has expired!")
-        except:
-            pass
+        expires_at = datetime.fromisoformat(trade_code["expires_at"].replace('Z', '+00:00'))
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+    else:
+        created_at = datetime.fromisoformat(trade_code["created_at"].replace('Z', '+00:00'))
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        expires_at = created_at + timedelta(hours=1)
     
-    # 2. Get wallet
-    wallet = await db.wallets.find_one({"user_id": user_id})
+    if now > expires_at:
+        await db.trade_codes.update_one(
+            {"code": data.code.upper()},
+            {"$set": {"status": "expired"}}
+        )
+        raise HTTPException(status_code=400, detail="Trade code has expired")
+    
+    # Get user's wallet
+    wallet = await db.wallets.find_one({"user_id": user["user_id"]})
     if not wallet:
-        raise HTTPException(status_code=404, detail="Wallet not found!")
+        raise HTTPException(status_code=404, detail="Wallet not found")
     
-    futures_balance = wallet.get("futures_balance", 0)
-    if futures_balance <= 0:
-        raise HTTPException(status_code=400, detail="Insufficient futures balance! Transfer funds from Spot to Futures first.")
+    coin = trade_code["coin"]
     
-    # 3. Get coin and price
-    coin_symbol = trade_code.get("coin", random.choice(list(TOP_20_COINS.keys())))
-    coin_data = TOP_20_COINS.get(coin_symbol, {"name": coin_symbol, "price": 100})
-    coin_name = trade_code.get("coin_name", coin_data["name"])
-    
-    # Try to get live price - Binance first, then CryptoCompare, then CoinGecko fallback
-    entry_price = coin_data["price"]
-    
-    # CoinGecko ID mapping
-    COINGECKO_IDS = {
-        "BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin", "SOL": "solana",
-        "XRP": "ripple", "DOGE": "dogecoin", "ADA": "cardano", "AVAX": "avalanche-2",
-        "SHIB": "shiba-inu", "DOT": "polkadot", "LINK": "chainlink", "TRX": "tron",
-        "MATIC": "matic-network", "UNI": "uniswap", "LTC": "litecoin", "ATOM": "cosmos",
-        "NEAR": "near", "APT": "aptos", "ARB": "arbitrum", "OP": "optimism"
+    # FETCH LIVE PRICE at execution time
+    coin_id_map = {
+        "btc": "bitcoin", "eth": "ethereum", "bnb": "binancecoin", "sol": "solana",
+        "xrp": "ripple", "doge": "dogecoin", "ada": "cardano", "avax": "avalanche-2",
+        "shib": "shiba-inu", "dot": "polkadot", "link": "chainlink", "trx": "tron",
+        "matic": "matic-network", "uni": "uniswap", "ltc": "litecoin", "atom": "cosmos",
+        "xlm": "stellar", "near": "near", "apt": "aptos", "fil": "filecoin"
     }
     
-    price_fetched = False
+    coin_id = coin_id_map.get(coin.lower(), "bitcoin")
+    open_price = trade_code.get("price", 1000)  # Fallback to stored price
     
-    # Try Binance first
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                f"https://api.binance.com/api/v3/ticker/price?symbol={coin_symbol}USDT",
-                timeout=5.0
+                f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd",
+                timeout=10.0
             )
             if response.status_code == 200:
                 price_data = response.json()
-                if "price" in price_data:
-                    entry_price = float(price_data["price"])
-                    price_fetched = True
-                    logger.info(f"Got Binance price for {coin_symbol}: {entry_price}")
+                live_price = price_data.get(coin_id, {}).get("usd", open_price)
+                open_price = live_price  # Use LIVE price as opening price
     except:
-        pass
+        pass  # Use stored price if API fails
     
-    # Try CryptoCompare if Binance failed
-    if not price_fetched:
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"https://min-api.cryptocompare.com/data/price?fsym={coin_symbol}&tsyms=USD",
-                    timeout=5.0
-                )
-                if response.status_code == 200:
-                    price_data = response.json()
-                    if "USD" in price_data:
-                        entry_price = float(price_data["USD"])
-                        price_fetched = True
-                        logger.info(f"Got CryptoCompare price for {coin_symbol}: {entry_price}")
-        except:
-            pass
+    # Trade is ALWAYS successful - calculate based on fund_percent (1% * multiplier)
+    futures_balance = wallet.get("futures_balance", 0)
+    fund_percent = trade_code.get("fund_percent", 1.0)
+    multiplier = trade_code.get("multiplier", 1)
+    trade_amount_usdt = futures_balance * (fund_percent / 100)
     
-    # Try CoinGecko if others failed
-    if not price_fetched:
-        try:
-            cg_id = COINGECKO_IDS.get(coin_symbol.upper(), coin_symbol.lower())
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"https://api.coingecko.com/api/v3/simple/price?ids={cg_id}&vs_currencies=usd",
-                    timeout=5.0
-                )
-                if response.status_code == 200:
-                    price_data = response.json()
-                    if cg_id in price_data:
-                        entry_price = float(price_data[cg_id]["usd"])
-                        price_fetched = True
-                        logger.info(f"Got CoinGecko price for {coin_symbol}: {entry_price}")
-        except:
-            pass
+    # Check if user has enough futures balance
+    if futures_balance <= 0:
+        raise HTTPException(status_code=400, detail="Insufficient Futures balance. Please transfer funds from Spot to Futures first.")
     
-    if not price_fetched:
-        logger.warning(f"Using fallback price for {coin_symbol}: {entry_price}")
+    # Calculate coin amount from USDT
+    amount = trade_amount_usdt / open_price if open_price > 0 else 0
     
-    # 4. Calculate trade
-    position_type = trade_code.get("position_type", random.choice(["CALL", "PUT"]))
+    # Get profit percentage (60-65%)
+    profit_percent = trade_code.get("profit_percent", round(60 + random.random() * 5, 2))
     
-    # 1% fund
-    fund_amount = futures_balance * 0.01
+    # Calculate profit and settlement price
+    profit_usdt = trade_amount_usdt * (profit_percent / 100)
     
-    # 60-65% random profit
-    profit_percent = round(random.uniform(60, 65), 2)
-    profit_amount = round(fund_amount * (profit_percent / 100), 2)
+    trade_type = trade_code["trade_type"]
     
-    # Settlement price - exactly match the profit percentage
-    # If profit is 60%, price should move by (profit_amount / fund_amount * 100) = profit_percent
-    # But displayed as small price movement (0.5-1.5% of entry price)
-    price_movement_percent = round(random.uniform(0.5, 1.5), 4)
+    # Calculate settlement price with VISIBLE difference
+    # For realistic trading display, show meaningful price movement
+    # Price movement should be proportional to profit (roughly 1-2% movement)
+    price_movement_percent = random.uniform(0.8, 1.5)  # 0.8% to 1.5% price change
     
-    if position_type.upper() == "CALL":
-        # CALL = Price goes UP (bullish)
-        settlement_price = entry_price * (1 + price_movement_percent / 100)
+    if trade_type == "call":
+        # CALL = price goes UP = settlement > open
+        settlement_price = open_price * (1 + price_movement_percent / 100)
     else:
-        # PUT = Price goes DOWN (bearish)  
-        settlement_price = entry_price * (1 - price_movement_percent / 100)
+        # PUT = price goes DOWN = settlement < open  
+        settlement_price = open_price * (1 - price_movement_percent / 100)
     
-    # Round settlement price
-    if entry_price > 1000:
-        settlement_price = round(settlement_price, 2)
-    elif entry_price > 1:
-        settlement_price = round(settlement_price, 4)
+    # Round settlement price appropriately based on coin value
+    if open_price > 1000:
+        settlement_price = round(settlement_price, 2)  # BTC, ETH
+    elif open_price > 1:
+        settlement_price = round(settlement_price, 4)  # SOL, BNB
     else:
-        settlement_price = round(settlement_price, 8)
+        settlement_price = round(settlement_price, 6)  # DOGE, SHIB
     
-    # 5. Update wallet
-    new_balance = round(futures_balance + profit_amount, 2)
+    # Execute trade - add the profit to FUTURES balance (not Spot)
+    # Also track trading_profit separately so it can be withdrawn
     await db.wallets.update_one(
-        {"user_id": user_id},
+        {"user_id": user["user_id"]},
         {
-            "$set": {"futures_balance": new_balance},
             "$inc": {
-                "trading_profit": profit_amount,
-                "real_futures_balance": profit_amount
+                "futures_balance": profit_usdt,
+                "trading_profit": profit_usdt  # Track profit separately - this is withdrawable
             }
         }
     )
     
-    # 6. Mark code as used
-    now = datetime.now(timezone.utc)
+    # Mark code as used with success result
     await db.trade_codes.update_one(
-        {"code": code},
+        {"code": data.code.upper()},
         {
             "$set": {
                 "status": "used",
-                "used_by": user_id,
-                "used_at": now.isoformat()
+                "used_at": now.isoformat(),
+                "result": "success",
+                "actual_profit": profit_usdt,
+                "actual_trade_amount": trade_amount_usdt
             }
         }
     )
     
-    # 7. Save to futures_history
-    trade_id = f"ft_{uuid.uuid4().hex[:12]}"
-    await db.futures_history.insert_one({
-        "trade_id": trade_id,
-        "position_id": trade_id,
-        "user_id": user_id,
-        "trade_code": code,
-        "coin": coin_symbol,
-        "coin_name": coin_name,
-        "trade_type": position_type.lower(),
-        "side": position_type.lower(),
-        "position_type": position_type,
-        "amount": round(fund_amount, 2),
-        "margin": round(fund_amount, 2),
-        "leverage": 1,
-        "open_price": round(entry_price, 6),
-        "entry_price": round(entry_price, 6),
-        "settlement_price": round(settlement_price, 6),
-        "exit_price": round(settlement_price, 6),
-        "profit": profit_amount,
-        "pnl": profit_amount,
-        "profit_loss": profit_amount,
+    # Record transaction with LIVE price data
+    transaction = {
+        "transaction_id": f"tc_{uuid.uuid4().hex[:12]}",
+        "user_id": user["user_id"],
+        "type": "trade_code",
+        "coin": coin,
+        "coin_name": trade_code.get("coin_name", coin.upper()),
+        "amount": amount,
+        "trade_amount_usdt": trade_amount_usdt,
+        "multiplier": multiplier,
         "profit_percent": profit_percent,
-        "is_profit": True,
+        "profit_usdt": profit_usdt,
+        "open_price": open_price,  # Live price at execution
+        "settlement_price": settlement_price,  # Calculated settlement
+        "trade_code": data.code.upper(),
+        "result": "success",
+        "timestamp": now.isoformat(),
+        "execution_time": now.isoformat()  # Exact execution time for uniqueness
+    }
+    await db.transactions.insert_one(transaction)
+    
+    # Also record in futures_history for Historical Orders tab with full price data
+    futures_trade = {
+        "trade_id": f"ft_{uuid.uuid4().hex[:12]}",
+        "user_id": user["user_id"],
+        "coin": coin.upper(),
+        "coin_name": trade_code.get("coin_name", coin.upper()),
+        "trade_type": trade_type,
+        "amount": round(trade_amount_usdt, 2),
+        "open_price": round(open_price, 6),  # Opening price at execution
+        "settlement_price": round(settlement_price, 6),  # Settlement price
+        "profit": round(profit_usdt, 2),
+        "profit_percent": profit_percent,
         "status": "completed",
         "result": "win",
+        "trade_code": data.code.upper(),
         "created_at": now.isoformat(),
         "completed_at": now.isoformat(),
-        "execution_timestamp": now.timestamp()
-    })
+        "execution_timestamp": now.timestamp()  # Unix timestamp for sorting
+    }
+    await db.futures_history.insert_one(futures_trade)
     
-    # 8. Return success
+    # Get updated futures balance
+    updated_wallet = await db.wallets.find_one({"user_id": user["user_id"]})
+    new_futures_balance = updated_wallet.get("futures_balance", 0) if updated_wallet else futures_balance + profit_usdt
+    
     return {
         "success": True,
-        "message": f"Trade successful! +${profit_amount} ({profit_percent}% profit)",
-        "trade_id": trade_id,
-        "coin": coin_symbol,
-        "coin_name": coin_name,
-        "trade_type": position_type.lower(),
-        "position_type": position_type,
-        "fund_amount": round(fund_amount, 2),
-        "trade_amount": round(fund_amount, 2),
-        "entry_price": round(entry_price, 6),
-        "open_price": round(entry_price, 6),
-        "settlement_price": round(settlement_price, 6),
+        "trade_type": trade_type,
+        "coin": coin.upper(),
+        "coin_name": trade_code.get("coin_name", coin.upper()),
+        "trade_amount": round(trade_amount_usdt, 2),
+        "multiplier": multiplier,
         "profit_percent": profit_percent,
-        "profit_usdt": profit_amount,
-        "profit": profit_amount,
-        "previous_balance": round(futures_balance, 2),
-        "new_balance": new_balance,
+        "profit_usdt": round(profit_usdt, 2),
+        "new_balance": round(new_futures_balance, 2),
+        "message": f"Trade completed! +${round(profit_usdt, 2)} ({profit_percent}% profit)",
         "trade_details": {
-            "trade_type": position_type.lower(),
-            "coin": coin_symbol,
-            "coin_name": coin_name,
-            "trade_amount_usdt": round(fund_amount, 2),
+            "trade_type": trade_type,
+            "coin": coin.upper(),
+            "coin_name": trade_code.get("coin_name", coin.upper()),
+            "amount": round(amount, 8),
+            "trade_amount_usdt": round(trade_amount_usdt, 2),
+            "multiplier": multiplier,
             "profit_percent": profit_percent,
-            "profit_usdt": profit_amount,
-            "open_price": round(entry_price, 6),
+            "profit_usdt": round(profit_usdt, 2),
+            "open_price": round(open_price, 6),
             "settlement_price": round(settlement_price, 6),
             "execution_time": now.isoformat()
         }
@@ -6344,15 +6018,11 @@ async def get_futures_history(
         profit = tc.get("actual_profit", tx.get("profit_usdt", 0) if tx else 0)
         amount = tc.get("actual_trade_amount", tx.get("trade_amount_usdt", 0) if tx else 0)
         
-        # Try to get actual data from futures_history (more accurate)
+        # Try to get actual settlement price from futures_history
         fh = next((f for f in trade_code_history if f.get("trade_code") == tc.get("code")), None)
-        if fh:
-            # Override with actual values from futures_history - ALWAYS use if available
-            settlement_price = fh.get("settlement_price", fh.get("exit_price", 0))
-            open_price = fh.get("open_price", fh.get("entry_price", 0))
-            profit = fh.get("profit", fh.get("pnl", fh.get("profit_loss", 0)))
-            amount = fh.get("amount", fh.get("margin", 0))
-            profit_percent = fh.get("profit_percent", 60)
+        if fh and fh.get("settlement_price", 0) > 0:
+            settlement_price = fh.get("settlement_price")
+            open_price = fh.get("open_price", open_price)
         else:
             # Calculate visible settlement price difference (0.8% - 1.5% movement)
             import random
@@ -6483,26 +6153,12 @@ async def get_futures_history(
             "trade_code": th.get("trade_code", "")
         })
     
-    # DEDUPLICATE: Remove duplicate entries based on trade_code
-    seen_codes = set()
-    unique_history = []
-    for item in history:
-        code = item.get("trade_code") or item.get("id")
-        if code and code not in seen_codes:
-            seen_codes.add(code)
-            unique_history.append(item)
-        elif not code:
-            unique_history.append(item)
-    
     # Sort by timestamp descending
-    unique_history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-    
-    # LIMIT: Keep only last 10 trades
-    unique_history = unique_history[:10]
+    history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
     
     return {
-        "history": unique_history,
-        "count": len(unique_history),
+        "history": history,
+        "count": len(history),
         "start_date": start_date,
         "end_date": end_date
     }

@@ -28,7 +28,7 @@ const TwoFactorSettings = () => {
 
   const fetchStatus = async () => {
     try {
-      const response = await axios.get(`${API}/2fa/status`, { });
+      const response = await axios.get(`${API}/2fa/status`, { withCredentials: true });
       setStatus(response.data);
     } catch (error) {
       console.error('Error fetching 2FA status:', error);
@@ -38,7 +38,7 @@ const TwoFactorSettings = () => {
   const startSetup = async () => {
     setLoading(true);
     try {
-      const response = await axios.post(`${API}/2fa/setup`, {}, { });
+      const response = await axios.post(`${API}/2fa/setup`, {}, { withCredentials: true });
       setSetupData(response.data);
       setShowSetup(true);
     } catch (error) {
@@ -56,7 +56,7 @@ const TwoFactorSettings = () => {
 
     setLoading(true);
     try {
-      await axios.post(`${API}/2fa/verify`, { code: verifyCode }, { });
+      await axios.post(`${API}/2fa/verify`, { code: verifyCode }, { withCredentials: true });
       toast.success('2FA enabled successfully!');
       setShowSetup(false);
       setSetupData(null);
@@ -77,7 +77,7 @@ const TwoFactorSettings = () => {
 
     setLoading(true);
     try {
-      await axios.post(`${API}/2fa/disable`, { code: disableCode }, { });
+      await axios.post(`${API}/2fa/disable`, { code: disableCode }, { withCredentials: true });
       toast.success('2FA disabled successfully');
       setShowDisable(false);
       setDisableCode('');

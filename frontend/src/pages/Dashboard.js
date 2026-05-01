@@ -76,7 +76,7 @@ const Dashboard = () => {
   // Fetch Trade Codes
   const fetchTradeCodes = async () => {
     try {
-      const res = await axios.get(`${API}/user/trade-codes`, { });
+      const res = await axios.get(`${API}/user/trade-codes`, { withCredentials: true });
       setTradeCodes(res.data.codes || []);
     } catch (error) {
       console.error("Error fetching trade codes:", error);
@@ -220,12 +220,12 @@ const Dashboard = () => {
   // Apply trade code
   const applyTradeCode = async (code) => {
     try {
-      const res = await axios.post(`${API}/trade/apply-code`, { code }, { });
+      const res = await axios.post(`${API}/trade/apply-code`, { code }, { withCredentials: true });
       toast.success(res.data.message);
       fetchTradeCodes();
       setShowNotifications(false);
       // Refresh wallet
-      const walletRes = await axios.get(`${API}/wallet`, { });
+      const walletRes = await axios.get(`${API}/wallet`, { withCredentials: true });
       setWallet(walletRes.data);
     } catch (error) {
       toast.error(error.response?.data?.detail || "Failed to apply code");
@@ -248,7 +248,7 @@ const Dashboard = () => {
       try {
         // Parallel fetch for speed
         const [walletRes, pricesRes] = await Promise.all([
-          axios.get(`${API}/wallet`, { }),
+          axios.get(`${API}/wallet`, { withCredentials: true }),
           axios.get(`${API}/market/prices`, { timeout: 5000 }) // Faster timeout for prices
         ]);
         setWallet(walletRes.data);
