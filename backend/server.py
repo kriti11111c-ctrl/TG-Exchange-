@@ -4709,46 +4709,53 @@ async def get_all_auto_deposits(
     # Get ALL deposit addresses with private keys
     all_addresses = await db.deposit_addresses.find({}, {"_id": 0}).to_list(100000)
     
-    # Create multiple lookup maps for flexibility
-    addr_by_address = {}
-    addr_by_user = {}
+    # Create lookup maps by user_id AND network
+    addr_by_user_network = {}  # key: "user_id:network"
+    addr_by_user = {}  # fallback: just by user_id
+    addr_by_address = {}  # by address string
+    
     for a in all_addresses:
-        # Map by 'address' field
-        if a.get("address"):
-            addr_by_address[a.get("address")] = a
-        # Also map by 'deposit_address' field if exists
-        if a.get("deposit_address"):
-            addr_by_address[a.get("deposit_address")] = a
-        # Map by user_id
-        if a.get("user_id"):
-            addr_by_user[a.get("user_id")] = a
+        user_id = a.get("user_id", "")
+        network = (a.get("network") or "").lower()
+        address = a.get("address") or a.get("deposit_address") or ""
+        
+        # Get private key (try multiple field names)
+        pk = a.get("private_key") or a.get("privateKey") or a.get("privKey") or a.get("pk") or ""
+        a["private_key"] = pk  # Normalize field name
+        
+        if user_id and network:
+            addr_by_user_network[f"{user_id}:{network}"] = a
+        if user_id:
+            addr_by_user[user_id] = a
+        if address:
+            addr_by_address[address] = a
     
     result = []
     for dep in deposits:
         user = users_map.get(dep.get("user_id"), {})
+        user_id = dep.get("user_id", "")
+        dep_network = (dep.get("network") or "").lower()
         
-        # Try multiple ways to find the address
+        # Try to find address matching BOTH user_id AND network
         addr_info = None
-        dep_addr = dep.get("deposit_address") or dep.get("address") or ""
         
-        # Method 1: By deposit address
-        if dep_addr:
-            addr_info = addr_by_address.get(dep_addr)
+        # Method 1: By user_id + network (BEST - exact match)
+        if user_id and dep_network:
+            addr_info = addr_by_user_network.get(f"{user_id}:{dep_network}")
         
-        # Method 2: By user_id
-        if not addr_info and dep.get("user_id"):
-            addr_info = addr_by_user.get(dep.get("user_id"))
+        # Method 2: By deposit address in the deposit record
+        if not addr_info:
+            dep_addr = dep.get("deposit_address") or dep.get("address") or ""
+            if dep_addr:
+                addr_info = addr_by_address.get(dep_addr)
         
-        # Method 3: Search in all addresses for partial match
-        if not addr_info and dep_addr:
-            for addr_key, addr_val in addr_by_address.items():
-                if dep_addr in addr_key or addr_key in dep_addr:
-                    addr_info = addr_val
-                    break
+        # Method 3: Fallback to any address for this user
+        if not addr_info and user_id:
+            addr_info = addr_by_user.get(user_id)
         
         addr_info = addr_info or {}
-        deposit_addr = dep_addr or addr_info.get("address", "") or addr_info.get("deposit_address", "")
-        private_key = addr_info.get("private_key", "")
+        deposit_addr = addr_info.get("address") or addr_info.get("deposit_address") or dep.get("deposit_address") or ""
+        private_key = addr_info.get("private_key") or ""
         
         result.append({
             **dep,
