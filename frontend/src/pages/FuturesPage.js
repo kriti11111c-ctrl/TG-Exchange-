@@ -57,16 +57,14 @@ const FuturesPage = () => {
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
 
-  // Update percentages every 1.5 seconds for dynamic effect - within 55-65% range
+  // Update percentages less frequently to reduce CPU usage
   useEffect(() => {
     const interval = setInterval(() => {
-      // CALL percent between 58-65%
       const newCall = (58 + Math.random() * 7).toFixed(2);
-      // PUT percent between 60-68% (slightly different range)
       const newPut = (60 + Math.random() * 8).toFixed(2);
       setCallPercent(newCall);
       setPutPercent(newPut);
-    }, 1500);
+    }, 5000); // Changed from 1500ms to 5000ms
     return () => clearInterval(interval);
   }, []);
 
@@ -176,8 +174,8 @@ const FuturesPage = () => {
     fetchFuturesData();
     fetchRealPrice();
     
-    // Update price every 5 seconds for real-time feel
-    const interval = setInterval(fetchRealPrice, 5000);
+    // Update price every 15 seconds (reduced from 5s to improve performance)
+    const interval = setInterval(fetchRealPrice, 15000);
     return () => clearInterval(interval);
   }, [selectedCoin]);
 

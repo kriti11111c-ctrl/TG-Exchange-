@@ -246,13 +246,13 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     }
   }, [symbol, timeframe]);
 
-  // Try to fetch real data in background
+  // Try to fetch real data in background (less frequently for better performance)
   useEffect(() => {
-    // Fetch real data after a small delay (chart already visible with generated data)
-    const timer = setTimeout(() => fetchBinanceCandles(), 500);
+    // Fetch real data after 1 second delay
+    const timer = setTimeout(() => fetchBinanceCandles(), 1000);
     
-    // Refresh every 10 seconds for live updates
-    const interval = setInterval(fetchBinanceCandles, 10000);
+    // Refresh every 30 seconds (reduced from 10s)
+    const interval = setInterval(fetchBinanceCandles, 30000);
     
     return () => {
       clearTimeout(timer);

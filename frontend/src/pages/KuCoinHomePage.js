@@ -45,8 +45,18 @@ const KuCoinHomePage = () => {
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [wallet, setWallet] = useState(null);
-  const [prices, setPrices] = useState([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Instant fallback prices for immediate render
+  const INSTANT_PRICES = [
+    { symbol: "BTC", name: "Bitcoin", current_price: 77200, price_change_percentage_24h: 1.2 },
+    { symbol: "ETH", name: "Ethereum", current_price: 2280, price_change_percentage_24h: 2.1 },
+    { symbol: "BNB", name: "BNB", current_price: 617, price_change_percentage_24h: 1.3 },
+    { symbol: "SOL", name: "Solana", current_price: 84, price_change_percentage_24h: 2.5 },
+    { symbol: "XRP", name: "XRP", current_price: 1.37, price_change_percentage_24h: 2.2 },
+  ];
+  
+  const [prices, setPrices] = useState(INSTANT_PRICES);
+  const [loading, setLoading] = useState(false); // Start with false - instant render
   const [activeTab, setActiveTab] = useState("hot");
   const [showBalance, setShowBalance] = useState(true);
   const [activeSlide, setActiveSlide] = useState(0);
