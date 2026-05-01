@@ -459,24 +459,6 @@ const AdminPanelPro = () => {
                     </div>
                     <p className="text-3xl font-bold text-green-400">{stats.todaySignups || 0}</p>
                   </div>
-                  
-                  {/* Total Deposit */}
-                  <div className="bg-gradient-to-br from-yellow-900/40 to-yellow-800/20 border border-yellow-500/30 p-4 rounded-xl">
-                    <div className="flex items-center gap-2 mb-2">
-                      <DollarSign size={20} className="text-yellow-400" />
-                      <p className="text-gray-400 text-sm">Total Deposit</p>
-                    </div>
-                    <p className="text-3xl font-bold text-yellow-400">${Number(stats.totalDeposit || 0).toFixed(2)}</p>
-                  </div>
-                  
-                  {/* Total Withdrawal */}
-                  <div className="bg-gradient-to-br from-red-900/40 to-red-800/20 border border-red-500/30 p-4 rounded-xl">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CreditCard size={20} className="text-red-400" />
-                      <p className="text-gray-400 text-sm">Total Withdrawal</p>
-                    </div>
-                    <p className="text-3xl font-bold text-red-400">${Number(stats.totalWithdrawal || 0).toFixed(2)}</p>
-                  </div>
                 </div>
               </div>
             )}
