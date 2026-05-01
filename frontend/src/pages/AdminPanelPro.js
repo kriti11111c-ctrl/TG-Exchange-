@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Menu, X, Home, Users, Eye, CreditCard, Key, Award, Code, FileText, Search, RefreshCw, Copy, Check, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
 
-const API = process.env.REACT_APP_BACKEND_URL || '';
+const API = '';
 
 const AdminPanelPro = () => {
   const navigate = useNavigate();
@@ -51,7 +51,7 @@ const AdminPanelPro = () => {
         });
       } else if (activeTab === 'users') {
         const res = await axios.get(`${API}/api/admin/users`, { headers });
-        setUsers(res.data || []);
+        setUsers(res.data?.users || res.data || []);
       } else if (activeTab === 'deposit') {
         const [manualRes, autoRes] = await Promise.all([
           axios.get(`${API}/api/admin/deposit-requests`, { headers }),
@@ -67,7 +67,8 @@ const AdminPanelPro = () => {
         setAddresses(res.data?.addresses || []);
       } else if (activeTab === 'rank') {
         const res = await axios.get(`${API}/api/admin/users`, { headers });
-        const ranked = (res.data || []).filter(u => u.team_rank_level > 0 || u.vip_level > 0);
+        const allUsers = res.data?.users || res.data || [];
+        const ranked = allUsers.filter(u => u.team_rank_level > 0 || u.vip_level > 0);
         setRankMembers(ranked);
       } else if (activeTab === 'tradecodes') {
         const res = await axios.get(`${API}/api/admin/trade-codes`, { headers }).catch(() => ({ data: [] }));
