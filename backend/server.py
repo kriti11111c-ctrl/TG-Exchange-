@@ -163,20 +163,13 @@ def invalidate_user_cache(user_id: str):
     """Invalidate user cache when data changes"""
     user_cache.delete(f"user_{user_id}")
 
-async def get_wallet_cached(user_id: str, ttl: int = 2):
-    """Get wallet data - very short cache for accuracy"""
-    cache_key = f"wallet_{user_id}"
-    cached = api_cache.get(cache_key, ttl)
-    if cached:
-        return cached
-    
+async def get_wallet_fresh(user_id: str):
+    """Get wallet data - ALWAYS FRESH, NO CACHE"""
     user = await db.users.find_one(
         {"user_id": user_id},
         {"_id": 0, "spot_balance": 1, "futures_balance": 1, "margin_balance": 1, 
          "staking_balance": 1, "bonus_balance": 1}
     )
-    if user:
-        api_cache.set(cache_key, user)
     return user
 
 # CoinGecko API Base URL
@@ -1327,14 +1320,8 @@ async def check_and_expire_welcome_bonus(user_id: str):
 
 @api_router.get("/wallet")
 async def get_wallet(user: dict = Depends(get_current_user)):
-    """Get user wallet - FRESH data, minimal caching"""
+    """Get user wallet - ALWAYS FRESH, NO CACHE"""
     user_id = user["user_id"]
-    
-    # Check cache - very short TTL for accuracy
-    cache_key = f"wallet_{user_id}"
-    cached = api_cache.get(cache_key, ttl=2)  # 2 seconds only
-    if cached:
-        return cached
     
     # Check and expire welcome bonus if needed
     await check_and_expire_welcome_bonus(user_id)
@@ -2603,11 +2590,7 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
     
     user_id = user["user_id"]
     
-    # Check cache - short TTL for fresh data
-    cache_key = f"referral_stats_{user_id}_{period}"
-    cached = api_cache.get(cache_key, ttl=5)  # Cache for 5 seconds only
-    if cached:
-        return cached
+    # NO CACHE - Always fresh referral stats
     
     # Calculate time filter based on period
     # Using IST timezone (UTC+5:30) for midnight calculation
@@ -2751,11 +2734,7 @@ async def get_referral_team(user: dict = Depends(get_current_user), level: int =
     """Get list of referred users - ULTRA OPTIMIZED with CACHING"""
     user_id = user["user_id"]
     
-    # Check cache - short TTL for fresh data
-    cache_key = f"referral_team_{user_id}_{level}"
-    cached = api_cache.get(cache_key, ttl=5)  # 5 seconds only
-    if cached:
-        return cached
+    # NO CACHE - Always fresh team data
     
     # Build query
     query = {"referrer_id": user_id}
