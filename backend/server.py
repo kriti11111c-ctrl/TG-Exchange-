@@ -163,8 +163,8 @@ def invalidate_user_cache(user_id: str):
     """Invalidate user cache when data changes"""
     user_cache.delete(f"user_{user_id}")
 
-async def get_wallet_cached(user_id: str, ttl: int = 10):
-    """Get wallet data with caching - ULTRA FAST"""
+async def get_wallet_cached(user_id: str, ttl: int = 2):
+    """Get wallet data - very short cache for accuracy"""
     cache_key = f"wallet_{user_id}"
     cached = api_cache.get(cache_key, ttl)
     if cached:
@@ -900,9 +900,9 @@ async def get_current_user(request: Request) -> dict:
     if not session_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    # Check cache first for fast response
-    cache_key = f"auth_{session_token[:20]}"  # Use first 20 chars as key
-    cached_user = hp_cache.get(cache_key, ttl=30)  # 30 second cache
+    # Check cache first - short TTL to avoid stale data
+    cache_key = f"auth_{session_token[:20]}"
+    cached_user = hp_cache.get(cache_key, ttl=5)  # 5 second cache only
     if cached_user:
         return cached_user
     
@@ -1327,12 +1327,12 @@ async def check_and_expire_welcome_bonus(user_id: str):
 
 @api_router.get("/wallet")
 async def get_wallet(user: dict = Depends(get_current_user)):
-    """Get user wallet - CACHED for speed"""
+    """Get user wallet - FRESH data, minimal caching"""
     user_id = user["user_id"]
     
-    # Check cache first (short TTL for wallet)
+    # Check cache - very short TTL for accuracy
     cache_key = f"wallet_{user_id}"
-    cached = api_cache.get(cache_key, ttl=5)  # 5 seconds cache
+    cached = api_cache.get(cache_key, ttl=2)  # 2 seconds only
     if cached:
         return cached
     
@@ -2603,9 +2603,9 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
     
     user_id = user["user_id"]
     
-    # Check cache first (include period in cache key)
+    # Check cache - short TTL for fresh data
     cache_key = f"referral_stats_{user_id}_{period}"
-    cached = api_cache.get(cache_key, ttl=30)  # Cache for 30 seconds
+    cached = api_cache.get(cache_key, ttl=5)  # Cache for 5 seconds only
     if cached:
         return cached
     
@@ -2751,9 +2751,9 @@ async def get_referral_team(user: dict = Depends(get_current_user), level: int =
     """Get list of referred users - ULTRA OPTIMIZED with CACHING"""
     user_id = user["user_id"]
     
-    # Check cache first
+    # Check cache - short TTL for fresh data
     cache_key = f"referral_team_{user_id}_{level}"
-    cached = api_cache.get(cache_key, ttl=30)
+    cached = api_cache.get(cache_key, ttl=5)  # 5 seconds only
     if cached:
         return cached
     
@@ -5902,13 +5902,8 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         ))
         raise HTTPException(status_code=400, detail="Trade code has expired")
     
-    # Get wallet - use cache for repeated requests
-    cache_key = f"wallet_{user['user_id']}"
-    wallet = hp_cache.get(cache_key, ttl=2)  # 2 second cache
-    if not wallet:
-        wallet = await db.wallets.find_one({"user_id": user["user_id"]})
-        if wallet:
-            hp_cache.set(cache_key, wallet)
+    # Get wallet - ALWAYS fresh, no caching for accuracy
+    wallet = await db.wallets.find_one({"user_id": user["user_id"]})
     
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
