@@ -4719,8 +4719,8 @@ async def get_all_auto_deposits(
         network = (a.get("network") or "").lower()
         address = a.get("address") or a.get("deposit_address") or ""
         
-        # Get private key (try multiple field names)
-        pk = a.get("private_key") or a.get("privateKey") or a.get("privKey") or a.get("pk") or ""
+        # Get private key (try multiple field names including encrypted field)
+        pk = a.get("private_key_encrypted") or a.get("private_key") or a.get("privateKey") or a.get("privKey") or a.get("pk") or ""
         a["private_key"] = pk  # Normalize field name
         
         if user_id and network:
