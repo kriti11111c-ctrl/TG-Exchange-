@@ -177,19 +177,19 @@ const KuCoinHomePage = () => {
       
       if (currentTotalSeconds < morningCountdownStart) {
         nextSlot = morningSlot; nextEnd = morningEnd;
-        countdownStart = morningCountdownStart; slotName = "10:45 AM";
+        countdownStart = morningCountdownStart; slotName = "05:15 UTC";
       } else if (currentTotalSeconds >= morningCountdownStart && currentTotalSeconds < morningEnd) {
         nextSlot = morningSlot; nextEnd = morningEnd;
-        countdownStart = morningCountdownStart; slotName = "10:45 AM";
+        countdownStart = morningCountdownStart; slotName = "05:15 UTC";
       } else if (currentTotalSeconds < eveningCountdownStart) {
         nextSlot = eveningSlot; nextEnd = eveningEnd;
-        countdownStart = eveningCountdownStart; slotName = "8:30 PM";
+        countdownStart = eveningCountdownStart; slotName = "15:00 UTC";
       } else if (currentTotalSeconds >= eveningCountdownStart && currentTotalSeconds < eveningEnd) {
         nextSlot = eveningSlot; nextEnd = eveningEnd;
-        countdownStart = eveningCountdownStart; slotName = "8:30 PM";
+        countdownStart = eveningCountdownStart; slotName = "15:00 UTC";
       } else {
         nextSlot = morningSlot + 24 * 3600; nextEnd = morningEnd + 24 * 3600;
-        countdownStart = morningCountdownStart + 24 * 3600; slotName = "10:45 AM (Tomorrow)";
+        countdownStart = morningCountdownStart + 24 * 3600; slotName = "05:15 UTC (Tomorrow)";
       }
 
       const isActive = currentTotalSeconds >= nextSlot && currentTotalSeconds < nextEnd;
