@@ -6305,9 +6305,15 @@ async def get_futures_history(
     
     # Format history items
     history = []
+    seen_ids = set()  # Track to avoid duplicates
     
     # Add trade code based trades
     for tc in trade_codes_used:
+        code = tc.get("code")
+        if code in seen_ids:
+            continue  # Skip duplicate
+        seen_ids.add(code)
+        
         # Find matching transaction for more details
         tx = next((t for t in transactions if t.get("trade_code") == tc.get("code")), None)
         
@@ -6388,8 +6394,13 @@ async def get_futures_history(
             "date": formatted_date
         })
     
-    # Add futures positions
+    # Add futures positions (skip if already added via trade_codes)
     for pos in futures_history:
+        pos_id = pos.get("position_id")
+        if pos_id in seen_ids:
+            continue  # Skip duplicate
+        seen_ids.add(pos_id)
+        
         closed_at = pos.get("closed_at", "")
         try:
             if closed_at:
@@ -6414,7 +6425,7 @@ async def get_futures_history(
             "type": "futures",
             "status": "Closed",
             "product": f"{pos.get('coin', 'BTC')}USDT",
-            "direction": pos.get("side", "long").upper(),
+            "direction": "CALL" if pos.get("side", "long").lower() == "long" else "PUT",
             "time_period": f"{pos.get('leverage', 1)}x Leverage",
             "amount": round(amount, 2),
             "open_position_time": f"{formatted_date} {formatted_time}",
