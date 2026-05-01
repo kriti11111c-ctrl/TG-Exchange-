@@ -5159,6 +5159,38 @@ async def process_withdrawal_request(approval: WithdrawalApproval, admin: dict =
     else:
         raise HTTPException(status_code=400, detail="Invalid action. Use 'approve' or 'reject'")
 
+# ============== AUTO TRADE TOGGLE ==============
+
+@api_router.post("/admin/user/toggle-auto-trade")
+async def toggle_auto_trade(data: dict, admin: dict = Depends(get_current_admin)):
+    """Enable/disable auto trade code generation for a user"""
+    user_email = data.get("email")
+    enabled = data.get("enabled", False)
+    
+    if not user_email:
+        raise HTTPException(status_code=400, detail="Email is required")
+    
+    user = await db.users.find_one({"email": user_email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    await db.users.update_one(
+        {"email": user_email},
+        {"$set": {"auto_trade_enabled": enabled}}
+    )
+    
+    status = "enabled" if enabled else "disabled"
+    return {"success": True, "message": f"Auto trade {status} for {user_email}"}
+
+@api_router.get("/admin/auto-trade-users")
+async def get_auto_trade_users(admin: dict = Depends(get_current_admin)):
+    """Get list of users with auto trade enabled"""
+    users = await db.users.find(
+        {"auto_trade_enabled": True},
+        {"_id": 0, "email": 1, "name": 1, "user_id": 1}
+    ).to_list(100)
+    return {"users": users, "count": len(users)}
+
 # ============== TRADE CODE SYSTEM ==============
 
 @api_router.post("/admin/trade-codes/generate")
