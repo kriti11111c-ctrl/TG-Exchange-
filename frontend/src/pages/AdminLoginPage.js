@@ -25,10 +25,9 @@ const AdminLoginPage = () => {
       });
 
       localStorage.setItem("admin_token", response.data.access_token);
-      localStorage.setItem("adminToken", response.data.access_token);
       localStorage.setItem("admin_data", JSON.stringify(response.data.admin));
       toast.success("Admin login successful!");
-      navigate("/admin/pro");
+      navigate("/admin/dashboard");
     } catch (error) {
       toast.error(error.response?.data?.detail || "Invalid credentials");
     } finally {

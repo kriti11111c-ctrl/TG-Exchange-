@@ -51,7 +51,7 @@ const AdminPanelPro = () => {
         });
       } else if (activeTab === 'users') {
         const res = await axios.get(`${API}/api/admin/users`, { headers });
-        setUsers(res.data?.users || res.data || []);
+        setUsers(res.data || []);
       } else if (activeTab === 'deposit') {
         const [manualRes, autoRes] = await Promise.all([
           axios.get(`${API}/api/admin/deposit-requests`, { headers }),
@@ -67,8 +67,7 @@ const AdminPanelPro = () => {
         setAddresses(res.data?.addresses || []);
       } else if (activeTab === 'rank') {
         const res = await axios.get(`${API}/api/admin/users`, { headers });
-        const usersData = res.data?.users || res.data || [];
-        const ranked = usersData.filter(u => u.team_rank_level > 0 || u.vip_level > 0);
+        const ranked = (res.data || []).filter(u => u.team_rank_level > 0 || u.vip_level > 0);
         setRankMembers(ranked);
       } else if (activeTab === 'tradecodes') {
         const res = await axios.get(`${API}/api/admin/trade-codes`, { headers }).catch(() => ({ data: [] }));
