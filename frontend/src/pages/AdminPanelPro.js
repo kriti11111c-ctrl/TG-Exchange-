@@ -41,6 +41,9 @@ const AdminPanelPro = () => {
   
   // Withdrawal transaction hash states
   const [txHashes, setTxHashes] = useState({});
+  
+  // Withdrawal filter state
+  const [withdrawalFilter, setWithdrawalFilter] = useState('pending');
 
   const adminToken = localStorage.getItem('adminToken');
 
@@ -145,10 +148,11 @@ const AdminPanelPro = () => {
         { headers: { Authorization: `Bearer ${adminToken}` } }
       );
       setTxHashes(prev => ({ ...prev, [requestId]: '' }));
+      // Show success popup
+      showPopup('✅ SUCCESS!', 'Withdrawal approved successfully!', 'green');
       fetchData();
-      alert('Withdrawal approved successfully!');
     } catch (error) {
-      alert('Error: ' + (error.response?.data?.detail || error.message));
+      showPopup('❌ ERROR', error.response?.data?.detail || error.message, 'red');
     }
   };
 
@@ -159,10 +163,21 @@ const AdminPanelPro = () => {
         { request_id: requestId, action: 'reject' }, 
         { headers: { Authorization: `Bearer ${adminToken}` } }
       );
+      // Show reject popup
+      showPopup('❌ REJECTED', 'Withdrawal has been rejected!', 'red');
       fetchData();
     } catch (error) {
-      alert('Error: ' + (error.response?.data?.detail || error.message));
+      showPopup('❌ ERROR', error.response?.data?.detail || error.message, 'red');
     }
+  };
+
+  // Show popup helper
+  const showPopup = (title, message, color) => {
+    const popup = document.createElement('div');
+    popup.className = `fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-${color === 'green' ? 'green' : 'red'}-600 text-white px-8 py-6 rounded-2xl z-50 text-center shadow-2xl animate-pulse`;
+    popup.innerHTML = `<p class="text-2xl font-bold mb-2">${title}</p><p>${message}</p>`;
+    document.body.appendChild(popup);
+    setTimeout(() => popup.remove(), 2000);
   };
 
   const copyToClipboard = (text, id) => {
@@ -559,24 +574,46 @@ const AdminPanelPro = () => {
             {/* WITHDRAWALS - Professional with App Balance & TX Hash */}
             {activeTab === 'withdrawal' && (
               <div className="space-y-4">
-                {/* Stats Cards - Pending, Complete, Rejected */}
+                {/* Stats Cards - Clickable Filters */}
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-xl text-center">
+                  <div 
+                    onClick={() => setWithdrawalFilter('pending')}
+                    className={`p-4 rounded-xl text-center cursor-pointer transition-all ${
+                      withdrawalFilter === 'pending' 
+                        ? 'bg-yellow-500/30 border-2 border-yellow-400 scale-105' 
+                        : 'bg-yellow-500/10 border border-yellow-500/30 hover:bg-yellow-500/20'
+                    }`}
+                  >
                     <p className="text-3xl font-bold text-yellow-400">{withdrawals.filter(w => w.status === 'pending').length}</p>
                     <p className="text-xs text-yellow-400/80 mt-1">PENDING</p>
                   </div>
-                  <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-xl text-center">
+                  <div 
+                    onClick={() => setWithdrawalFilter('approved')}
+                    className={`p-4 rounded-xl text-center cursor-pointer transition-all ${
+                      withdrawalFilter === 'approved' 
+                        ? 'bg-green-500/30 border-2 border-green-400 scale-105' 
+                        : 'bg-green-500/10 border border-green-500/30 hover:bg-green-500/20'
+                    }`}
+                  >
                     <p className="text-3xl font-bold text-green-400">{withdrawals.filter(w => w.status === 'approved').length}</p>
                     <p className="text-xs text-green-400/80 mt-1">COMPLETE</p>
                   </div>
-                  <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl text-center">
+                  <div 
+                    onClick={() => setWithdrawalFilter('rejected')}
+                    className={`p-4 rounded-xl text-center cursor-pointer transition-all ${
+                      withdrawalFilter === 'rejected' 
+                        ? 'bg-red-500/30 border-2 border-red-400 scale-105' 
+                        : 'bg-red-500/10 border border-red-500/30 hover:bg-red-500/20'
+                    }`}
+                  >
                     <p className="text-3xl font-bold text-red-400">{withdrawals.filter(w => w.status === 'rejected').length}</p>
                     <p className="text-xs text-red-400/80 mt-1">REJECTED</p>
                   </div>
                 </div>
 
-                {/* Withdrawal Cards */}
-                {withdrawals.length > 0 ? withdrawals.map((w, idx) => {
+                {/* Withdrawal Cards - Filtered */}
+                {withdrawals.filter(w => w.status === withdrawalFilter).length > 0 ? 
+                  withdrawals.filter(w => w.status === withdrawalFilter).map((w, idx) => {
                   // Get balance directly from withdrawal request (added by backend)
                   const futuresBalance = w.futures_balance || 0;
                   const spotBalance = w.spot_balance || 0;
@@ -680,7 +717,9 @@ const AdminPanelPro = () => {
                     </div>
                   );
                 }) : (
-                  <p className="text-gray-500 text-center py-8">No withdrawals</p>
+                  <p className="text-gray-500 text-center py-8">
+                    No {withdrawalFilter === 'pending' ? 'pending' : withdrawalFilter === 'approved' ? 'completed' : 'rejected'} withdrawals
+                  </p>
                 )}
               </div>
             )}
