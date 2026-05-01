@@ -36,6 +36,7 @@ const ReferralPage = () => {
   const [userReferralCode, setUserReferralCode] = useState("");
   const [selectedPeriod, setSelectedPeriod] = useState("all");
   const [periodBusiness, setPeriodBusiness] = useState({});
+  const [periodLevelStats, setPeriodLevelStats] = useState({});
   const [loadingPeriod, setLoadingPeriod] = useState(false);
 
   // Theme colors
@@ -146,6 +147,13 @@ const ReferralPage = () => {
         ...prev,
         [period]: response.data.total_business || 0
       }));
+      // Update level stats for this period
+      if (response.data.level_stats) {
+        setPeriodLevelStats(prev => ({
+          ...prev,
+          [period]: response.data.level_stats
+        }));
+      }
     } catch (error) {
       console.error("Error fetching period business:", error);
     } finally {
@@ -505,7 +513,13 @@ const ReferralPage = () => {
             <h3 className={`font-bold ${text}`}>10-Level Team Structure</h3>
           </div>
           <div className="space-y-2">
-          {stats?.level_stats?.map((level) => {
+          {/* Get level stats based on selected period */}
+          {(() => {
+            const levelStatsToUse = selectedPeriod === "all" 
+              ? stats?.level_stats 
+              : (periodLevelStats[selectedPeriod] || stats?.level_stats);
+            
+            return levelStatsToUse?.map((level) => {
             // Level specific gradient colors
             const levelGradients = {
               1: 'linear-gradient(135deg, #00E5FF 0%, #00B4D8 100%)',
@@ -628,7 +642,8 @@ const ReferralPage = () => {
               )}
             </div>
           );
-          })}
+          });
+          })()}
           </div>
         </div>
       </div>

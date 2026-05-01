@@ -2488,15 +2488,29 @@ async def root():
 # ================= REFERRAL ROUTES =================
 
 @api_router.get("/referral/stats")
-async def get_referral_stats(user: dict = Depends(get_current_user)):
-    """Get referral statistics for the current user - ULTRA OPTIMIZED with CACHING"""
+async def get_referral_stats(user: dict = Depends(get_current_user), period: str = "all"):
+    """Get referral statistics for the current user - ULTRA OPTIMIZED with CACHING
+    period: '24h', '7d', '30d', 'all'
+    """
+    from datetime import timedelta
+    
     user_id = user["user_id"]
     
-    # Check cache first
-    cache_key = f"referral_stats_{user_id}"
+    # Check cache first (include period in cache key)
+    cache_key = f"referral_stats_{user_id}_{period}"
     cached = api_cache.get(cache_key, ttl=30)  # Cache for 30 seconds
     if cached:
         return cached
+    
+    # Calculate time filter based on period
+    now = datetime.now(timezone.utc)
+    time_filter = None
+    if period == "24h":
+        time_filter = now - timedelta(hours=24)
+    elif period == "7d":
+        time_filter = now - timedelta(days=7)
+    elif period == "30d":
+        time_filter = now - timedelta(days=30)
     
     # Get user's referral code
     user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0, "referral_code": 1})
@@ -2513,47 +2527,69 @@ async def get_referral_stats(user: dict = Depends(get_current_user)):
     # Get all referrals where this user is the referrer
     referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=1000)
     
-    # OPTIMIZATION: Batch fetch all wallets at once instead of one by one
+    # Get all referred user IDs
     referred_ids = list(set(r.get("referred_id") for r in referrals if r.get("referred_id")))
+    
+    # Fetch wallets for real_spot_deposits
     wallets_cursor = await db.wallets.find(
         {"user_id": {"$in": referred_ids}},
-        {"_id": 0, "user_id": 1, "futures_balance": 1, "welcome_bonus": 1}
+        {"_id": 0, "user_id": 1, "futures_balance": 1, "welcome_bonus": 1, "real_spot_deposits": 1}
     ).to_list(length=1000)
     
-    # Calculate REAL balance = futures_balance - welcome_bonus
-    wallets_map = {}
-    for w in wallets_cursor:
-        futures_bal = w.get("futures_balance", 0) or 0
-        welcome_bonus = w.get("welcome_bonus", 0) or 0
-        real_balance = max(0, futures_bal - welcome_bonus)
-        wallets_map[w["user_id"]] = real_balance
+    wallets_map = {w["user_id"]: w for w in wallets_cursor}
+    
+    # If period filter, fetch approved deposits within the time period
+    period_deposits_map = {}
+    if time_filter:
+        time_filter_str = time_filter.isoformat()
+        # Get approved deposits in the time period for referred users
+        deposit_query = {
+            "user_id": {"$in": referred_ids},
+            "status": "approved",
+            "approved_at": {"$gte": time_filter_str}
+        }
+        period_deposits = await db.deposit_requests.find(deposit_query, {"_id": 0, "user_id": 1, "amount": 1}).to_list(length=5000)
+        
+        for dep in period_deposits:
+            uid = dep.get("user_id")
+            amt = float(dep.get("amount", 0))
+            period_deposits_map[uid] = period_deposits_map.get(uid, 0) + amt
     
     # Calculate stats per level
     level_stats = []
     total_referrals = 0
     total_earnings = 0.0
-    total_business = 0.0  # Sum of REAL deposits (excluding welcome bonus)
+    total_business = 0.0
     
     for level in range(1, 11):
         level_referrals = [r for r in referrals if r.get("level") == level]
         count = len(level_referrals)
         earnings = sum(r.get("total_earnings", 0) for r in level_referrals)
-        commission_rate = REFERRAL_COMMISSION_RATES.get(level, 0) * 100  # Convert to percentage
+        commission_rate = REFERRAL_COMMISSION_RATES.get(level, 0) * 100
         
-        # Calculate futures balance for this level's members using pre-fetched data
-        level_futures = sum(wallets_map.get(ref["referred_id"], 0) for ref in level_referrals)
+        # Calculate business based on period
+        level_business = 0
+        for ref in level_referrals:
+            ref_id = ref["referred_id"]
+            if time_filter:
+                # Use deposits within the time period
+                level_business += period_deposits_map.get(ref_id, 0)
+            else:
+                # Use total real_spot_deposits
+                wallet = wallets_map.get(ref_id, {})
+                level_business += wallet.get("real_spot_deposits", 0)
         
         level_stats.append({
             "level": level,
             "count": count,
             "earnings": earnings,
             "commission_rate": commission_rate,
-            "futures_balance": level_futures
+            "futures_balance": level_business  # Now represents real deposits for the period
         })
         
         total_referrals += count
         total_earnings += earnings
-        total_business += level_futures  # Total Business = Sum of all futures_balance
+        total_business += level_business
     
     result = {
         "user_id": user_id,
@@ -2561,6 +2597,7 @@ async def get_referral_stats(user: dict = Depends(get_current_user)):
         "total_referrals": total_referrals,
         "total_earnings": total_earnings,
         "total_business": total_business,
+        "period": period,
         "level_stats": level_stats
     }
     
