@@ -6888,6 +6888,8 @@ async def auto_generate_trade_codes_for_slot(slot_config: dict):
             logging.info(f"No users found for auto trade code generation")
             return
         
+        logging.info(f"Starting auto trade code generation for {len(all_users)} users")
+        
         # Get random coin data
         coin_data = await get_random_coin_data()
         
@@ -6895,58 +6897,80 @@ async def auto_generate_trade_codes_for_slot(slot_config: dict):
         profit_percent = round(60 + random.random() * 5, 2)
         
         codes_created = 0
+        errors = 0
         
         for user in all_users:
-            user_id = user["user_id"]
-            
-            # Check last trade to determine multiplier (Martingale)
-            last_trade = await db.trade_codes.find_one(
-                {"user_id": user_id, "status": "used"},
-                sort=[("used_at", -1)]
-            )
-            
-            multiplier = 1
-            if last_trade and last_trade.get("result") == "fail":
-                multiplier = 2
-            
-            fund_percent = 1.0 * multiplier
-            
-            # Generate unique code
-            code = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=12))
-            
-            # Calculate scheduled times
-            scheduled_start = now
-            expires_at = now + timedelta(minutes=60)  # 60 minutes (1 hour) to use
-            
-            # Create trade code
-            trade_code_doc = {
-                "code": code,
-                "user_id": user_id,
-                "user_email": user.get("email", ""),
-                "coin": coin_data["coin"].lower(),
-                "amount": 100,  # Base amount
-                "trade_type": coin_data["trade_type"],
-                "price": coin_data["price"],
-                "status": "live",  # Immediately live
-                "scheduled_slot": slot_config["slot"],
-                "slot_name": slot_config["name"],
-                "scheduled_start": scheduled_start.isoformat(),
-                "expires_at": expires_at.isoformat(),
-                "profit_percent": profit_percent,
-                "fund_percent": fund_percent,
-                "multiplier": multiplier,
-                "will_fail": False,
-                "created_by": "AUTO_SYSTEM",
-                "created_at": now.isoformat(),
-                "used_at": None,
-                "result": None,
-                "auto_generated": True
-            }
-            
-            await db.trade_codes.insert_one(trade_code_doc)
-            codes_created += 1
+            try:
+                user_id = user["user_id"]
+                
+                # Check if code already exists for this user in this slot today
+                today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+                existing_code = await db.trade_codes.find_one({
+                    "user_id": user_id,
+                    "scheduled_slot": slot_config["slot"],
+                    "created_at": {"$gte": today_start.isoformat()}
+                })
+                
+                if existing_code:
+                    continue  # Skip if code already exists for today
+                
+                # Check last trade to determine multiplier (Martingale)
+                last_trade = await db.trade_codes.find_one(
+                    {"user_id": user_id, "status": "used"},
+                    sort=[("used_at", -1)]
+                )
+                
+                multiplier = 1
+                if last_trade and last_trade.get("result") == "fail":
+                    multiplier = 2
+                
+                fund_percent = 1.0 * multiplier
+                
+                # Generate unique code - retry if duplicate
+                for attempt in range(3):
+                    code = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=12))
+                    existing = await db.trade_codes.find_one({"code": code})
+                    if not existing:
+                        break
+                
+                # Calculate scheduled times
+                scheduled_start = now
+                expires_at = now + timedelta(minutes=60)  # 60 minutes (1 hour) to use
+                
+                # Create trade code
+                trade_code_doc = {
+                    "code": code,
+                    "user_id": user_id,
+                    "user_email": user.get("email", ""),
+                    "coin": coin_data["coin"].lower(),
+                    "amount": 100,  # Base amount
+                    "trade_type": coin_data["trade_type"],
+                    "price": coin_data["price"],
+                    "status": "live",  # Immediately live
+                    "scheduled_slot": slot_config["slot"],
+                    "slot_name": slot_config["name"],
+                    "scheduled_start": scheduled_start.isoformat(),
+                    "expires_at": expires_at.isoformat(),
+                    "profit_percent": profit_percent,
+                    "fund_percent": fund_percent,
+                    "multiplier": multiplier,
+                    "will_fail": False,
+                    "created_by": "AUTO_SYSTEM",
+                    "created_at": now.isoformat(),
+                    "used_at": None,
+                    "result": None,
+                    "auto_generated": True
+                }
+                
+                await db.trade_codes.insert_one(trade_code_doc)
+                codes_created += 1
+                
+            except Exception as user_error:
+                errors += 1
+                logging.error(f"Error generating code for user {user.get('email', user.get('user_id'))}: {user_error}")
+                continue  # Continue with next user
         
-        logging.info(f"Auto-generated {codes_created} trade codes for slot {slot_config['name']}")
+        logging.info(f"Auto-generated {codes_created} trade codes for slot {slot_config['name']}. Errors: {errors}")
         
     except Exception as e:
         logging.error(f"Error in auto trade code generation: {e}")
