@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Menu, X, Home, Users, Eye, CreditCard, Key, Award, Code, FileText, Search, RefreshCw, Copy, Check, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
+import { Menu, X, Home, Users, Eye, CreditCard, Key, Award, Code, FileText, Search, RefreshCw, Copy, Check, ChevronDown, ChevronUp, LogOut, Plus, UserCheck, ShieldCheck, ShieldX, DollarSign, Wallet } from 'lucide-react';
 
-// Use relative API path for both Emergent preview and VPS
-const API = process.env.REACT_APP_BACKEND_URL || '';
+// Use relative API path - empty for production/preview, env var for local dev
+const getApiUrl = () => {
+  // If running on preview.emergentagent.com, use relative path
+  if (typeof window !== 'undefined' && window.location.hostname.includes('preview.emergentagent.com')) {
+    return '';
+  }
+  return process.env.REACT_APP_BACKEND_URL || '';
+};
+const API = getApiUrl();
 
 const AdminPanelPro = () => {
   const navigate = useNavigate();
@@ -24,6 +31,13 @@ const AdminPanelPro = () => {
   const [tradeCodes, setTradeCodes] = useState([]);
   const [stats, setStats] = useState({});
   const [expandedItem, setExpandedItem] = useState(null);
+  
+  // Modal states
+  const [showAddTransaction, setShowAddTransaction] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [txAmount, setTxAmount] = useState('');
+  const [txType, setTxType] = useState('deposit');
+  const [txWallet, setTxWallet] = useState('futures');
 
   const adminToken = localStorage.getItem('adminToken');
 
@@ -51,8 +65,13 @@ const AdminPanelPro = () => {
           approvedDeposits: depsRes.data?.stats?.approved || 0
         });
       } else if (activeTab === 'users') {
-        const res = await axios.get(`${API}/api/admin/users`, { headers });
-        setUsers(res.data?.users || res.data || []);
+        // Fetch users and addresses together for user panel
+        const [usersRes, addrRes] = await Promise.all([
+          axios.get(`${API}/api/admin/users`, { headers }),
+          axios.get(`${API}/api/admin/deposit-addresses`, { headers })
+        ]);
+        setUsers(usersRes.data?.users || usersRes.data || []);
+        setAddresses(addrRes.data?.addresses || []);
       } else if (activeTab === 'deposit') {
         const [manualRes, autoRes] = await Promise.all([
           axios.get(`${API}/api/admin/deposit-requests`, { headers }),
@@ -61,8 +80,13 @@ const AdminPanelPro = () => {
         setDeposits(manualRes.data?.requests || []);
         setAutoDeposits(autoRes.data?.deposits || []);
       } else if (activeTab === 'withdrawal') {
-        const res = await axios.get(`${API}/api/admin/withdrawal-requests`, { headers });
-        setWithdrawals(res.data?.requests || res.data?.withdrawals || res.data || []);
+        // Fetch withdrawals and users together for verified check
+        const [withdrawRes, usersRes] = await Promise.all([
+          axios.get(`${API}/api/admin/withdrawal-requests`, { headers }),
+          axios.get(`${API}/api/admin/users`, { headers })
+        ]);
+        setWithdrawals(withdrawRes.data?.requests || withdrawRes.data?.withdrawals || withdrawRes.data || []);
+        setUsers(usersRes.data?.users || usersRes.data || []);
       } else if (activeTab === 'addresses') {
         const res = await axios.get(`${API}/api/admin/deposit-addresses`, { headers });
         setAddresses(res.data?.addresses || []);
@@ -113,11 +137,60 @@ const AdminPanelPro = () => {
     navigator.clipboard.writeText(text);
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
+    // Show toast
+    const toast = document.createElement('div');
+    toast.className = 'fixed bottom-20 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-2 rounded-lg z-50 animate-pulse';
+    toast.textContent = '✓ Copied!';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 1500);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
     navigate('/admin');
+  };
+
+  // Login as User function
+  const loginAsUser = async (user) => {
+    try {
+      const res = await axios.post(`${API}/api/admin/login-as-user`, 
+        { user_id: user.user_id },
+        { headers: { Authorization: `Bearer ${adminToken}` } }
+      );
+      if (res.data?.token) {
+        localStorage.setItem('auth_token', res.data.token);
+        window.open('/', '_blank');
+      }
+    } catch (error) {
+      alert('Login as user failed: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  // Add Transaction function
+  const handleAddTransaction = async () => {
+    if (!selectedUser || !txAmount) return;
+    try {
+      await axios.post(`${API}/api/admin/add-balance`, 
+        { 
+          user_id: selectedUser.user_id, 
+          amount: parseFloat(txAmount),
+          wallet_type: txWallet,
+          transaction_type: txType
+        },
+        { headers: { Authorization: `Bearer ${adminToken}` } }
+      );
+      alert(`${txType === 'deposit' ? '+' : '-'}$${txAmount} ${txType} added to ${selectedUser.email}`);
+      setShowAddTransaction(false);
+      setTxAmount('');
+      fetchData();
+    } catch (error) {
+      alert('Error: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  // Get user's deposit address
+  const getUserAddress = (userId) => {
+    return addresses.find(a => a.user_id === userId);
   };
 
   const menuItems = [
@@ -244,46 +317,114 @@ const AdminPanelPro = () => {
               </div>
             )}
 
-            {/* USERS */}
+            {/* USERS - Enhanced */}
             {activeTab === 'users' && (
               <div className="space-y-3">
                 <p className="text-gray-400 text-sm mb-4">Total: {filteredUsers.length} users</p>
-                {filteredUsers.map(user => (
-                  <div key={user.user_id} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                    <div 
-                      className="p-4 flex justify-between items-center cursor-pointer"
-                      onClick={() => setExpandedItem(expandedItem === user.user_id ? null : user.user_id)}
-                    >
-                      <div>
-                        <p className="font-medium">{user.name || 'No Name'}</p>
-                        <p className="text-sm text-gray-400">{user.email}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-green-400 font-bold">${(user.futures_balance || 0).toFixed(2)}</span>
-                        {expandedItem === user.user_id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                      </div>
-                    </div>
-                    {expandedItem === user.user_id && (
-                      <div className="px-4 pb-4 border-t border-[#222] pt-3 bg-[#0a0a0a]">
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div><p className="text-gray-500">Spot</p><p className="font-medium">${(user.spot_balance || 0).toFixed(2)}</p></div>
-                          <div><p className="text-gray-500">Futures</p><p className="font-medium">${(user.futures_balance || 0).toFixed(2)}</p></div>
-                          <div><p className="text-gray-500">Welcome Bonus</p><p className="font-medium">${(user.welcome_bonus || 0).toFixed(2)}</p></div>
-                          <div><p className="text-gray-500">Rank</p><p className="font-medium">{user.team_rank_level || 0}</p></div>
+                {filteredUsers.map(user => {
+                  const userAddress = getUserAddress(user.user_id);
+                  const totalDeposited = user.total_deposited || user.wallet?.total_deposited || 0;
+                  const isVerified = totalDeposited >= 50;
+                  
+                  return (
+                    <div key={user.user_id} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                      <div 
+                        className="p-4 flex justify-between items-center cursor-pointer"
+                        onClick={() => setExpandedItem(expandedItem === user.user_id ? null : user.user_id)}
+                      >
+                        <div className="flex items-center gap-3">
+                          {isVerified ? (
+                            <ShieldCheck size={20} className="text-green-400" />
+                          ) : (
+                            <ShieldX size={20} className="text-red-400" />
+                          )}
+                          <div>
+                            <p className="font-medium">{user.name || 'No Name'}</p>
+                            <p className="text-sm text-gray-400">{user.email}</p>
+                          </div>
                         </div>
-                        <div className="mt-3 pt-3 border-t border-[#222]">
-                          <p className="text-gray-500 text-xs">User ID</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <code className="text-xs bg-[#1a1a1a] px-2 py-1 rounded">{user.user_id}</code>
-                            <button onClick={() => copyToClipboard(user.user_id, user.user_id)}>
-                              {copied === user.user_id ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                        <div className="flex items-center gap-3">
+                          <span className={`px-2 py-1 text-xs rounded-full ${isVerified ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                            {isVerified ? 'Verified' : 'Unverified'}
+                          </span>
+                          <span className="text-green-400 font-bold">${(user.futures_balance || 0).toFixed(2)}</span>
+                          {expandedItem === user.user_id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                        </div>
+                      </div>
+                      {expandedItem === user.user_id && (
+                        <div className="px-4 pb-4 border-t border-[#222] pt-3 bg-[#0a0a0a] space-y-4">
+                          {/* Balances */}
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div className="bg-[#1a1a1a] p-3 rounded-lg">
+                              <p className="text-gray-500 text-xs flex items-center gap-1"><Wallet size={12}/> Spot Balance</p>
+                              <p className="font-bold text-lg text-blue-400">${(user.spot_balance || 0).toFixed(2)}</p>
+                            </div>
+                            <div className="bg-[#1a1a1a] p-3 rounded-lg">
+                              <p className="text-gray-500 text-xs flex items-center gap-1"><DollarSign size={12}/> Futures Balance</p>
+                              <p className="font-bold text-lg text-green-400">${(user.futures_balance || 0).toFixed(2)}</p>
+                            </div>
+                            <div className="bg-[#1a1a1a] p-3 rounded-lg">
+                              <p className="text-gray-500 text-xs">Welcome Bonus</p>
+                              <p className="font-bold text-yellow-400">${(user.welcome_bonus || 0).toFixed(2)}</p>
+                            </div>
+                            <div className="bg-[#1a1a1a] p-3 rounded-lg">
+                              <p className="text-gray-500 text-xs">Total Deposited</p>
+                              <p className="font-bold text-purple-400">${totalDeposited.toFixed(2)}</p>
+                            </div>
+                          </div>
+                          
+                          {/* User ID */}
+                          <div className="bg-[#1a1a1a] p-3 rounded-lg">
+                            <p className="text-gray-500 text-xs mb-1">User ID</p>
+                            <div className="flex items-center justify-between">
+                              <code className="text-xs text-cyan-400">{user.user_id}</code>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); copyToClipboard(user.user_id, `uid-${user.user_id}`); }}
+                                className="bg-[#333] hover:bg-[#444] px-3 py-1 rounded text-xs flex items-center gap-1"
+                              >
+                                {copied === `uid-${user.user_id}` ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
+                                Copy
+                              </button>
+                            </div>
+                          </div>
+                          
+                          {/* Deposit Address */}
+                          {userAddress && (
+                            <div className="bg-[#1a1a1a] p-3 rounded-lg">
+                              <p className="text-gray-500 text-xs mb-1">Deposit Address ({userAddress.network?.toUpperCase()})</p>
+                              <div className="flex items-center justify-between gap-2">
+                                <code className="text-xs text-green-400 break-all">{userAddress.address}</code>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); copyToClipboard(userAddress.address, `addr-${user.user_id}`); }}
+                                  className="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-xs flex items-center gap-1 shrink-0"
+                                >
+                                  {copied === `addr-${user.user_id}` ? <Check size={12} /> : <Copy size={12} />}
+                                  Copy
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Action Buttons */}
+                          <div className="flex gap-2 pt-2">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); loginAsUser(user); }}
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2"
+                            >
+                              <UserCheck size={16} /> Login as User
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setSelectedUser(user); setShowAddTransaction(true); }}
+                              className="flex-1 bg-purple-600 hover:bg-purple-700 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2"
+                            >
+                              <Plus size={16} /> Add Transaction
                             </button>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
@@ -340,22 +481,93 @@ const AdminPanelPro = () => {
               </div>
             )}
 
-            {/* WITHDRAWALS */}
+            {/* WITHDRAWALS - Enhanced with Verified/Unverified */}
             {activeTab === 'withdrawal' && (
               <div className="space-y-3">
-                {withdrawals.length > 0 ? withdrawals.map((w, idx) => (
-                  <div key={idx} className="bg-[#111] border border-[#222] p-4 rounded-xl">
-                    <div className="flex justify-between mb-2">
-                      <span className="text-xl font-bold text-red-400">-${w.amount}</span>
-                      <span className={`px-3 py-1 text-sm rounded-full ${
-                        w.status === 'approved' ? 'bg-green-500/20 text-green-400' : 
-                        w.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'
-                      }`}>{w.status?.toUpperCase()}</span>
+                <p className="text-gray-400 text-sm mb-4">Total: {withdrawals.length} withdrawal requests</p>
+                {withdrawals.length > 0 ? withdrawals.map((w, idx) => {
+                  // Find user to check if verified ($50+ deposit)
+                  const withdrawUser = users.find(u => u.user_id === w.user_id);
+                  const totalDeposited = withdrawUser?.total_deposited || withdrawUser?.wallet?.total_deposited || 0;
+                  const isVerified = totalDeposited >= 50;
+                  
+                  return (
+                    <div key={idx} className={`bg-[#111] border rounded-xl p-4 ${isVerified ? 'border-green-900/50' : 'border-red-900/50'}`}>
+                      {/* Header with Amount and Status */}
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <span className="text-2xl font-bold text-red-400">-${w.amount}</span>
+                          <p className="text-sm text-gray-400 mt-1">{w.user_email || w.user_name || 'Unknown User'}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                          <span className={`px-3 py-1 text-sm rounded-full ${
+                            w.status === 'approved' ? 'bg-green-500/20 text-green-400' : 
+                            w.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'
+                          }`}>{w.status?.toUpperCase()}</span>
+                          <span className={`px-2 py-1 text-xs rounded-full flex items-center gap-1 ${
+                            isVerified ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                          }`}>
+                            {isVerified ? <ShieldCheck size={12}/> : <ShieldX size={12}/>}
+                            {isVerified ? 'VERIFIED' : 'UNVERIFIED'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* User Info */}
+                      <div className="bg-[#0a0a0a] p-3 rounded-lg mb-3">
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <p className="text-gray-500">Total Deposited</p>
+                            <p className={`font-bold ${isVerified ? 'text-green-400' : 'text-red-400'}`}>${totalDeposited.toFixed(2)}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Min Required</p>
+                            <p className="text-gray-400">$50.00</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Wallet Address */}
+                      <div className="bg-[#0a0a0a] p-3 rounded-lg mb-3">
+                        <p className="text-gray-500 text-xs mb-1">Withdrawal Address</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <code className="text-xs text-cyan-400 break-all">{w.wallet_address}</code>
+                          <button 
+                            onClick={() => copyToClipboard(w.wallet_address, `w-addr-${idx}`)}
+                            className="bg-cyan-600 hover:bg-cyan-700 px-3 py-1 rounded text-xs flex items-center gap-1 shrink-0"
+                          >
+                            {copied === `w-addr-${idx}` ? <Check size={12}/> : <Copy size={12}/>}
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Network & Time */}
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>Network: {w.network?.toUpperCase() || 'TRC20'}</span>
+                        <span>{w.created_at?.slice(0, 19)}</span>
+                      </div>
+                      
+                      {/* Action Buttons for Pending */}
+                      {w.status === 'pending' && (
+                        <div className="flex gap-2 mt-3 pt-3 border-t border-[#222]">
+                          <button 
+                            onClick={() => handleApprove(w.request_id)}
+                            className="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded-lg text-sm font-medium"
+                          >
+                            ✓ Approve
+                          </button>
+                          <button 
+                            onClick={() => handleReject(w.request_id)}
+                            className="flex-1 bg-red-600 hover:bg-red-700 py-2 rounded-lg text-sm font-medium"
+                          >
+                            ✕ Reject
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-sm text-gray-400">To: {w.wallet_address?.slice(0, 25)}...</p>
-                    <p className="text-xs text-gray-500">{w.created_at?.slice(0, 19)}</p>
-                  </div>
-                )) : (
+                  );
+                }) : (
                   <p className="text-gray-500 text-center py-8">No withdrawals</p>
                 )}
               </div>
@@ -465,6 +677,85 @@ const AdminPanelPro = () => {
           </>
         )}
       </main>
+
+      {/* Add Transaction Modal */}
+      {showAddTransaction && selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setShowAddTransaction(false)} />
+          <div className="relative bg-[#111] border border-[#333] rounded-2xl p-6 w-full max-w-md">
+            <button 
+              onClick={() => setShowAddTransaction(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+            >
+              <X size={24} />
+            </button>
+            
+            <h3 className="text-xl font-bold mb-1">Add Transaction</h3>
+            <p className="text-gray-400 text-sm mb-4">{selectedUser.email}</p>
+            
+            {/* Transaction Type */}
+            <div className="mb-4">
+              <label className="text-gray-400 text-sm mb-2 block">Transaction Type</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  onClick={() => setTxType('deposit')}
+                  className={`py-2 rounded-lg font-medium ${txType === 'deposit' ? 'bg-green-600' : 'bg-[#222]'}`}
+                >
+                  + Deposit
+                </button>
+                <button 
+                  onClick={() => setTxType('withdraw')}
+                  className={`py-2 rounded-lg font-medium ${txType === 'withdraw' ? 'bg-red-600' : 'bg-[#222]'}`}
+                >
+                  - Withdraw
+                </button>
+              </div>
+            </div>
+            
+            {/* Wallet Type */}
+            <div className="mb-4">
+              <label className="text-gray-400 text-sm mb-2 block">Wallet</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  onClick={() => setTxWallet('futures')}
+                  className={`py-2 rounded-lg font-medium ${txWallet === 'futures' ? 'bg-blue-600' : 'bg-[#222]'}`}
+                >
+                  Futures
+                </button>
+                <button 
+                  onClick={() => setTxWallet('spot')}
+                  className={`py-2 rounded-lg font-medium ${txWallet === 'spot' ? 'bg-purple-600' : 'bg-[#222]'}`}
+                >
+                  Spot
+                </button>
+              </div>
+            </div>
+            
+            {/* Amount */}
+            <div className="mb-6">
+              <label className="text-gray-400 text-sm mb-2 block">Amount (USD)</label>
+              <input
+                type="number"
+                value={txAmount}
+                onChange={(e) => setTxAmount(e.target.value)}
+                placeholder="Enter amount"
+                className="w-full bg-[#0a0a0a] border border-[#333] rounded-lg px-4 py-3 text-white text-lg"
+              />
+            </div>
+            
+            {/* Submit */}
+            <button 
+              onClick={handleAddTransaction}
+              disabled={!txAmount}
+              className={`w-full py-3 rounded-lg font-bold text-lg ${
+                txType === 'deposit' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {txType === 'deposit' ? '+' : '-'} ${txAmount || '0'} {txType === 'deposit' ? 'Add' : 'Deduct'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
