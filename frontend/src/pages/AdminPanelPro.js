@@ -83,13 +83,15 @@ const AdminPanelPro = () => {
         setDeposits(manualRes.data?.requests || []);
         setAutoDeposits(autoRes.data?.deposits || []);
       } else if (activeTab === 'withdrawal') {
-        // Fetch withdrawals and users together for verified check
-        const [withdrawRes, usersRes] = await Promise.all([
-          axios.get(`${API}/api/admin/withdrawal-requests`, { headers }),
-          axios.get(`${API}/api/admin/users`, { headers })
-        ]);
+        // First show withdrawals immediately
+        const withdrawRes = await axios.get(`${API}/api/admin/withdrawal-requests`, { headers });
         setWithdrawals(withdrawRes.data?.requests || withdrawRes.data?.withdrawals || withdrawRes.data || []);
-        setUsers(usersRes.data?.users || usersRes.data || []);
+        setLoading(false);
+        // Then load users in background for balance info
+        axios.get(`${API}/api/admin/users`, { headers }).then(usersRes => {
+          setUsers(usersRes.data?.users || usersRes.data || []);
+        }).catch(() => {});
+        return; // Skip setLoading(false) at end
       } else if (activeTab === 'addresses') {
         const res = await axios.get(`${API}/api/admin/deposit-addresses`, { headers });
         setAddresses(res.data?.addresses || []);
@@ -327,11 +329,21 @@ const AdminPanelPro = () => {
 
       {/* Content */}
       <main className="p-4">
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <RefreshCw className="animate-spin text-[#F0B90B]" size={40} />
+        {loading && (
+          <div className="space-y-3">
+            {[1,2,3].map(i => (
+              <div key={i} className="bg-[#111] border border-[#222] rounded-xl p-4 animate-pulse">
+                <div className="flex justify-between mb-3">
+                  <div className="h-6 bg-[#222] rounded w-20"></div>
+                  <div className="h-6 bg-[#222] rounded w-16"></div>
+                </div>
+                <div className="h-4 bg-[#222] rounded w-40 mb-2"></div>
+                <div className="h-4 bg-[#222] rounded w-32"></div>
+              </div>
+            ))}
           </div>
-        ) : (
+        )}
+        {!loading && (
           <>
             {/* DASHBOARD */}
             {activeTab === 'dashboard' && (
