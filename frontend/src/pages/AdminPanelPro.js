@@ -44,7 +44,7 @@ const AdminPanelPro = () => {
   
   // Withdrawal filter state
   const [withdrawalFilter, setWithdrawalFilter] = useState('pending');
-  const [showTodayOnly, setShowTodayOnly] = useState(true);
+  const [showTodayOnly, setShowTodayOnly] = useState(false);
   
   // Deposit search state
   const [depositSearch, setDepositSearch] = useState('');
