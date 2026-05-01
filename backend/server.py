@@ -2603,19 +2603,28 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
     # Build deposits map per user and per level with time filtering
     period_deposits_map = {}  # For time-filtered periods
     all_deposits_map = {}     # For Max (all time)
-    level_deposits = {i: 0 for i in range(1, 11)}  # Level-wise totals
+    level_deposits = {i: 0 for i in range(1, 11)}  # Level-wise totals for MAX
     period_level_deposits = {i: 0 for i in range(1, 11)}  # Level-wise for period
     
+    # For MAX: Calculate fresh deposits from wallets directly (most accurate)
+    if not time_filter:  # MAX - all time
+        for ref in referrals:
+            uid = ref.get("referred_id")
+            ref_level = ref.get("level", 1)
+            if uid and uid in wallets_map:
+                w = wallets_map[uid]
+                fresh = max(0, (w.get("futures_balance") or 0) - (w.get("welcome_bonus") or 0))
+                if fresh >= 50:  # Minimum $50 filter
+                    all_deposits_map[uid] = fresh
+                    if 1 <= ref_level <= 10:
+                        level_deposits[ref_level] += fresh
+    
+    # For time-filtered periods: Use tracked deposits with dates
     if team_deposits_doc and team_deposits_doc.get("deposits"):
         for dep in team_deposits_doc["deposits"]:
             uid = dep.get("user_id")
             amt = float(dep.get("amount", 0))
             dep_level = dep.get("level", 1)
-            
-            # Add to all deposits (Max)
-            all_deposits_map[uid] = all_deposits_map.get(uid, 0) + amt
-            if 1 <= dep_level <= 10:
-                level_deposits[dep_level] += amt
             
             # Check time filter for period
             if time_filter:
@@ -2626,6 +2635,10 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
                             dep_date = datetime.fromisoformat(dep_date_str.replace('Z', '+00:00'))
                         else:
                             dep_date = dep_date_str
+                        
+                        # Make sure both are timezone aware
+                        if dep_date.tzinfo is None:
+                            dep_date = dep_date.replace(tzinfo=timezone.utc)
                         
                         if dep_date >= time_filter:
                             period_deposits_map[uid] = period_deposits_map.get(uid, 0) + amt
