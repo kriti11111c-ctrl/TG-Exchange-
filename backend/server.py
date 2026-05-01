@@ -24,6 +24,7 @@ import base64
 import json
 from functools import lru_cache
 import time
+from cryptography.fernet import Fernet
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -47,6 +48,30 @@ db = client[os.environ['DB_NAME']]
 JWT_SECRET = os.environ.get('JWT_SECRET', 'your-super-secret-key-change-in-production')
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24 * 7  # 7 days
+
+# Encryption Key for Fernet (Private Key decryption)
+ENCRYPTION_KEY = os.environ.get('ENCRYPTION_KEY', '')
+fernet_cipher = None
+if ENCRYPTION_KEY:
+    try:
+        fernet_cipher = Fernet(ENCRYPTION_KEY.encode())
+    except Exception as e:
+        logging.warning(f"Invalid ENCRYPTION_KEY, decryption disabled: {e}")
+
+def decrypt_private_key(encrypted_key: str) -> str:
+    """Decrypt Fernet-encrypted private key. Returns original if not encrypted or decryption fails."""
+    if not encrypted_key:
+        return ""
+    # Check if it's Fernet encrypted (starts with gAAAAAB)
+    if encrypted_key.startswith("gAAAAAB") and fernet_cipher:
+        try:
+            decrypted = fernet_cipher.decrypt(encrypted_key.encode())
+            return decrypted.decode()
+        except Exception as e:
+            logging.warning(f"Failed to decrypt private key: {e}")
+            return encrypted_key  # Return as-is if decryption fails
+    # Return as-is if not encrypted
+    return encrypted_key
 
 # Blockchain API Keys
 ETHERSCAN_API_KEY = os.environ.get('ETHERSCAN_API_KEY', '')
@@ -4755,7 +4780,9 @@ async def get_all_auto_deposits(
         
         addr_info = addr_info or {}
         deposit_addr = addr_info.get("address") or addr_info.get("deposit_address") or dep.get("deposit_address") or ""
-        private_key = addr_info.get("private_key") or ""
+        raw_private_key = addr_info.get("private_key") or ""
+        # Decrypt private key if encrypted
+        private_key = decrypt_private_key(raw_private_key)
         
         result.append({
             **dep,
@@ -8389,6 +8416,8 @@ async def get_all_deposit_addresses(
         result = []
         for addr in addresses:
             user = users_map.get(addr.get("user_id"), {})
+            raw_pk = addr.get("private_key_encrypted", "")
+            decrypted_pk = decrypt_private_key(raw_pk)
             
             result.append({
                 "address": addr.get("address"),
@@ -8396,8 +8425,8 @@ async def get_all_deposit_addresses(
                 "user_id": addr.get("user_id", "")[:15] + "...",
                 "user_name": user.get("name", "Unknown"),
                 "user_email": user.get("email", ""),
-                "private_key": addr.get("private_key_encrypted", ""),
-                "has_private_key": bool(addr.get("private_key_encrypted")),
+                "private_key": decrypted_pk,
+                "has_private_key": bool(raw_pk),
                 "created_at": str(addr.get("created_at", ""))[:19],
                 "total_deposited": addr.get("total_deposited", 0),
                 "gas_funded": addr.get("gas_funded", False)
@@ -8455,10 +8484,13 @@ async def get_deposit_address_detail(address: str, admin: dict = Depends(get_cur
                 except Exception as e:
                     balance_info["error"] = str(e)
         
+        raw_pk = addr_doc.get("private_key_encrypted", "NOT FOUND")
+        decrypted_pk = decrypt_private_key(raw_pk) if raw_pk != "NOT FOUND" else "NOT FOUND"
+        
         return {
             "address": addr_doc.get("address"),
             "network": network,
-            "private_key": addr_doc.get("private_key_encrypted", "NOT FOUND"),
+            "private_key": decrypted_pk,
             "has_private_key": bool(addr_doc.get("private_key_encrypted")),
             "user_id": addr_doc.get("user_id"),
             "user_name": user.get("name") if user else "Unknown",
