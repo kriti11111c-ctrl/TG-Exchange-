@@ -366,133 +366,69 @@ const FuturesPage = () => {
         </div>
       </div>
 
-      {/* Trade Code Section - PREMIUM COUPON DESIGN */}
+      {/* Trade Code Section - PREMIUM DESIGN */}
       <div className="px-3 pb-20">
-        <div className="relative overflow-hidden rounded-3xl" style={{
-          background: 'linear-gradient(135deg, #0f1419 0%, #1a2332 50%, #0d1117 100%)',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)'
-        }}>
-          {/* Coupon Perforated Edge - Left */}
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-8 bg-[#0B0E11] rounded-r-full" style={{boxShadow: 'inset -2px 0 4px rgba(0,0,0,0.3)'}}></div>
-          {/* Coupon Perforated Edge - Right */}
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-4 h-8 bg-[#0B0E11] rounded-l-full" style={{boxShadow: 'inset 2px 0 4px rgba(0,0,0,0.3)'}}></div>
-          
-          {/* Glowing Border Effect */}
-          <div className="absolute inset-0 rounded-3xl" style={{
-            background: 'linear-gradient(90deg, #10b981, #f59e0b, #10b981)',
-            padding: '2px',
-            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-            WebkitMaskComposite: 'xor',
-            maskComposite: 'exclude'
-          }}></div>
-          
-          {/* Header with Gradient */}
-          <div className="relative px-5 pt-4 pb-3" style={{
-            background: 'linear-gradient(90deg, rgba(16,185,129,0.2) 0%, rgba(245,158,11,0.2) 100%)',
-            borderBottom: '1px dashed rgba(255,255,255,0.1)'
-          }}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    boxShadow: '0 4px 20px rgba(16,185,129,0.4)'
-                  }}>
-                    <Ticket size={24} className="text-white" weight="fill" />
-                  </div>
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center">
-                    <span className="text-[8px] font-bold text-black">AI</span>
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-white font-black text-lg tracking-wide">TRADE SIGNAL</h3>
-                  <p className="text-emerald-400 text-xs font-medium">Premium Profit Code</p>
-                </div>
+        <div className={`p-4 rounded-2xl border-2 ${isDark ? 'border-[#0ECB81]/30 bg-gradient-to-br from-[#0ECB81]/10 to-[#0B0E11]' : 'border-[#0ECB81]/30 bg-gradient-to-br from-[#0ECB81]/5 to-white'}`}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#0ECB81] to-[#0ECB81]/60 flex items-center justify-center">
+                <Ticket size={18} className="text-white" weight="fill" />
               </div>
-              <div className="flex flex-col items-end">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{
-                  background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
-                  boxShadow: '0 2px 10px rgba(16,185,129,0.4)'
-                }}>
-                  <span className="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-                  <span className="text-xs text-white font-black">LIVE</span>
-                </div>
-                <span className="text-[10px] text-gray-500 mt-1">60-65% Profit</span>
+              <div>
+                <span className={`text-sm font-bold ${text}`}>AI Trade Signal</span>
+                <p className="text-[10px] text-[#0ECB81]">Paste code from notification</p>
               </div>
+            </div>
+            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#0ECB81]/20">
+              <span className="w-2 h-2 rounded-full bg-[#0ECB81] animate-pulse"></span>
+              <span className="text-[10px] text-[#0ECB81] font-bold">LIVE</span>
             </div>
           </div>
           
-          {/* Main Content */}
-          <div className="relative px-5 py-4">
-            {/* Success Message - Premium */}
-            {codeSuccess && (
-              <div className="mb-4 p-4 rounded-2xl relative overflow-hidden" style={{
-                background: 'linear-gradient(135deg, rgba(16,185,129,0.3) 0%, rgba(16,185,129,0.1) 100%)',
-                border: '1px solid rgba(16,185,129,0.5)'
-              }}>
-                <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/20 rounded-full blur-3xl"></div>
-                <div className="relative flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center" style={{
-                    boxShadow: '0 4px 15px rgba(16,185,129,0.5)'
-                  }}>
-                    <CheckCircle size={24} className="text-white" weight="fill" />
+          {/* Success Message - Enhanced */}
+          {codeSuccess && (
+            <div className="mb-4 p-4 rounded-xl bg-gradient-to-br from-[#0ECB81]/30 to-[#0ECB81]/10 border border-[#0ECB81]/50 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-20 h-20 bg-[#0ECB81]/20 rounded-full blur-2xl"></div>
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-[#0ECB81] flex items-center justify-center">
+                    <CheckCircle size={20} className="text-white" weight="fill" />
                   </div>
                   <div>
-                    <span className="text-emerald-400 font-black text-lg">Trade Successful!</span>
-                    <p className="text-xs text-gray-400">{codeSuccess.coin_name || codeSuccess.coin?.toUpperCase()}</p>
+                    <span className="text-[#0ECB81] font-bold">Trade Successful!</span>
+                    <p className="text-[10px] text-white/60">{codeSuccess.coin_name || codeSuccess.coin}</p>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center p-3 rounded-xl bg-black/30">
-                    <span className="text-gray-400 text-xs">Trade Amount</span> 
+                <div className={`text-sm space-y-2`}>
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-black/20">
+                    <span className="text-white/60 text-xs">Trade Amount</span> 
                     <span className="text-white font-bold">${codeSuccess.trade_amount_usdt?.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between items-center p-3 rounded-xl bg-black/30">
-                    <span className="text-gray-400 text-xs">Profit Earned</span> 
-                    <span className="text-emerald-400 font-black text-xl">+${codeSuccess.profit_usdt?.toFixed(2)}</span>
+                  <div className="flex justify-between items-center p-2 rounded-lg bg-black/20">
+                    <span className="text-white/60 text-xs">Profit Earned</span> 
+                    <span className="text-[#0ECB81] font-bold text-lg">+${codeSuccess.profit_usdt?.toFixed(2)}</span>
                   </div>
                   <div className="text-center pt-2">
-                    <span className="px-4 py-1 rounded-full text-xs font-black" style={{
-                      background: 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)'
-                    }}>{codeSuccess.profit_percent}% PROFIT</span>
+                    <span className="text-[#F0B90B] text-xs font-bold">{codeSuccess.profit_percent}% PROFIT RATE</span>
                   </div>
                 </div>
               </div>
-            )}
-            
-            {/* Code Input - Coupon Style */}
-            <div className="relative">
-              <div className="absolute -left-5 top-1/2 -translate-y-1/2 flex flex-col gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="w-2 h-2 rounded-full bg-[#0B0E11]"></div>
-                ))}
-              </div>
-              <div className="absolute -right-5 top-1/2 -translate-y-1/2 flex flex-col gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="w-2 h-2 rounded-full bg-[#0B0E11]"></div>
-                ))}
-              </div>
-              
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <div className="absolute inset-0 rounded-xl" style={{
-                    background: 'linear-gradient(90deg, #10b981, #f59e0b)',
-                    padding: '2px'
-                  }}>
-                    <div className="w-full h-full rounded-xl bg-[#0d1117]"></div>
-                  </div>
-                  <Input
-                    type="text"
-                    value={tradeCode}
-                    onChange={(e) => setTradeCode(e.target.value.toLowerCase())}
-                    placeholder="paste code here"
-                    className="relative w-full text-center text-sm bg-transparent border-0 text-white lowercase tracking-[0.3em] font-mono h-14 rounded-xl focus:ring-0 placeholder:text-gray-600 placeholder:tracking-[0.2em]"
-                    style={{background: 'transparent'}}
-                    data-testid="trade-code-input"
-                  />
-                </div>
-                <Button
-                  onClick={async () => {
+            </div>
+          )}
+          
+          <div className="flex gap-2">
+            <div className="flex-1 relative">
+              <Input
+                type="text"
+                value={tradeCode}
+                onChange={(e) => setTradeCode(e.target.value.toUpperCase())}
+                placeholder="PASTE CODE HERE"
+                className={`w-full text-center text-sm ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-100'} ${border} ${text} uppercase tracking-[0.2em] font-mono h-12 rounded-xl focus:ring-2 focus:ring-[#0ECB81]/50 placeholder:text-[#5E6673]`}
+                data-testid="trade-code-input"
+              />
+            </div>
+            <Button
+              onClick={async () => {
                 if (!tradeCode.trim()) {
                   toast.error("Please enter trade code");
                   return;
@@ -555,27 +491,15 @@ const FuturesPage = () => {
                 }
               }}
               disabled={applyingCode || !tradeCode.trim()}
-              className="h-14 px-8 rounded-xl font-black text-white text-sm disabled:opacity-50 transition-all transform hover:scale-105 active:scale-95"
-              style={{
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                boxShadow: '0 4px 20px rgba(16,185,129,0.4)'
-              }}
+              className="h-12 px-6 bg-gradient-to-r from-[#0ECB81] to-[#0ECB81]/80 hover:from-[#0ECB81]/90 hover:to-[#0ECB81]/70 text-white font-bold rounded-xl shadow-lg shadow-[#0ECB81]/20 disabled:opacity-50 disabled:shadow-none transition-all"
               data-testid="apply-code-button"
             >
-              {applyingCode ? "..." : "APPLY"}
+              {applyingCode ? "..." : "Apply"}
             </Button>
-              </div>
-            </div>
-            
-            {/* Footer Info */}
-            <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-gray-500">
-              <span>🔒 Secure</span>
-              <span>•</span>
-              <span>⚡ Instant Profit</span>
-              <span>•</span>
-              <span>💰 1% Trade</span>
-            </div>
           </div>
+          <p className={`text-[10px] ${textMuted} mt-2`}>
+            Paste code from notification to execute trade
+          </p>
         </div>
       </div>
 
