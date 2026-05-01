@@ -6846,8 +6846,8 @@ IST_OFFSET = timedelta(hours=5, minutes=30)
 
 # Trade slots configuration - IST Times
 TRADE_SLOTS = [
-    {"slot": "morning", "hour": 10, "minute": 45, "name": "10:45 AM"},
-    {"slot": "evening", "hour": 20, "minute": 30, "name": "8:30 PM"}
+    {"slot": "05:15", "hour": 10, "minute": 45, "name": "10:45 AM IST (05:15 UTC)"},
+    {"slot": "15:00", "hour": 20, "minute": 30, "name": "8:30 PM IST (15:00 UTC)"}
 ]
 
 async def get_random_coin_data():
@@ -6988,6 +6988,7 @@ async def auto_generate_trade_codes_for_slot(slot_config: dict):
 
 async def check_and_generate_scheduled_codes():
     """Background task to check and generate trade codes at scheduled times"""
+    logging.info("=== AUTO CODE SCHEDULER STARTED ===")
     while True:
         try:
             now = datetime.now(timezone.utc)
@@ -6996,9 +6997,11 @@ async def check_and_generate_scheduled_codes():
             current_hour = ist_now.hour
             current_minute = ist_now.minute
             
+            logging.info(f"Scheduler check: IST {current_hour}:{current_minute:02d}")
+            
             for slot in TRADE_SLOTS:
-                # Check if we're within 1 minute of scheduled time
-                if current_hour == slot["hour"] and current_minute == slot["minute"]:
+                # Check if we're within 2 minutes of scheduled time
+                if current_hour == slot["hour"] and abs(current_minute - slot["minute"]) <= 2:
                     # Check if codes already generated for this slot today
                     today_start_ist = ist_now.replace(hour=0, minute=0, second=0, microsecond=0)
                     today_start_utc = today_start_ist - IST_OFFSET
@@ -7010,8 +7013,11 @@ async def check_and_generate_scheduled_codes():
                     })
                     
                     if not existing:
-                        logging.info(f"Triggering auto trade code generation for {slot['name']} IST")
+                        logging.info(f"=== TRIGGERING AUTO CODE GENERATION for {slot['name']} ===")
                         await auto_generate_trade_codes_for_slot(slot)
+                        logging.info(f"=== CODE GENERATION COMPLETED for {slot['name']} ===")
+                    else:
+                        logging.info(f"Codes already generated for {slot['name']} today")
             
             # Check every 30 seconds
             await asyncio.sleep(30)
