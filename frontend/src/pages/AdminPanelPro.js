@@ -44,10 +44,19 @@ const AdminPanelPro = () => {
   
   // Withdrawal filter state
   const [withdrawalFilter, setWithdrawalFilter] = useState('pending');
+  const [showTodayOnly, setShowTodayOnly] = useState(true);
   
   // Deposit search state
   const [depositSearch, setDepositSearch] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
+
+  // Helper: Check if date is today
+  const isToday = (dateStr) => {
+    if (!dateStr) return false;
+    const date = new Date(dateStr);
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
 
   const adminToken = localStorage.getItem('adminToken');
 
@@ -638,6 +647,26 @@ const AdminPanelPro = () => {
             {/* WITHDRAWALS - Professional with App Balance & TX Hash */}
             {activeTab === 'withdrawal' && (
               <div className="space-y-4">
+                {/* Today Toggle + Stats Cards */}
+                <div className="mb-4">
+                  <button
+                    onClick={() => setShowTodayOnly(!showTodayOnly)}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                      showTodayOnly 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-[#222] text-gray-400 hover:bg-[#333]'
+                    }`}
+                  >
+                    {showTodayOnly ? '📅 Today Only' : '📋 All Time'}
+                  </button>
+                  <span className="ml-3 text-sm text-gray-500">
+                    {showTodayOnly 
+                      ? `Today's Fresh: ${withdrawals.filter(w => isToday(w.created_at)).length}` 
+                      : `Total: ${withdrawals.length}`
+                    }
+                  </span>
+                </div>
+
                 {/* Stats Cards - Status Filters */}
                 <div className="grid grid-cols-3 gap-3">
                   <div 
@@ -648,7 +677,9 @@ const AdminPanelPro = () => {
                         : 'bg-yellow-500/10 border border-yellow-500/30 hover:bg-yellow-500/20'
                     }`}
                   >
-                    <p className="text-3xl font-bold text-yellow-400">{withdrawals.filter(w => w.status === 'pending').length}</p>
+                    <p className="text-3xl font-bold text-yellow-400">
+                      {withdrawals.filter(w => w.status === 'pending' && (!showTodayOnly || isToday(w.created_at))).length}
+                    </p>
                     <p className="text-xs text-yellow-400/80 mt-1">PENDING</p>
                   </div>
                   <div 
@@ -659,7 +690,9 @@ const AdminPanelPro = () => {
                         : 'bg-green-500/10 border border-green-500/30 hover:bg-green-500/20'
                     }`}
                   >
-                    <p className="text-3xl font-bold text-green-400">{withdrawals.filter(w => w.status === 'approved').length}</p>
+                    <p className="text-3xl font-bold text-green-400">
+                      {withdrawals.filter(w => w.status === 'approved' && (!showTodayOnly || isToday(w.created_at))).length}
+                    </p>
                     <p className="text-xs text-green-400/80 mt-1">COMPLETE</p>
                   </div>
                   <div 
@@ -670,14 +703,16 @@ const AdminPanelPro = () => {
                         : 'bg-red-500/10 border border-red-500/30 hover:bg-red-500/20'
                     }`}
                   >
-                    <p className="text-3xl font-bold text-red-400">{withdrawals.filter(w => w.status === 'rejected').length}</p>
+                    <p className="text-3xl font-bold text-red-400">
+                      {withdrawals.filter(w => w.status === 'rejected' && (!showTodayOnly || isToday(w.created_at))).length}
+                    </p>
                     <p className="text-xs text-red-400/80 mt-1">REJECTED</p>
                   </div>
                 </div>
 
-                {/* Withdrawal Cards - Filtered */}
-                {withdrawals.filter(w => w.status === withdrawalFilter).length > 0 ? 
-                  withdrawals.filter(w => w.status === withdrawalFilter).map((w, idx) => {
+                {/* Withdrawal Cards - Filtered by status AND today toggle */}
+                {withdrawals.filter(w => w.status === withdrawalFilter && (!showTodayOnly || isToday(w.created_at))).length > 0 ? 
+                  withdrawals.filter(w => w.status === withdrawalFilter && (!showTodayOnly || isToday(w.created_at))).map((w, idx) => {
                   // Get balance directly from withdrawal request (added by backend)
                   const futuresBalance = w.futures_balance || 0;
                   const spotBalance = w.spot_balance || 0;
@@ -786,6 +821,7 @@ const AdminPanelPro = () => {
                 }) : (
                   <p className="text-gray-500 text-center py-8">
                     No {withdrawalFilter === 'pending' ? 'pending' : withdrawalFilter === 'approved' ? 'completed' : 'rejected'} withdrawals
+                    {showTodayOnly && ' today'}
                   </p>
                 )}
               </div>
