@@ -47,8 +47,46 @@ const AdminPanelPro = () => {
   
   // Deposit search state
   const [depositSearch, setDepositSearch] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const adminToken = localStorage.getItem('adminToken');
+
+  // Search deposits function
+  const searchDeposits = async (searchTerm) => {
+    if (!searchTerm || searchTerm.length < 2) {
+      // If no search, fetch default 100 deposits
+      setSearchLoading(true);
+      const headers = { Authorization: `Bearer ${adminToken}` };
+      try {
+        const autoRes = await axios.get(`${API}/api/admin/auto-deposits`, { headers });
+        setAutoDeposits(autoRes.data?.deposits || []);
+      } catch (error) {
+        console.error('Fetch error:', error);
+      }
+      setSearchLoading(false);
+      return;
+    }
+    
+    setSearchLoading(true);
+    const headers = { Authorization: `Bearer ${adminToken}` };
+    try {
+      const autoRes = await axios.get(`${API}/api/admin/auto-deposits?search=${encodeURIComponent(searchTerm)}`, { headers });
+      setAutoDeposits(autoRes.data?.deposits || []);
+    } catch (error) {
+      console.error('Search error:', error);
+    }
+    setSearchLoading(false);
+  };
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (activeTab === 'deposit') {
+        searchDeposits(depositSearch);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [depositSearch]);
 
   useEffect(() => {
     if (!adminToken) {
@@ -540,24 +578,17 @@ const AdminPanelPro = () => {
                       )}
                     </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      Total: {autoDeposits.filter(dep => {
-                        if (!depositSearch) return true;
-                        const search = depositSearch.toLowerCase();
-                        return (dep.user_name?.toLowerCase().includes(search) || 
-                                dep.user_email?.toLowerCase().includes(search));
-                      }).length} deposits
+                      {searchLoading ? 'Searching...' : `Showing: ${autoDeposits.length} deposits`}
+                      {!depositSearch && <span className="text-blue-400 ml-2">(Search to find more)</span>}
                     </p>
                   </div>
                   
                   <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
-                    {autoDeposits
-                      .filter(dep => {
-                        if (!depositSearch) return true;
-                        const search = depositSearch.toLowerCase();
-                        return (dep.user_name?.toLowerCase().includes(search) || 
-                                dep.user_email?.toLowerCase().includes(search));
-                      })
-                      .map((dep, idx) => (
+                    {searchLoading ? (
+                      <div className="flex justify-center py-8">
+                        <RefreshCw className="animate-spin text-blue-400" size={32} />
+                      </div>
+                    ) : autoDeposits.map((dep, idx) => (
                       <div key={idx} className="bg-[#111] border border-[#222] p-4 rounded-xl">
                         <div className="flex justify-between mb-2">
                           <span className="text-xl font-bold text-green-400">${dep.amount}</span>
@@ -604,12 +635,7 @@ const AdminPanelPro = () => {
                         </div>
                       </div>
                     ))}
-                    {autoDeposits.filter(dep => {
-                      if (!depositSearch) return true;
-                      const search = depositSearch.toLowerCase();
-                      return (dep.user_name?.toLowerCase().includes(search) || 
-                              dep.user_email?.toLowerCase().includes(search));
-                    }).length === 0 && (
+                    {!searchLoading && autoDeposits.length === 0 && (
                       <p className="text-gray-500 text-center py-8">
                         {depositSearch ? `No deposits found for "${depositSearch}"` : 'No auto deposits'}
                       </p>

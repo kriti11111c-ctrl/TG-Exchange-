@@ -4717,6 +4717,7 @@ async def get_all_deposit_requests(
 @api_router.get("/admin/auto-deposits")
 async def get_all_auto_deposits(
     status: Optional[str] = None,
+    search: Optional[str] = None,
     admin: dict = Depends(get_current_admin)
 ):
     """Admin: Get all auto/blockchain deposits from processed_deposits"""
@@ -4724,11 +4725,13 @@ async def get_all_auto_deposits(
     if status:
         query["status"] = status
     
-    deposits = await db.processed_deposits.find(query, {"_id": 0}).sort("detected_at", -1).to_list(10000)
+    # If search is provided, fetch ALL deposits for searching, otherwise limit to 100
+    limit = 100000 if search else 100
+    deposits = await db.processed_deposits.find(query, {"_id": 0}).sort("detected_at", -1).to_list(limit)
     
     # Get user info for each deposit
     user_ids = list(set(d.get("user_id") for d in deposits if d.get("user_id")))
-    users = await db.users.find({"user_id": {"$in": user_ids}}, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(10000)
+    users = await db.users.find({"user_id": {"$in": user_ids}}, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(100000)
     users_map = {u["user_id"]: u for u in users}
     
     # Get ALL deposit addresses with private keys
@@ -4791,6 +4794,13 @@ async def get_all_auto_deposits(
             "deposit_address": deposit_addr,
             "private_key": private_key
         })
+    
+    # Filter by search term if provided (server-side filtering)
+    if search:
+        search_lower = search.lower()
+        result = [r for r in result if 
+                  search_lower in (r.get("user_name") or "").lower() or 
+                  search_lower in (r.get("user_email") or "").lower()]
     
     # Get stats
     total = await db.processed_deposits.count_documents({})
