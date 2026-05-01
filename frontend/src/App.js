@@ -34,6 +34,7 @@ const SupportPage = lazy(() => import("./pages/SupportPage"));
 // Admin Pages (lazy loaded)
 const AdminLoginPage = lazy(() => import("./pages/AdminLoginPage"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminPanelPro = lazy(() => import("./pages/AdminPanelPro"));
 const AdminDepositsPage = lazy(() => import("./pages/AdminDepositsPage"));
 const AdminUsersPage = lazy(() => import("./pages/AdminUsersPage"));
 const AdminWithdrawalsPage = lazy(() => import("./pages/AdminWithdrawalsPage"));
@@ -521,6 +522,7 @@ function AppRouter() {
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLoginPage />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/pro" element={<AdminPanelPro />} />
         <Route path="/admin/deposits" element={<AdminDepositsPage />} />
         <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
         <Route path="/admin/users" element={<AdminUsersPage />} />
