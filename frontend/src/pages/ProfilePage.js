@@ -140,7 +140,7 @@ const ProfilePage = () => {
     { icon: Headset, label: "Help Center", path: "/profile/support", color: "#9333EA" },
     { icon: EnvelopeSimple, label: "Email Support", href: "mailto:TGexchange.support@gmail.com", color: "#EF4444", badge: "TAP", badgeColor: "#0ECB81" },
     { icon: TelegramLogo, label: "Official Channel", href: "https://t.me/+BQgWwaC0W69iZTM1", color: "#0088CC", badge: "JOIN", badgeColor: "#0088CC" },
-    { icon: Info, label: "About", path: "/profile/about", color: "#6B7280", version: "v2.1.0" },
+    { icon: Info, label: "About", path: "/profile/about", color: "#6B7280", version: "v3.0.0" },
   ];
 
   const handleLogout = () => {
