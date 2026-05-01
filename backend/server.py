@@ -2587,10 +2587,8 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
     
     time_filter = None
     if period == "24h":
-        # Today's data - from midnight IST to now
-        midnight_ist = now_ist.replace(hour=0, minute=0, second=0, microsecond=0)
-        midnight_utc = midnight_ist - ist_offset
-        time_filter = midnight_utc
+        # Last 24 hours data - not midnight based
+        time_filter = now - timedelta(hours=24)
     elif period == "7d":
         time_filter = now - timedelta(days=7)
     elif period == "30d":
@@ -2671,6 +2669,32 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
                                 period_level_deposits[dep_level] += amt
                     except:
                         pass
+    
+    # Also check processed_deposits for time-filtered periods (fresh blockchain deposits)
+    if time_filter and referred_ids:
+        try:
+            processed_deps = await db.processed_deposits.find({
+                "user_id": {"$in": referred_ids},
+                "status": "credited",
+                "$or": [
+                    {"detected_at": {"$gte": time_filter}},
+                    {"created_at": {"$gte": time_filter}}
+                ]
+            }, {"_id": 0, "user_id": 1, "amount": 1}).to_list(100000)
+            
+            for pd in processed_deps:
+                uid = pd.get("user_id")
+                amt = float(pd.get("amount", 0))
+                if uid and amt > 0:
+                    # Find level for this user
+                    ref_match = next((r for r in referrals if r.get("referred_id") == uid), None)
+                    dep_level = ref_match.get("level", 1) if ref_match else 1
+                    
+                    period_deposits_map[uid] = period_deposits_map.get(uid, 0) + amt
+                    if 1 <= dep_level <= 10:
+                        period_level_deposits[dep_level] += amt
+        except Exception as e:
+            logging.warning(f"Error fetching processed deposits: {e}")
     
     # Calculate stats per level
     level_stats = []
