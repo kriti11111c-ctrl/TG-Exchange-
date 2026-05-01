@@ -2629,48 +2629,33 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
     level_deposits = {i: 0 for i in range(1, 11)}  # Level-wise totals for MAX
     period_level_deposits = {i: 0 for i in range(1, 11)}  # Level-wise for period
     
-    # For MAX: Calculate fresh deposits from wallets directly (most accurate)
+    # Build referral level map for quick lookup
+    referral_level_map = {}
+    for ref in referrals:
+        uid = ref.get("referred_id")
+        if uid:
+            referral_level_map[uid] = ref.get("level", 1)
+    
+    # For MAX: Calculate fresh deposits from processed_deposits (actual blockchain deposits)
     if not time_filter:  # MAX - all time
-        for ref in referrals:
-            uid = ref.get("referred_id")
-            ref_level = ref.get("level", 1)
-            if uid and uid in wallets_map:
-                w = wallets_map[uid]
-                fresh = max(0, (w.get("futures_balance") or 0) - (w.get("welcome_bonus") or 0))
-                if fresh >= 50:  # Minimum $50 filter
-                    all_deposits_map[uid] = fresh
-                    if 1 <= ref_level <= 10:
-                        level_deposits[ref_level] += fresh
-    
-    # For time-filtered periods: Use tracked deposits with dates
-    if team_deposits_doc and team_deposits_doc.get("deposits"):
-        for dep in team_deposits_doc["deposits"]:
-            uid = dep.get("user_id")
-            amt = float(dep.get("amount", 0))
-            dep_level = dep.get("level", 1)
+        try:
+            all_processed = await db.processed_deposits.find({
+                "user_id": {"$in": referred_ids},
+                "status": "credited"
+            }, {"_id": 0, "user_id": 1, "amount": 1}).to_list(100000)
             
-            # Check time filter for period
-            if time_filter:
-                dep_date_str = dep.get("date")
-                if dep_date_str:
-                    try:
-                        if isinstance(dep_date_str, str):
-                            dep_date = datetime.fromisoformat(dep_date_str.replace('Z', '+00:00'))
-                        else:
-                            dep_date = dep_date_str
-                        
-                        # Make sure both are timezone aware
-                        if dep_date.tzinfo is None:
-                            dep_date = dep_date.replace(tzinfo=timezone.utc)
-                        
-                        if dep_date >= time_filter:
-                            period_deposits_map[uid] = period_deposits_map.get(uid, 0) + amt
-                            if 1 <= dep_level <= 10:
-                                period_level_deposits[dep_level] += amt
-                    except:
-                        pass
+            for pd in all_processed:
+                uid = pd.get("user_id")
+                amt = float(pd.get("amount", 0))
+                if uid and amt > 0:
+                    ref_level = referral_level_map.get(uid, 1)
+                    all_deposits_map[uid] = all_deposits_map.get(uid, 0) + amt
+                    if 1 <= ref_level <= 10:
+                        level_deposits[ref_level] += amt
+        except Exception as e:
+            logging.warning(f"Error fetching all processed deposits: {e}")
     
-    # Also check processed_deposits for time-filtered periods (fresh blockchain deposits)
+    # For time-filtered periods (24h, 7d, 30d): Get fresh deposits from processed_deposits
     if time_filter and referred_ids:
         try:
             processed_deps = await db.processed_deposits.find({
@@ -2686,15 +2671,12 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
                 uid = pd.get("user_id")
                 amt = float(pd.get("amount", 0))
                 if uid and amt > 0:
-                    # Find level for this user
-                    ref_match = next((r for r in referrals if r.get("referred_id") == uid), None)
-                    dep_level = ref_match.get("level", 1) if ref_match else 1
-                    
+                    ref_level = referral_level_map.get(uid, 1)
                     period_deposits_map[uid] = period_deposits_map.get(uid, 0) + amt
-                    if 1 <= dep_level <= 10:
-                        period_level_deposits[dep_level] += amt
+                    if 1 <= ref_level <= 10:
+                        period_level_deposits[ref_level] += amt
         except Exception as e:
-            logging.warning(f"Error fetching processed deposits: {e}")
+            logging.warning(f"Error fetching period processed deposits: {e}")
     
     # Calculate stats per level
     level_stats = []
