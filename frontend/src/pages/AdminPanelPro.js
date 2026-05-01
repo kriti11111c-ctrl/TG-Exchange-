@@ -38,6 +38,9 @@ const AdminPanelPro = () => {
   const [txAmount, setTxAmount] = useState('');
   const [txType, setTxType] = useState('deposit');
   const [txWallet, setTxWallet] = useState('futures');
+  
+  // Withdrawal transaction hash states
+  const [txHashes, setTxHashes] = useState({});
 
   const adminToken = localStorage.getItem('adminToken');
 
@@ -124,6 +127,39 @@ const AdminPanelPro = () => {
   const handleReject = async (requestId) => {
     try {
       await axios.post(`${API}/api/admin/deposit-requests/action`, 
+        { request_id: requestId, action: 'reject' }, 
+        { headers: { Authorization: `Bearer ${adminToken}` } }
+      );
+      fetchData();
+    } catch (error) {
+      alert('Error: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  // Withdrawal approve with transaction hash
+  const handleWithdrawalApprove = async (requestId) => {
+    const txHash = txHashes[requestId];
+    if (!txHash || txHash.trim() === '') {
+      alert('Please enter Transaction Hash before approving!');
+      return;
+    }
+    try {
+      await axios.post(`${API}/api/admin/withdrawal-requests/action`, 
+        { request_id: requestId, action: 'approve', tx_hash: txHash }, 
+        { headers: { Authorization: `Bearer ${adminToken}` } }
+      );
+      setTxHashes(prev => ({ ...prev, [requestId]: '' }));
+      fetchData();
+      alert('Withdrawal approved successfully!');
+    } catch (error) {
+      alert('Error: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  // Withdrawal reject
+  const handleWithdrawalReject = async (requestId) => {
+    try {
+      await axios.post(`${API}/api/admin/withdrawal-requests/action`, 
         { request_id: requestId, action: 'reject' }, 
         { headers: { Authorization: `Bearer ${adminToken}` } }
       );
@@ -481,13 +517,14 @@ const AdminPanelPro = () => {
               </div>
             )}
 
-            {/* WITHDRAWALS - Enhanced with Verified/Unverified */}
+            {/* WITHDRAWALS - Professional with App Balance & TX Hash */}
             {activeTab === 'withdrawal' && (
               <div className="space-y-3">
                 <p className="text-gray-400 text-sm mb-4">Total: {withdrawals.length} withdrawal requests</p>
                 {withdrawals.length > 0 ? withdrawals.map((w, idx) => {
-                  // Find user to check if verified ($50+ deposit)
+                  // Find user to get futures balance
                   const withdrawUser = users.find(u => u.user_id === w.user_id);
+                  const futuresBalance = withdrawUser?.futures_balance || withdrawUser?.wallet?.futures_balance || 0;
                   const totalDeposited = withdrawUser?.total_deposited || withdrawUser?.wallet?.total_deposited || 0;
                   const isVerified = totalDeposited >= 50;
                   
@@ -513,18 +550,10 @@ const AdminPanelPro = () => {
                         </div>
                       </div>
                       
-                      {/* User Info */}
+                      {/* App Balance (Futures) */}
                       <div className="bg-[#0a0a0a] p-3 rounded-lg mb-3">
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <p className="text-gray-500">Total Deposited</p>
-                            <p className={`font-bold ${isVerified ? 'text-green-400' : 'text-red-400'}`}>${totalDeposited.toFixed(2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Min Required</p>
-                            <p className="text-gray-400">$50.00</p>
-                          </div>
-                        </div>
+                        <p className="text-gray-500 text-xs mb-1">App Balance (Futures)</p>
+                        <p className="text-xl font-bold text-green-400">${futuresBalance.toFixed(2)}</p>
                       </div>
                       
                       {/* Wallet Address */}
@@ -542,27 +571,49 @@ const AdminPanelPro = () => {
                         </div>
                       </div>
                       
+                      {/* Transaction Hash Input for Pending */}
+                      {w.status === 'pending' && (
+                        <div className="bg-[#0a0a0a] p-3 rounded-lg mb-3 border border-[#333]">
+                          <p className="text-gray-500 text-xs mb-2">Transaction Hash (Paste after sending)</p>
+                          <input
+                            type="text"
+                            value={txHashes[w.request_id] || ''}
+                            onChange={(e) => setTxHashes(prev => ({ ...prev, [w.request_id]: e.target.value }))}
+                            placeholder="Paste transaction hash here..."
+                            className="w-full bg-[#1a1a1a] border border-[#444] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500"
+                          />
+                        </div>
+                      )}
+                      
                       {/* Network & Time */}
-                      <div className="flex justify-between text-xs text-gray-500">
+                      <div className="flex justify-between text-xs text-gray-500 mb-3">
                         <span>Network: {w.network?.toUpperCase() || 'TRC20'}</span>
                         <span>{w.created_at?.slice(0, 19)}</span>
                       </div>
                       
                       {/* Action Buttons for Pending */}
                       {w.status === 'pending' && (
-                        <div className="flex gap-2 mt-3 pt-3 border-t border-[#222]">
+                        <div className="flex gap-2 pt-3 border-t border-[#222]">
                           <button 
-                            onClick={() => handleApprove(w.request_id)}
-                            className="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded-lg text-sm font-medium"
+                            onClick={() => handleWithdrawalApprove(w.request_id)}
+                            className="flex-1 bg-green-600 hover:bg-green-700 py-2.5 rounded-lg text-sm font-medium"
                           >
                             ✓ Approve
                           </button>
                           <button 
-                            onClick={() => handleReject(w.request_id)}
-                            className="flex-1 bg-red-600 hover:bg-red-700 py-2 rounded-lg text-sm font-medium"
+                            onClick={() => handleWithdrawalReject(w.request_id)}
+                            className="flex-1 bg-red-600 hover:bg-red-700 py-2.5 rounded-lg text-sm font-medium"
                           >
                             ✕ Reject
                           </button>
+                        </div>
+                      )}
+                      
+                      {/* Show TX Hash if approved */}
+                      {w.status === 'approved' && w.tx_hash && (
+                        <div className="bg-green-900/20 p-3 rounded-lg border border-green-900/50">
+                          <p className="text-green-400 text-xs mb-1">Transaction Hash</p>
+                          <code className="text-xs text-green-300 break-all">{w.tx_hash}</code>
                         </div>
                       )}
                     </div>
