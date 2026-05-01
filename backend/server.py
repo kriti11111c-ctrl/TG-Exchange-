@@ -5391,7 +5391,7 @@ async def admin_generate_codes_for_all(admin: dict = Depends(get_current_admin))
                 "scheduled_slot": "instant",
                 "slot_name": "LIVE Now",
                 "scheduled_start": now.isoformat(),
-                "expires_at": (now + timedelta(hours=12)).isoformat(),  # 12 hours validity
+                "expires_at": (now + timedelta(hours=1)).isoformat(),  # 1 hour validity
                 "profit_percent": profit_percent,
                 "fund_percent": fund_percent,
                 "multiplier": multiplier,
