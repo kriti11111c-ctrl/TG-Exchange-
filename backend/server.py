@@ -5391,7 +5391,7 @@ async def admin_generate_codes_for_all(admin: dict = Depends(get_current_admin))
                 "scheduled_slot": "instant",
                 "slot_name": "LIVE Now",
                 "scheduled_start": now.isoformat(),
-                "expires_at": (now + timedelta(minutes=60)).isoformat(),
+                "expires_at": (now + timedelta(hours=12)).isoformat(),  # 12 hours validity
                 "profit_percent": profit_percent,
                 "fund_percent": fund_percent,
                 "multiplier": multiplier,
@@ -5405,6 +5405,22 @@ async def admin_generate_codes_for_all(admin: dict = Depends(get_current_admin))
             }
             
             await db.trade_codes.insert_one(trade_code_doc)
+            
+            # Create notification for user
+            notification_doc = {
+                "notification_id": f"notif_{uuid.uuid4().hex[:12]}",
+                "user_id": user_id,
+                "type": "trade_code",
+                "title": "New Trade Code Available!",
+                "message": f"Your trade code {code} is ready! Coin: {coin_name} ({coin_symbol}). Valid for 12 hours. Use it now to earn {profit_percent}% profit!",
+                "trade_code": code,
+                "coin": coin_symbol,
+                "profit_percent": profit_percent,
+                "is_read": False,
+                "created_at": now.isoformat()
+            }
+            await db.notifications.insert_one(notification_doc)
+            
             codes_created += 1
             coin_assignments.append({"user": user.get("email"), "coin": coin_symbol})
         
@@ -5418,6 +5434,46 @@ async def admin_generate_codes_for_all(admin: dict = Depends(get_current_admin))
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+# ============ NOTIFICATION ENDPOINTS ============
+@api_router.get("/user/notifications")
+async def get_user_notifications(user: dict = Depends(get_current_user)):
+    """Get all notifications for current user"""
+    notifications = await db.notifications.find(
+        {"user_id": user["user_id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    unread_count = await db.notifications.count_documents({
+        "user_id": user["user_id"],
+        "is_read": False
+    })
+    
+    return {
+        "notifications": notifications,
+        "unread_count": unread_count
+    }
+
+@api_router.post("/user/notifications/mark-read")
+async def mark_notifications_read(user: dict = Depends(get_current_user)):
+    """Mark all notifications as read"""
+    await db.notifications.update_many(
+        {"user_id": user["user_id"], "is_read": False},
+        {"$set": {"is_read": True}}
+    )
+    return {"success": True, "message": "All notifications marked as read"}
+
+@api_router.delete("/user/notifications/{notification_id}")
+async def delete_notification(notification_id: str, user: dict = Depends(get_current_user)):
+    """Delete a specific notification"""
+    await db.notifications.delete_one({
+        "notification_id": notification_id,
+        "user_id": user["user_id"]
+    })
+    return {"success": True}
+# ============ END NOTIFICATION ENDPOINTS ============
 
 
 @api_router.get("/admin/trade-codes")
