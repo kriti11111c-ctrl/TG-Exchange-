@@ -531,8 +531,24 @@ const AdminPanelPro = () => {
 
             {/* WITHDRAWALS - Professional with App Balance & TX Hash */}
             {activeTab === 'withdrawal' && (
-              <div className="space-y-3">
-                <p className="text-gray-400 text-sm mb-4">Total: {withdrawals.length} withdrawal requests</p>
+              <div className="space-y-4">
+                {/* Stats Cards - Pending, Complete, Rejected */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-xl text-center">
+                    <p className="text-3xl font-bold text-yellow-400">{withdrawals.filter(w => w.status === 'pending').length}</p>
+                    <p className="text-xs text-yellow-400/80 mt-1">PENDING</p>
+                  </div>
+                  <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-xl text-center">
+                    <p className="text-3xl font-bold text-green-400">{withdrawals.filter(w => w.status === 'approved').length}</p>
+                    <p className="text-xs text-green-400/80 mt-1">COMPLETE</p>
+                  </div>
+                  <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl text-center">
+                    <p className="text-3xl font-bold text-red-400">{withdrawals.filter(w => w.status === 'rejected').length}</p>
+                    <p className="text-xs text-red-400/80 mt-1">REJECTED</p>
+                  </div>
+                </div>
+
+                {/* Withdrawal Cards */}
                 {withdrawals.length > 0 ? withdrawals.map((w, idx) => {
                   // Find user to get futures balance
                   const withdrawUser = users.find(u => u.user_id === w.user_id);
@@ -563,15 +579,15 @@ const AdminPanelPro = () => {
                         </div>
                       </div>
                       
-                      {/* Balances - A (App/Futures) & S (Support/Spot) */}
-                      <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div className="bg-[#0a0a0a] p-3 rounded-lg">
-                          <p className="text-gray-500 text-xs mb-1">A (App)</p>
-                          <p className="text-xl font-bold text-green-400">${futuresBalance.toFixed(2)}</p>
-                        </div>
-                        <div className="bg-[#0a0a0a] p-3 rounded-lg">
-                          <p className="text-gray-500 text-xs mb-1">S (Support)</p>
-                          <p className="text-xl font-bold text-blue-400">${spotBalance.toFixed(2)}</p>
+                      {/* Balances - S & F inline */}
+                      <div className="bg-[#0a0a0a] p-3 rounded-lg mb-3">
+                        <div className="flex items-center gap-6">
+                          <span className="text-lg font-bold">
+                            <span className="text-gray-400">S</span> - <span className="text-blue-400">${spotBalance.toFixed(2)}</span>
+                          </span>
+                          <span className="text-lg font-bold">
+                            <span className="text-gray-400">F</span> - <span className="text-green-400">${futuresBalance.toFixed(2)}</span>
+                          </span>
                         </div>
                       </div>
                       
