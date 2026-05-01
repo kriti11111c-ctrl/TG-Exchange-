@@ -170,8 +170,8 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
   // Real-time base prices
   const LIVE_PRICES = { BTC: 77200, ETH: 2280, BNB: 617, SOL: 84, XRP: 1.37, ADA: 0.25, DOGE: 0.11, DOT: 4.5, MATIC: 0.25, LTC: 72 };
   
-  // Generate candles instantly for initial render
-  const generateInstantCandles = (price, tf = "15m") => {
+  // Generate candles instantly - memoized for performance
+  const generateInstantCandles = useCallback((price, tf = "15m") => {
     const result = [];
     let currentPx = price;
     const now = Date.now();
@@ -192,12 +192,14 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
       result.push({ time: now - (i * intervalMs), open, high, low, close, volume });
     }
     return result;
-  };
+  }, []);
 
   const basePrice = LIVE_PRICES[symbol] || currentPrice || 77200;
   
-  // Initialize with data immediately - NO empty state
-  const [candles, setCandles] = useState(() => generateInstantCandles(basePrice, "15m"));
+  // Pre-generate candles for instant display
+  const initialCandles = useMemo(() => generateInstantCandles(basePrice, "15m"), [basePrice, generateInstantCandles]);
+  
+  const [candles, setCandles] = useState(initialCandles);
   const [timeframe, setTimeframe] = useState("15m");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -215,7 +217,7 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
   useEffect(() => {
     const newPrice = LIVE_PRICES[symbol] || currentPrice || 77200;
     setCandles(generateInstantCandles(newPrice, timeframe));
-  }, [symbol, timeframe, currentPrice]);
+  }, [symbol, timeframe, currentPrice, generateInstantCandles]);
 
   // Fetch real candles in background (silent update)
   const fetchBinanceCandles = useCallback(async () => {
@@ -246,18 +248,15 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     }
   }, [symbol, timeframe]);
 
-  // Try to fetch real data in background (less frequently for better performance)
+  // Fetch real data immediately in background
   useEffect(() => {
-    // Fetch real data after 1 second delay
-    const timer = setTimeout(() => fetchBinanceCandles(), 1000);
+    // Fetch immediately (no delay)
+    fetchBinanceCandles();
     
-    // Refresh every 30 seconds (reduced from 10s)
+    // Refresh every 30 seconds
     const interval = setInterval(fetchBinanceCandles, 30000);
     
-    return () => {
-      clearTimeout(timer);
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [fetchBinanceCandles]);
 
   // Calculate indicators
