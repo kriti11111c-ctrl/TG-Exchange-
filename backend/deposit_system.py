@@ -977,10 +977,10 @@ async def check_and_process_deposits(db):
                     if referrer_id:
                         referral_bonus = round(amount * DIRECT_REFERRAL_BONUS_PERCENT, 2)  # 5%
                         
-                        # Add bonus to referrer's Spot wallet
+                        # Add bonus to referrer's Futures wallet (more visible to user)
                         await db.wallets.update_one(
                             {"user_id": referrer_id},
-                            {"$inc": {"balances.usdt": referral_bonus}},
+                            {"$inc": {"futures_balance": referral_bonus}},
                             upsert=True
                         )
                         
@@ -992,12 +992,12 @@ async def check_and_process_deposits(db):
                             "type": "first_deposit_referral_bonus",
                             "coin": "usdt",
                             "amount": referral_bonus,
-                            "note": f"5% bonus from {user_doc.get('name', user_id[:8])}'s first deposit of ${amount}",
+                            "note": f"5% Direct Reward from {user_doc.get('name', user_id[:8])}'s first deposit of ${amount}",
                             "status": "completed",
                             "created_at": datetime.now(timezone.utc).isoformat()
                         })
                         
-                        logger.info(f"AUTO 5% BONUS: Credited ${referral_bonus} USDT to {referrer_id} from {user_doc.get('name', user_id[:8])}'s deposit")
+                        logger.info(f"AUTO 5% BONUS: Credited ${referral_bonus} USDT to {referrer_id} (Futures) from {user_doc.get('name', user_id[:8])}'s deposit")
                 
                 await db.processed_deposits.update_one(
                     {"tx_hash": tx_hash},
