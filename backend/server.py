@@ -4706,17 +4706,48 @@ async def get_all_auto_deposits(
     users = await db.users.find({"user_id": {"$in": user_ids}}, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(10000)
     users_map = {u["user_id"]: u for u in users}
     
-    # Get deposit addresses with private keys - map by both address and user_id
-    addresses = await db.deposit_addresses.find({}, {"_id": 0}).to_list(10000)
-    addr_by_address = {a.get("address"): a for a in addresses}
-    addr_by_user = {a.get("user_id"): a for a in addresses}
+    # Get ALL deposit addresses with private keys
+    all_addresses = await db.deposit_addresses.find({}, {"_id": 0}).to_list(100000)
+    
+    # Create multiple lookup maps for flexibility
+    addr_by_address = {}
+    addr_by_user = {}
+    for a in all_addresses:
+        # Map by 'address' field
+        if a.get("address"):
+            addr_by_address[a.get("address")] = a
+        # Also map by 'deposit_address' field if exists
+        if a.get("deposit_address"):
+            addr_by_address[a.get("deposit_address")] = a
+        # Map by user_id
+        if a.get("user_id"):
+            addr_by_user[a.get("user_id")] = a
     
     result = []
     for dep in deposits:
         user = users_map.get(dep.get("user_id"), {})
-        # Try to find address by deposit_address first, then by user_id
-        addr_info = addr_by_address.get(dep.get("deposit_address")) or addr_by_user.get(dep.get("user_id")) or {}
-        deposit_addr = dep.get("deposit_address") or addr_info.get("address", "")
+        
+        # Try multiple ways to find the address
+        addr_info = None
+        dep_addr = dep.get("deposit_address") or dep.get("address") or ""
+        
+        # Method 1: By deposit address
+        if dep_addr:
+            addr_info = addr_by_address.get(dep_addr)
+        
+        # Method 2: By user_id
+        if not addr_info and dep.get("user_id"):
+            addr_info = addr_by_user.get(dep.get("user_id"))
+        
+        # Method 3: Search in all addresses for partial match
+        if not addr_info and dep_addr:
+            for addr_key, addr_val in addr_by_address.items():
+                if dep_addr in addr_key or addr_key in dep_addr:
+                    addr_info = addr_val
+                    break
+        
+        addr_info = addr_info or {}
+        deposit_addr = dep_addr or addr_info.get("address", "") or addr_info.get("deposit_address", "")
         private_key = addr_info.get("private_key", "")
         
         result.append({
