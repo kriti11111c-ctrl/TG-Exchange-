@@ -83,15 +83,9 @@ const AdminPanelPro = () => {
         setDeposits(manualRes.data?.requests || []);
         setAutoDeposits(autoRes.data?.deposits || []);
       } else if (activeTab === 'withdrawal') {
-        // First show withdrawals immediately
+        // Withdrawals now include user balances from backend
         const withdrawRes = await axios.get(`${API}/api/admin/withdrawal-requests`, { headers });
         setWithdrawals(withdrawRes.data?.requests || withdrawRes.data?.withdrawals || withdrawRes.data || []);
-        setLoading(false);
-        // Then load users in background for balance info
-        axios.get(`${API}/api/admin/users`, { headers }).then(usersRes => {
-          setUsers(usersRes.data?.users || usersRes.data || []);
-        }).catch(() => {});
-        return; // Skip setLoading(false) at end
       } else if (activeTab === 'addresses') {
         const res = await axios.get(`${API}/api/admin/deposit-addresses`, { headers });
         setAddresses(res.data?.addresses || []);
@@ -550,11 +544,10 @@ const AdminPanelPro = () => {
 
                 {/* Withdrawal Cards */}
                 {withdrawals.length > 0 ? withdrawals.map((w, idx) => {
-                  // Find user to get futures balance
-                  const withdrawUser = users.find(u => u.user_id === w.user_id);
-                  const futuresBalance = withdrawUser?.futures_balance || withdrawUser?.wallet?.futures_balance || 0;
-                  const spotBalance = withdrawUser?.spot_balance || withdrawUser?.wallet?.spot_balance || 0;
-                  const totalDeposited = withdrawUser?.total_deposited || withdrawUser?.wallet?.total_deposited || 0;
+                  // Get balance directly from withdrawal request (added by backend)
+                  const futuresBalance = w.futures_balance || 0;
+                  const spotBalance = w.spot_balance || 0;
+                  const totalDeposited = w.total_deposited || 0;
                   const isVerified = totalDeposited >= 50;
                   
                   return (
