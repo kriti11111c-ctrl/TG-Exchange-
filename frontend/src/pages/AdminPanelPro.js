@@ -628,7 +628,8 @@ const AdminPanelPro = () => {
                         <div>
                           <span className="text-2xl font-bold text-red-400">-${w.amount}</span>
                           <p className="text-lg font-bold text-green-400">Pay: ${payAmount}</p>
-                          <p className="text-sm text-gray-400 mt-1">{w.user_email || w.user_name || 'Unknown User'}</p>
+                          <p className="text-white font-medium mt-1">{w.user_name || 'No Name'}</p>
+                          <p className="text-sm text-gray-400">{w.user_email || 'No Email'}</p>
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <span className={`px-3 py-1 text-sm rounded-full ${

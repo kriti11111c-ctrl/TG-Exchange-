@@ -5224,15 +5224,23 @@ async def get_all_withdrawal_requests(
     
     requests = await db.withdrawal_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     
-    # Add user wallet balances to each request
+    # Add user wallet balances and name to each request
     for req in requests:
         user_id = req.get("user_id")
         if user_id:
+            # Get wallet
             wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0})
             if wallet:
                 req["spot_balance"] = wallet.get("spot_balance", 0)
                 req["futures_balance"] = wallet.get("futures_balance", 0)
                 req["total_deposited"] = wallet.get("total_deposited", 0)
+            
+            # Get user name
+            user = await db.users.find_one({"user_id": user_id}, {"_id": 0, "name": 1, "email": 1})
+            if user:
+                req["user_name"] = user.get("name", "")
+                if not req.get("user_email"):
+                    req["user_email"] = user.get("email", "")
     
     # Get stats
     total = await db.withdrawal_requests.count_documents({})
