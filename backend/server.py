@@ -5619,8 +5619,9 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     import random
     
     # Find the trade code (can be live, active, or scheduled)
+    # Try both uppercase and original case for backward compatibility
     trade_code = await db.trade_codes.find_one({
-        "code": data.code.upper(),
+        "code": {"$in": [data.code.upper(), data.code, data.code.lower()]},
         "status": {"$in": ["active", "scheduled", "live"]}  # Added "live" status
     })
     
@@ -5664,7 +5665,7 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     
     if now > expires_at:
         await db.trade_codes.update_one(
-            {"code": data.code.upper()},
+            {"code": trade_code["code"]},
             {"$set": {"status": "expired"}}
         )
         raise HTTPException(status_code=400, detail="Trade code has expired")
@@ -5756,7 +5757,7 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
     
     # Mark code as used with success result
     await db.trade_codes.update_one(
-        {"code": data.code.upper()},
+        {"code": trade_code["code"]},
         {
             "$set": {
                 "status": "used",
@@ -5782,7 +5783,7 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         "profit_usdt": profit_usdt,
         "open_price": open_price,  # Live price at execution
         "settlement_price": settlement_price,  # Calculated settlement
-        "trade_code": data.code.upper(),
+        "trade_code": trade_code["code"],
         "result": "success",
         "timestamp": now.isoformat(),
         "execution_time": now.isoformat()  # Exact execution time for uniqueness
@@ -5803,7 +5804,7 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         "profit_percent": profit_percent,
         "status": "completed",
         "result": "win",
-        "trade_code": data.code.upper(),
+        "trade_code": trade_code["code"],
         "created_at": now.isoformat(),
         "completed_at": now.isoformat(),
         "execution_timestamp": now.timestamp()  # Unix timestamp for sorting
