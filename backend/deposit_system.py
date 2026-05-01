@@ -774,6 +774,57 @@ async def get_or_create_deposit_address(db, user_id: str, network: str) -> Dict:
     }
 
 
+async def update_team_deposits_from_system(db, depositor_user_id: str, amount: float, timestamp):
+    """
+    Update team_deposits collection for all referrers up to 10 levels
+    Called when auto-deposit is credited to user
+    """
+    try:
+        visited = set()
+        current_user_id = depositor_user_id
+        level = 1
+        
+        while level <= 10 and current_user_id:
+            # Find the referrer of current user
+            ref_record = await db.referrals.find_one({"referred_id": current_user_id})
+            if not ref_record:
+                break
+                
+            referrer_id = ref_record.get("referrer_id")
+            if not referrer_id or referrer_id in visited:
+                break
+                
+            visited.add(referrer_id)
+            
+            # Create deposit entry
+            deposit_entry = {
+                "user_id": depositor_user_id,
+                "amount": float(amount),
+                "date": timestamp.isoformat(),
+                "level": level
+            }
+            
+            # Update team_deposits for this referrer
+            await db.team_deposits.update_one(
+                {"referrer_id": referrer_id},
+                {
+                    "$push": {"deposits": deposit_entry},
+                    "$inc": {"total_deposits": float(amount)},
+                    "$set": {"updated_at": timestamp.isoformat()}
+                },
+                upsert=True
+            )
+            
+            # Move to next level
+            current_user_id = referrer_id
+            level += 1
+            
+        logger.info(f"✅ Team deposits updated for {len(visited)} referrers (auto-deposit: ${amount})")
+        
+    except Exception as e:
+        logger.error(f"Error updating team deposits: {e}")
+
+
 async def check_and_process_deposits(db):
     """Background task to check and process all pending deposits with auto-forwarding"""
     try:
@@ -952,6 +1003,9 @@ async def check_and_process_deposits(db):
                     {"tx_hash": tx_hash},
                     {"$set": {"status": "credited", "credited_at": datetime.now(timezone.utc)}}
                 )
+                
+                # UPDATE TEAM DEPOSITS - Track deposit for referral stats
+                await update_team_deposits_from_system(db, user_id, amount, datetime.now(timezone.utc))
                 
                 await db.deposit_addresses.update_one(
                     {"_id": addr_doc["_id"]},
