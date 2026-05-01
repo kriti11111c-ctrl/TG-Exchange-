@@ -1519,7 +1519,7 @@ async def withdraw_crypto(withdraw: WithdrawRequest, user: dict = Depends(get_cu
         "type": "withdraw",
         "coin": coin,
         "status": "pending"
-    }).to_list(1000)
+    }).to_list(100000)
     pending_amount = sum(w.get("amount", 0) for w in pending_withdrawals)
     
     # Withdrawable = min(balance, real_deposits + trading_profit) - pending
@@ -2584,7 +2584,7 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
         )
     
     # Get all referrals where this user is the referrer
-    referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=1000)
+    referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=100000)
     
     # Get all referred user IDs
     referred_ids = list(set(r.get("referred_id") for r in referrals if r.get("referred_id")))
@@ -2593,7 +2593,7 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
     wallets_cursor = await db.wallets.find(
         {"user_id": {"$in": referred_ids}},
         {"_id": 0, "user_id": 1, "futures_balance": 1, "welcome_bonus": 1, "real_spot_deposits": 1}
-    ).to_list(length=1000)
+    ).to_list(length=100000)
     
     wallets_map = {w["user_id"]: w for w in wallets_cursor}
     
@@ -2771,7 +2771,7 @@ async def claim_referral_commission(user: dict = Depends(get_current_user)):
     user_id = user["user_id"]
     
     # Get all referrals for this user
-    referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=1000)
+    referrals = await db.referrals.find({"referrer_id": user_id}, {"_id": 0}).to_list(length=100000)
     
     total_unclaimed = sum(r.get("total_earnings", 0) for r in referrals)
     
@@ -4784,8 +4784,8 @@ async def process_deposit_request(approval: DepositApproval, admin: dict = Depen
 async def get_all_users(admin: dict = Depends(get_current_admin)):
     """Admin: Get all users with their wallet balances and credentials - OPTIMIZED"""
     # Fetch users and wallets in parallel
-    users_task = db.users.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
-    wallets_task = db.wallets.find({}, {"_id": 0}).to_list(1000)
+    users_task = db.users.find({}, {"_id": 0}).sort("created_at", -1).to_list(100000)
+    wallets_task = db.wallets.find({}, {"_id": 0}).to_list(100000)
     
     users, wallets = await asyncio.gather(users_task, wallets_task)
     
@@ -5088,7 +5088,7 @@ async def create_withdrawal_request(withdrawal: WithdrawalRequestModel, user: di
         "user_id": user["user_id"],
         "coin": coin.upper(),
         "status": "pending"
-    }).to_list(1000)
+    }).to_list(100000)
     pending_amount = sum(w.get("amount", 0) for w in pending_withdrawals)
     
     # Withdrawable = min(balance, real_deposits) - pending
@@ -5480,7 +5480,7 @@ async def admin_generate_codes_for_all(admin: dict = Depends(get_current_admin))
         all_users = await db.users.find(
             {},
             {"user_id": 1, "email": 1, "name": 1, "_id": 0}
-        ).to_list(length=1000)
+        ).to_list(length=100000)
         
         if not all_users:
             return {"success": False, "message": "No users found"}
@@ -6585,7 +6585,7 @@ async def get_futures_account(request: Request):
     history = await db.futures_positions.find(
         {"user_id": user_id, "status": "closed"},
         {"_id": 0}
-    ).to_list(length=1000)
+    ).to_list(length=100000)
     
     total_trades = len(history)
     total_pnl = sum(h.get("realized_pnl", 0) for h in history)
@@ -6812,7 +6812,7 @@ async def auto_generate_trade_codes_for_slot(slot_config: dict):
         all_users = await db.users.find(
             {},
             {"user_id": 1, "email": 1, "name": 1, "_id": 0}
-        ).to_list(length=1000)
+        ).to_list(length=100000)
         
         if not all_users:
             logging.info(f"No users found for auto trade code generation")
@@ -7116,7 +7116,7 @@ async def backfill_bronze_rewards(admin: dict = Depends(get_current_admin)):
         bronze_users = await db.users.find(
             {"team_rank_level": {"$gte": 1}},
             {"_id": 0, "user_id": 1, "username": 1, "team_rank_level": 1, "claimed_rank_rewards": 1}
-        ).to_list(length=1000)
+        ).to_list(length=100000)
         
         credited_users = []
         already_credited = []
@@ -7204,7 +7204,7 @@ async def check_missing_rewards(admin: dict = Depends(get_current_admin)):
         bronze_users = await db.users.find(
             {"team_rank_level": {"$gte": 1}},
             {"_id": 0, "user_id": 1, "username": 1, "team_rank_level": 1, "claimed_rank_rewards": 1}
-        ).to_list(length=1000)
+        ).to_list(length=100000)
         
         missing_reward = []
         has_reward = []
@@ -7257,7 +7257,7 @@ async def verify_bronze_ranks(admin: dict = Depends(get_current_admin)):
         bronze_users = await db.users.find(
             {"team_rank_level": {"$gte": 1}},
             {"_id": 0, "user_id": 1, "username": 1, "team_rank_level": 1}
-        ).to_list(length=1000)
+        ).to_list(length=100000)
         
         qualified = []
         not_qualified = []
@@ -7318,7 +7318,7 @@ async def fix_wrong_bronze_ranks(admin: dict = Depends(get_current_admin)):
         bronze_users = await db.users.find(
             {"team_rank_level": {"$gte": 1}},
             {"_id": 0, "user_id": 1, "username": 1, "team_rank_level": 1}
-        ).to_list(length=1000)
+        ).to_list(length=100000)
         
         fixed_users = []
         already_correct = []
@@ -7629,13 +7629,13 @@ async def get_salary_status(admin: dict = Depends(get_current_admin)):
         today_salaries = await db.transactions.find({
             "type": "daily_rank_salary",
             "date": today
-        }).to_list(length=1000)
+        }).to_list(length=100000)
         
         # Get all ranked users
         ranked_users = await db.users.find(
             {"team_rank_level": {"$gte": 1}},
             {"_id": 0, "user_id": 1, "username": 1, "team_rank_level": 1}
-        ).to_list(length=1000)
+        ).to_list(length=100000)
         
         credited_user_ids = [t.get("user_id") for t in today_salaries]
         
@@ -8227,14 +8227,14 @@ async def get_all_deposit_addresses(
         if network:
             query["network"] = network.lower()
         
-        addresses = await db.deposit_addresses.find(query, {"_id": 0}).sort("gas_funded", -1).to_list(length=1000)
+        addresses = await db.deposit_addresses.find(query, {"_id": 0}).sort("gas_funded", -1).to_list(length=100000)
         
         # Batch fetch all users at once for better performance
         user_ids = list(set(addr.get("user_id") for addr in addresses if addr.get("user_id")))
         users_cursor = await db.users.find(
             {"user_id": {"$in": user_ids}}, 
             {"_id": 0, "user_id": 1, "name": 1, "email": 1}
-        ).to_list(length=1000)
+        ).to_list(length=100000)
         users_map = {u["user_id"]: u for u in users_cursor}
         
         result = []
