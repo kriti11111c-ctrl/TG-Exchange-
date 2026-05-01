@@ -2545,42 +2545,49 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
     
     wallets_map = {w["user_id"]: w for w in wallets_cursor}
     
-    # If period filter, fetch approved deposits within the time period
+    # Fetch ALL approved deposits for team members (for any period calculation)
     period_deposits_map = {}
-    total_period_deposits = 0
+    all_deposits_map = {}
     
-    if time_filter:
-        time_filter_str = time_filter.isoformat()
-        # Get approved deposits in the time period for referred users
-        # Check both approved_at and created_at fields for compatibility
-        deposit_query = {
-            "user_id": {"$in": referred_ids},
-            "status": "approved",
-            "$or": [
-                {"approved_at": {"$gte": time_filter_str}},
-                {"created_at": {"$gte": time_filter_str}},
-                {"timestamp": {"$gte": time_filter_str}}
-            ]
-        }
-        period_deposits = await db.deposit_requests.find(
-            deposit_query, 
-            {"_id": 0, "user_id": 1, "amount": 1, "approved_at": 1, "created_at": 1}
-        ).to_list(length=10000)
+    # Get ALL approved deposits for referred users (no time filter)
+    all_deposits_query = {
+        "user_id": {"$in": referred_ids},
+        "status": "approved"
+    }
+    all_deposits = await db.deposit_requests.find(
+        all_deposits_query, 
+        {"_id": 0, "user_id": 1, "amount": 1, "approved_at": 1, "created_at": 1, "timestamp": 1}
+    ).to_list(length=10000)
+    
+    # Build deposits map for all and filtered periods
+    for dep in all_deposits:
+        uid = dep.get("user_id")
+        try:
+            amt = float(dep.get("amount", 0))
+        except:
+            amt = 0
         
-        logger.info(f"Period filter: {period}, Time filter: {time_filter_str}, Found {len(period_deposits)} deposits")
+        # Add to all deposits map (for Max)
+        all_deposits_map[uid] = all_deposits_map.get(uid, 0) + amt
         
-        for dep in period_deposits:
-            uid = dep.get("user_id")
-            try:
-                amt = float(dep.get("amount", 0))
-            except:
-                amt = 0
-            period_deposits_map[uid] = period_deposits_map.get(uid, 0) + amt
-            total_period_deposits += amt
-    else:
-        # For "all" period, calculate from wallets
-        for wallet in wallets_cursor:
-            total_period_deposits += wallet.get("real_spot_deposits", 0)
+        # Check if deposit falls within the time filter period
+        if time_filter:
+            # Get deposit date from any available field
+            dep_date_str = dep.get("approved_at") or dep.get("created_at") or dep.get("timestamp")
+            if dep_date_str:
+                try:
+                    # Parse the date string
+                    if isinstance(dep_date_str, str):
+                        dep_date = datetime.fromisoformat(dep_date_str.replace('Z', '+00:00'))
+                    else:
+                        dep_date = dep_date_str
+                    
+                    # Check if within period
+                    if dep_date >= time_filter:
+                        period_deposits_map[uid] = period_deposits_map.get(uid, 0) + amt
+                except Exception as e:
+                    # If date parsing fails, don't include in period filter
+                    pass
     
     # Calculate stats per level
     level_stats = []
@@ -2602,9 +2609,8 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
                 # Use deposits within the time period
                 level_business += period_deposits_map.get(ref_id, 0)
             else:
-                # Use total real_spot_deposits
-                wallet = wallets_map.get(ref_id, {})
-                level_business += wallet.get("real_spot_deposits", 0)
+                # Use ALL deposits (Max) from deposit_requests
+                level_business += all_deposits_map.get(ref_id, 0)
         
         level_stats.append({
             "level": level,
