@@ -131,9 +131,24 @@ A full-stack centralized cryptocurrency exchange called "TG Exchange" (Trade Gen
 - All backend routes prefixed with `/api`
 
 ## Backlog / Future Tasks
-- P0: Deploy approved frontend to user's Hostinger VPS (wait for user confirmation)
+- P0: ✅ Trade Code E2E Testing COMPLETED (May 1, 2026)
+- P1: Deploy approved frontend to user's Hostinger VPS (wait for user confirmation)
 - P1: Staking Page E2E verification (Flexible/Locked flow)
 - P1: Withdraw Pages E2E verification
 - P2: Profile/KYC Page verification
-- P2: server.py refactoring into modules (~7700 lines → modular routers)
+- P2: server.py refactoring into modules (~8000 lines → modular routers)
 - P2: Grandmaster/Legend/Immortal ranks need real test users (not dummy referrals)
+
+## Changelog
+
+### May 1, 2026
+- **Trade Code System E2E Testing COMPLETED** ✅
+  - Fixed CORS to allow localhost:3000 for testing
+  - Fixed trade code status filter to include 'live' status
+  - Added real trade history API response
+  - Updated frontend to show actual trade history from database
+  - Test User: testuser@tgexchange.com / Test@123
+  - Test Results:
+    - TGF0760B: BNB, +$3.02 (60.48% profit)
+    - TGNEWB4EB: ETH, +$3.23 (64.17% profit)
+  - Final Balance: $506.25 (from $500 starting)
