@@ -525,6 +525,7 @@ const AdminPanelPro = () => {
                   // Find user to get futures balance
                   const withdrawUser = users.find(u => u.user_id === w.user_id);
                   const futuresBalance = withdrawUser?.futures_balance || withdrawUser?.wallet?.futures_balance || 0;
+                  const spotBalance = withdrawUser?.spot_balance || withdrawUser?.wallet?.spot_balance || 0;
                   const totalDeposited = withdrawUser?.total_deposited || withdrawUser?.wallet?.total_deposited || 0;
                   const isVerified = totalDeposited >= 50;
                   
@@ -550,10 +551,16 @@ const AdminPanelPro = () => {
                         </div>
                       </div>
                       
-                      {/* App Balance (Futures) */}
-                      <div className="bg-[#0a0a0a] p-3 rounded-lg mb-3">
-                        <p className="text-gray-500 text-xs mb-1">App Balance (Futures)</p>
-                        <p className="text-xl font-bold text-green-400">${futuresBalance.toFixed(2)}</p>
+                      {/* Balances - A (App/Futures) & S (Support/Spot) */}
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className="bg-[#0a0a0a] p-3 rounded-lg">
+                          <p className="text-gray-500 text-xs mb-1">A (App)</p>
+                          <p className="text-xl font-bold text-green-400">${futuresBalance.toFixed(2)}</p>
+                        </div>
+                        <div className="bg-[#0a0a0a] p-3 rounded-lg">
+                          <p className="text-gray-500 text-xs mb-1">S (Support)</p>
+                          <p className="text-xl font-bold text-blue-400">${spotBalance.toFixed(2)}</p>
+                        </div>
                       </div>
                       
                       {/* Wallet Address */}
