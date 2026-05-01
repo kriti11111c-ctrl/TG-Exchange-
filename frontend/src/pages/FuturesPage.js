@@ -86,25 +86,38 @@ const FuturesPage = () => {
   const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
   const inputBg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-100';
 
-  // Fetch real price - fast with timeout
+  // Fetch real price - try multiple sources for accuracy
   const fetchRealPrice = async () => {
     try {
+      // Try OKX realtime price first (most accurate)
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
       
-      // Try Binance first (fastest)
-      const response = await fetch(`${API}/market/binance-price/${selectedCoin}`, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.price) {
-          setCurrentPrice(data.price);
-          return;
+      try {
+        const okxRes = await fetch(`${API}/market/realtime-price/${selectedCoin}`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (okxRes.ok) {
+          const data = await okxRes.json();
+          if (data.price && data.price > 0) {
+            setCurrentPrice(data.price);
+            return;
+          }
         }
-      }
+      } catch (e) { /* Continue to next source */ }
       
-      // Fallback to CoinGecko via backend
+      // Try Binance
+      try {
+        const binRes = await fetch(`${API}/market/binance-price/${selectedCoin}`, { timeout: 3000 });
+        if (binRes.ok) {
+          const data = await binRes.json();
+          if (data.price && data.price > 0) {
+            setCurrentPrice(data.price);
+            return;
+          }
+        }
+      } catch (e) { /* Continue to next source */ }
+      
+      // Fallback to CoinGecko via market/prices
       const coinId = COIN_IDS[selectedCoin] || "bitcoin";
       const res = await axios.get(`${API}/market/prices`, { timeout: 3000 });
       const prices = res.data;
@@ -113,8 +126,8 @@ const FuturesPage = () => {
         setCurrentPrice(coin.current_price);
       }
     } catch (error) {
-      // Silent fail - keep showing fallback price
-      console.log("Using fallback price for", selectedCoin);
+      // Silent fail - keep current price
+      console.log("Price fetch error, keeping current price");
     }
   };
 
@@ -163,8 +176,8 @@ const FuturesPage = () => {
     fetchFuturesData();
     fetchRealPrice();
     
-    // Update price every 10 seconds
-    const interval = setInterval(fetchRealPrice, 10000);
+    // Update price every 5 seconds for real-time feel
+    const interval = setInterval(fetchRealPrice, 5000);
     return () => clearInterval(interval);
   }, [selectedCoin]);
 

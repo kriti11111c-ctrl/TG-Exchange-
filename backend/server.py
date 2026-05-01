@@ -106,7 +106,7 @@ user_cache = FastCache()
 price_cache = {
     "data": None,
     "timestamp": None,
-    "ttl": 120  # Cache for 120 seconds (2 minutes for ultra speed)
+    "ttl": 30  # Cache for 30 seconds for more real-time prices
 }
 
 chart_cache = {}
