@@ -1,6 +1,6 @@
 """
 Auto Trade Code Generator - Runs at 05:15 UTC and 15:00 UTC
-Generates trade codes for users who have auto_trade_enabled = True
+Generates trade codes for ALL active users automatically
 """
 
 import asyncio
@@ -11,7 +11,14 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import logging
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, 
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('/var/www/tgexchange/backend/auto_code.log'),
+        logging.StreamHandler()
+    ]
+)
 logger = logging.getLogger(__name__)
 
 # MongoDB connection
@@ -20,34 +27,36 @@ DB_NAME = "tgexchange"
 
 # Schedule times in UTC (hours, minutes)
 SCHEDULE_TIMES = [
-    (5, 15),   # 05:15 UTC
-    (15, 0),   # 15:00 UTC
+    (5, 15),   # 05:15 UTC = 10:45 AM IST
+    (15, 0),   # 15:00 UTC = 8:30 PM IST
 ]
 
-async def generate_code_for_user(db, user, coin="btc", profit_percent=None):
+# Coins for random selection
+COINS = ['btc', 'eth', 'sol', 'bnb', 'xrp', 'doge', 'ada']
+
+async def generate_code_for_user(db, user):
     """Generate a trade code for a specific user"""
     try:
-        if profit_percent is None:
-            profit_percent = round(60 + random.random() * 5, 2)  # 60-65%
+        # Random profit between 60-65%
+        profit_percent = round(60 + random.random() * 5, 2)
         
         # Generate 12-char code (lowercase + numbers)
         code = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=12))
         
         now = datetime.now(timezone.utc)
-        expires_at = now + timedelta(hours=1)
+        expires_at = now + timedelta(hours=1)  # Valid for 1 hour
         
         # Random coin selection
-        coins = ['btc', 'eth', 'sol', 'bnb', 'xrp']
-        selected_coin = random.choice(coins)
+        selected_coin = random.choice(COINS)
         
         trade_code_doc = {
             'code': code,
             'user_id': user['user_id'],
-            'user_email': user['email'],
+            'user_email': user.get('email', ''),
             'coin': selected_coin,
             'profit_percent': profit_percent,
             'trade_type': 'call',
-            'fund_percent': 1.0,
+            'fund_percent': 1.0,  # 1% of futures balance
             'status': 'live',
             'is_global': False,
             'auto_generated': True,
@@ -57,72 +66,98 @@ async def generate_code_for_user(db, user, coin="btc", profit_percent=None):
         }
         
         await db.trade_codes.insert_one(trade_code_doc)
-        logger.info(f"✅ Generated code {code} for {user['email']} | Coin: {selected_coin} | Profit: {profit_percent}%")
         return code
         
     except Exception as e:
-        logger.error(f"❌ Error generating code for {user.get('email')}: {e}")
+        logger.error(f"Error generating code for {user.get('email', 'unknown')}: {e}")
         return None
 
-async def generate_scheduled_codes():
-    """Generate codes for all users with auto_trade_enabled"""
+async def generate_codes_for_all_users():
+    """Generate codes for ALL active users"""
     try:
         client = AsyncIOMotorClient(MONGO_URL)
         db = client[DB_NAME]
         
-        # Find users with auto_trade_enabled = True
+        # Find ALL active users
         users = await db.users.find({
-            'auto_trade_enabled': True,
-            'is_active': True
-        }).to_list(1000)
+            'is_active': {'$ne': False},
+            'role': {'$ne': 'admin'}  # Exclude admins
+        }).to_list(10000)
         
         if not users:
-            logger.info("No users with auto_trade_enabled found")
-            return
+            logger.info("No active users found")
+            return 0
         
-        logger.info(f"📢 Generating codes for {len(users)} users...")
+        now = datetime.now(timezone.utc)
+        logger.info(f"")
+        logger.info(f"{'='*50}")
+        logger.info(f"🚀 AUTO CODE GENERATION STARTED")
+        logger.info(f"⏰ Time: {now.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+        logger.info(f"👥 Total Users: {len(users)}")
+        logger.info(f"{'='*50}")
         
+        success_count = 0
         for user in users:
-            await generate_code_for_user(db, user)
-            await asyncio.sleep(0.1)  # Small delay between users
+            code = await generate_code_for_user(db, user)
+            if code:
+                success_count += 1
+            await asyncio.sleep(0.05)  # Small delay to avoid DB overload
         
-        logger.info(f"✅ Completed generating codes for {len(users)} users")
+        logger.info(f"")
+        logger.info(f"✅ COMPLETED: {success_count}/{len(users)} codes generated")
+        logger.info(f"{'='*50}")
+        
+        return success_count
         
     except Exception as e:
-        logger.error(f"❌ Error in generate_scheduled_codes: {e}")
+        logger.error(f"Error in generate_codes_for_all_users: {e}")
+        return 0
 
-async def check_and_generate():
-    """Check if current time matches schedule and generate codes"""
+async def check_schedule():
+    """Check if current time matches schedule"""
     now = datetime.now(timezone.utc)
     current_hour = now.hour
     current_minute = now.minute
     
     for schedule_hour, schedule_minute in SCHEDULE_TIMES:
         if current_hour == schedule_hour and current_minute == schedule_minute:
-            logger.info(f"⏰ Schedule triggered at {now.strftime('%H:%M UTC')}")
-            await generate_scheduled_codes()
             return True
     
     return False
 
 async def main():
-    """Main loop - checks every minute"""
-    logger.info("🚀 Auto Trade Code Scheduler Started")
-    logger.info(f"📅 Scheduled times: 05:15 UTC, 15:00 UTC")
+    """Main loop - checks every 30 seconds"""
+    logger.info("")
+    logger.info("🔔 AUTO TRADE CODE SCHEDULER STARTED")
+    logger.info(f"📅 Schedule: 05:15 UTC (10:45 AM IST) & 15:00 UTC (8:30 PM IST)")
+    logger.info(f"⏰ Current UTC: {datetime.now(timezone.utc).strftime('%H:%M:%S')}")
+    logger.info("")
     
     last_run_minute = -1
     
     while True:
-        now = datetime.now(timezone.utc)
-        current_minute = now.hour * 60 + now.minute
-        
-        # Only run once per minute
-        if current_minute != last_run_minute:
-            last_run_minute = current_minute
-            await check_and_generate()
-        
-        # Sleep for 30 seconds then check again
-        await asyncio.sleep(30)
+        try:
+            now = datetime.now(timezone.utc)
+            current_minute = now.hour * 60 + now.minute
+            
+            # Only check once per minute (avoid duplicate runs)
+            if current_minute != last_run_minute:
+                if await check_schedule():
+                    logger.info(f"⏰ SCHEDULE TRIGGERED at {now.strftime('%H:%M UTC')}")
+                    await generate_codes_for_all_users()
+                    last_run_minute = current_minute
+                else:
+                    # Log status every 10 minutes
+                    if now.minute % 10 == 0 and now.second < 30:
+                        logger.info(f"⏳ Waiting... Current: {now.strftime('%H:%M UTC')} | Next: 05:15 or 15:00 UTC")
+                    last_run_minute = current_minute
+            
+            # Sleep for 30 seconds
+            await asyncio.sleep(30)
+            
+        except Exception as e:
+            logger.error(f"Error in main loop: {e}")
+            await asyncio.sleep(60)
 
 if __name__ == "__main__":
     asyncio.run(main())
