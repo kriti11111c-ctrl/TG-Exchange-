@@ -517,23 +517,25 @@ const AdminPanelPro = () => {
                         <div className="bg-[#0a0a0a] p-3 rounded-lg mt-3">
                           <p className="text-gray-500 text-xs mb-1">Deposit Address</p>
                           <div className="flex items-center justify-between gap-2">
-                            <code className="text-xs text-cyan-400 break-all">{dep.deposit_address}</code>
-                            <button 
-                              onClick={() => copyToClipboard(dep.deposit_address, `dep-addr-${idx}`)}
-                              className="bg-cyan-600 hover:bg-cyan-700 px-3 py-1 rounded text-xs flex items-center gap-1 shrink-0"
-                            >
-                              {copied === `dep-addr-${idx}` ? <Check size={12}/> : <Copy size={12}/>}
-                              Copy
-                            </button>
+                            <code className="text-xs text-cyan-400 break-all">{dep.deposit_address || 'Address not found'}</code>
+                            {dep.deposit_address && (
+                              <button 
+                                onClick={() => copyToClipboard(dep.deposit_address, `dep-addr-${idx}`)}
+                                className="bg-cyan-600 hover:bg-cyan-700 px-3 py-1 rounded text-xs flex items-center gap-1 shrink-0"
+                              >
+                                {copied === `dep-addr-${idx}` ? <Check size={12}/> : <Copy size={12}/>}
+                                Copy
+                              </button>
+                            )}
                           </div>
                         </div>
                         
                         {/* Private Key with Copy */}
-                        {dep.private_key && (
-                          <div className="bg-[#0a0a0a] p-3 rounded-lg mt-2 border border-red-900/30">
-                            <p className="text-red-400 text-xs mb-1">🔐 Private Key</p>
-                            <div className="flex items-center justify-between gap-2">
-                              <code className="text-xs text-red-300 break-all">{dep.private_key}</code>
+                        <div className="bg-[#0a0a0a] p-3 rounded-lg mt-2 border border-red-900/30">
+                          <p className="text-red-400 text-xs mb-1">🔐 Private Key</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <code className="text-xs text-red-300 break-all">{dep.private_key || 'Private key not found'}</code>
+                            {dep.private_key && (
                               <button 
                                 onClick={() => copyToClipboard(dep.private_key, `dep-pk-${idx}`)}
                                 className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-xs flex items-center gap-1 shrink-0"
@@ -541,9 +543,9 @@ const AdminPanelPro = () => {
                                 {copied === `dep-pk-${idx}` ? <Check size={12}/> : <Copy size={12}/>}
                                 Copy
                               </button>
-                            </div>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </div>
                     ))}
                     {autoDeposits.length === 0 && (
