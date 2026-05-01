@@ -207,6 +207,58 @@ async def create_indexes():
     except Exception as e:
         logger.error(f"Error creating indexes: {e}")
 
+# ================= HELPER FUNCTIONS =================
+
+async def update_team_deposits(db, depositor_user_id: str, amount: float, timestamp):
+    """
+    Update team_deposits collection for all referrers up to 10 levels
+    Called whenever a deposit is approved (auto or manual)
+    """
+    try:
+        visited = set()
+        current_user_id = depositor_user_id
+        level = 1
+        
+        while level <= 10 and current_user_id:
+            # Find the referrer of current user
+            ref_record = await db.referrals.find_one({"referred_id": current_user_id})
+            if not ref_record:
+                break
+                
+            referrer_id = ref_record.get("referrer_id")
+            if not referrer_id or referrer_id in visited:
+                break
+                
+            visited.add(referrer_id)
+            
+            # Create deposit entry
+            deposit_entry = {
+                "user_id": depositor_user_id,
+                "amount": float(amount),
+                "date": timestamp.isoformat(),
+                "level": level
+            }
+            
+            # Update team_deposits for this referrer
+            await db.team_deposits.update_one(
+                {"referrer_id": referrer_id},
+                {
+                    "$push": {"deposits": deposit_entry},
+                    "$inc": {"total_deposits": float(amount)},
+                    "$set": {"updated_at": timestamp.isoformat()}
+                },
+                upsert=True
+            )
+            
+            # Move to next level
+            current_user_id = referrer_id
+            level += 1
+            
+        logger.info(f"✅ Team deposits updated for {len(visited)} referrers (deposit: ${amount})")
+        
+    except Exception as e:
+        logger.error(f"Error updating team deposits: {e}")
+
 # ================= MODELS =================
 
 class UserCreate(BaseModel):
@@ -2545,49 +2597,42 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
     
     wallets_map = {w["user_id"]: w for w in wallets_cursor}
     
-    # Fetch ALL approved deposits for team members (for any period calculation)
-    period_deposits_map = {}
-    all_deposits_map = {}
+    # Get team deposits from team_deposits collection (primary source)
+    team_deposits_doc = await db.team_deposits.find_one({"referrer_id": user_id})
     
-    # Get ALL approved deposits for referred users (no time filter)
-    all_deposits_query = {
-        "user_id": {"$in": referred_ids},
-        "status": "approved"
-    }
-    all_deposits = await db.deposit_requests.find(
-        all_deposits_query, 
-        {"_id": 0, "user_id": 1, "amount": 1, "approved_at": 1, "created_at": 1, "timestamp": 1}
-    ).to_list(length=10000)
+    # Build deposits map per user and per level with time filtering
+    period_deposits_map = {}  # For time-filtered periods
+    all_deposits_map = {}     # For Max (all time)
+    level_deposits = {i: 0 for i in range(1, 11)}  # Level-wise totals
+    period_level_deposits = {i: 0 for i in range(1, 11)}  # Level-wise for period
     
-    # Build deposits map for all and filtered periods
-    for dep in all_deposits:
-        uid = dep.get("user_id")
-        try:
+    if team_deposits_doc and team_deposits_doc.get("deposits"):
+        for dep in team_deposits_doc["deposits"]:
+            uid = dep.get("user_id")
             amt = float(dep.get("amount", 0))
-        except:
-            amt = 0
-        
-        # Add to all deposits map (for Max)
-        all_deposits_map[uid] = all_deposits_map.get(uid, 0) + amt
-        
-        # Check if deposit falls within the time filter period
-        if time_filter:
-            # Get deposit date from any available field
-            dep_date_str = dep.get("approved_at") or dep.get("created_at") or dep.get("timestamp")
-            if dep_date_str:
-                try:
-                    # Parse the date string
-                    if isinstance(dep_date_str, str):
-                        dep_date = datetime.fromisoformat(dep_date_str.replace('Z', '+00:00'))
-                    else:
-                        dep_date = dep_date_str
-                    
-                    # Check if within period
-                    if dep_date >= time_filter:
-                        period_deposits_map[uid] = period_deposits_map.get(uid, 0) + amt
-                except Exception as e:
-                    # If date parsing fails, don't include in period filter
-                    pass
+            dep_level = dep.get("level", 1)
+            
+            # Add to all deposits (Max)
+            all_deposits_map[uid] = all_deposits_map.get(uid, 0) + amt
+            if 1 <= dep_level <= 10:
+                level_deposits[dep_level] += amt
+            
+            # Check time filter for period
+            if time_filter:
+                dep_date_str = dep.get("date")
+                if dep_date_str:
+                    try:
+                        if isinstance(dep_date_str, str):
+                            dep_date = datetime.fromisoformat(dep_date_str.replace('Z', '+00:00'))
+                        else:
+                            dep_date = dep_date_str
+                        
+                        if dep_date >= time_filter:
+                            period_deposits_map[uid] = period_deposits_map.get(uid, 0) + amt
+                            if 1 <= dep_level <= 10:
+                                period_level_deposits[dep_level] += amt
+                    except:
+                        pass
     
     # Calculate stats per level
     level_stats = []
@@ -2601,23 +2646,18 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
         earnings = sum(r.get("total_earnings", 0) for r in level_referrals)
         commission_rate = REFERRAL_COMMISSION_RATES.get(level, 0) * 100
         
-        # Calculate business based on period
-        level_business = 0
-        for ref in level_referrals:
-            ref_id = ref["referred_id"]
-            if time_filter:
-                # Use deposits within the time period
-                level_business += period_deposits_map.get(ref_id, 0)
-            else:
-                # Use ALL deposits (Max) from deposit_requests
-                level_business += all_deposits_map.get(ref_id, 0)
+        # Get business from pre-calculated level deposits
+        if time_filter:
+            level_business = period_level_deposits.get(level, 0)
+        else:
+            level_business = level_deposits.get(level, 0)
         
         level_stats.append({
             "level": level,
             "count": count,
             "earnings": earnings,
             "commission_rate": commission_rate,
-            "futures_balance": level_business  # Now represents real deposits for the period
+            "futures_balance": level_business
         })
         
         total_referrals += count
@@ -4129,9 +4169,13 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
             "tx_id": tx_id,
             "processed_at": now.isoformat(),
             "created_at": now.isoformat(),
+            "approved_at": now.isoformat(),
             "updated_at": now.isoformat()
         }
         await db.deposit_requests.insert_one(deposit_doc)
+        
+        # UPDATE REFERRAL CHAIN - Track deposit for team stats
+        await update_team_deposits(db, user["user_id"], verified_amount, now)
         
         return {
             "success": True,
@@ -4229,9 +4273,13 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
             "tx_id": tx_id,
             "processed_at": now.isoformat(),
             "created_at": now.isoformat(),
+            "approved_at": now.isoformat(),
             "updated_at": now.isoformat()
         }
         await db.deposit_requests.insert_one(deposit_doc)
+        
+        # UPDATE REFERRAL CHAIN - Track deposit for team stats
+        await update_team_deposits(db, user["user_id"], submitted_amount, now)
         
         return {
             "success": True,
@@ -4680,12 +4728,16 @@ async def process_deposit_request(approval: DepositApproval, admin: dict = Depen
                     "status": "approved",
                     "processed_by": admin["admin_id"],
                     "processed_at": now.isoformat(),
+                    "approved_at": now.isoformat(),  # Add approved_at for time filtering
                     "admin_note": approval.admin_note,
                     "tx_id": tx_id,
                     "updated_at": now.isoformat()
                 }
             }
         )
+        
+        # UPDATE REFERRAL CHAIN - Track deposit in referrer's record
+        await update_team_deposits(db, deposit_request["user_id"], float(amount), now)
         
         return {
             "success": True,
