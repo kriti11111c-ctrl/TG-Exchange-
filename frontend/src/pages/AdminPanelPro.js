@@ -46,6 +46,10 @@ const AdminPanelPro = () => {
   const [withdrawalFilter, setWithdrawalFilter] = useState('pending');
   const [showTodayOnly, setShowTodayOnly] = useState(false);
   
+  // User pagination state
+  const [userPage, setUserPage] = useState(1);
+  const usersPerPage = 50;
+  
   // Deposit search state
   const [depositSearch, setDepositSearch] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
@@ -382,9 +386,17 @@ const AdminPanelPro = () => {
               type="text"
               placeholder={`Search ${activeTab}...`}
               value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full bg-[#1a1a1a] border border-[#333] rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-500"
+              onChange={e => { setSearchTerm(e.target.value); setUserPage(1); }}
+              className="w-full bg-[#1a1a1a] border border-[#333] rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none transition-all"
             />
+            {searchTerm && (
+              <button 
+                onClick={() => { setSearchTerm(''); setUserPage(1); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+              >
+                <X size={18} />
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -427,11 +439,29 @@ const AdminPanelPro = () => {
               </div>
             )}
 
-            {/* USERS - Enhanced */}
+            {/* USERS - Enhanced & Smooth */}
             {activeTab === 'users' && (
               <div className="space-y-3">
-                <p className="text-gray-400 text-sm mb-4">Total: {filteredUsers.length} users</p>
-                {filteredUsers.map(user => {
+                {/* Header with count and sorting info */}
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-gray-400 text-sm">
+                    Total: {filteredUsers.length} users 
+                    {searchTerm && ` (searching "${searchTerm}")`}
+                  </p>
+                  <p className="text-xs text-green-400">✓ Verified users first</p>
+                </div>
+                
+                {/* User Cards - Sorted: Verified first, then paginated */}
+                {filteredUsers
+                  .sort((a, b) => {
+                    const aDeposit = a.total_deposited || a.wallet?.total_deposited || 0;
+                    const bDeposit = b.total_deposited || b.wallet?.total_deposited || 0;
+                    const aVerified = aDeposit >= 50 ? 1 : 0;
+                    const bVerified = bDeposit >= 50 ? 1 : 0;
+                    return bVerified - aVerified;
+                  })
+                  .slice(0, userPage * usersPerPage)
+                  .map(user => {
                   const userAddress = getUserAddress(user.user_id);
                   const totalDeposited = user.total_deposited || user.wallet?.total_deposited || 0;
                   const isVerified = totalDeposited >= 50;
@@ -535,6 +565,23 @@ const AdminPanelPro = () => {
                     </div>
                   );
                 })}
+                
+                {/* Load More Button */}
+                {filteredUsers.length > userPage * usersPerPage && (
+                  <button
+                    onClick={() => setUserPage(prev => prev + 1)}
+                    className="w-full py-3 bg-[#222] hover:bg-[#333] rounded-xl text-gray-400 font-medium transition-all"
+                  >
+                    Load More ({filteredUsers.length - userPage * usersPerPage} remaining)
+                  </button>
+                )}
+                
+                {/* No users message */}
+                {filteredUsers.length === 0 && (
+                  <p className="text-gray-500 text-center py-8">
+                    {searchTerm ? `No users found for "${searchTerm}"` : 'No users'}
+                  </p>
+                )}
               </div>
             )}
 
