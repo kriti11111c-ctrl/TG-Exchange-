@@ -180,9 +180,9 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     { id: "macd", label: "MACD" }
   ];
 
-  // Real-time base prices (updated frequently)
-  const LIVE_PRICES = { BTC: 96500, ETH: 3400, BNB: 680, SOL: 185, XRP: 2.3, ADA: 0.95, DOGE: 0.38, DOT: 7.8, MATIC: 0.55, LTC: 105 };
-  const basePrice = LIVE_PRICES[symbol] || currentPrice || 96500;
+  // Real-time base prices (updated from CoinGecko - May 2026)
+  const LIVE_PRICES = { BTC: 77200, ETH: 2280, BNB: 617, SOL: 84, XRP: 1.37, ADA: 0.25, DOGE: 0.11, DOT: 4.5, MATIC: 0.25, LTC: 72 };
+  const basePrice = LIVE_PRICES[symbol] || currentPrice || 77200;
 
   // Generate realistic candles instantly based on current price
   const generateRealisticCandles = useCallback((price) => {

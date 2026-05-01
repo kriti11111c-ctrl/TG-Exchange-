@@ -34,9 +34,9 @@ const FuturesPage = () => {
   const [orderType, setOrderType] = useState("market");
   const [amount, setAmount] = useState("");
   const [price, setPrice] = useState("");
-  // Instant fallback prices for faster loading
-  const FALLBACK_PRICES = { BTC: 96500, ETH: 3200, BNB: 580, SOL: 180, XRP: 2.1, ADA: 0.85, DOGE: 0.35, DOT: 7.5, MATIC: 0.95, LTC: 95 };
-  const [currentPrice, setCurrentPrice] = useState(FALLBACK_PRICES[selectedCoin] || 96500);
+  // Instant fallback prices (CoinGecko real prices - May 2026)
+  const FALLBACK_PRICES = { BTC: 77200, ETH: 2280, BNB: 617, SOL: 84, XRP: 1.37, ADA: 0.25, DOGE: 0.11, DOT: 4.5, MATIC: 0.25, LTC: 72 };
+  const [currentPrice, setCurrentPrice] = useState(FALLBACK_PRICES[selectedCoin] || 77200);
   const [positions, setPositions] = useState([]);
   const [showChart, setShowChart] = useState(true);
   const [tradeCode, setTradeCode] = useState("");
@@ -157,7 +157,8 @@ const FuturesPage = () => {
 
   useEffect(() => {
     // Instant update with fallback price when coin changes
-    setCurrentPrice(FALLBACK_PRICES[selectedCoin] || 96500);
+    const FALLBACK_PRICES = { BTC: 77200, ETH: 2280, BNB: 617, SOL: 84, XRP: 1.37, ADA: 0.25, DOGE: 0.11, DOT: 4.5, MATIC: 0.25, LTC: 72 };
+    setCurrentPrice(FALLBACK_PRICES[selectedCoin] || 77200);
     
     fetchFuturesData();
     fetchRealPrice();
