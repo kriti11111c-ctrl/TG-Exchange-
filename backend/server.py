@@ -5173,8 +5173,10 @@ async def generate_trade_code(data: TradeCodeCreate, admin: dict = Depends(get_c
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Generate unique code
-    code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
+    # Generate unique 12-character code (mix of lowercase letters + numbers, no TG prefix)
+    # Format: abc12def34gh (mixed alphanumeric, easy to read)
+    chars = string.ascii_lowercase + string.digits
+    code = ''.join(random.choices(chars, k=12))
     
     # Calculate scheduled start time based on slot
     now = datetime.now(timezone.utc)
@@ -5375,8 +5377,8 @@ async def admin_generate_codes_for_all(admin: dict = Depends(get_current_admin))
             multiplier = 2 if (last_trade and last_trade.get("result") == "fail") else 1
             fund_percent = 1.0 * multiplier
             
-            # Generate unique code
-            code = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=12))
+            # Generate unique 12-char code (lowercase + numbers, no TG prefix)
+            code = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=12))
             
             trade_code_doc = {
                 "code": code,
