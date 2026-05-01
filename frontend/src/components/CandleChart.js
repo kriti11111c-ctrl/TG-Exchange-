@@ -166,9 +166,40 @@ const calculateBollingerBands = (candles, period = 20, stdDev = 2) => {
 
 const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, height = 350 }) => {
   const canvasRef = useRef(null);
-  const [candles, setCandles] = useState([]);
+  
+  // Real-time base prices
+  const LIVE_PRICES = { BTC: 77200, ETH: 2280, BNB: 617, SOL: 84, XRP: 1.37, ADA: 0.25, DOGE: 0.11, DOT: 4.5, MATIC: 0.25, LTC: 72 };
+  
+  // Generate candles instantly for initial render
+  const generateInstantCandles = (price, tf = "15m") => {
+    const result = [];
+    let currentPx = price;
+    const now = Date.now();
+    const intervalMs = tf === "1m" ? 60000 : tf === "5m" ? 300000 : 
+                       tf === "15m" ? 900000 : tf === "30m" ? 1800000 :
+                       tf === "1h" ? 3600000 : tf === "4h" ? 14400000 : 86400000;
+    
+    for (let i = 99; i >= 0; i--) {
+      const volatility = price > 1000 ? 0.008 : price > 100 ? 0.012 : 0.02;
+      const trend = Math.sin(i / 10) * 0.003;
+      const change = (Math.random() - 0.48 + trend) * currentPx * volatility;
+      const open = currentPx;
+      currentPx = Math.max(currentPx * 0.95, currentPx + change);
+      const close = currentPx;
+      const high = Math.max(open, close) * (1 + Math.random() * 0.003);
+      const low = Math.min(open, close) * (1 - Math.random() * 0.003);
+      const volume = (Math.random() * 500 + 200) * (price > 1000 ? 1000 : price > 10 ? 10000 : 100000);
+      result.push({ time: now - (i * intervalMs), open, high, low, close, volume });
+    }
+    return result;
+  };
+
+  const basePrice = LIVE_PRICES[symbol] || currentPrice || 77200;
+  
+  // Initialize with data immediately - NO empty state
+  const [candles, setCandles] = useState(() => generateInstantCandles(basePrice, "15m"));
   const [timeframe, setTimeframe] = useState("15m");
-  const [loading, setLoading] = useState(false); // Start with false for instant render
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeIndicator, setActiveIndicator] = useState("none");
   const [showBollinger, setShowBollinger] = useState(true);
@@ -180,41 +211,11 @@ const CandleChart = ({ symbol = "BTC", currentPrice = 68000, isDark = true, heig
     { id: "macd", label: "MACD" }
   ];
 
-  // Real-time base prices (updated from CoinGecko - May 2026)
-  const LIVE_PRICES = { BTC: 77200, ETH: 2280, BNB: 617, SOL: 84, XRP: 1.37, ADA: 0.25, DOGE: 0.11, DOT: 4.5, MATIC: 0.25, LTC: 72 };
-  const basePrice = LIVE_PRICES[symbol] || currentPrice || 77200;
-
-  // Generate realistic candles instantly based on current price
-  const generateRealisticCandles = useCallback((price) => {
-    const result = [];
-    let currentPx = price;
-    const now = Date.now();
-    const intervalMs = timeframe === "1m" ? 60000 : timeframe === "5m" ? 300000 : 
-                       timeframe === "15m" ? 900000 : timeframe === "30m" ? 1800000 :
-                       timeframe === "1h" ? 3600000 : timeframe === "4h" ? 14400000 : 86400000;
-    
-    // Generate 100 candles going backwards
-    for (let i = 99; i >= 0; i--) {
-      const volatility = price > 1000 ? 0.008 : price > 100 ? 0.012 : 0.02;
-      const trend = Math.sin(i / 10) * 0.003; // Gentle trend
-      const change = (Math.random() - 0.48 + trend) * currentPx * volatility;
-      
-      const open = currentPx;
-      currentPx = Math.max(currentPx * 0.95, currentPx + change); // Prevent going too low
-      const close = currentPx;
-      const high = Math.max(open, close) * (1 + Math.random() * 0.003);
-      const low = Math.min(open, close) * (1 - Math.random() * 0.003);
-      const volume = (Math.random() * 500 + 200) * (price > 1000 ? 1000 : price > 10 ? 10000 : 100000);
-      
-      result.push({ time: now - (i * intervalMs), open, high, low, close, volume });
-    }
-    return result;
-  }, [timeframe]);
-
-  // Initialize with instant data
+  // Regenerate when symbol or timeframe changes
   useEffect(() => {
-    setCandles(generateRealisticCandles(basePrice));
-  }, [symbol, timeframe, basePrice, generateRealisticCandles]);
+    const newPrice = LIVE_PRICES[symbol] || currentPrice || 77200;
+    setCandles(generateInstantCandles(newPrice, timeframe));
+  }, [symbol, timeframe, currentPrice]);
 
   // Fetch real candles in background (silent update)
   const fetchBinanceCandles = useCallback(async () => {
