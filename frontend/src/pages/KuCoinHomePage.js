@@ -97,16 +97,16 @@ const KuCoinHomePage = () => {
     }
   };
 
-  // Format countdown time
+  // Format countdown time - Always show seconds for live feel
   const formatCountdown = (seconds) => {
     if (!seconds || seconds <= 0) return "00:00";
     const hours = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
     if (hours > 0) {
-      return `${hours}h ${mins}m`;
+      return `${hours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   // Copy code to clipboard
@@ -247,6 +247,36 @@ const KuCoinHomePage = () => {
     }, 60000);
     return () => clearInterval(interval);
   }, [isConnected]);
+
+  // Real-time countdown for trade codes (updates every second)
+  useEffect(() => {
+    if (tradeCodes.length === 0) return;
+    
+    // Initialize countdowns from trade codes
+    const initialCountdowns = {};
+    tradeCodes.forEach(code => {
+      if (code.time_remaining > 0) {
+        initialCountdowns[`${code.code}_remaining`] = code.time_remaining;
+      }
+      if (code.countdown_to_live > 0) {
+        initialCountdowns[`${code.code}_tolive`] = code.countdown_to_live;
+      }
+    });
+    setCountdowns(initialCountdowns);
+    
+    // Update every second
+    const interval = setInterval(() => {
+      setCountdowns(prev => {
+        const updated = {};
+        Object.entries(prev).forEach(([key, value]) => {
+          updated[key] = Math.max(0, value - 1);
+        });
+        return updated;
+      });
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [tradeCodes]);
 
   useEffect(() => {
     if (wsPrices && Object.keys(wsPrices).length > 0) {
