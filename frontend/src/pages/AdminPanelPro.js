@@ -1,25 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Menu, X, Users, DollarSign, Award, Wallet, Key, RefreshCw, Search, ChevronDown, ChevronUp, Copy, Check, LogOut } from 'lucide-react';
+import { Menu, X, Home, Users, Eye, CreditCard, Key, Award, Code, FileText, Search, RefreshCw, Copy, Check, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
 
 const API = process.env.REACT_APP_BACKEND_URL || '';
 
 const AdminPanelPro = () => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('deposits');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [copied, setCopied] = useState(null);
   
   // Data states
-  const [depositRequests, setDepositRequests] = useState([]);
-  const [autoDeposits, setAutoDeposits] = useState([]);
-  const [depositAddresses, setDepositAddresses] = useState([]);
   const [users, setUsers] = useState([]);
+  const [deposits, setDeposits] = useState([]);
+  const [autoDeposits, setAutoDeposits] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [addresses, setAddresses] = useState([]);
+  const [rankMembers, setRankMembers] = useState([]);
+  const [tradeCodes, setTradeCodes] = useState([]);
   const [stats, setStats] = useState({});
-  const [expandedUser, setExpandedUser] = useState(null);
+  const [expandedItem, setExpandedItem] = useState(null);
 
   const adminToken = localStorage.getItem('adminToken');
 
@@ -33,23 +36,42 @@ const AdminPanelPro = () => {
 
   const fetchData = async () => {
     setLoading(true);
+    const headers = { Authorization: `Bearer ${adminToken}` };
+    
     try {
-      const headers = { Authorization: `Bearer ${adminToken}` };
-      
-      if (activeTab === 'deposits') {
-        const [reqRes, autoRes] = await Promise.all([
-          axios.get(`${API}/api/admin/deposit-requests`, { headers }),
-          axios.get(`${API}/api/admin/auto-deposits`, { headers })
+      if (activeTab === 'dashboard') {
+        const [usersRes, depsRes] = await Promise.all([
+          axios.get(`${API}/api/admin/users`, { headers }),
+          axios.get(`${API}/api/admin/deposit-requests`, { headers })
         ]);
-        setDepositRequests(reqRes.data.requests || []);
-        setAutoDeposits(autoRes.data.deposits || []);
-        setStats({ ...reqRes.data.stats, auto: autoRes.data.stats });
+        setStats({
+          totalUsers: usersRes.data?.length || 0,
+          pendingDeposits: depsRes.data?.stats?.pending || 0,
+          approvedDeposits: depsRes.data?.stats?.approved || 0
+        });
       } else if (activeTab === 'users') {
         const res = await axios.get(`${API}/api/admin/users`, { headers });
         setUsers(res.data || []);
+      } else if (activeTab === 'deposit') {
+        const [manualRes, autoRes] = await Promise.all([
+          axios.get(`${API}/api/admin/deposit-requests`, { headers }),
+          axios.get(`${API}/api/admin/auto-deposits`, { headers })
+        ]);
+        setDeposits(manualRes.data?.requests || []);
+        setAutoDeposits(autoRes.data?.deposits || []);
+      } else if (activeTab === 'withdrawal') {
+        const res = await axios.get(`${API}/api/admin/withdrawals`, { headers });
+        setWithdrawals(res.data?.withdrawals || res.data || []);
       } else if (activeTab === 'addresses') {
         const res = await axios.get(`${API}/api/admin/deposit-addresses`, { headers });
-        setDepositAddresses(res.data.addresses || []);
+        setAddresses(res.data?.addresses || []);
+      } else if (activeTab === 'rank') {
+        const res = await axios.get(`${API}/api/admin/users`, { headers });
+        const ranked = (res.data || []).filter(u => u.team_rank_level > 0 || u.vip_level > 0);
+        setRankMembers(ranked);
+      } else if (activeTab === 'tradecodes') {
+        const res = await axios.get(`${API}/api/admin/trade-codes`, { headers }).catch(() => ({ data: [] }));
+        setTradeCodes(res.data || []);
       }
     } catch (error) {
       console.error('Fetch error:', error);
@@ -63,10 +85,9 @@ const AdminPanelPro = () => {
 
   const handleApprove = async (requestId) => {
     try {
-      const headers = { Authorization: `Bearer ${adminToken}` };
       await axios.post(`${API}/api/admin/deposit-requests/action`, 
         { request_id: requestId, action: 'approve' }, 
-        { headers }
+        { headers: { Authorization: `Bearer ${adminToken}` } }
       );
       fetchData();
     } catch (error) {
@@ -76,10 +97,9 @@ const AdminPanelPro = () => {
 
   const handleReject = async (requestId) => {
     try {
-      const headers = { Authorization: `Bearer ${adminToken}` };
       await axios.post(`${API}/api/admin/deposit-requests/action`, 
         { request_id: requestId, action: 'reject' }, 
-        { headers }
+        { headers: { Authorization: `Bearer ${adminToken}` } }
       );
       fetchData();
     } catch (error) {
@@ -98,61 +118,78 @@ const AdminPanelPro = () => {
     navigate('/admin');
   };
 
+  const menuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: Home },
+    { id: 'users', label: 'Users', icon: Users },
+    { id: 'deposit', label: 'Deposit', icon: Eye },
+    { id: 'withdrawal', label: 'Withdrawal', icon: CreditCard },
+    { id: 'addresses', label: 'Address & Private Key', icon: Key },
+    { id: 'rank', label: 'Rank Members', icon: Award },
+    { id: 'tradecodes', label: 'Trade Codes', icon: Code },
+    { id: 'kyc', label: 'KYC', icon: FileText },
+  ];
+
+  // Filter functions
   const filteredUsers = users.filter(u => 
     u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.user_id?.toLowerCase().includes(searchTerm.toLowerCase())
+    u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredAddresses = depositAddresses.filter(a =>
+  const filteredAddresses = addresses.filter(a =>
     a.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     a.user_email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     a.network?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const menuItems = [
-    { id: 'deposits', label: 'Deposits', icon: DollarSign },
-    { id: 'users', label: 'Users', icon: Users },
-    { id: 'addresses', label: 'Deposit Addresses', icon: Key },
-    { id: 'vip', label: 'VIP Ranks', icon: Award },
-    { id: 'wallets', label: 'Wallets', icon: Wallet },
-  ];
-
   return (
-    <div className="min-h-screen bg-[#0B0E11] text-white">
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Header */}
-      <div className="bg-[#1E2329] px-4 py-3 flex items-center justify-between sticky top-0 z-50">
+      <header className="bg-[#111] border-b border-[#222] px-4 py-3 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 hover:bg-[#2B3139] rounded-lg">
-            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-[#222] rounded-lg">
+            <Menu size={24} />
           </button>
-          <h1 className="text-xl font-bold text-[#F0B90B]">Admin Pro</h1>
+          <span className="font-bold text-lg">{menuItems.find(m => m.id === activeTab)?.label || 'Admin'}</span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={fetchData} className="p-2 hover:bg-[#2B3139] rounded-lg" disabled={loading}>
+          <button onClick={fetchData} className="p-2 hover:bg-[#222] rounded-lg">
             <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
           </button>
-          <button onClick={handleLogout} className="p-2 hover:bg-[#2B3139] rounded-lg text-red-400">
+          <button onClick={handleLogout} className="p-2 hover:bg-[#222] rounded-lg">
             <LogOut size={20} />
           </button>
         </div>
-      </div>
+      </header>
 
       {/* Sidebar */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40" onClick={() => setSidebarOpen(false)}>
-          <div className="absolute inset-0 bg-black/50" />
-          <div className="absolute left-0 top-0 bottom-0 w-64 bg-[#1E2329] pt-16 shadow-xl" onClick={e => e.stopPropagation()}>
-            <nav className="p-4 space-y-2">
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
+          <div className="absolute left-0 top-0 bottom-0 w-72 bg-[#111] shadow-xl">
+            {/* Sidebar Header */}
+            <div className="p-4 border-b border-[#222] flex items-center justify-between">
+              <div>
+                <p className="font-bold text-[#F0B90B]">Users</p>
+                <p className="text-xs text-gray-400">luckyman143@gmail.com</p>
+              </div>
+              <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-[#222] rounded">
+                <X size={20} />
+              </button>
+            </div>
+            
+            {/* Menu Items */}
+            <nav className="p-2">
               {menuItems.map(item => (
                 <button
                   key={item.id}
-                  onClick={() => { setActiveTab(item.id); setSidebarOpen(false); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-                    activeTab === item.id ? 'bg-[#F0B90B] text-black' : 'hover:bg-[#2B3139]'
+                  onClick={() => { setActiveTab(item.id); setSidebarOpen(false); setSearchTerm(''); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-1 transition ${
+                    activeTab === item.id 
+                      ? 'bg-[#1a3a2a] text-[#4ade80]' 
+                      : 'hover:bg-[#1a1a1a] text-gray-300'
                   }`}
                 >
-                  <item.icon size={20} />
+                  <item.icon size={20} className={activeTab === item.id ? 'text-[#4ade80]' : 'text-[#F0B90B]'} />
                   <span className="font-medium">{item.label}</span>
                 </button>
               ))}
@@ -162,118 +199,58 @@ const AdminPanelPro = () => {
       )}
 
       {/* Search Bar */}
-      <div className="p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full bg-[#2B3139] border border-[#3C4043] rounded-lg pl-10 pr-4 py-3 text-white placeholder-gray-400"
-          />
+      {['users', 'addresses', 'deposit', 'withdrawal'].includes(activeTab) && (
+        <div className="p-4 border-b border-[#222]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+            <input
+              type="text"
+              placeholder={`Search ${activeTab}...`}
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full bg-[#1a1a1a] border border-[#333] rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-500"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Content */}
-      <div className="p-4">
+      <main className="p-4">
         {loading ? (
           <div className="flex justify-center py-20">
             <RefreshCw className="animate-spin text-[#F0B90B]" size={40} />
           </div>
         ) : (
           <>
-            {/* DEPOSITS TAB */}
-            {activeTab === 'deposits' && (
-              <div className="space-y-6">
-                {/* Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="bg-[#1E2329] p-4 rounded-lg">
-                    <p className="text-gray-400 text-sm">Pending</p>
-                    <p className="text-2xl font-bold text-yellow-400">{stats.pending || 0}</p>
+            {/* DASHBOARD */}
+            {activeTab === 'dashboard' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-[#111] border border-[#222] p-4 rounded-xl">
+                    <p className="text-gray-400 text-sm">Total Users</p>
+                    <p className="text-3xl font-bold text-[#F0B90B]">{stats.totalUsers || 0}</p>
                   </div>
-                  <div className="bg-[#1E2329] p-4 rounded-lg">
-                    <p className="text-gray-400 text-sm">Approved</p>
-                    <p className="text-2xl font-bold text-green-400">{stats.approved || 0}</p>
-                  </div>
-                  <div className="bg-[#1E2329] p-4 rounded-lg">
-                    <p className="text-gray-400 text-sm">Auto Credited</p>
-                    <p className="text-2xl font-bold text-blue-400">{stats.auto?.credited || 0}</p>
-                  </div>
-                  <div className="bg-[#1E2329] p-4 rounded-lg">
-                    <p className="text-gray-400 text-sm">Total</p>
-                    <p className="text-2xl font-bold">{stats.total || 0}</p>
+                  <div className="bg-[#111] border border-[#222] p-4 rounded-xl">
+                    <p className="text-gray-400 text-sm">Pending Deposits</p>
+                    <p className="text-3xl font-bold text-yellow-400">{stats.pendingDeposits || 0}</p>
                   </div>
                 </div>
-
-                {/* Manual Deposits */}
-                <div>
-                  <h2 className="text-lg font-bold mb-3 text-[#F0B90B]">Manual Deposit Requests</h2>
-                  <div className="space-y-3">
-                    {depositRequests.filter(d => d.status === 'pending').map(dep => (
-                      <div key={dep.request_id} className="bg-[#1E2329] p-4 rounded-lg">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <p className="font-bold text-green-400">${dep.amount}</p>
-                            <p className="text-sm text-gray-400">{dep.network?.toUpperCase()}</p>
-                          </div>
-                          <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-xs rounded">PENDING</span>
-                        </div>
-                        <p className="text-xs text-gray-400 mb-1">TX: {dep.tx_hash?.slice(0, 20)}...</p>
-                        <p className="text-xs text-gray-400 mb-3">User: {dep.user_id?.slice(0, 15)}...</p>
-                        <div className="flex gap-2">
-                          <button onClick={() => handleApprove(dep.request_id)} className="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded font-medium">
-                            Approve
-                          </button>
-                          <button onClick={() => handleReject(dep.request_id)} className="flex-1 bg-red-600 hover:bg-red-700 py-2 rounded font-medium">
-                            Reject
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {depositRequests.filter(d => d.status === 'pending').length === 0 && (
-                      <p className="text-center text-gray-400 py-8">No pending deposits</p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Auto Deposits */}
-                <div>
-                  <h2 className="text-lg font-bold mb-3 text-blue-400">Auto Blockchain Deposits</h2>
-                  <div className="space-y-3">
-                    {autoDeposits.slice(0, 20).map((dep, idx) => (
-                      <div key={idx} className="bg-[#1E2329] p-4 rounded-lg">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <p className="font-bold text-green-400">${dep.amount}</p>
-                            <p className="text-sm text-gray-400">{dep.network?.toUpperCase()}</p>
-                          </div>
-                          <span className={`px-2 py-1 text-xs rounded ${
-                            dep.status === 'credited' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-                          }`}>{dep.status?.toUpperCase()}</span>
-                        </div>
-                        <p className="text-xs text-gray-400">User: {dep.user_name || dep.user_id?.slice(0, 15)}</p>
-                        <p className="text-xs text-gray-400">Address: {dep.deposit_address?.slice(0, 20)}...</p>
-                        <p className="text-xs text-gray-400">{dep.detected_at?.slice(0, 19)}</p>
-                      </div>
-                    ))}
-                    {autoDeposits.length === 0 && (
-                      <p className="text-center text-gray-400 py-8">No auto deposits</p>
-                    )}
-                  </div>
+                <div className="bg-[#111] border border-[#222] p-4 rounded-xl">
+                  <p className="text-gray-400 text-sm">Approved Deposits</p>
+                  <p className="text-3xl font-bold text-green-400">{stats.approvedDeposits || 0}</p>
                 </div>
               </div>
             )}
 
-            {/* USERS TAB */}
+            {/* USERS */}
             {activeTab === 'users' && (
               <div className="space-y-3">
-                <p className="text-gray-400 mb-4">Total Users: {filteredUsers.length}</p>
-                {filteredUsers.slice(0, 50).map(user => (
-                  <div key={user.user_id} className="bg-[#1E2329] rounded-lg overflow-hidden">
+                <p className="text-gray-400 text-sm mb-4">Total: {filteredUsers.length} users</p>
+                {filteredUsers.map(user => (
+                  <div key={user.user_id} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
                     <div 
                       className="p-4 flex justify-between items-center cursor-pointer"
-                      onClick={() => setExpandedUser(expandedUser === user.user_id ? null : user.user_id)}
+                      onClick={() => setExpandedItem(expandedItem === user.user_id ? null : user.user_id)}
                     >
                       <div>
                         <p className="font-medium">{user.name || 'No Name'}</p>
@@ -281,39 +258,26 @@ const AdminPanelPro = () => {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="text-green-400 font-bold">${(user.futures_balance || 0).toFixed(2)}</span>
-                        {expandedUser === user.user_id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                        {expandedItem === user.user_id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                       </div>
                     </div>
-                    {expandedUser === user.user_id && (
-                      <div className="px-4 pb-4 border-t border-[#2B3139] pt-3 space-y-2">
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <p className="text-gray-400">Spot Balance</p>
-                            <p className="font-medium">${(user.spot_balance || 0).toFixed(2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-400">Futures Balance</p>
-                            <p className="font-medium">${(user.futures_balance || 0).toFixed(2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-400">Welcome Bonus</p>
-                            <p className="font-medium">${(user.welcome_bonus || 0).toFixed(2)}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-400">VIP Level</p>
-                            <p className="font-medium">{user.vip_level || 0}</p>
-                          </div>
+                    {expandedItem === user.user_id && (
+                      <div className="px-4 pb-4 border-t border-[#222] pt-3 bg-[#0a0a0a]">
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div><p className="text-gray-500">Spot</p><p className="font-medium">${(user.spot_balance || 0).toFixed(2)}</p></div>
+                          <div><p className="text-gray-500">Futures</p><p className="font-medium">${(user.futures_balance || 0).toFixed(2)}</p></div>
+                          <div><p className="text-gray-500">Welcome Bonus</p><p className="font-medium">${(user.welcome_bonus || 0).toFixed(2)}</p></div>
+                          <div><p className="text-gray-500">Rank</p><p className="font-medium">{user.team_rank_level || 0}</p></div>
                         </div>
-                        <div className="pt-2">
-                          <p className="text-gray-400 text-xs">User ID</p>
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs font-mono">{user.user_id}</p>
+                        <div className="mt-3 pt-3 border-t border-[#222]">
+                          <p className="text-gray-500 text-xs">User ID</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <code className="text-xs bg-[#1a1a1a] px-2 py-1 rounded">{user.user_id}</code>
                             <button onClick={() => copyToClipboard(user.user_id, user.user_id)}>
                               {copied === user.user_id ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
                             </button>
                           </div>
                         </div>
-                        <p className="text-xs text-gray-400">Joined: {user.created_at?.slice(0, 10)}</p>
                       </div>
                     )}
                   </div>
@@ -321,116 +285,184 @@ const AdminPanelPro = () => {
               </div>
             )}
 
-            {/* DEPOSIT ADDRESSES TAB */}
-            {activeTab === 'addresses' && (
-              <div className="space-y-3">
-                <p className="text-gray-400 mb-4">Total Addresses: {filteredAddresses.length}</p>
-                {filteredAddresses.slice(0, 50).map((addr, idx) => (
-                  <div key={idx} className="bg-[#1E2329] p-4 rounded-lg">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <p className="text-sm font-medium text-[#F0B90B]">{addr.network?.toUpperCase()}</p>
-                        <p className="text-xs text-gray-400">{addr.user_email}</p>
-                      </div>
-                      <span className={`px-2 py-1 text-xs rounded ${addr.gas_funded ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
-                        {addr.gas_funded ? 'GAS OK' : 'NO GAS'}
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-2 mt-3">
-                      <div>
-                        <p className="text-xs text-gray-400">Address</p>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-mono break-all">{addr.address}</p>
-                          <button onClick={() => copyToClipboard(addr.address, `addr-${idx}`)}>
-                            {copied === `addr-${idx}` ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
-                          </button>
+            {/* DEPOSITS */}
+            {activeTab === 'deposit' && (
+              <div className="space-y-6">
+                {/* Manual Deposits */}
+                <div>
+                  <h3 className="text-lg font-bold mb-3 text-[#F0B90B]">Manual Deposits (Pending)</h3>
+                  <div className="space-y-3">
+                    {deposits.filter(d => d.status === 'pending').map(dep => (
+                      <div key={dep.request_id} className="bg-[#111] border border-[#222] p-4 rounded-xl">
+                        <div className="flex justify-between mb-2">
+                          <span className="text-2xl font-bold text-green-400">${dep.amount}</span>
+                          <span className="px-3 py-1 bg-yellow-500/20 text-yellow-400 text-sm rounded-full">PENDING</span>
+                        </div>
+                        <p className="text-sm text-gray-400">Network: {dep.network?.toUpperCase()}</p>
+                        <p className="text-xs text-gray-500 mt-1">TX: {dep.tx_hash?.slice(0, 30)}...</p>
+                        <div className="flex gap-2 mt-3">
+                          <button onClick={() => handleApprove(dep.request_id)} className="flex-1 bg-green-600 hover:bg-green-700 py-2 rounded-lg font-medium">Approve</button>
+                          <button onClick={() => handleReject(dep.request_id)} className="flex-1 bg-red-600 hover:bg-red-700 py-2 rounded-lg font-medium">Reject</button>
                         </div>
                       </div>
-                      
-                      {addr.private_key && (
-                        <div>
-                          <p className="text-xs text-red-400">Private Key</p>
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs font-mono break-all text-red-300">{addr.private_key}</p>
-                            <button onClick={() => copyToClipboard(addr.private_key, `pk-${idx}`)}>
-                              {copied === `pk-${idx}` ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="flex justify-between text-xs text-gray-400 pt-2">
-                        <span>Deposited: ${addr.total_deposited || 0}</span>
-                        <span>{addr.created_at}</span>
-                      </div>
-                    </div>
+                    ))}
+                    {deposits.filter(d => d.status === 'pending').length === 0 && (
+                      <p className="text-gray-500 text-center py-8">No pending deposits</p>
+                    )}
                   </div>
-                ))}
+                </div>
+
+                {/* Auto Blockchain Deposits */}
+                <div>
+                  <h3 className="text-lg font-bold mb-3 text-blue-400">Auto Blockchain Deposits</h3>
+                  <div className="space-y-3">
+                    {autoDeposits.slice(0, 30).map((dep, idx) => (
+                      <div key={idx} className="bg-[#111] border border-[#222] p-4 rounded-xl">
+                        <div className="flex justify-between mb-2">
+                          <span className="text-xl font-bold text-green-400">${dep.amount}</span>
+                          <span className={`px-3 py-1 text-sm rounded-full ${
+                            dep.status === 'credited' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                          }`}>{dep.status?.toUpperCase()}</span>
+                        </div>
+                        <p className="text-sm text-gray-400">Network: {dep.network?.toUpperCase()}</p>
+                        <p className="text-xs text-gray-500">User: {dep.user_name || dep.user_email || dep.user_id?.slice(0, 15)}</p>
+                        <p className="text-xs text-gray-500">Address: {dep.deposit_address?.slice(0, 25)}...</p>
+                        <p className="text-xs text-gray-500 mt-1">{dep.detected_at?.slice(0, 19)}</p>
+                      </div>
+                    ))}
+                    {autoDeposits.length === 0 && (
+                      <p className="text-gray-500 text-center py-8">No auto deposits</p>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* VIP RANKS TAB */}
-            {activeTab === 'vip' && (
+            {/* WITHDRAWALS */}
+            {activeTab === 'withdrawal' && (
               <div className="space-y-3">
-                <p className="text-gray-400 mb-4">VIP Rank Users</p>
-                {users.filter(u => u.vip_level > 0).map(user => (
-                  <div key={user.user_id} className="bg-[#1E2329] p-4 rounded-lg flex justify-between items-center">
+                {withdrawals.length > 0 ? withdrawals.map((w, idx) => (
+                  <div key={idx} className="bg-[#111] border border-[#222] p-4 rounded-xl">
+                    <div className="flex justify-between mb-2">
+                      <span className="text-xl font-bold text-red-400">-${w.amount}</span>
+                      <span className={`px-3 py-1 text-sm rounded-full ${
+                        w.status === 'approved' ? 'bg-green-500/20 text-green-400' : 
+                        w.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'
+                      }`}>{w.status?.toUpperCase()}</span>
+                    </div>
+                    <p className="text-sm text-gray-400">To: {w.wallet_address?.slice(0, 25)}...</p>
+                    <p className="text-xs text-gray-500">{w.created_at?.slice(0, 19)}</p>
+                  </div>
+                )) : (
+                  <p className="text-gray-500 text-center py-8">No withdrawals</p>
+                )}
+              </div>
+            )}
+
+            {/* ADDRESS & PRIVATE KEY */}
+            {activeTab === 'addresses' && (
+              <div className="space-y-3">
+                <p className="text-gray-400 text-sm mb-4">Total: {filteredAddresses.length} addresses</p>
+                {filteredAddresses.map((addr, idx) => (
+                  <div key={idx} className="bg-[#111] border border-[#222] p-4 rounded-xl">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <span className="text-[#F0B90B] font-bold">{addr.network?.toUpperCase()}</span>
+                        <p className="text-sm text-gray-400">{addr.user_email || addr.user_name}</p>
+                      </div>
+                      <span className={`px-2 py-1 text-xs rounded ${addr.gas_funded ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                        {addr.gas_funded ? 'GAS ✓' : 'NO GAS'}
+                      </span>
+                    </div>
+                    
+                    {/* Address */}
+                    <div className="bg-[#0a0a0a] p-3 rounded-lg mb-2">
+                      <p className="text-xs text-gray-500 mb-1">Deposit Address</p>
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs text-green-400 break-all flex-1">{addr.address}</code>
+                        <button onClick={() => copyToClipboard(addr.address, `addr-${idx}`)} className="shrink-0">
+                          {copied === `addr-${idx}` ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Private Key */}
+                    {addr.private_key && (
+                      <div className="bg-[#1a0a0a] p-3 rounded-lg border border-red-900/30">
+                        <p className="text-xs text-red-400 mb-1">Private Key</p>
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs text-red-300 break-all flex-1">{addr.private_key}</code>
+                          <button onClick={() => copyToClipboard(addr.private_key, `pk-${idx}`)} className="shrink-0">
+                            {copied === `pk-${idx}` ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between text-xs text-gray-500 mt-3">
+                      <span>Deposited: ${addr.total_deposited || 0}</span>
+                      <span>{addr.created_at?.slice(0, 10)}</span>
+                    </div>
+                  </div>
+                ))}
+                {filteredAddresses.length === 0 && (
+                  <p className="text-gray-500 text-center py-8">No addresses found</p>
+                )}
+              </div>
+            )}
+
+            {/* RANK MEMBERS */}
+            {activeTab === 'rank' && (
+              <div className="space-y-3">
+                <p className="text-gray-400 text-sm mb-4">Total Ranked: {rankMembers.length}</p>
+                {rankMembers.map(user => (
+                  <div key={user.user_id} className="bg-[#111] border border-[#222] p-4 rounded-xl flex justify-between items-center">
                     <div>
                       <p className="font-medium">{user.name || 'No Name'}</p>
                       <p className="text-sm text-gray-400">{user.email}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[#F0B90B] font-bold">VIP {user.vip_level}</p>
-                      <p className="text-green-400">${(user.futures_balance || 0).toFixed(2)}</p>
+                      <p className="text-[#F0B90B] font-bold">Rank {user.team_rank_level || user.vip_level || 0}</p>
+                      <p className="text-green-400 text-sm">${(user.futures_balance || 0).toFixed(2)}</p>
                     </div>
                   </div>
                 ))}
-                {users.filter(u => u.vip_level > 0).length === 0 && (
-                  <p className="text-center text-gray-400 py-8">No VIP users yet</p>
+                {rankMembers.length === 0 && (
+                  <p className="text-gray-500 text-center py-8">No ranked members</p>
                 )}
               </div>
             )}
 
-            {/* WALLETS TAB */}
-            {activeTab === 'wallets' && (
+            {/* TRADE CODES */}
+            {activeTab === 'tradecodes' && (
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-[#1E2329] p-4 rounded-lg">
-                    <p className="text-gray-400 text-sm">Total Futures</p>
-                    <p className="text-xl font-bold text-green-400">
-                      ${users.reduce((sum, u) => sum + (u.futures_balance || 0), 0).toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="bg-[#1E2329] p-4 rounded-lg">
-                    <p className="text-gray-400 text-sm">Total Spot</p>
-                    <p className="text-xl font-bold text-blue-400">
-                      ${users.reduce((sum, u) => sum + (u.spot_balance || 0), 0).toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-                
-                <p className="text-gray-400 mb-2">Top Wallets by Balance</p>
-                {users
-                  .sort((a, b) => (b.futures_balance || 0) - (a.futures_balance || 0))
-                  .slice(0, 30)
-                  .map(user => (
-                    <div key={user.user_id} className="bg-[#1E2329] p-4 rounded-lg flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">{user.name || 'No Name'}</p>
-                        <p className="text-xs text-gray-400">{user.email}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-green-400 font-bold">${(user.futures_balance || 0).toFixed(2)}</p>
-                        <p className="text-xs text-gray-400">Spot: ${(user.spot_balance || 0).toFixed(2)}</p>
-                      </div>
+                {tradeCodes.length > 0 ? tradeCodes.slice(0, 50).map((code, idx) => (
+                  <div key={idx} className="bg-[#111] border border-[#222] p-4 rounded-xl">
+                    <div className="flex justify-between mb-2">
+                      <code className="text-lg font-bold text-[#F0B90B]">{code.code}</code>
+                      <span className={`px-2 py-1 text-xs rounded ${
+                        code.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                      }`}>{code.status}</span>
                     </div>
-                  ))}
+                    <p className="text-sm text-gray-400">Coin: {code.coin?.toUpperCase()}</p>
+                    <p className="text-xs text-gray-500">Profit: {code.profit_percent}%</p>
+                  </div>
+                )) : (
+                  <p className="text-gray-500 text-center py-8">No trade codes</p>
+                )}
+              </div>
+            )}
+
+            {/* KYC */}
+            {activeTab === 'kyc' && (
+              <div className="text-center py-20 text-gray-500">
+                <FileText size={48} className="mx-auto mb-4 opacity-50" />
+                <p>KYC verification coming soon</p>
               </div>
             )}
           </>
         )}
-      </div>
+      </main>
     </div>
   );
 };
