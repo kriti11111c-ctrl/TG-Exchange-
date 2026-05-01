@@ -2547,20 +2547,40 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
     
     # If period filter, fetch approved deposits within the time period
     period_deposits_map = {}
+    total_period_deposits = 0
+    
     if time_filter:
         time_filter_str = time_filter.isoformat()
         # Get approved deposits in the time period for referred users
+        # Check both approved_at and created_at fields for compatibility
         deposit_query = {
             "user_id": {"$in": referred_ids},
             "status": "approved",
-            "approved_at": {"$gte": time_filter_str}
+            "$or": [
+                {"approved_at": {"$gte": time_filter_str}},
+                {"created_at": {"$gte": time_filter_str}},
+                {"timestamp": {"$gte": time_filter_str}}
+            ]
         }
-        period_deposits = await db.deposit_requests.find(deposit_query, {"_id": 0, "user_id": 1, "amount": 1}).to_list(length=5000)
+        period_deposits = await db.deposit_requests.find(
+            deposit_query, 
+            {"_id": 0, "user_id": 1, "amount": 1, "approved_at": 1, "created_at": 1}
+        ).to_list(length=10000)
+        
+        logger.info(f"Period filter: {period}, Time filter: {time_filter_str}, Found {len(period_deposits)} deposits")
         
         for dep in period_deposits:
             uid = dep.get("user_id")
-            amt = float(dep.get("amount", 0))
+            try:
+                amt = float(dep.get("amount", 0))
+            except:
+                amt = 0
             period_deposits_map[uid] = period_deposits_map.get(uid, 0) + amt
+            total_period_deposits += amt
+    else:
+        # For "all" period, calculate from wallets
+        for wallet in wallets_cursor:
+            total_period_deposits += wallet.get("real_spot_deposits", 0)
     
     # Calculate stats per level
     level_stats = []
