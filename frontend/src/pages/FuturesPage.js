@@ -440,9 +440,23 @@ const FuturesPage = () => {
                     code: tradeCode
                   }, { withCredentials: true });
                   
-                  toast.success("🎉 " + res.data.message, {
-                    duration: 5000,
-                  });
+                  // Show profit prominently in toast
+                  const profitAmount = res.data.profit_usdt || res.data.trade_details?.profit || 0;
+                  toast.success(
+                    <div className="flex flex-col items-center py-1">
+                      <span className="text-lg font-bold">🎉 Trade Successful!</span>
+                      <span className="text-2xl font-black text-green-400 mt-1">+${profitAmount.toFixed(2)}</span>
+                      <span className="text-xs text-gray-400 mt-1">Profit added to wallet</span>
+                    </div>,
+                    {
+                      duration: 4000,
+                      style: {
+                        background: 'linear-gradient(135deg, #0a2e1a 0%, #1a4a2e 100%)',
+                        border: '1px solid #10b981',
+                        padding: '16px',
+                      }
+                    }
+                  );
                   
                   setCodeSuccess(res.data.trade_details || {
                     trade_type: res.data.trade_type,
@@ -457,7 +471,21 @@ const FuturesPage = () => {
                   
                   setTimeout(() => setCodeSuccess(null), 10000);
                 } catch (error) {
-                  toast.error(error.response?.data?.detail || "Invalid or expired trade code");
+                  const errorMsg = error.response?.data?.detail || "Invalid or expired trade code";
+                  toast.error(
+                    <div className="flex flex-col items-center py-1">
+                      <span className="text-lg font-bold">❌ Failed</span>
+                      <span className="text-sm text-red-300 mt-1">{errorMsg}</span>
+                    </div>,
+                    {
+                      duration: 3000,
+                      style: {
+                        background: 'linear-gradient(135deg, #2e0a0a 0%, #4a1a1a 100%)',
+                        border: '1px solid #ef4444',
+                        padding: '12px',
+                      }
+                    }
+                  );
                 } finally {
                   setApplyingCode(false);
                 }
