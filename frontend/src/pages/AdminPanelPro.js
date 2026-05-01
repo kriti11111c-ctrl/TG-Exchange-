@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Menu, X, Home, Users, Eye, CreditCard, Key, Award, Code, FileText, Search, RefreshCw, Copy, Check, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
 
-const API = '';
+// Use relative API path for both Emergent preview and VPS
+const API = process.env.REACT_APP_BACKEND_URL || '';
 
 const AdminPanelPro = () => {
   const navigate = useNavigate();
