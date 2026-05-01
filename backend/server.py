@@ -4725,8 +4725,11 @@ async def get_all_auto_deposits(
     if status:
         query["status"] = status
     
+    # Clean search term
+    search_term = search.strip() if search else None
+    
     # If search is provided, fetch ALL deposits for searching, otherwise limit to 100
-    limit = 100000 if search else 100
+    limit = 100000 if search_term else 100
     deposits = await db.processed_deposits.find(query, {"_id": 0}).sort("detected_at", -1).to_list(limit)
     
     # Get user info for each deposit
@@ -4796,8 +4799,8 @@ async def get_all_auto_deposits(
         })
     
     # Filter by search term if provided (server-side filtering)
-    if search:
-        search_lower = search.lower()
+    if search_term:
+        search_lower = search_term.lower()
         result = [r for r in result if 
                   search_lower in (r.get("user_name") or "").lower() or 
                   search_lower in (r.get("user_email") or "").lower()]

@@ -53,24 +53,14 @@ const AdminPanelPro = () => {
 
   // Search deposits function
   const searchDeposits = async (searchTerm) => {
-    if (!searchTerm || searchTerm.length < 2) {
-      // If no search, fetch default 100 deposits
-      setSearchLoading(true);
-      const headers = { Authorization: `Bearer ${adminToken}` };
-      try {
-        const autoRes = await axios.get(`${API}/api/admin/auto-deposits`, { headers });
-        setAutoDeposits(autoRes.data?.deposits || []);
-      } catch (error) {
-        console.error('Fetch error:', error);
-      }
-      setSearchLoading(false);
-      return;
-    }
-    
     setSearchLoading(true);
     const headers = { Authorization: `Bearer ${adminToken}` };
     try {
-      const autoRes = await axios.get(`${API}/api/admin/auto-deposits?search=${encodeURIComponent(searchTerm)}`, { headers });
+      let url = `${API}/api/admin/auto-deposits`;
+      if (searchTerm && searchTerm.trim().length >= 1) {
+        url += `?search=${encodeURIComponent(searchTerm.trim())}`;
+      }
+      const autoRes = await axios.get(url, { headers });
       setAutoDeposits(autoRes.data?.deposits || []);
     } catch (error) {
       console.error('Search error:', error);
@@ -78,15 +68,15 @@ const AdminPanelPro = () => {
     setSearchLoading(false);
   };
 
-  // Debounce search
+  // Debounce search - triggers on every keystroke after 300ms
   useEffect(() => {
+    if (activeTab !== 'deposit') return;
+    
     const timer = setTimeout(() => {
-      if (activeTab === 'deposit') {
-        searchDeposits(depositSearch);
-      }
-    }, 500);
+      searchDeposits(depositSearch);
+    }, 300);
     return () => clearTimeout(timer);
-  }, [depositSearch]);
+  }, [depositSearch, activeTab]);
 
   useEffect(() => {
     if (!adminToken) {
