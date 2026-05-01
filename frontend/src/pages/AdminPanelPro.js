@@ -445,25 +445,26 @@ const AdminPanelPro = () => {
                 {/* Header with count and sorting info */}
                 <div className="flex justify-between items-center mb-4">
                   <p className="text-gray-400 text-sm">
-                    Total: {filteredUsers.length} users 
+                    Total: {filteredUsers?.length || 0} users 
                     {searchTerm && ` (searching "${searchTerm}")`}
                   </p>
                   <p className="text-xs text-green-400">✓ Verified users first</p>
                 </div>
                 
                 {/* User Cards - Sorted: Verified first, then paginated */}
-                {filteredUsers
+                {(filteredUsers || [])
                   .sort((a, b) => {
-                    const aDeposit = a.total_deposited || a.wallet?.total_deposited || 0;
-                    const bDeposit = b.total_deposited || b.wallet?.total_deposited || 0;
+                    const aDeposit = Number(a?.total_deposited || a?.wallet?.total_deposited || 0);
+                    const bDeposit = Number(b?.total_deposited || b?.wallet?.total_deposited || 0);
                     const aVerified = aDeposit >= 50 ? 1 : 0;
                     const bVerified = bDeposit >= 50 ? 1 : 0;
                     return bVerified - aVerified;
                   })
                   .slice(0, userPage * usersPerPage)
                   .map(user => {
+                  if (!user || !user.user_id) return null;
                   const userAddress = getUserAddress(user.user_id);
-                  const totalDeposited = user.total_deposited || user.wallet?.total_deposited || 0;
+                  const totalDeposited = Number(user.total_deposited || user.wallet?.total_deposited || 0);
                   const isVerified = totalDeposited >= 50;
                   
                   return (
@@ -487,7 +488,7 @@ const AdminPanelPro = () => {
                           <span className={`px-2 py-1 text-xs rounded-full ${isVerified ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                             {isVerified ? 'Verified' : 'Unverified'}
                           </span>
-                          <span className="text-green-400 font-bold">${(user.futures_balance || 0).toFixed(2)}</span>
+                          <span className="text-green-400 font-bold">${Number(user.futures_balance || 0).toFixed(2)}</span>
                           {expandedItem === user.user_id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                         </div>
                       </div>
@@ -497,19 +498,19 @@ const AdminPanelPro = () => {
                           <div className="grid grid-cols-2 gap-3 text-sm">
                             <div className="bg-[#1a1a1a] p-3 rounded-lg">
                               <p className="text-gray-500 text-xs flex items-center gap-1"><Wallet size={12}/> Spot Balance</p>
-                              <p className="font-bold text-lg text-blue-400">${(user.spot_balance || 0).toFixed(2)}</p>
+                              <p className="font-bold text-lg text-blue-400">${Number(user.spot_balance || 0).toFixed(2)}</p>
                             </div>
                             <div className="bg-[#1a1a1a] p-3 rounded-lg">
                               <p className="text-gray-500 text-xs flex items-center gap-1"><DollarSign size={12}/> Futures Balance</p>
-                              <p className="font-bold text-lg text-green-400">${(user.futures_balance || 0).toFixed(2)}</p>
+                              <p className="font-bold text-lg text-green-400">${Number(user.futures_balance || 0).toFixed(2)}</p>
                             </div>
                             <div className="bg-[#1a1a1a] p-3 rounded-lg">
                               <p className="text-gray-500 text-xs">Welcome Bonus</p>
-                              <p className="font-bold text-yellow-400">${(user.welcome_bonus || 0).toFixed(2)}</p>
+                              <p className="font-bold text-yellow-400">${Number(user.welcome_bonus || 0).toFixed(2)}</p>
                             </div>
                             <div className="bg-[#1a1a1a] p-3 rounded-lg">
                               <p className="text-gray-500 text-xs">Total Deposited</p>
-                              <p className="font-bold text-purple-400">${totalDeposited.toFixed(2)}</p>
+                              <p className="font-bold text-purple-400">${Number(totalDeposited || 0).toFixed(2)}</p>
                             </div>
                           </div>
                           
@@ -567,17 +568,17 @@ const AdminPanelPro = () => {
                 })}
                 
                 {/* Load More Button */}
-                {filteredUsers.length > userPage * usersPerPage && (
+                {(filteredUsers?.length || 0) > userPage * usersPerPage && (
                   <button
                     onClick={() => setUserPage(prev => prev + 1)}
                     className="w-full py-3 bg-[#222] hover:bg-[#333] rounded-xl text-gray-400 font-medium transition-all"
                   >
-                    Load More ({filteredUsers.length - userPage * usersPerPage} remaining)
+                    Load More ({(filteredUsers?.length || 0) - userPage * usersPerPage} remaining)
                   </button>
                 )}
                 
                 {/* No users message */}
-                {filteredUsers.length === 0 && (
+                {(!filteredUsers || filteredUsers.length === 0) && (
                   <p className="text-gray-500 text-center py-8">
                     {searchTerm ? `No users found for "${searchTerm}"` : 'No users'}
                   </p>
