@@ -54,6 +54,7 @@ const KuCoinHomePage = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [countdowns, setCountdowns] = useState({});
   const notificationRef = useRef(null);
+  const [tradeHistory, setTradeHistory] = useState([]);
   
   // Countdown timer states for scheduled trade codes
   const [nextCodeTime, setNextCodeTime] = useState(null);
@@ -90,6 +91,7 @@ const KuCoinHomePage = () => {
     try {
       const res = await axios.get(`${API}/user/trade-codes`, { withCredentials: true });
       setTradeCodes(res.data.codes || []);
+      setTradeHistory(res.data.trade_history || []);
     } catch (error) {
       console.error("Error fetching trade codes:", error);
     }
@@ -357,7 +359,7 @@ const KuCoinHomePage = () => {
             </button>
             
             <div className="relative" ref={notificationRef}>
-              <button onClick={() => setShowNotifications(!showNotifications)} className="w-10 h-10 rounded-xl flex items-center justify-center relative" style={{backgroundColor: colors.card, border: `1.5px solid ${colors.border}`}}>
+              <button data-testid="notification-bell" onClick={() => setShowNotifications(!showNotifications)} className="w-10 h-10 rounded-xl flex items-center justify-center relative" style={{backgroundColor: colors.card, border: `1.5px solid ${colors.border}`}}>
                 <Bell size={20} color={colors.text} weight="fill" />
                 {activeOrScheduledCodes.length > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-[10px] text-white flex items-center justify-center font-bold" style={{backgroundColor: colors.red}}>
@@ -595,14 +597,8 @@ const KuCoinHomePage = () => {
                       </div>
                       
                       <div className="space-y-2 max-h-32 overflow-y-auto">
-                        {/* Sample history items - will be populated from API */}
-                        {[
-                          {code: 'X7KM9P', status: 'success', time: '15:00 UTC', profit: '+$12.50'},
-                          {code: 'A3BN2L', status: 'missed', time: '05:15 UTC', profit: '-'},
-                          {code: 'H8YT5R', status: 'success', time: '15:00 UTC', profit: '+$8.20'},
-                          {code: 'K2WQ7M', status: 'success', time: '05:15 UTC', profit: '+$15.00'},
-                          {code: 'P9XC3N', status: 'missed', time: '15:00 UTC', profit: '-'},
-                        ].map((item, idx) => (
+                        {/* Real trade history from API */}
+                        {tradeHistory.length > 0 ? tradeHistory.map((item, idx) => (
                           <div key={idx} className="flex items-center justify-between py-1.5 px-2 rounded-lg" style={{
                             background: item.status === 'success' 
                               ? 'rgba(0,200,83,0.1)' 
@@ -612,12 +608,16 @@ const KuCoinHomePage = () => {
                               <span className={`w-2 h-2 rounded-full ${item.status === 'success' ? 'bg-green-500' : 'bg-red-500'}`}></span>
                               <span className="font-mono text-xs text-gray-300">{item.code}</span>
                             </div>
-                            <span className="text-[10px] text-gray-500">{item.time}</span>
+                            <span className="text-[10px] text-gray-500">{item.coin}</span>
                             <span className={`text-xs font-bold ${item.status === 'success' ? 'text-green-400' : 'text-red-400'}`}>
                               {item.profit}
                             </span>
                           </div>
-                        ))}
+                        )) : (
+                          <div className="text-center py-4 text-gray-500 text-xs">
+                            No trade history yet
+                          </div>
+                        )}
                       </div>
                     </div>
                     

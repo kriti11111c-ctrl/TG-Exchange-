@@ -5495,7 +5495,7 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
                 {"user_id": {"$exists": False}},  # Global codes without user_id
                 {"is_global": True}  # Explicitly marked global codes
             ],
-            "status": {"$in": ["active", "scheduled"]}
+            "status": {"$in": ["active", "scheduled", "live"]}
         },
         {"_id": 0}
     ).sort("created_at", -1).to_list(50)
@@ -5580,11 +5580,28 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
     if last_trade and last_trade.get("result") == "fail":
         current_multiplier = 2
     
+    # Fetch trade history (used codes)
+    used_codes = await db.trade_codes.find(
+        {"user_id": user["user_id"], "status": "used"},
+        {"_id": 0, "code": 1, "coin": 1, "result": 1, "actual_profit": 1, "used_at": 1}
+    ).sort("used_at", -1).to_list(10)
+    
+    trade_history = []
+    for uc in used_codes:
+        trade_history.append({
+            "code": uc.get("code"),
+            "coin": uc.get("coin", "BTC"),
+            "status": "success" if uc.get("result") == "success" else "missed",
+            "profit": f'+${uc.get("actual_profit", 0):.2f}' if uc.get("result") == "success" else "-",
+            "time": uc.get("used_at", "")[:16].replace("T", " ") if uc.get("used_at") else ""
+        })
+    
     return {
         "codes": processed_codes,
         "total_balance": total_balance,
         "active_count": len([c for c in processed_codes if c.get("is_live", False)]),
-        "current_multiplier": current_multiplier
+        "current_multiplier": current_multiplier,
+        "trade_history": trade_history
     }
 
 @api_router.post("/trade/apply-code")
@@ -6501,7 +6518,7 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=["http://72.61.117.69", "http://tradegenius.exchange", "http://www.tradegenius.exchange", "https://tradegenius.exchange", "https://www.tradegenius.exchange"],
+    allow_origins=["http://72.61.117.69", "http://tradegenius.exchange", "http://www.tradegenius.exchange", "https://tradegenius.exchange", "https://www.tradegenius.exchange", "http://localhost:3000", "http://127.0.0.1:3000"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
