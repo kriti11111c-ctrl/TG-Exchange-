@@ -609,45 +609,6 @@ const AdminPanelPro = () => {
             {/* DEPOSITS */}
             {activeTab === 'deposit' && (
               <div className="space-y-6">
-                {/* Fresh Deposit Count with Time Filter */}
-                <div className="bg-gradient-to-r from-green-900/30 to-blue-900/30 border border-green-500/30 rounded-xl p-4">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-lg font-bold text-green-400">Fresh Deposits</h3>
-                    <div className="flex gap-1 bg-[#111] rounded-lg p-1">
-                      {['24h', '7d', '30d', 'max'].map(filter => (
-                        <button
-                          key={filter}
-                          onClick={() => setDepositTimeFilter(filter)}
-                          className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${
-                            depositTimeFilter === filter 
-                              ? 'bg-green-600 text-white' 
-                              : 'text-gray-400 hover:text-white'
-                          }`}
-                        >
-                          {filter.toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-[#111] rounded-lg p-3 text-center">
-                      <p className="text-3xl font-bold text-green-400">
-                        {autoDeposits.filter(d => isWithinTimeRange(d.detected_at || d.created_at, depositTimeFilter)).length}
-                      </p>
-                      <p className="text-xs text-gray-500">Total Deposits</p>
-                    </div>
-                    <div className="bg-[#111] rounded-lg p-3 text-center">
-                      <p className="text-3xl font-bold text-blue-400">
-                        ${autoDeposits
-                          .filter(d => isWithinTimeRange(d.detected_at || d.created_at, depositTimeFilter))
-                          .reduce((sum, d) => sum + Number(d.amount || 0), 0)
-                          .toFixed(2)}
-                      </p>
-                      <p className="text-xs text-gray-500">Total Amount</p>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Manual Deposits */}
                 <div>
                   <h3 className="text-lg font-bold mb-3 text-[#F0B90B]">Manual Deposits (Pending)</h3>
