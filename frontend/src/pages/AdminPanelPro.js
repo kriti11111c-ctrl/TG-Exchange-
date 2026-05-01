@@ -125,14 +125,36 @@ const AdminPanelPro = () => {
     
     try {
       if (activeTab === 'dashboard') {
-        const [usersRes, depsRes] = await Promise.all([
+        const [usersRes, depsRes, withdrawRes, autoDepRes] = await Promise.all([
           axios.get(`${API}/api/admin/users`, { headers }),
-          axios.get(`${API}/api/admin/deposit-requests`, { headers })
+          axios.get(`${API}/api/admin/deposit-requests`, { headers }),
+          axios.get(`${API}/api/admin/withdrawal-requests`, { headers }),
+          axios.get(`${API}/api/admin/auto-deposits`, { headers })
         ]);
+        
+        // Calculate today's signups
+        const today = new Date().toDateString();
+        const allUsers = usersRes.data?.users || usersRes.data || [];
+        const todaySignups = allUsers.filter(u => {
+          const createdAt = u.created_at || u.createdAt;
+          return createdAt && new Date(createdAt).toDateString() === today;
+        }).length;
+        
+        // Calculate total deposits from auto-deposits
+        const autoDeposits = autoDepRes.data?.deposits || [];
+        const totalDeposit = autoDeposits.reduce((sum, d) => sum + Number(d.amount || 0), 0);
+        
+        // Calculate total withdrawals (approved only)
+        const allWithdrawals = withdrawRes.data?.requests || withdrawRes.data?.withdrawals || withdrawRes.data || [];
+        const totalWithdrawal = allWithdrawals
+          .filter(w => w.status === 'approved')
+          .reduce((sum, w) => sum + Number(w.amount || 0), 0);
+        
         setStats({
-          totalUsers: usersRes.data?.length || 0,
-          pendingDeposits: depsRes.data?.stats?.pending || 0,
-          approvedDeposits: depsRes.data?.stats?.approved || 0
+          totalUsers: allUsers.length || 0,
+          todaySignups: todaySignups,
+          totalDeposit: totalDeposit,
+          totalWithdrawal: totalWithdrawal
         });
       } else if (activeTab === 'users') {
         // Fetch users and addresses together for user panel
@@ -443,18 +465,41 @@ const AdminPanelPro = () => {
             {activeTab === 'dashboard' && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-[#111] border border-[#222] p-4 rounded-xl">
-                    <p className="text-gray-400 text-sm">Total Users</p>
-                    <p className="text-3xl font-bold text-[#F0B90B]">{stats.totalUsers || 0}</p>
+                  {/* Total Users */}
+                  <div className="bg-gradient-to-br from-blue-900/40 to-blue-800/20 border border-blue-500/30 p-4 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users size={20} className="text-blue-400" />
+                      <p className="text-gray-400 text-sm">Total Users</p>
+                    </div>
+                    <p className="text-3xl font-bold text-blue-400">{stats.totalUsers || 0}</p>
                   </div>
-                  <div className="bg-[#111] border border-[#222] p-4 rounded-xl">
-                    <p className="text-gray-400 text-sm">Pending Deposits</p>
-                    <p className="text-3xl font-bold text-yellow-400">{stats.pendingDeposits || 0}</p>
+                  
+                  {/* Today Sign Up */}
+                  <div className="bg-gradient-to-br from-green-900/40 to-green-800/20 border border-green-500/30 p-4 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <UserCheck size={20} className="text-green-400" />
+                      <p className="text-gray-400 text-sm">Today Sign Up</p>
+                    </div>
+                    <p className="text-3xl font-bold text-green-400">{stats.todaySignups || 0}</p>
                   </div>
-                </div>
-                <div className="bg-[#111] border border-[#222] p-4 rounded-xl">
-                  <p className="text-gray-400 text-sm">Approved Deposits</p>
-                  <p className="text-3xl font-bold text-green-400">{stats.approvedDeposits || 0}</p>
+                  
+                  {/* Total Deposit */}
+                  <div className="bg-gradient-to-br from-yellow-900/40 to-yellow-800/20 border border-yellow-500/30 p-4 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <DollarSign size={20} className="text-yellow-400" />
+                      <p className="text-gray-400 text-sm">Total Deposit</p>
+                    </div>
+                    <p className="text-3xl font-bold text-yellow-400">${Number(stats.totalDeposit || 0).toFixed(2)}</p>
+                  </div>
+                  
+                  {/* Total Withdrawal */}
+                  <div className="bg-gradient-to-br from-red-900/40 to-red-800/20 border border-red-500/30 p-4 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CreditCard size={20} className="text-red-400" />
+                      <p className="text-gray-400 text-sm">Total Withdrawal</p>
+                    </div>
+                    <p className="text-3xl font-bold text-red-400">${Number(stats.totalWithdrawal || 0).toFixed(2)}</p>
+                  </div>
                 </div>
               </div>
             )}
