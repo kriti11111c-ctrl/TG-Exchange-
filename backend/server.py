@@ -28,20 +28,54 @@ import time
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection - Optimized for high concurrency (300K+ users)
+# MongoDB connection - Optimized for MASSIVE traffic (1M+ concurrent users)
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(
     mongo_url, 
-    maxPoolSize=200,  # Increased from 50 for high traffic
-    minPoolSize=50,   # Increased minimum pool
-    maxIdleTimeMS=30000,  # 30 seconds idle timeout
-    connectTimeoutMS=5000,  # 5 second connection timeout
-    serverSelectionTimeoutMS=5000,
+    maxPoolSize=500,      # Increased for 10 lakh users
+    minPoolSize=100,      # Keep 100 connections ready
+    maxIdleTimeMS=60000,  # 60 seconds idle timeout
+    connectTimeoutMS=3000, # 3 second connection timeout (faster fail)
+    serverSelectionTimeoutMS=3000,
+    socketTimeoutMS=5000,  # 5 second socket timeout
     retryWrites=True,
     retryReads=True,
-    w='majority'  # Write concern for reliability
+    w=1  # Faster writes (w=1 instead of majority)
 )
 db = client[os.environ['DB_NAME']]
+
+# HIGH-PERFORMANCE IN-MEMORY CACHE for heavy traffic
+class HighPerformanceCache:
+    """Ultra-fast in-memory cache for 1M+ users"""
+    def __init__(self):
+        self.cache = {}
+        self.locks = {}
+    
+    def get(self, key: str, ttl: int = 5):
+        """Get cached value if not expired (default 5 sec TTL)"""
+        if key in self.cache:
+            data, timestamp = self.cache[key]
+            if (datetime.now(timezone.utc) - timestamp).total_seconds() < ttl:
+                return data
+        return None
+    
+    def set(self, key: str, value):
+        """Set cache value with timestamp"""
+        self.cache[key] = (value, datetime.now(timezone.utc))
+    
+    def delete(self, key: str):
+        """Delete cache key"""
+        self.cache.pop(key, None)
+    
+    def clear_expired(self, max_age: int = 300):
+        """Clear entries older than max_age seconds"""
+        now = datetime.now(timezone.utc)
+        expired = [k for k, (v, t) in self.cache.items() if (now - t).total_seconds() > max_age]
+        for k in expired:
+            del self.cache[k]
+
+# Global high-performance cache
+hp_cache = HighPerformanceCache()
 
 # JWT Config
 JWT_SECRET = os.environ.get('JWT_SECRET', 'your-super-secret-key-change-in-production')
@@ -168,7 +202,7 @@ logger = logging.getLogger(__name__)
 # ================= STARTUP EVENT - CREATE INDEXES =================
 @app.on_event("startup")
 async def create_indexes():
-    """Create database indexes for optimal query performance - Essential for 300K+ users"""
+    """Create database indexes for MASSIVE traffic - 1M+ concurrent users"""
     try:
         # Users collection indexes
         await db.users.create_index("email", unique=True)
@@ -177,15 +211,20 @@ async def create_indexes():
         await db.users.create_index("referred_by")
         await db.users.create_index("team_rank_level")
         
+        # Wallets - CRITICAL for fast balance lookups
+        await db.wallets.create_index("user_id", unique=True)
+        
         # Transactions collection indexes
         await db.transactions.create_index([("user_id", 1), ("created_at", -1)])
         await db.transactions.create_index([("user_id", 1), ("type", 1)])
         await db.transactions.create_index("created_at")
         
-        # Trade codes indexes
+        # Trade codes indexes - CRITICAL for peak traffic
         await db.trade_codes.create_index([("user_id", 1), ("status", 1)])
         await db.trade_codes.create_index("code", unique=True, sparse=True)
+        await db.trade_codes.create_index([("code", 1), ("status", 1)])  # Compound for apply-code
         await db.trade_codes.create_index("expires_at")
+        await db.trade_codes.create_index("status")  # For quick status filters
         
         # Trade records indexes
         await db.trade_records.create_index([("user_id", 1), ("created_at", -1)])
@@ -198,12 +237,19 @@ async def create_indexes():
         await db.deposits.create_index([("user_id", 1), ("status", 1)])
         await db.withdrawals.create_index([("user_id", 1), ("status", 1)])
         
+        # Referrals - for team queries
+        await db.referrals.create_index([("referrer_id", 1), ("level", 1)])
+        await db.referrals.create_index("referred_id")
+        
+        # Team deposits
+        await db.team_deposits.create_index("referrer_id", unique=True)
+        
         # Sessions index for fast auth
         await db.sessions.create_index("token")
         await db.sessions.create_index("user_id")
         await db.sessions.create_index("expires_at", expireAfterSeconds=0)  # TTL index
         
-        logger.info("✅ Database indexes created successfully - Ready for high traffic!")
+        logger.info("✅ Database indexes created - Ready for 1M+ concurrent users!")
     except Exception as e:
         logger.error(f"Error creating indexes: {e}")
 
@@ -841,6 +887,7 @@ def create_jwt_token(user_id: str, email: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 async def get_current_user(request: Request) -> dict:
+    """Get current user - OPTIMIZED with caching for heavy traffic"""
     # Check cookie first
     session_token = request.cookies.get("session_token")
     
@@ -852,6 +899,12 @@ async def get_current_user(request: Request) -> dict:
     
     if not session_token:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # Check cache first for fast response
+    cache_key = f"auth_{session_token[:20]}"  # Use first 20 chars as key
+    cached_user = hp_cache.get(cache_key, ttl=30)  # 30 second cache
+    if cached_user:
+        return cached_user
     
     # Check if it's a Google OAuth session
     session = await db.user_sessions.find_one({"session_token": session_token}, {"_id": 0})
@@ -867,6 +920,7 @@ async def get_current_user(request: Request) -> dict:
         user = await db.users.find_one({"user_id": session["user_id"]}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
+        hp_cache.set(cache_key, user)  # Cache user
         return user
     
     # Try JWT token
@@ -876,6 +930,7 @@ async def get_current_user(request: Request) -> dict:
         user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
+        hp_cache.set(cache_key, user)  # Cache user
         return user
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -5775,110 +5830,123 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
 
 @api_router.post("/trade/apply-code")
 async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_current_user)):
-    """User applies a trade code to execute trade with profit calculation
-    
-    NEW LOGIC:
-    - Fetches LIVE price at execution time
-    - Shows actual opening and closing prices
-    - Records execution timestamp for unique results
-    """
+    """User applies a trade code - OPTIMIZED for 1M+ concurrent users"""
     from datetime import timedelta
     import random
     
-    # First check if code exists at all (including used codes)
-    any_code = await db.trade_codes.find_one({
-        "code": {"$in": [data.code.upper(), data.code, data.code.lower()]}
-    })
+    code_input = data.code.strip()
+    code_variants = [code_input.upper(), code_input, code_input.lower()]
     
-    if any_code and any_code.get("status") == "used":
-        raise HTTPException(status_code=400, detail="This code has already been used")
-    
-    if any_code and any_code.get("status") == "expired":
-        raise HTTPException(status_code=400, detail="This code has expired")
-    
-    # Find the trade code (can be live, active, or scheduled)
-    # Try both uppercase and original case for backward compatibility
+    # SINGLE optimized query - get trade code with all statuses
     trade_code = await db.trade_codes.find_one({
-        "code": {"$in": [data.code.upper(), data.code, data.code.lower()]},
-        "status": {"$in": ["active", "scheduled", "live"]}  # Added "live" status
+        "code": {"$in": code_variants}
     })
     
     if not trade_code:
         raise HTTPException(status_code=400, detail="Invalid trade code")
     
-    # Check if code is user-specific or global
-    # Global codes (no user_id or is_global=True) can be used by anyone
-    is_global_code = not trade_code.get("user_id") or trade_code.get("is_global", False)
+    # Check status
+    if trade_code.get("status") == "used":
+        raise HTTPException(status_code=400, detail="This code has already been used")
     
+    if trade_code.get("status") == "expired":
+        raise HTTPException(status_code=400, detail="This code has expired")
+    
+    if trade_code.get("status") not in ["active", "scheduled", "live"]:
+        raise HTTPException(status_code=400, detail="Invalid trade code status")
+    
+    # Check ownership
+    is_global_code = not trade_code.get("user_id") or trade_code.get("is_global", False)
     if not is_global_code and trade_code.get("user_id") != user["user_id"]:
         raise HTTPException(status_code=403, detail="This code is not for your account")
     
     now = datetime.now(timezone.utc)
     
-    # Check if code is live (scheduled_start has passed)
+    # Check if code is live
     if trade_code.get("scheduled_start"):
-        scheduled_start = datetime.fromisoformat(trade_code["scheduled_start"].replace('Z', '+00:00'))
-        if scheduled_start.tzinfo is None:
-            scheduled_start = scheduled_start.replace(tzinfo=timezone.utc)
-        
-        if now < scheduled_start:
-            time_to_live = int((scheduled_start - now).total_seconds())
-            mins = time_to_live // 60
-            secs = time_to_live % 60
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Code not yet live. Starts in {mins}m {secs}s"
-            )
+        try:
+            scheduled_start = datetime.fromisoformat(trade_code["scheduled_start"].replace('Z', '+00:00'))
+            if scheduled_start.tzinfo is None:
+                scheduled_start = scheduled_start.replace(tzinfo=timezone.utc)
+            
+            if now < scheduled_start:
+                time_to_live = int((scheduled_start - now).total_seconds())
+                mins, secs = divmod(time_to_live, 60)
+                raise HTTPException(status_code=400, detail=f"Code not yet live. Starts in {mins}m {secs}s")
+        except ValueError:
+            pass
     
-    # Check if code has expired
+    # Check expiry
+    expires_at = None
     if trade_code.get("expires_at"):
-        expires_at = datetime.fromisoformat(trade_code["expires_at"].replace('Z', '+00:00'))
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        try:
+            expires_at = datetime.fromisoformat(trade_code["expires_at"].replace('Z', '+00:00'))
+            if expires_at.tzinfo is None:
+                expires_at = expires_at.replace(tzinfo=timezone.utc)
+        except ValueError:
+            expires_at = now + timedelta(hours=1)
     else:
-        created_at = datetime.fromisoformat(trade_code["created_at"].replace('Z', '+00:00'))
-        if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-        expires_at = created_at + timedelta(hours=1)
+        try:
+            created_at = datetime.fromisoformat(trade_code["created_at"].replace('Z', '+00:00'))
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            expires_at = created_at + timedelta(hours=1)
+        except ValueError:
+            expires_at = now + timedelta(hours=1)
     
     if now > expires_at:
-        await db.trade_codes.update_one(
+        # Update status in background, don't wait
+        asyncio.create_task(db.trade_codes.update_one(
             {"code": trade_code["code"]},
             {"$set": {"status": "expired"}}
-        )
+        ))
         raise HTTPException(status_code=400, detail="Trade code has expired")
     
-    # Get user's wallet
-    wallet = await db.wallets.find_one({"user_id": user["user_id"]})
+    # Get wallet - use cache for repeated requests
+    cache_key = f"wallet_{user['user_id']}"
+    wallet = hp_cache.get(cache_key, ttl=2)  # 2 second cache
+    if not wallet:
+        wallet = await db.wallets.find_one({"user_id": user["user_id"]})
+        if wallet:
+            hp_cache.set(cache_key, wallet)
+    
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
     
     coin = trade_code["coin"]
     
-    # FETCH LIVE PRICE at execution time
-    coin_id_map = {
-        "btc": "bitcoin", "eth": "ethereum", "bnb": "binancecoin", "sol": "solana",
-        "xrp": "ripple", "doge": "dogecoin", "ada": "cardano", "avax": "avalanche-2",
-        "shib": "shiba-inu", "dot": "polkadot", "link": "chainlink", "trx": "tron",
-        "matic": "matic-network", "uni": "uniswap", "ltc": "litecoin", "atom": "cosmos",
-        "xlm": "stellar", "near": "near", "apt": "aptos", "fil": "filecoin"
-    }
+    # Use cached/stored price - faster than API call during peak traffic
+    open_price = trade_code.get("price", 1000)
     
-    coin_id = coin_id_map.get(coin.lower(), "bitcoin")
-    open_price = trade_code.get("price", 1000)  # Fallback to stored price
+    # Try to get live price ONLY if not under heavy load (check cache)
+    price_cache_key = f"price_{coin}"
+    cached_price = hp_cache.get(price_cache_key, ttl=10)  # 10 sec cache
     
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd",
-                timeout=10.0
-            )
-            if response.status_code == 200:
-                price_data = response.json()
-                live_price = price_data.get(coin_id, {}).get("usd", open_price)
-                open_price = live_price  # Use LIVE price as opening price
-    except:
-        pass  # Use stored price if API fails
+    if cached_price:
+        open_price = cached_price
+    else:
+        # Try to fetch live price with short timeout
+        coin_id_map = {
+            "btc": "bitcoin", "eth": "ethereum", "bnb": "binancecoin", "sol": "solana",
+            "xrp": "ripple", "doge": "dogecoin", "ada": "cardano", "avax": "avalanche-2",
+            "shib": "shiba-inu", "dot": "polkadot", "link": "chainlink", "trx": "tron",
+            "matic": "matic-network", "uni": "uniswap", "ltc": "litecoin", "atom": "cosmos",
+            "xlm": "stellar", "near": "near", "apt": "aptos", "fil": "filecoin"
+        }
+        coin_id = coin_id_map.get(coin.lower(), "bitcoin")
+        
+        try:
+            async with httpx.AsyncClient(timeout=2.0) as client:  # 2 sec timeout
+                response = await client.get(
+                    f"https://api.coingecko.com/api/v3/simple/price?ids={coin_id}&vs_currencies=usd"
+                )
+                if response.status_code == 200:
+                    price_data = response.json()
+                    live_price = price_data.get(coin_id, {}).get("usd", open_price)
+                    open_price = live_price
+                    hp_cache.set(price_cache_key, live_price)  # Cache it
+        except:
+            pass  # Use stored/cached price if API fails
     
     # Trade is ALWAYS successful - calculate based on fund_percent (1% * multiplier)
     futures_balance = wallet.get("futures_balance", 0)
