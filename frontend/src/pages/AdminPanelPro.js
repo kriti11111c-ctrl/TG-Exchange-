@@ -175,49 +175,62 @@ const AdminPanelPro = () => {
     }
   };
 
-  // Withdrawal approve with transaction hash
+  // Withdrawal approve with transaction hash - INSTANT
   const handleWithdrawalApprove = async (requestId) => {
     const txHash = txHashes[requestId];
     if (!txHash || txHash.trim() === '') {
       alert('Please enter Transaction Hash before approving!');
       return;
     }
+    
+    // INSTANT UI UPDATE - Remove from list immediately
+    setWithdrawals(prev => prev.map(w => 
+      w.request_id === requestId ? { ...w, status: 'approved', tx_hash: txHash } : w
+    ));
+    setTxHashes(prev => ({ ...prev, [requestId]: '' }));
+    showPopup('✅ APPROVED!', '', 'green');
+    
+    // API call in background
     try {
       await axios.post(`${API}/api/admin/withdrawal-requests/action`, 
         { request_id: requestId, action: 'approve', tx_hash: txHash }, 
         { headers: { Authorization: `Bearer ${adminToken}` } }
       );
-      setTxHashes(prev => ({ ...prev, [requestId]: '' }));
-      // Show success popup
-      showPopup('✅ SUCCESS!', 'Withdrawal approved successfully!', 'green');
-      fetchData();
     } catch (error) {
+      // Revert on error
+      fetchData();
       showPopup('❌ ERROR', error.response?.data?.detail || error.message, 'red');
     }
   };
 
-  // Withdrawal reject
+  // Withdrawal reject - INSTANT
   const handleWithdrawalReject = async (requestId) => {
+    // INSTANT UI UPDATE - Remove from list immediately
+    setWithdrawals(prev => prev.map(w => 
+      w.request_id === requestId ? { ...w, status: 'rejected' } : w
+    ));
+    showPopup('❌ REJECTED!', '', 'red');
+    
+    // API call in background
     try {
       await axios.post(`${API}/api/admin/withdrawal-requests/action`, 
         { request_id: requestId, action: 'reject' }, 
         { headers: { Authorization: `Bearer ${adminToken}` } }
       );
-      // Show reject popup
-      showPopup('❌ REJECTED', 'Withdrawal has been rejected!', 'red');
-      fetchData();
     } catch (error) {
+      // Revert on error
+      fetchData();
       showPopup('❌ ERROR', error.response?.data?.detail || error.message, 'red');
     }
   };
 
-  // Show popup helper
+  // Show popup helper - FAST 200ms
   const showPopup = (title, message, color) => {
     const popup = document.createElement('div');
-    popup.className = `fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-${color === 'green' ? 'green' : 'red'}-600 text-white px-8 py-6 rounded-2xl z-50 text-center shadow-2xl animate-pulse`;
-    popup.innerHTML = `<p class="text-2xl font-bold mb-2">${title}</p><p>${message}</p>`;
+    popup.className = `fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-${color === 'green' ? 'green' : 'red'}-600 text-white px-6 py-4 rounded-xl z-50 text-center shadow-2xl`;
+    popup.innerHTML = `<p class="text-xl font-bold">${title}</p>${message ? `<p class="text-sm">${message}</p>` : ''}`;
     document.body.appendChild(popup);
-    setTimeout(() => popup.remove(), 2000);
+    setTimeout(() => popup.remove(), 200);
   };
 
   const copyToClipboard = (text, id) => {
