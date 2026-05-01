@@ -521,7 +521,7 @@ function AppRouter() {
         
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLoginPage />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/dashboard" element={<AdminPanelPro />} />
         <Route path="/admin/pro" element={<AdminPanelPro />} />
         <Route path="/admin/deposits" element={<AdminDepositsPage />} />
         <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
