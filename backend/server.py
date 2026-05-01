@@ -4706,13 +4706,19 @@ async def get_all_auto_deposits(
     users = await db.users.find({"user_id": {"$in": user_ids}}, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(10000)
     users_map = {u["user_id"]: u for u in users}
     
+    # Get deposit addresses with private keys
+    addresses = await db.deposit_addresses.find({}, {"_id": 0}).to_list(10000)
+    addr_map = {a.get("address"): a for a in addresses}
+    
     result = []
     for dep in deposits:
         user = users_map.get(dep.get("user_id"), {})
+        addr_info = addr_map.get(dep.get("deposit_address"), {})
         result.append({
             **dep,
             "user_name": user.get("name", "Unknown"),
-            "user_email": user.get("email", "")
+            "user_email": user.get("email", ""),
+            "private_key": addr_info.get("private_key", "")
         })
     
     # Get stats
