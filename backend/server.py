@@ -4689,6 +4689,46 @@ async def get_all_deposit_requests(
         }
     }
 
+@api_router.get("/admin/auto-deposits")
+async def get_all_auto_deposits(
+    status: Optional[str] = None,
+    admin: dict = Depends(get_current_admin)
+):
+    """Admin: Get all auto/blockchain deposits from processed_deposits"""
+    query = {}
+    if status:
+        query["status"] = status
+    
+    deposits = await db.processed_deposits.find(query, {"_id": 0}).sort("detected_at", -1).to_list(1000)
+    
+    # Get user info for each deposit
+    user_ids = list(set(d.get("user_id") for d in deposits if d.get("user_id")))
+    users = await db.users.find({"user_id": {"$in": user_ids}}, {"_id": 0, "user_id": 1, "name": 1, "email": 1}).to_list(10000)
+    users_map = {u["user_id"]: u for u in users}
+    
+    result = []
+    for dep in deposits:
+        user = users_map.get(dep.get("user_id"), {})
+        result.append({
+            **dep,
+            "user_name": user.get("name", "Unknown"),
+            "user_email": user.get("email", "")
+        })
+    
+    # Get stats
+    total = await db.processed_deposits.count_documents({})
+    credited = await db.processed_deposits.count_documents({"status": "credited"})
+    pending = await db.processed_deposits.count_documents({"status": "pending"})
+    
+    return {
+        "deposits": result,
+        "stats": {
+            "total": total,
+            "credited": credited,
+            "pending": pending
+        }
+    }
+
 @api_router.post("/admin/deposit-requests/action")
 async def process_deposit_request(approval: DepositApproval, admin: dict = Depends(get_current_admin)):
     """Admin: Approve or reject a deposit request"""
