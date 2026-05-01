@@ -6520,7 +6520,16 @@ app.include_router(api_router)
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=["http://72.61.117.69", "http://tradegenius.exchange", "http://www.tradegenius.exchange", "https://tradegenius.exchange", "https://www.tradegenius.exchange", "http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://72.61.117.69", 
+        "http://tradegenius.exchange", 
+        "http://www.tradegenius.exchange", 
+        "https://tradegenius.exchange", 
+        "https://www.tradegenius.exchange", 
+        "http://localhost:3000", 
+        "http://127.0.0.1:3000",
+        "https://centralized-exchange.preview.emergentagent.com"
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
