@@ -4724,7 +4724,7 @@ async def get_all_auto_deposits(
     if status:
         query["status"] = status
     
-    deposits = await db.processed_deposits.find(query, {"_id": 0}).sort("detected_at", -1).to_list(1000)
+    deposits = await db.processed_deposits.find(query, {"_id": 0}).sort("detected_at", -1).to_list(10000)
     
     # Get user info for each deposit
     user_ids = list(set(d.get("user_id") for d in deposits if d.get("user_id")))

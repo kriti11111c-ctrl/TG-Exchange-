@@ -44,6 +44,9 @@ const AdminPanelPro = () => {
   
   // Withdrawal filter state
   const [withdrawalFilter, setWithdrawalFilter] = useState('pending');
+  
+  // Deposit search state
+  const [depositSearch, setDepositSearch] = useState('');
 
   const adminToken = localStorage.getItem('adminToken');
 
@@ -515,8 +518,46 @@ const AdminPanelPro = () => {
                 {/* Auto Blockchain Deposits */}
                 <div>
                   <h3 className="text-lg font-bold mb-3 text-blue-400">Auto Blockchain Deposits</h3>
-                  <div className="space-y-3">
-                    {autoDeposits.slice(0, 30).map((dep, idx) => (
+                  
+                  {/* Search Bar */}
+                  <div className="mb-4">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                      <input
+                        type="text"
+                        placeholder="Search by Name or Email..."
+                        value={depositSearch}
+                        onChange={(e) => setDepositSearch(e.target.value)}
+                        className="w-full bg-[#111] border border-[#333] rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-500 focus:border-blue-500 focus:outline-none"
+                      />
+                      {depositSearch && (
+                        <button 
+                          onClick={() => setDepositSearch('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                        >
+                          <X size={18} />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Total: {autoDeposits.filter(dep => {
+                        if (!depositSearch) return true;
+                        const search = depositSearch.toLowerCase();
+                        return (dep.user_name?.toLowerCase().includes(search) || 
+                                dep.user_email?.toLowerCase().includes(search));
+                      }).length} deposits
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
+                    {autoDeposits
+                      .filter(dep => {
+                        if (!depositSearch) return true;
+                        const search = depositSearch.toLowerCase();
+                        return (dep.user_name?.toLowerCase().includes(search) || 
+                                dep.user_email?.toLowerCase().includes(search));
+                      })
+                      .map((dep, idx) => (
                       <div key={idx} className="bg-[#111] border border-[#222] p-4 rounded-xl">
                         <div className="flex justify-between mb-2">
                           <span className="text-xl font-bold text-green-400">${dep.amount}</span>
@@ -563,8 +604,15 @@ const AdminPanelPro = () => {
                         </div>
                       </div>
                     ))}
-                    {autoDeposits.length === 0 && (
-                      <p className="text-gray-500 text-center py-8">No auto deposits</p>
+                    {autoDeposits.filter(dep => {
+                      if (!depositSearch) return true;
+                      const search = depositSearch.toLowerCase();
+                      return (dep.user_name?.toLowerCase().includes(search) || 
+                              dep.user_email?.toLowerCase().includes(search));
+                    }).length === 0 && (
+                      <p className="text-gray-500 text-center py-8">
+                        {depositSearch ? `No deposits found for "${depositSearch}"` : 'No auto deposits'}
+                      </p>
                     )}
                   </div>
                 </div>
