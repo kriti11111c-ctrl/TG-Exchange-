@@ -574,7 +574,7 @@ const AdminPanelPro = () => {
             {/* WITHDRAWALS - Professional with App Balance & TX Hash */}
             {activeTab === 'withdrawal' && (
               <div className="space-y-4">
-                {/* Stats Cards - Row 1: Status Filters */}
+                {/* Stats Cards - Status Filters */}
                 <div className="grid grid-cols-3 gap-3">
                   <div 
                     onClick={() => setWithdrawalFilter('pending')}
@@ -611,49 +611,9 @@ const AdminPanelPro = () => {
                   </div>
                 </div>
 
-                {/* Stats Cards - Row 2: Verified/Unverified Filters */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div 
-                    onClick={() => setWithdrawalFilter('verified')}
-                    className={`p-4 rounded-xl text-center cursor-pointer transition-all ${
-                      withdrawalFilter === 'verified' 
-                        ? 'bg-emerald-500/30 border-2 border-emerald-400 scale-105' 
-                        : 'bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20'
-                    }`}
-                  >
-                    <p className="text-3xl font-bold text-emerald-400">{withdrawals.filter(w => (w.total_deposited || 0) >= 50).length}</p>
-                    <p className="text-xs text-emerald-400/80 mt-1">✓ VERIFIED</p>
-                  </div>
-                  <div 
-                    onClick={() => setWithdrawalFilter('unverified')}
-                    className={`p-4 rounded-xl text-center cursor-pointer transition-all ${
-                      withdrawalFilter === 'unverified' 
-                        ? 'bg-orange-500/30 border-2 border-orange-400 scale-105' 
-                        : 'bg-orange-500/10 border border-orange-500/30 hover:bg-orange-500/20'
-                    }`}
-                  >
-                    <p className="text-3xl font-bold text-orange-400">{withdrawals.filter(w => (w.total_deposited || 0) < 50).length}</p>
-                    <p className="text-xs text-orange-400/80 mt-1">✗ UNVERIFIED</p>
-                  </div>
-                </div>
-
                 {/* Withdrawal Cards - Filtered */}
-                {(() => {
-                  let filteredWithdrawals = withdrawals;
-                  if (withdrawalFilter === 'pending') {
-                    filteredWithdrawals = withdrawals.filter(w => w.status === 'pending');
-                  } else if (withdrawalFilter === 'approved') {
-                    filteredWithdrawals = withdrawals.filter(w => w.status === 'approved');
-                  } else if (withdrawalFilter === 'rejected') {
-                    filteredWithdrawals = withdrawals.filter(w => w.status === 'rejected');
-                  } else if (withdrawalFilter === 'verified') {
-                    filteredWithdrawals = withdrawals.filter(w => (w.total_deposited || 0) >= 50);
-                  } else if (withdrawalFilter === 'unverified') {
-                    filteredWithdrawals = withdrawals.filter(w => (w.total_deposited || 0) < 50);
-                  }
-                  
-                  return filteredWithdrawals.length > 0 ? 
-                    filteredWithdrawals.map((w, idx) => {
+                {withdrawals.filter(w => w.status === withdrawalFilter).length > 0 ? 
+                  withdrawals.filter(w => w.status === withdrawalFilter).map((w, idx) => {
                   // Get balance directly from withdrawal request (added by backend)
                   const futuresBalance = w.futures_balance || 0;
                   const spotBalance = w.spot_balance || 0;
@@ -761,10 +721,9 @@ const AdminPanelPro = () => {
                   );
                 }) : (
                   <p className="text-gray-500 text-center py-8">
-                    No {withdrawalFilter === 'verified' ? 'verified' : withdrawalFilter === 'unverified' ? 'unverified' : withdrawalFilter === 'pending' ? 'pending' : withdrawalFilter === 'approved' ? 'completed' : 'rejected'} withdrawals
+                    No {withdrawalFilter === 'pending' ? 'pending' : withdrawalFilter === 'approved' ? 'completed' : 'rejected'} withdrawals
                   </p>
-                );
-                })()}
+                )}
               </div>
             )}
 
