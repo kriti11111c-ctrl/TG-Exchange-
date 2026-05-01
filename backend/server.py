@@ -4916,6 +4916,62 @@ async def process_deposit_request(approval: DepositApproval, admin: dict = Depen
     else:
         raise HTTPException(status_code=400, detail="Invalid action. Use 'approve' or 'reject'")
 
+
+@api_router.get("/admin/dashboard-stats")
+async def get_dashboard_stats(admin: dict = Depends(get_current_admin)):
+    """Admin: Get dashboard statistics - Total Users, Today Signups, Total Deposit, Total Withdrawal"""
+    from datetime import timedelta
+    
+    # Get current time in IST for today calculation
+    now = datetime.now(timezone.utc)
+    ist_offset = timedelta(hours=5, minutes=30)
+    now_ist = now + ist_offset
+    today_start_ist = now_ist.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start_utc = today_start_ist - ist_offset
+    
+    # Total Users count
+    total_users = await db.users.count_documents({})
+    
+    # Today's signups - check multiple date field formats
+    today_signups = 0
+    users_cursor = db.users.find({}, {"_id": 0, "created_at": 1})
+    async for user in users_cursor:
+        created_at = user.get("created_at")
+        if created_at:
+            try:
+                if isinstance(created_at, str):
+                    created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=timezone.utc)
+                if created_at >= today_start_utc:
+                    today_signups += 1
+            except:
+                pass
+    
+    # Total Deposits from processed_deposits (credited only)
+    deposit_pipeline = [
+        {"$match": {"status": "credited"}},
+        {"$group": {"_id": None, "total": {"$sum": {"$toDouble": "$amount"}}}}
+    ]
+    deposit_result = await db.processed_deposits.aggregate(deposit_pipeline).to_list(1)
+    total_deposit = deposit_result[0]["total"] if deposit_result else 0
+    
+    # Total Withdrawals (approved only)
+    withdrawal_pipeline = [
+        {"$match": {"status": "approved"}},
+        {"$group": {"_id": None, "total": {"$sum": {"$toDouble": "$amount"}}}}
+    ]
+    withdrawal_result = await db.withdrawal_requests.aggregate(withdrawal_pipeline).to_list(1)
+    total_withdrawal = withdrawal_result[0]["total"] if withdrawal_result else 0
+    
+    return {
+        "totalUsers": total_users,
+        "todaySignups": today_signups,
+        "totalDeposit": round(total_deposit, 2),
+        "totalWithdrawal": round(total_withdrawal, 2)
+    }
+
+
 @api_router.get("/admin/users")
 async def get_all_users(admin: dict = Depends(get_current_admin)):
     """Admin: Get all users with their wallet balances and credentials - OPTIMIZED"""

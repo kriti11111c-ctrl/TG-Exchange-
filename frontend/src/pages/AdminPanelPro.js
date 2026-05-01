@@ -125,36 +125,13 @@ const AdminPanelPro = () => {
     
     try {
       if (activeTab === 'dashboard') {
-        const [usersRes, depsRes, withdrawRes, autoDepRes] = await Promise.all([
-          axios.get(`${API}/api/admin/users`, { headers }),
-          axios.get(`${API}/api/admin/deposit-requests`, { headers }),
-          axios.get(`${API}/api/admin/withdrawal-requests`, { headers }),
-          axios.get(`${API}/api/admin/auto-deposits`, { headers })
-        ]);
-        
-        // Calculate today's signups
-        const today = new Date().toDateString();
-        const allUsers = usersRes.data?.users || usersRes.data || [];
-        const todaySignups = allUsers.filter(u => {
-          const createdAt = u.created_at || u.createdAt;
-          return createdAt && new Date(createdAt).toDateString() === today;
-        }).length;
-        
-        // Calculate total deposits from auto-deposits
-        const autoDeposits = autoDepRes.data?.deposits || [];
-        const totalDeposit = autoDeposits.reduce((sum, d) => sum + Number(d.amount || 0), 0);
-        
-        // Calculate total withdrawals (approved only)
-        const allWithdrawals = withdrawRes.data?.requests || withdrawRes.data?.withdrawals || withdrawRes.data || [];
-        const totalWithdrawal = allWithdrawals
-          .filter(w => w.status === 'approved')
-          .reduce((sum, w) => sum + Number(w.amount || 0), 0);
-        
+        // Use dedicated dashboard stats API
+        const statsRes = await axios.get(`${API}/api/admin/dashboard-stats`, { headers });
         setStats({
-          totalUsers: allUsers.length || 0,
-          todaySignups: todaySignups,
-          totalDeposit: totalDeposit,
-          totalWithdrawal: totalWithdrawal
+          totalUsers: statsRes.data?.totalUsers || 0,
+          todaySignups: statsRes.data?.todaySignups || 0,
+          totalDeposit: statsRes.data?.totalDeposit || 0,
+          totalWithdrawal: statsRes.data?.totalWithdrawal || 0
         });
       } else if (activeTab === 'users') {
         // Fetch users and addresses together for user panel
