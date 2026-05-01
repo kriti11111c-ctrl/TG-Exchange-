@@ -60,8 +60,8 @@ const AdminPanelPro = () => {
         setDeposits(manualRes.data?.requests || []);
         setAutoDeposits(autoRes.data?.deposits || []);
       } else if (activeTab === 'withdrawal') {
-        const res = await axios.get(`${API}/api/admin/withdrawals`, { headers });
-        setWithdrawals(res.data?.withdrawals || res.data || []);
+        const res = await axios.get(`${API}/api/admin/withdrawal-requests`, { headers });
+        setWithdrawals(res.data?.requests || res.data?.withdrawals || res.data || []);
       } else if (activeTab === 'addresses') {
         const res = await axios.get(`${API}/api/admin/deposit-addresses`, { headers });
         setAddresses(res.data?.addresses || []);
