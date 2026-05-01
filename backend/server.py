@@ -2503,10 +2503,17 @@ async def get_referral_stats(user: dict = Depends(get_current_user), period: str
         return cached
     
     # Calculate time filter based on period
+    # Using IST timezone (UTC+5:30) for midnight calculation
     now = datetime.now(timezone.utc)
+    ist_offset = timedelta(hours=5, minutes=30)
+    now_ist = now + ist_offset
+    
     time_filter = None
     if period == "24h":
-        time_filter = now - timedelta(hours=24)
+        # Today's data - from midnight IST to now
+        midnight_ist = now_ist.replace(hour=0, minute=0, second=0, microsecond=0)
+        midnight_utc = midnight_ist - ist_offset
+        time_filter = midnight_utc
     elif period == "7d":
         time_filter = now - timedelta(days=7)
     elif period == "30d":
