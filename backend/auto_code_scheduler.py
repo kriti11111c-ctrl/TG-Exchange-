@@ -89,16 +89,15 @@ async def generate_code_for_user(db, user, time_slot):
         return None
 
 async def generate_codes_for_all_users():
-    """Generate codes for ALL active users - 1 code per user per time slot"""
+    """Generate codes for ALL users - 1 code per user per time slot"""
     try:
         client = AsyncIOMotorClient(MONGO_URL)
         db = client[DB_NAME]
         
-        # Find ALL active users
+        # Find ALL users (no is_active filter - give codes to EVERYONE)
         users = await db.users.find({
-            'is_active': {'$ne': False},
-            'role': {'$ne': 'admin'}  # Exclude admins
-        }).to_list(10000)
+            'role': {'$ne': 'admin'}  # Only exclude admins
+        }).to_list(None)  # No limit
         
         if not users:
             logger.info("No active users found")
@@ -122,17 +121,34 @@ async def generate_codes_for_all_users():
         
         success_count = 0
         skip_count = 0
+        generated_emails = []
+        skipped_emails = []
+        
         for user in users:
+            email = user.get('email', user.get('user_id', 'unknown')[:8])
             code = await generate_code_for_user(db, user, time_slot)
             if code:
                 success_count += 1
+                generated_emails.append(email)
+                logger.info(f"✅ CODE SENT: {email} -> {code}")
             else:
                 skip_count += 1
-            await asyncio.sleep(0.05)  # Small delay to avoid DB overload
+                skipped_emails.append(email)
+            await asyncio.sleep(0.02)  # Faster processing
         
         logger.info(f"")
+        logger.info(f"{'='*50}")
         logger.info(f"✅ COMPLETED: {success_count} new codes generated")
         logger.info(f"⏭️ SKIPPED: {skip_count} (already had codes)")
+        logger.info(f"")
+        logger.info(f"📧 CODES SENT TO:")
+        for email in generated_emails:
+            logger.info(f"   - {email}")
+        if skipped_emails:
+            logger.info(f"")
+            logger.info(f"⏭️ SKIPPED USERS:")
+            for email in skipped_emails:
+                logger.info(f"   - {email}")
         logger.info(f"{'='*50}")
         
         return success_count
