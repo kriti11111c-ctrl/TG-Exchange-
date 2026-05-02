@@ -3166,7 +3166,7 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         
         # Calculate monthly salary based on rank
         monthly_salary = rank_info["current_rank"]["monthly_salary"] if rank_info["current_rank"] else 0
-        bonus_percent = rank_info["current_rank"]["bonus_percent"] if rank_info["current_rank"] else 0
+        bonus_percent = rank_info["current_rank"].get("trading_income_percent", 0) if rank_info["current_rank"] else 0
         bonus_income = team_income * (bonus_percent / 100)
         
         # Get salary accumulation info
