@@ -3118,14 +3118,15 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         last_claim_date = user_doc.get("last_salary_claim_date") if user_doc else None
         salary_cycle_start = user_doc.get("salary_cycle_start") if user_doc else None
         
-        # Calculate days remaining for claim
+        # Calculate days remaining for claim (10-10-10 system: claim every 10 days)
         days_in_cycle = 0
         days_remaining = 10
         can_claim_salary = False
+        salary_part = 0  # Which part (1, 2, or 3)
         
-        # Auto-accumulate daily salary if user has a rank
+        # Monthly salary is divided into 3 equal parts (10 days each)
         if current_level > 0 and monthly_salary > 0:
-            daily_salary = monthly_salary / 30  # Daily rate
+            part_salary = round(monthly_salary / 3, 2)  # Each 10-day part
             
             if salary_cycle_start:
                 # Handle both datetime object and string
@@ -3136,13 +3137,17 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
                 if cycle_start.tzinfo is None:
                     cycle_start = cycle_start.replace(tzinfo=timezone.utc)
                 days_in_cycle = (now - cycle_start).days
-                days_remaining = max(0, 10 - days_in_cycle)
-                can_claim_salary = days_in_cycle >= 10
                 
-                # Calculate accumulated salary based on days
-                # Only count up to 10 days per cycle
-                accumulation_days = min(days_in_cycle, 10)
-                accumulated_salary = round(daily_salary * accumulation_days, 2)
+                # Calculate which part we're in and if claimable
+                if days_in_cycle >= 10:
+                    can_claim_salary = True
+                    accumulated_salary = part_salary
+                    days_remaining = 0
+                    salary_part = min(3, (days_in_cycle // 10))
+                else:
+                    days_remaining = 10 - days_in_cycle
+                    accumulated_salary = 0
+                    salary_part = 1
                 
             elif last_claim_date:
                 # Handle both datetime object and string
@@ -3153,11 +3158,14 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
                 if last_claim.tzinfo is None:
                     last_claim = last_claim.replace(tzinfo=timezone.utc)
                 days_in_cycle = (now - last_claim).days
-                days_remaining = max(0, 10 - days_in_cycle)
-                can_claim_salary = days_in_cycle >= 10
                 
-                accumulation_days = min(days_in_cycle, 10)
-                accumulated_salary = round(daily_salary * accumulation_days, 2)
+                if days_in_cycle >= 10:
+                    can_claim_salary = True
+                    accumulated_salary = part_salary
+                    days_remaining = 0
+                else:
+                    days_remaining = 10 - days_in_cycle
+                    accumulated_salary = 0
         
         # FINAL SAFETY CHECK: Ensure current_rank is never null if user has saved rank
         if rank_info["current_rank"] is None and saved_rank_level > 0:
@@ -3320,46 +3328,60 @@ async def get_salary_history(user: dict = Depends(get_current_user)):
 
 @api_router.post("/team-rank/claim-salary")
 async def claim_salary(user: dict = Depends(get_current_user)):
-    """Claim accumulated level income every 10 days"""
+    """Claim monthly royalty every 10 days (1/3 of monthly salary per claim)"""
     user_id = user["user_id"]
     now = datetime.now(timezone.utc)
     
-    # Get user's salary data
+    # Get user's rank and salary data
     user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    current_rank_level = user_doc.get("team_rank_level", 0) if user_doc else 0
+    
+    # Get monthly salary from rank
+    monthly_salary = 0
+    for rank in TEAM_RANKS:
+        if rank["level"] == current_rank_level:
+            monthly_salary = rank["monthly_salary"]
+            break
+    
+    if monthly_salary <= 0:
+        raise HTTPException(status_code=400, detail="No rank achieved yet")
+    
+    # Calculate part salary (1/3 of monthly)
+    part_salary = round(monthly_salary / 3, 2)
     
     last_claim_date = user_doc.get("last_salary_claim_date")
-    accumulated_salary = user_doc.get("accumulated_salary", 0)
+    salary_cycle_start = user_doc.get("salary_cycle_start")
     
     # Check if 10 days have passed since last claim
-    if last_claim_date:
-        last_claim = datetime.fromisoformat(last_claim_date.replace('Z', '+00:00'))
-        if last_claim.tzinfo is None:
-            last_claim = last_claim.replace(tzinfo=timezone.utc)
+    check_date = last_claim_date or salary_cycle_start
+    if check_date:
+        if isinstance(check_date, str):
+            check_datetime = datetime.fromisoformat(check_date.replace('Z', '+00:00'))
+        else:
+            check_datetime = check_date
+        if check_datetime.tzinfo is None:
+            check_datetime = check_datetime.replace(tzinfo=timezone.utc)
         
-        days_passed = (now - last_claim).days
+        days_passed = (now - check_datetime).days
         if days_passed < 10:
             remaining_days = 10 - days_passed
             raise HTTPException(
                 status_code=400, 
-                detail=f"Salary can be claimed after {remaining_days} days"
+                detail=f"Monthly Royalty can be claimed after {remaining_days} days"
             )
     
-    if accumulated_salary <= 0:
-        raise HTTPException(status_code=400, detail="No salary to claim")
-    
-    # Add to wallet
+    # Add to Futures wallet (not Spot)
     await db.wallets.update_one(
         {"user_id": user_id},
-        {"$inc": {"balances.usdt": accumulated_salary}}
+        {"$inc": {"futures_balance": part_salary}}
     )
     
-    # Reset accumulated salary and update claim date
+    # Update claim date
     await db.users.update_one(
         {"user_id": user_id},
         {
             "$set": {
                 "last_salary_claim_date": now.isoformat(),
-                "accumulated_salary": 0,
                 "salary_cycle_start": now.isoformat()
             }
         }
@@ -3369,18 +3391,18 @@ async def claim_salary(user: dict = Depends(get_current_user)):
     await db.transactions.insert_one({
         "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
         "user_id": user_id,
-        "type": "salary_claim",
+        "type": "monthly_royalty",
         "coin": "usdt",
-        "amount": accumulated_salary,
-        "note": f"10-Day Salary Claim",
+        "amount": part_salary,
+        "note": f"Monthly Royalty (10-Day Part) - Level {current_rank_level}",
         "status": "completed",
         "created_at": now.isoformat()
     })
     
     return {
         "success": True,
-        "amount": accumulated_salary,
-        "message": f"Successfully claimed ${accumulated_salary:.2f}"
+        "salary_amount": part_salary,
+        "message": f"Successfully claimed ${part_salary:.2f} Monthly Royalty"
     }
 
 @api_router.get("/team-rank/salary-info")

@@ -171,13 +171,35 @@ const RankPage = () => {
             </Button>
           )}
           
-          {rankInfo?.can_claim_salary && rankInfo?.accumulated_salary > 0 && (
-            <Button 
-              onClick={claimSalary}
-              className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Claim Monthly Royalty ${rankInfo.accumulated_salary}
-            </Button>
+          {/* Monthly Royalty - 10-10-10 Days System */}
+          {currentLevel > 0 && (
+            <div className={`mt-4 p-3 rounded-xl ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
+              <div className="flex justify-between items-center mb-2">
+                <p className={`text-sm ${textMuted}`}>Monthly Royalty (10 Days)</p>
+                <p className="text-xs text-blue-400">
+                  ${formatNum(Math.round((rankData.find(r => r.level === currentLevel)?.monthlyRoyalty || 0) / 3))}/claim
+                </p>
+              </div>
+              <div className="flex justify-between items-center">
+                <p className={`text-xs ${textMuted}`}>
+                  {rankInfo?.can_claim_salary 
+                    ? 'Ready to claim!' 
+                    : `${rankInfo?.days_remaining || 10} days remaining`
+                  }
+                </p>
+                <Button 
+                  onClick={claimSalary}
+                  disabled={!rankInfo?.can_claim_salary}
+                  size="sm"
+                  className={`${rankInfo?.can_claim_salary 
+                    ? 'bg-blue-600 hover:bg-blue-700' 
+                    : 'bg-gray-600 cursor-not-allowed'
+                  } text-white text-xs`}
+                >
+                  {rankInfo?.can_claim_salary ? 'Claim Now' : 'Wait'}
+                </Button>
+              </div>
+            </div>
           )}
         </div>
       </div>
