@@ -694,6 +694,7 @@ async def get_team_stats(user_id: str) -> dict:
     """
     
     # Get direct referrals count with FUTURES BALANCE check using aggregation
+    # IMPORTANT: Real balance = futures_balance - welcome_bonus (welcome bonus doesn't count!)
     direct_pipeline = [
         {"$match": {"referrer_id": user_id, "level": 1}},
         {"$lookup": {
@@ -711,18 +712,23 @@ async def get_team_stats(user_id: str) -> dict:
         {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
         {"$unwind": {"path": "$user", "preserveNullAndEmptyArrays": True}},
         {"$addFields": {
-            # Direct futures balance check - if user transfers to spot, this drops
-            "futures_balance": {"$ifNull": ["$wallet.futures_balance", 0]},
+            # Real balance = futures_balance - welcome_bonus (welcome bonus NEVER counts for rank!)
+            "raw_futures": {"$ifNull": ["$wallet.futures_balance", 0]},
+            "welcome_bonus": {"$ifNull": ["$wallet.welcome_bonus", 0]},
             "rank_level": {"$ifNull": ["$user.team_rank_level", 0]}
+        }},
+        {"$addFields": {
+            # Calculate real futures balance (excluding welcome bonus)
+            "real_futures": {"$max": [0, {"$subtract": ["$raw_futures", "$welcome_bonus"]}]}
         }},
         {"$group": {
             "_id": None,
             "total_direct": {"$sum": 1},
-            # Count only those with futures_balance >= $50
-            "valid_direct": {"$sum": {"$cond": [{"$gte": ["$futures_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}},
+            # Count only those with REAL futures_balance >= $50 (excluding welcome bonus)
+            "valid_direct": {"$sum": {"$cond": [{"$gte": ["$real_futures", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}},
             "bronze_members": {"$sum": {"$cond": [
                 {"$and": [
-                    {"$gte": ["$futures_balance", MIN_DEPOSIT_FOR_RANK]},
+                    {"$gte": ["$real_futures", MIN_DEPOSIT_FOR_RANK]},
                     {"$gte": ["$rank_level", 1]}
                 ]}, 1, 0
             ]}}
@@ -733,6 +739,7 @@ async def get_team_stats(user_id: str) -> dict:
     direct_stats = direct_result[0] if direct_result else {"total_direct": 0, "valid_direct": 0, "bronze_members": 0}
     
     # Get all team count with FUTURES BALANCE check
+    # IMPORTANT: Real balance = futures_balance - welcome_bonus (welcome bonus doesn't count!)
     team_pipeline = [
         {"$match": {"referrer_id": user_id}},
         {"$lookup": {
@@ -743,14 +750,19 @@ async def get_team_stats(user_id: str) -> dict:
         }},
         {"$unwind": {"path": "$wallet", "preserveNullAndEmptyArrays": True}},
         {"$addFields": {
-            # Direct futures balance check
-            "futures_balance": {"$ifNull": ["$wallet.futures_balance", 0]}
+            # Real balance = futures_balance - welcome_bonus
+            "raw_futures": {"$ifNull": ["$wallet.futures_balance", 0]},
+            "welcome_bonus": {"$ifNull": ["$wallet.welcome_bonus", 0]}
+        }},
+        {"$addFields": {
+            # Calculate real futures balance (excluding welcome bonus)
+            "real_futures": {"$max": [0, {"$subtract": ["$raw_futures", "$welcome_bonus"]}]}
         }},
         {"$group": {
             "_id": None,
             "total_team": {"$sum": 1},
-            # Count only those with futures_balance >= $50
-            "valid_team": {"$sum": {"$cond": [{"$gte": ["$futures_balance", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}}
+            # Count only those with REAL futures_balance >= $50 (excluding welcome bonus)
+            "valid_team": {"$sum": {"$cond": [{"$gte": ["$real_futures", MIN_DEPOSIT_FOR_RANK]}, 1, 0]}}
         }}
     ]
     
@@ -3063,8 +3075,11 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         claimed_rewards = user_doc.get("claimed_rank_rewards", []) if user_doc else []
         
         # Get user's wallet to check their own futures_balance for rank qualification
-        user_wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "futures_balance": 1})
-        user_futures_balance = user_wallet.get("futures_balance", 0) if user_wallet else 0
+        # IMPORTANT: Real balance = futures_balance - welcome_bonus (welcome bonus doesn't count!)
+        user_wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0, "futures_balance": 1, "welcome_bonus": 1})
+        raw_futures = user_wallet.get("futures_balance", 0) if user_wallet else 0
+        user_welcome_bonus = user_wallet.get("welcome_bonus", 0) if user_wallet else 0
+        user_futures_balance = max(0, raw_futures - user_welcome_bonus)  # Real balance excluding welcome bonus
         
         # Get team stats first
         team_stats = await get_team_stats(user_id)
