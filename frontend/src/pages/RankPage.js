@@ -5,16 +5,7 @@ import axios from "axios";
 import { toast } from "sonner";
 import BottomNav from "../components/BottomNav";
 import { Button } from "../components/ui/button";
-import { 
-  CaretLeft,
-  Info,
-  ChartLineUp,
-  Fire,
-  Lightning,
-  Lock,
-  Wallet,
-  Clock
-} from "@phosphor-icons/react";
+import { CaretLeft, Info, Lock, Wallet, Clock, CheckCircle } from "@phosphor-icons/react";
 
 const RankPage = () => {
   const { user } = useAuth();
@@ -22,8 +13,6 @@ const RankPage = () => {
   const navigate = useNavigate();
   const [rankInfo, setRankInfo] = useState(null);
   const [allRanks, setAllRanks] = useState([]);
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [activeTab, setActiveTab] = useState("myRank");
   const [loading, setLoading] = useState(true);
   const [selectedRank, setSelectedRank] = useState(null);
 
@@ -34,111 +23,33 @@ const RankPage = () => {
   const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
   const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
 
-  // Rank colors for circular badges
-  const rankColors = {
-    1: "#6B7280", // Bronze - Gray
-    2: "#3B82F6", // Silver - Blue
-    3: "#10B981", // Gold - Green
-    4: "#F59E0B", // Platinum - Yellow
-    5: "#F97316", // Diamond - Orange
-    6: "#A855F7", // Master - Purple
-    7: "#EC4899", // Grandmaster - Pink
-    8: "#EF4444", // Champion - Red
-    9: "#F59E0B", // Legend - Gold
-    10: "#DC2626"  // Immortal - Deep Red
-  };
-
-  // Rank names
-  const rankNames = {
-    1: "Bronze",
-    2: "Silver", 
-    3: "Gold",
-    4: "Platinum",
-    5: "Diamond",
-    6: "Master",
-    7: "Grandmaster",
-    8: "Champion",
-    9: "Legend",
-    10: "Immortal"
-  };
-
-  // Rank requirements (Bronze users / Team)
-  const rankRequirements = {
-    1: { bronze: 0, team: 6 },           // 0 Bronze / 6T (Starting rank)
-    2: { bronze: 2, team: 30 },         // 2 Bronze / 30T
-    3: { bronze: 3, team: 75 },         // 3 Bronze / 75T
-    4: { bronze: 4, team: 150 },        // 4 Bronze / 150T
-    5: { bronze: 5, team: 300 },        // 5 Bronze / 300T
-    6: { bronze: 6, team: 600 },        // 6 Bronze / 600T
-    7: { bronze: 7, team: 1000 },       // 7 Bronze / 1000T
-    8: { bronze: 8, team: 2000 },       // 8 Bronze / 2000T
-    9: { bronze: 9, team: 4000 },       // 9 Bronze / 4000T
-    10: { bronze: 10, team: 8000 }      // 10 Bronze / 8000T
-  };
-
-  // Self Deposit Required to MAINTAIN Rank (Futures Balance)
-  const selfDepositRequired = {
-    1: 50,      // Bronze - $50
-    2: 200,     // Silver - $200
-    3: 500,     // Gold - $500
-    4: 1000,    // Platinum - $1K
-    5: 2000,    // Diamond - $2K
-    6: 5000,    // Master - $5K
-    7: 10000,   // Grandmaster - $10K
-    8: 15000,   // Champion - $15K
-    9: 30000,   // Legend - $30K
-    10: 50000   // Immortal - $50K
-  };
-
-  // Format requirement text
-  const formatRequirement = (level) => {
-    const req = rankRequirements[level];
-    if (!req) return '0 Bronze/0T';
-    return `${req.bronze} Bronze/${req.team}T`;
-  };
-
-  // Rank benefits (All rewards disabled - just tracking ranks)
-  const rankBenefits = {
-    1: { bonus: 0.5, salary: 30, reward: 20 },
-    2: { bonus: 1.0, salary: 100, reward: 100 },
-    3: { bonus: 1.5, salary: 250, reward: 240 },
-    4: { bonus: 2.0, salary: 500, reward: 500 },
-    5: { bonus: 2.5, salary: 1000, reward: 975 },
-    6: { bonus: 3.0, salary: 2000, reward: 1950 },
-    7: { bonus: 3.5, salary: 4000, reward: 3250 },
-    8: { bonus: 4.0, salary: 7000, reward: 6500 },
-    9: { bonus: 4.5, salary: 12000, reward: 13000 },
-    10: { bonus: 5.0, salary: 20000, reward: 26000 }
-  };
-
-  // Calculate progress to a specific rank
-  const calculateProgressToRank = (targetLevel) => {
-    const currentBronze = rankInfo?.bronze_members || 0;
-    const currentTeam = rankInfo?.total_team || 0;
-    const targetReq = rankRequirements[targetLevel];
-    
-    if (!targetReq) return 100;
-    
-    const bronzeProgress = targetReq.bronze > 0 ? Math.min(100, (currentBronze / targetReq.bronze) * 100) : 100;
-    const teamProgress = targetReq.team > 0 ? Math.min(100, (currentTeam / targetReq.team) * 100) : 100;
-    
-    return Math.min(bronzeProgress, teamProgress);
-  };
+  // 15 Level Rank Data
+  const rankData = [
+    { level: 1, name: "Level-01", selfWallet: 50, directL1: 6, totalTeam: 0, rankReward: 20, monthlyRoyalty: 10 },
+    { level: 2, name: "Level-02", selfWallet: 100, directL1: 2, totalTeam: 30, rankReward: 100, monthlyRoyalty: 30 },
+    { level: 3, name: "Level-03", selfWallet: 150, directL1: 3, totalTeam: 75, rankReward: 150, monthlyRoyalty: 75 },
+    { level: 4, name: "Level-04", selfWallet: 200, directL1: 4, totalTeam: 150, rankReward: 300, monthlyRoyalty: 150 },
+    { level: 5, name: "Level-05", selfWallet: 200, directL1: 5, totalTeam: 300, rankReward: 400, monthlyRoyalty: 250 },
+    { level: 6, name: "Level-06", selfWallet: 200, directL1: 6, totalTeam: 600, rankReward: 800, monthlyRoyalty: 500 },
+    { level: 7, name: "Level-07", selfWallet: 200, directL1: 7, totalTeam: 1500, rankReward: 1000, monthlyRoyalty: 600 },
+    { level: 8, name: "Level-08", selfWallet: 200, directL1: 8, totalTeam: 3000, rankReward: 2000, monthlyRoyalty: 1200 },
+    { level: 9, name: "Level-09", selfWallet: 200, directL1: 9, totalTeam: 6000, rankReward: 5000, monthlyRoyalty: 2400 },
+    { level: 10, name: "Level-10", selfWallet: 200, directL1: 10, totalTeam: 12000, rankReward: 12000, monthlyRoyalty: 5000 },
+    { level: 11, name: "Level-11", selfWallet: 200, directL1: 11, totalTeam: 30000, rankReward: 25000, monthlyRoyalty: 10000 },
+    { level: 12, name: "Level-12", selfWallet: 200, directL1: 12, totalTeam: 60000, rankReward: 50000, monthlyRoyalty: 20000 },
+    { level: 13, name: "Level-13", selfWallet: 200, directL1: 13, totalTeam: 120000, rankReward: 100000, monthlyRoyalty: 40000 },
+    { level: 14, name: "Level-14", selfWallet: 200, directL1: 14, totalTeam: 240000, rankReward: 200000, monthlyRoyalty: 80000 },
+    { level: 15, name: "Level-15", selfWallet: 200, directL1: 15, totalTeam: 480000, rankReward: 400000, monthlyRoyalty: 160000 },
+  ];
 
   useEffect(() => {
     fetchRankInfo();
     fetchAllRanks();
-    fetchLeaderboard();
   }, []);
 
   const fetchRankInfo = async () => {
     try {
-      const [rankRes, teamRes] = await Promise.all([
-        axios.get(`${API}/rank/info`, { withCredentials: true }),
-        axios.get(`${API}/team-rank/info`, { withCredentials: true }).catch(() => ({ data: {} }))
-      ]);
-      
-      // Use team rank info for display (this contains actual rank based on team)
+      const teamRes = await axios.get(`${API}/team-rank/info`, { withCredentials: true }).catch(() => ({ data: {} }));
       const teamRankData = teamRes.data || {};
       
       setRankInfo({
@@ -149,8 +60,6 @@ const RankPage = () => {
         bronze_members: teamRankData.bronze_members || 0,
         total_team: teamRankData.total_team || 0,
         levelup_reward: teamRankData.levelup_reward || 0,
-        demotion_message: teamRankData.demotion_message,
-        // Salary info
         accumulated_salary: teamRankData.accumulated_salary || 0,
         days_in_cycle: teamRankData.days_in_cycle || 0,
         days_remaining: teamRankData.days_remaining || 10,
@@ -158,525 +67,229 @@ const RankPage = () => {
       });
     } catch (error) {
       console.error("Error fetching rank info:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const claimSalary = async () => {
-    try {
-      const response = await axios.post(`${API}/team-rank/claim-salary`, {}, { withCredentials: true });
-      toast.success(response.data.message);
-      fetchRankInfo(); // Refresh data
-    } catch (error) {
-      toast.error(error.response?.data?.detail || "Failed to claim salary");
     }
   };
 
   const fetchAllRanks = async () => {
     try {
-      const response = await axios.get(`${API}/team-rank/all-levels`, { withCredentials: true });
-      setAllRanks(response.data.ranks || []);
+      const res = await axios.get(`${API}/team-rank/all-levels`, { withCredentials: true });
+      setAllRanks(res.data?.ranks || []);
     } catch (error) {
       console.error("Error fetching ranks:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchLeaderboard = async () => {
+  const claimLevelupReward = async () => {
     try {
-      const response = await axios.get(`${API}/rank/leaderboard`, { withCredentials: true });
-      setLeaderboard(response.data.leaderboard || []);
+      const res = await axios.post(`${API}/team-rank/claim-levelup-reward`, {}, { withCredentials: true });
+      toast.success(`Rank Reward $${res.data.reward_amount} claimed!`);
+      fetchRankInfo();
     } catch (error) {
-      console.error("Error fetching leaderboard:", error);
+      toast.error(error.response?.data?.detail || "Failed to claim reward");
     }
   };
 
-  const formatVolume = (vol) => {
-    if (vol >= 1e6) return `$${(vol / 1e6).toFixed(1)}M`;
-    if (vol >= 1e3) return `$${(vol / 1e3).toFixed(1)}K`;
-    return `$${vol?.toFixed(0) || '0'}`;
+  const claimSalary = async () => {
+    try {
+      const res = await axios.post(`${API}/team-rank/claim-salary`, {}, { withCredentials: true });
+      toast.success(`Monthly Royalty $${res.data.salary_amount} claimed!`);
+      fetchRankInfo();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to claim royalty");
+    }
   };
 
-  if (loading) {
-    return (
-      <div className={`min-h-screen ${bg} flex items-center justify-center`}>
-        <div className="animate-spin w-8 h-8 border-2 border-[#00E5FF] border-t-transparent rounded-full"></div>
-      </div>
-    );
-  }
+  const currentLevel = rankInfo?.rank?.level || 0;
+
+  // Format large numbers
+  const formatNum = (num) => {
+    if (num >= 1000000) return `${(num/1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num/1000).toFixed(0)}K`;
+    return num.toString();
+  };
 
   return (
-    <div className={`min-h-screen ${bg}`}>
+    <div className={`min-h-screen ${bg} ${text} pb-20`}>
       {/* Header */}
-      <div className={`${isDark ? 'bg-[#0B0E11]' : 'bg-white'} px-4 py-3 flex items-center justify-between sticky top-0 z-50 border-b ${isDark ? 'border-[#2B3139]' : 'border-gray-200'}`}>
-        <button onClick={() => navigate(-1)} className={text}>
-          <CaretLeft size={24} weight="bold" />
-        </button>
-        <span className={`font-semibold text-lg ${text}`}>VIP Rank</span>
-        <button className={textMuted}>
-          <Info size={22} />
-        </button>
+      <div className={`sticky top-0 z-50 ${cardBg} border-b ${border}`}>
+        <div className="flex items-center justify-between p-4">
+          <button onClick={() => navigate(-1)} className="p-2 hover:bg-white/10 rounded-full">
+            <CaretLeft size={24} />
+          </button>
+          <h1 className="text-lg font-bold">Rank System</h1>
+          <div className="w-10"></div>
+        </div>
+      </div>
+
+      {/* Important Notice */}
+      <div className="mx-4 mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
+        <p className="text-yellow-500 text-sm font-medium text-center">
+          Only Active Member Required Minimum $50
+        </p>
       </div>
 
       {/* Current Rank Card */}
-      <div className="px-4 py-4">
-        <div 
-          className={`rounded-2xl p-5 relative overflow-hidden`}
-          style={{
-            background: `linear-gradient(135deg, ${rankColors[rankInfo?.rank?.level || 0] || '#374151'}40, ${rankColors[rankInfo?.rank?.level || 0] || '#374151'}20)`
-          }}
-        >
-          <div className="flex items-center gap-4">
-            {/* Circular Badge */}
-            <div 
-              className="w-20 h-20 rounded-full flex items-center justify-center shadow-lg"
-              style={{ backgroundColor: rankColors[rankInfo?.rank?.level || 0] || '#374151' }}
+      <div className="mx-4 mt-4">
+        <div className={`${cardBg} rounded-2xl p-5 border ${border}`}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className={`text-sm ${textMuted}`}>Your Current Rank</p>
+              <p className="text-2xl font-bold mt-1">
+                {currentLevel > 0 ? `Level-${String(currentLevel).padStart(2, '0')}` : 'No Rank'}
+              </p>
+            </div>
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center border-2 border-gray-500">
+              <span className="text-xl font-bold">{currentLevel || '-'}</span>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-3 mt-4">
+            <div className={`p-3 rounded-xl ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
+              <p className={`text-xs ${textMuted}`}>Direct L1</p>
+              <p className="text-lg font-bold">{rankInfo?.direct_referrals || 0}</p>
+            </div>
+            <div className={`p-3 rounded-xl ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
+              <p className={`text-xs ${textMuted}`}>L1 Active</p>
+              <p className="text-lg font-bold">{rankInfo?.bronze_members || 0}</p>
+            </div>
+            <div className={`p-3 rounded-xl ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
+              <p className={`text-xs ${textMuted}`}>Total Team</p>
+              <p className="text-lg font-bold">{formatNum(rankInfo?.total_team || 0)}</p>
+            </div>
+          </div>
+
+          {/* Claim Buttons */}
+          {rankInfo?.levelup_reward > 0 && (
+            <Button 
+              onClick={claimLevelupReward}
+              className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white"
             >
-              <span className="text-white text-3xl font-bold">{rankInfo?.rank?.level || 0}</span>
-            </div>
-            
-            {/* Info */}
-            <div className="flex-1">
-              <p className={`text-sm ${textMuted}`}>Current Rank</p>
-              <h2 className={`text-2xl font-bold ${text}`}>
-                {rankInfo?.rank?.level > 0 ? rankNames[rankInfo?.rank?.level] : "No Rank"}
-              </h2>
-              <p className={`text-sm ${textMuted}`}>
-                {rankInfo?.rank?.level > 0 
-                  ? `${rankRequirements[rankInfo.rank.level]?.bronze || 0} Bronze / ${rankRequirements[rankInfo.rank.level]?.team || 0}T`
-                  : `0 Bronze / ${rankInfo?.total_team || 0}T`
-                }
-              </p>
-              {/* One-time Reward */}
-              {rankInfo?.rank?.level > 0 && (
-                <p className="text-sm text-[#0ECB81] font-semibold mt-1">
-                  Reward: ${rankBenefits[rankInfo.rank.level]?.reward || 0}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Next Rank Reward Preview */}
-          {(rankInfo?.next_rank || rankInfo?.rank?.level === 0) && (
-            <div className={`mt-3 p-3 rounded-lg ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'}`}>
-              <div className="flex items-center justify-between">
-                <span className={`text-xs ${textMuted}`}>
-                  Next Rank Reward ({rankInfo?.next_rank ? rankNames[rankInfo.next_rank.level] : rankNames[1]}):
-                </span>
-                <span className="text-sm text-[#00E5FF] font-bold">
-                  ${rankBenefits[rankInfo?.next_rank?.level || 1]?.reward || 20}
-                </span>
-              </div>
-            </div>
+              Claim Rank Reward ${rankInfo.levelup_reward}
+            </Button>
           )}
-
-          {/* Progress to next rank */}
-          {(rankInfo?.next_rank || rankInfo?.rank?.level === 0) && (
-            <div className="mt-4">
-              <div className="flex justify-between text-xs mb-1.5">
-                <span className={textMuted}>
-                  Next: {rankInfo?.next_rank ? rankNames[rankInfo.next_rank.level] : rankNames[1]}
-                </span>
-                <span className="text-[#00E5FF] font-medium">{(rankInfo?.progress || 0).toFixed(0)}%</span>
-              </div>
-              <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} overflow-hidden`}>
-                <div 
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{ 
-                    width: `${rankInfo?.progress || 0}%`,
-                    backgroundColor: rankColors[rankInfo?.next_rank?.level || 1]
-                  }}
-                />
-              </div>
-              <p className={`text-xs mt-1.5 ${textMuted}`}>
-                Need: {rankRequirements[rankInfo?.next_rank?.level || 1]?.team || 6}T team members
-              </p>
-            </div>
+          
+          {rankInfo?.can_claim_salary && rankInfo?.accumulated_salary > 0 && (
+            <Button 
+              onClick={claimSalary}
+              className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Claim Monthly Royalty ${rankInfo.accumulated_salary}
+            </Button>
           )}
         </div>
       </div>
 
-      {/* Salary Income Card */}
-      <div className="px-4 py-3">
-        <div className={`${cardBg} rounded-2xl p-4 border ${border}`}>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-full bg-[#0ECB81]/20 flex items-center justify-center">
-                <Wallet size={20} className="text-[#0ECB81]" />
-              </div>
-              <div>
-                <h3 className={`font-bold ${text}`}>Salary Income</h3>
-                <p className={`text-xs ${textMuted}`}>10-Day Salary Cycle</p>
-              </div>
-            </div>
+      {/* All 15 Levels */}
+      <div className="mx-4 mt-6 mb-4">
+        <h2 className="text-lg font-bold mb-3">All Ranks (15 Levels)</h2>
+        
+        <div className="space-y-3">
+          {rankData.map((rank) => {
+            const isAchieved = currentLevel >= rank.level;
+            const isCurrent = currentLevel === rank.level;
             
-            {/* Lock/Unlock Status */}
-            {rankInfo?.can_claim_salary ? (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#0ECB81]/20 text-[#0ECB81] text-xs font-medium">
-                <span className="w-2 h-2 rounded-full bg-[#0ECB81] animate-pulse"></span>
-                Ready
-              </div>
-            ) : (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-500/20 text-red-500 text-xs font-medium">
-                <Lock size={12} />
-                Locked
-              </div>
-            )}
-          </div>
-          
-          {/* Accumulated Amount */}
-          <div className={`p-4 rounded-xl ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-50'} mb-3`}>
-            <p className={`text-xs ${textMuted} mb-1`}>Accumulated Salary</p>
-            <p className={`text-2xl font-bold ${text}`}>
-              ${(rankInfo?.accumulated_salary || 0).toFixed(2)}
-            </p>
-          </div>
-          
-          {/* Days Progress */}
-          <div className="mb-3">
-            <div className="flex justify-between text-xs mb-1.5">
-              <span className={textMuted}>Day {rankInfo?.days_in_cycle || 0} of 10</span>
-              <span className="text-[#0ECB81]">
-                {rankInfo?.can_claim_salary ? 'Claim Available!' : `${rankInfo?.days_remaining || 10} days left`}
-              </span>
-            </div>
-            <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} overflow-hidden`}>
+            return (
               <div 
-                className="h-full rounded-full bg-[#0ECB81] transition-all duration-500"
-                style={{ width: `${Math.min(100, ((rankInfo?.days_in_cycle || 0) / 10) * 100)}%` }}
-              />
-            </div>
-          </div>
-          
-          {/* Claim Button */}
-          <Button
-            onClick={claimSalary}
-            disabled={!rankInfo?.can_claim_salary || (rankInfo?.accumulated_salary || 0) <= 0}
-            className={`w-full ${
-              rankInfo?.can_claim_salary && (rankInfo?.accumulated_salary || 0) > 0
-                ? 'bg-[#0ECB81] hover:bg-[#0ECB81]/90 text-white'
-                : 'bg-gray-500/50 text-gray-400 cursor-not-allowed'
-            } font-bold py-5`}
-          >
-            {rankInfo?.can_claim_salary && (rankInfo?.accumulated_salary || 0) > 0 ? (
-              <>Claim ${(rankInfo?.accumulated_salary || 0).toFixed(2)}</>
-            ) : (
-              <>
-                <Lock size={16} className="mr-2" />
-                Locked - {rankInfo?.days_remaining || 10} Days Remaining
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="px-4 mt-4 flex gap-2">
-        <button
-          onClick={() => setActiveTab("myRank")}
-          className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
-            activeTab === "myRank" 
-              ? 'bg-[#00E5FF] text-black' 
-              : `${cardBg} ${text}`
-          }`}
-        >
-          All Levels
-        </button>
-        <button
-          onClick={() => setActiveTab("leaderboard")}
-          className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
-            activeTab === "leaderboard" 
-              ? 'bg-[#00E5FF] text-black' 
-              : `${cardBg} ${text}`
-          }`}
-        >
-          Leaderboard
-        </button>
-      </div>
-
-      {/* Content */}
-      <div className="px-4 mt-4 pb-8">
-        {activeTab === "myRank" && (
-          <div className="space-y-2">
-            {allRanks.map((rank) => {
-              const isCurrentRank = rankInfo?.rank?.level === rank.level;
-              const isLocked = rank.level > (rankInfo?.rank?.level || 0);
-              const isSelected = selectedRank === rank.level;
-              const progress = calculateProgressToRank(rank.level);
-              // Use API data directly for benefits
-              const benefits = {
-                bonus: rank.bonus_percent || rankBenefits[rank.level]?.bonus || 0,
-                salary: rank.monthly_salary || rankBenefits[rank.level]?.salary || 0,
-                reward: rank.levelup_reward || rankBenefits[rank.level]?.reward || 0
-              };
-              const requirements = rankRequirements[rank.level];
-              
-              return (
-                <div key={rank.level}>
-                  {/* Rank Card - Clickable */}
-                  <div 
-                    onClick={() => setSelectedRank(isSelected ? null : rank.level)}
-                    className={`rounded-xl p-4 cursor-pointer transition-all ${isSelected ? 'rounded-b-none' : ''}`}
-                    style={{
-                      background: isCurrentRank 
-                        ? (isDark 
-                            ? 'linear-gradient(135deg, rgba(240, 185, 11, 0.15) 0%, rgba(240, 185, 11, 0.05) 100%)'
-                            : 'linear-gradient(135deg, rgba(240, 185, 11, 0.2) 0%, rgba(255, 250, 230, 1) 100%)')
-                        : (isDark ? '#1E2329' : 'white'),
-                      border: isCurrentRank 
-                        ? '3px solid #00E5FF'
-                        : `2px solid ${isDark ? '#3B4149' : '#D1D5DB'}`,
-                      boxShadow: isCurrentRank 
-                        ? '0 0 20px rgba(240, 185, 11, 0.4), inset 0 0 20px rgba(240, 185, 11, 0.05)'
-                        : 'none',
-                      opacity: isLocked ? 0.5 : 1
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      {/* Circular Badge */}
-                      <div 
-                        className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ 
-                          backgroundColor: rankColors[rank.level],
-                          boxShadow: isCurrentRank ? `0 0 15px ${rankColors[rank.level]}80` : 'none'
-                        }}
-                      >
-                        <span className="text-white font-bold text-lg">{rank.level}</span>
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className={`font-semibold ${text} truncate`}>
-                            {rankNames[rank.level]}
-                          </span>
-                          {isCurrentRank && (
-                            <span 
-                              className="text-[10px] px-2 py-0.5 rounded font-bold flex-shrink-0"
-                              style={{
-                                background: 'linear-gradient(135deg, #00E5FF, #FFD700)',
-                                color: '#000'
-                              }}
-                            >
-                              YOU
-                            </span>
-                          )}
-                        </div>
-                        {/* Requirements on second line */}
-                        <p className={`text-sm ${isCurrentRank ? 'text-[#00E5FF]' : textMuted}`}>
-                          {formatRequirement(rank.level)}
-                        </p>
-                        {/* One-time Reward */}
-                        <p className="text-xs text-[#0ECB81] font-semibold">
-                          Reward: ${rank.levelup_reward || rankBenefits[rank.level]?.reward || 0}
-                        </p>
-                        {/* Future Balance Required */}
-                        <p className="text-xs text-[#F0B90B] font-semibold">
-                          Future Balance: ${rank.self_deposit_required || selfDepositRequired[rank.level] || 50}
-                        </p>
-                      </div>
+                key={rank.level}
+                onClick={() => setSelectedRank(selectedRank === rank.level ? null : rank.level)}
+                className={`${cardBg} rounded-xl border ${border} overflow-hidden cursor-pointer transition-all ${
+                  isCurrent ? 'ring-2 ring-green-500' : ''
+                } ${isAchieved ? 'opacity-100' : 'opacity-70'}`}
+              >
+                {/* Main Row */}
+                <div className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+                      isAchieved 
+                        ? 'bg-green-600 text-white' 
+                        : isDark ? 'bg-[#2B3139] text-gray-400' : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {isAchieved ? <CheckCircle size={20} /> : rank.level}
+                    </div>
+                    <div>
+                      <p className="font-semibold">{rank.name}</p>
+                      <p className={`text-xs ${textMuted}`}>
+                        {rank.level === 1 
+                          ? `$${rank.selfWallet} Self + ${rank.directL1} Direct Active`
+                          : `${rank.directL1} L1 Active + ${formatNum(rank.totalTeam)} Team`
+                        }
+                      </p>
                     </div>
                   </div>
+                  <div className="text-right">
+                    <p className="text-green-500 font-bold">${formatNum(rank.rankReward)}</p>
+                    <p className={`text-xs ${textMuted}`}>Reward</p>
+                  </div>
+                </div>
 
-                  {/* Expanded Details - Classic Card */}
-                  {isSelected && (
-                    <div 
-                      className="rounded-b-xl overflow-hidden"
-                      style={{
-                        background: isDark 
-                          ? 'linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%)'
-                          : 'linear-gradient(145deg, #fefbf3 0%, #f8f4e8 50%, #fefbf3 100%)',
-                        border: '2px solid',
-                        borderTop: 'none',
-                        borderColor: rankColors[rank.level] + '50'
-                      }}
-                    >
-                      {/* Decorative Header */}
-                      <div 
-                        className="h-1"
-                        style={{ background: `linear-gradient(90deg, transparent, ${rankColors[rank.level]}, transparent)` }}
-                      />
-                      
-                      <div className="p-4">
-                        {/* Progress Bars Section */}
-                        <div className="space-y-4 mb-5">
-                          {/* Direct/Bronze Progress */}
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-[#00E5FF]/20 flex items-center justify-center">
-                                  <span className="text-[#00E5FF] text-xs font-bold">{requirements?.type === 'direct' ? 'D' : 'B'}</span>
-                                </div>
-                                <span className={`text-sm ${text}`}>
-                                  {requirements?.type === 'direct' ? 'Direct Referrals' : 'Bronze Members'}
+                {/* Expanded Details */}
+                {selectedRank === rank.level && (
+                  <div className={`px-4 pb-4 pt-2 border-t ${border} ${isDark ? 'bg-[#161A1E]' : 'bg-gray-50'}`}>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className={textMuted}>Self Wallet</p>
+                        <p className="font-semibold">${rank.selfWallet}</p>
+                      </div>
+                      <div>
+                        <p className={textMuted}>Direct L1 Active</p>
+                        <p className="font-semibold">{rank.directL1} Members</p>
+                      </div>
+                      {rank.totalTeam > 0 && (
+                        <div>
+                          <p className={textMuted}>Total Team (10 Levels)</p>
+                          <p className="font-semibold">{formatNum(rank.totalTeam)} Members</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className={textMuted}>Monthly Royalty</p>
+                        <p className="font-semibold text-blue-500">${formatNum(rank.monthlyRoyalty)}/month</p>
+                      </div>
+                    </div>
+
+                    {/* Requirements Status */}
+                    {!isAchieved && rankInfo && (
+                      <div className="mt-3 pt-3 border-t border-dashed border-gray-600">
+                        <p className={`text-xs ${textMuted} mb-2`}>Your Progress:</p>
+                        <div className="space-y-1 text-xs">
+                          {rank.level === 1 ? (
+                            <>
+                              <div className="flex justify-between">
+                                <span>Direct Active Members</span>
+                                <span className={rankInfo.bronze_members >= rank.directL1 ? 'text-green-500' : 'text-red-400'}>
+                                  {rankInfo.bronze_members || 0}/{rank.directL1}
                                 </span>
                               </div>
-                              <span className={`text-sm font-medium`} style={{ color: rankColors[rank.level] }}>
-                                {requirements?.type === 'direct' 
-                                  ? `${rankInfo?.direct_referrals || 0}/${requirements?.direct}`
-                                  : `${rankInfo?.bronze_members || 0}/${requirements?.bronze}`
-                                }
-                              </span>
-                            </div>
-                            <div className={`h-3 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} overflow-hidden`}>
-                              <div 
-                                className="h-full rounded-full transition-all duration-500"
-                                style={{ 
-                                  width: `${Math.min(100, requirements?.type === 'direct' 
-                                    ? ((rankInfo?.direct_referrals || 0) / requirements?.direct) * 100
-                                    : ((rankInfo?.bronze_members || 0) / requirements?.bronze) * 100
-                                  )}%`,
-                                  background: `linear-gradient(90deg, ${rankColors[rank.level]}, ${rankColors[rank.level]}90)`
-                                }}
-                              />
-                            </div>
-                            <p className={`text-xs mt-1 ${textMuted}`}>
-                              {requirements?.type === 'direct' 
-                                ? `${Math.max(0, requirements?.direct - (rankInfo?.direct_referrals || 0))} more needed`
-                                : `${Math.max(0, requirements?.bronze - (rankInfo?.bronze_members || 0))} more Bronze needed`
-                              }
-                            </p>
-                          </div>
-
-                          {/* Team Progress */}
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-[#0ECB81]/20 flex items-center justify-center">
-                                  <span className="text-[#0ECB81] text-xs font-bold">T</span>
-                                </div>
-                                <span className={`text-sm ${text}`}>Team Members</span>
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex justify-between">
+                                <span>L1 Active Members</span>
+                                <span className={rankInfo.bronze_members >= rank.directL1 ? 'text-green-500' : 'text-red-400'}>
+                                  {rankInfo.bronze_members || 0}/{rank.directL1}
+                                </span>
                               </div>
-                              <span className="text-sm font-medium text-[#0ECB81]">
-                                {rankInfo?.total_team || 0}/{requirements?.team}
-                              </span>
-                            </div>
-                            <div className={`h-3 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'} overflow-hidden`}>
-                              <div 
-                                className="h-full rounded-full transition-all duration-500"
-                                style={{ 
-                                  width: `${requirements?.team > 0 ? Math.min(100, ((rankInfo?.total_team || 0) / requirements?.team) * 100) : 100}%`,
-                                  background: 'linear-gradient(90deg, #0ECB81, #0ECB8190)'
-                                }}
-                              />
-                            </div>
-                            <p className={`text-xs mt-1 ${textMuted}`}>
-                              {requirements?.team > 0 ? `${Math.max(0, requirements?.team - (rankInfo?.total_team || 0))} more needed` : 'No team required'}
-                            </p>
-                          </div>
+                              <div className="flex justify-between">
+                                <span>Total Team</span>
+                                <span className={(rankInfo.total_team || 0) >= rank.totalTeam ? 'text-green-500' : 'text-red-400'}>
+                                  {formatNum(rankInfo.total_team || 0)}/{formatNum(rank.totalTeam)}
+                                </span>
+                              </div>
+                            </>
+                          )}
                         </div>
-
-                        {/* Divider */}
-                        <div className="flex items-center gap-3 my-4">
-                          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${rankColors[rank.level]}50, transparent)` }}></div>
-                          <span style={{ color: rankColors[rank.level] }} className="text-xs">◆</span>
-                          <div className="flex-1 h-px" style={{ background: `linear-gradient(90deg, transparent, ${rankColors[rank.level]}50, transparent)` }}></div>
-                        </div>
-
-                        {/* Benefits Grid */}
-                        <div className="grid grid-cols-4 gap-2">
-                          <div 
-                            className="text-center p-3 rounded-xl"
-                            style={{ 
-                              background: isDark ? 'rgba(240, 185, 11, 0.1)' : 'rgba(240, 185, 11, 0.15)',
-                              border: '1px solid rgba(240, 185, 11, 0.2)'
-                            }}
-                          >
-                            <p className="text-[#00E5FF] text-lg font-bold">{benefits?.bonus}%</p>
-                            <p className={`text-[10px] ${textMuted} mt-1`}>Bonus</p>
-                          </div>
-                          <div 
-                            className="text-center p-3 rounded-xl"
-                            style={{ 
-                              background: isDark ? 'rgba(14, 203, 129, 0.1)' : 'rgba(14, 203, 129, 0.15)',
-                              border: '1px solid rgba(14, 203, 129, 0.2)'
-                            }}
-                          >
-                            <p className="text-[#0ECB81] text-lg font-bold">${benefits?.salary >= 1000 ? (benefits?.salary/1000) + 'K' : benefits?.salary}</p>
-                            <p className={`text-[10px] ${textMuted} mt-1`}>Monthly</p>
-                          </div>
-                          <div 
-                            className="text-center p-3 rounded-xl"
-                            style={{ 
-                              background: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.15)',
-                              border: '1px solid rgba(59, 130, 246, 0.2)'
-                            }}
-                          >
-                            <p className="text-[#3B82F6] text-lg font-bold">${benefits?.reward >= 1000 ? (benefits?.reward/1000) + 'K' : benefits?.reward}</p>
-                            <p className={`text-[10px] ${textMuted} mt-1`}>Reward</p>
-                          </div>
-                          <div 
-                            className="text-center p-3 rounded-xl"
-                            style={{ 
-                              background: isDark ? 'rgba(240, 185, 11, 0.1)' : 'rgba(240, 185, 11, 0.15)',
-                              border: '1px solid rgba(240, 185, 11, 0.3)'
-                            }}
-                          >
-                            <p className="text-[#F0B90B] text-lg font-bold">${(rank.self_deposit_required || selfDepositRequired[rank.level]) >= 1000 ? ((rank.self_deposit_required || selfDepositRequired[rank.level])/1000) + 'K' : (rank.self_deposit_required || selfDepositRequired[rank.level])}</p>
-                            <p className={`text-[10px] ${textMuted} mt-1`}>Future Bal</p>
-                          </div>
-                        </div>
-
-                        {/* Footer Note */}
-                        <p className={`text-[10px] ${textMuted} text-center mt-4`}>
-                          * Future Balance = Min amount required in Futures wallet to receive salary
-                        </p>
                       </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {activeTab === "leaderboard" && (
-          <div className={`${cardBg} rounded-xl overflow-hidden`}>
-            {leaderboard.length > 0 ? (
-              <div className="divide-y divide-[#2B3139]/50">
-                {leaderboard.map((trader, index) => (
-                  <div key={index} className="p-4 flex items-center gap-3">
-                    {/* Position Badge */}
-                    <div 
-                      className={`w-10 h-10 rounded-full flex items-center justify-center font-bold flex-shrink-0`}
-                      style={{ 
-                        backgroundColor: trader.position <= 3 
-                          ? rankColors[trader.position] 
-                          : isDark ? '#2B3139' : '#E5E7EB'
-                      }}
-                    >
-                      <span className={trader.position <= 3 ? 'text-white' : text}>{trader.position}</span>
-                    </div>
-                    
-                    {/* User Info */}
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-medium ${text} truncate`}>{trader.name}</p>
-                      <p className={`text-xs ${textMuted} truncate`}>{trader.email}</p>
-                    </div>
-                    
-                    {/* Volume */}
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-[#0ECB81] font-bold">{formatVolume(trader.total_volume)}</p>
-                      <p className={`text-xs ${textMuted}`}>{trader.trade_count} trades</p>
-                    </div>
+                    )}
                   </div>
-                ))}
+                )}
               </div>
-            ) : (
-              <div className={`text-center py-12 ${textMuted}`}>
-                <ChartLineUp size={48} className="mx-auto mb-3 opacity-30" />
-                <p className="font-medium">No traders yet</p>
-                <p className="text-xs mt-1">Start trading to rank up!</p>
-              </div>
-            )}
-          </div>
-        )}
+            );
+          })}
+        </div>
       </div>
-      
-      {/* Bottom Spacing for Navigation */}
-      <div className="h-24"></div>
-      
-      {/* Bottom Navigation */}
+
       <BottomNav />
     </div>
   );
