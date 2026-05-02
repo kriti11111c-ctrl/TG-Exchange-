@@ -645,7 +645,11 @@ TEAM_RANKS = [
 ]
 
 async def calculate_team_trading_income_for_period(user_id: str, days: int = 10):
-    """Calculate total trading volume of team members (10 levels) in last N days"""
+    """Calculate total trading INCOME (PROFIT) of team members (10 levels) in last N days
+    
+    This calculates the ACTUAL PROFIT earned by team members, NOT the trading volume.
+    The salary is then: Team Profit × Level's Trading Income %
+    """
     from datetime import timedelta
     
     now = datetime.now(timezone.utc)
@@ -662,27 +666,51 @@ async def calculate_team_trading_income_for_period(user_id: str, days: int = 10)
     if not team_user_ids:
         return 0
     
-    # Get trading volume from futures_trades in the period
+    # Get trading INCOME (PROFIT) from futures_trades in the period
+    # We sum the 'profit' or 'pnl' field - only POSITIVE profits count for team income
     pipeline = [
         {
             "$match": {
                 "user_id": {"$in": team_user_ids},
                 "created_at": {"$gte": period_start.isoformat()},
-                "status": {"$in": ["closed", "settled"]}
+                "status": {"$in": ["closed", "settled", "win"]}
+            }
+        },
+        {
+            "$addFields": {
+                # Try multiple field names for profit: profit, pnl, realized_pnl
+                "trade_profit": {
+                    "$ifNull": [
+                        "$profit",
+                        {"$ifNull": [
+                            "$pnl",
+                            {"$ifNull": ["$realized_pnl", 0]}
+                        ]}
+                    ]
+                }
             }
         },
         {
             "$group": {
                 "_id": None,
-                "total_volume": {"$sum": {"$toDouble": "$amount"}}
+                # Sum only POSITIVE profits (income)
+                "total_income": {
+                    "$sum": {
+                        "$cond": [
+                            {"$gt": [{"$toDouble": "$trade_profit"}, 0]},
+                            {"$toDouble": "$trade_profit"},
+                            0
+                        ]
+                    }
+                }
             }
         }
     ]
     
     result = await db.futures_trades.aggregate(pipeline).to_list(1)
-    total_volume = result[0]["total_volume"] if result else 0
+    total_income = result[0]["total_income"] if result else 0
     
-    return total_volume
+    return total_income
 
 
 async def get_team_stats(user_id: str) -> dict:
@@ -3454,10 +3482,10 @@ async def claim_salary(user: dict = Depends(get_current_user)):
         note = f"Monthly Royalty (Fixed) - Level {current_rank_level}"
         income_type = "fixed"
     else:
-        # ALL SUBSEQUENT CLAIMS: Team Trading Income based (10 levels)
-        team_trading_volume = await calculate_team_trading_income_for_period(user_id, 10)
-        claim_amount = round(team_trading_volume * (trading_income_percent / 100), 2)
-        note = f"Trading Income ({trading_income_percent}% of ${team_trading_volume:.2f}) - Level {current_rank_level}"
+        # ALL SUBSEQUENT CLAIMS: Team Trading INCOME (Profit) based (10 levels)
+        team_trading_income = await calculate_team_trading_income_for_period(user_id, 10)
+        claim_amount = round(team_trading_income * (trading_income_percent / 100), 2)
+        note = f"Trading Income ({trading_income_percent}% of ${team_trading_income:.2f} profit) - Level {current_rank_level}"
         income_type = "trading"
     
     if claim_amount <= 0 and income_type == "trading":
