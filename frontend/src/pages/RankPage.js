@@ -124,40 +124,80 @@ const RankPage = () => {
       </div>
 
       {/* Important Notice */}
-      <div className="mx-4 mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
-        <p className="text-yellow-500 text-sm font-medium text-center">
+      <div 
+        style={{
+          background: 'linear-gradient(145deg, rgba(255,200,0,0.1), rgba(255,150,0,0.05))',
+          boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.1)'
+        }}
+        className="mx-4 mt-4 p-3 border border-yellow-500/20 rounded-xl"
+      >
+        <p className="text-yellow-500/90 text-sm font-medium text-center">
           Only Active Member Required Minimum $50
         </p>
       </div>
 
-      {/* Current Rank Card */}
+      {/* Current Rank Card - 3D Effect */}
       <div className="mx-4 mt-4">
-        <div className={`${cardBg} rounded-2xl p-5 border ${border}`}>
+        <div 
+          style={{
+            background: isDark 
+              ? 'linear-gradient(145deg, #1e2126, #15181c)' 
+              : 'linear-gradient(145deg, #ffffff, #f0f0f0)',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.05) inset',
+            transform: 'perspective(1000px) rotateX(1deg)'
+          }}
+          className="rounded-2xl p-5"
+        >
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className={`text-sm ${textMuted}`}>Your Current Rank</p>
-              <p className="text-2xl font-bold mt-1">
+              <p className={`text-2xl font-bold mt-1 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
                 {currentLevel > 0 ? `Level-${String(currentLevel).padStart(2, '0')}` : 'No Rank'}
               </p>
             </div>
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center border-2 border-gray-500">
-              <span className="text-xl font-bold">{currentLevel || '-'}</span>
+            {/* 3D Level Badge */}
+            <div 
+              style={{
+                background: 'linear-gradient(145deg, #2a2d32, #1a1d21)',
+                boxShadow: '8px 8px 16px rgba(0,0,0,0.4), -4px -4px 12px rgba(255,255,255,0.05), inset 0 2px 2px rgba(255,255,255,0.1)'
+              }}
+              className="w-16 h-16 rounded-2xl flex items-center justify-center"
+            >
+              <span className="text-2xl font-bold text-white">{currentLevel || '-'}</span>
             </div>
           </div>
 
-          {/* Stats */}
+          {/* Stats - 3D Cards */}
           <div className="grid grid-cols-3 gap-3 mt-4">
-            <div className={`p-3 rounded-xl ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
+            <div 
+              style={{
+                background: isDark ? 'linear-gradient(145deg, #1a1d21, #12151a)' : 'linear-gradient(145deg, #f5f5f5, #e8e8e8)',
+                boxShadow: '4px 4px 10px rgba(0,0,0,0.2), -2px -2px 6px rgba(255,255,255,0.03)'
+              }}
+              className="p-3 rounded-xl"
+            >
               <p className={`text-xs ${textMuted}`}>Direct L1</p>
-              <p className="text-lg font-bold">{rankInfo?.direct_referrals || 0}</p>
+              <p className={`text-lg font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{rankInfo?.direct_referrals || 0}</p>
             </div>
-            <div className={`p-3 rounded-xl ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
+            <div 
+              style={{
+                background: isDark ? 'linear-gradient(145deg, #1a1d21, #12151a)' : 'linear-gradient(145deg, #f5f5f5, #e8e8e8)',
+                boxShadow: '4px 4px 10px rgba(0,0,0,0.2), -2px -2px 6px rgba(255,255,255,0.03)'
+              }}
+              className="p-3 rounded-xl"
+            >
               <p className={`text-xs ${textMuted}`}>L1 Active</p>
-              <p className="text-lg font-bold">{rankInfo?.bronze_members || 0}</p>
+              <p className={`text-lg font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{rankInfo?.bronze_members || 0}</p>
             </div>
-            <div className={`p-3 rounded-xl ${isDark ? 'bg-[#2B3139]' : 'bg-gray-100'}`}>
+            <div 
+              style={{
+                background: isDark ? 'linear-gradient(145deg, #1a1d21, #12151a)' : 'linear-gradient(145deg, #f5f5f5, #e8e8e8)',
+                boxShadow: '4px 4px 10px rgba(0,0,0,0.2), -2px -2px 6px rgba(255,255,255,0.03)'
+              }}
+              className="p-3 rounded-xl"
+            >
               <p className={`text-xs ${textMuted}`}>Total Team</p>
-              <p className="text-lg font-bold">{formatNum(rankInfo?.total_team || 0)}</p>
+              <p className={`text-lg font-bold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{formatNum(rankInfo?.total_team || 0)}</p>
             </div>
           </div>
 
@@ -217,22 +257,39 @@ const RankPage = () => {
               <div 
                 key={rank.level}
                 onClick={() => setSelectedRank(selectedRank === rank.level ? null : rank.level)}
-                className={`${cardBg} rounded-xl border ${border} overflow-hidden cursor-pointer transition-all ${
-                  isCurrent ? 'ring-2 ring-green-500' : ''
-                } ${isAchieved ? 'opacity-100' : 'opacity-70'}`}
+                style={{
+                  transform: isCurrent ? 'perspective(1000px) rotateX(2deg)' : 'none',
+                  boxShadow: isCurrent 
+                    ? '0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1) inset' 
+                    : isAchieved 
+                      ? '0 8px 20px rgba(0,0,0,0.3)' 
+                      : '0 4px 12px rgba(0,0,0,0.2)'
+                }}
+                className={`rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.02] ${
+                  isDark ? 'bg-gradient-to-br from-[#1a1d21] to-[#12151a]' : 'bg-gradient-to-br from-white to-gray-100'
+                } ${isCurrent ? 'ring-1 ring-white/20' : ''} ${isAchieved ? 'opacity-100' : 'opacity-60'}`}
               >
                 {/* Main Row */}
                 <div className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
-                      isAchieved 
-                        ? 'bg-green-600 text-white' 
-                        : isDark ? 'bg-[#2B3139] text-gray-400' : 'bg-gray-200 text-gray-500'
-                    }`}>
-                      {isAchieved ? <CheckCircle size={20} /> : rank.level}
+                    {/* 3D Level Badge */}
+                    <div 
+                      style={{
+                        background: isAchieved 
+                          ? 'linear-gradient(145deg, #2a2d32, #1a1d21)' 
+                          : 'linear-gradient(145deg, #1a1d21, #0d0f12)',
+                        boxShadow: isAchieved 
+                          ? '4px 4px 8px rgba(0,0,0,0.4), -2px -2px 6px rgba(255,255,255,0.05), inset 0 1px 1px rgba(255,255,255,0.1)' 
+                          : '2px 2px 4px rgba(0,0,0,0.3)'
+                      }}
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm transition-all ${
+                        isAchieved ? 'text-white' : 'text-gray-500'
+                      }`}
+                    >
+                      {isAchieved ? <CheckCircle size={22} weight="bold" /> : rank.level}
                     </div>
                     <div>
-                      <p className="font-semibold">{rank.name}</p>
+                      <p className={`font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{rank.name}</p>
                       <p className={`text-xs ${textMuted}`}>
                         {rank.level === 1 
                           ? `$${rank.selfWallet} Self + ${rank.directL1} Direct Active`
@@ -242,42 +299,57 @@ const RankPage = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-green-500 font-bold">${formatNum(rank.rankReward)}</p>
+                    <p className={`font-bold text-lg ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>${formatNum(rank.rankReward)}</p>
                     <p className={`text-xs ${textMuted}`}>Reward</p>
                   </div>
                 </div>
 
                 {/* Expanded Details */}
                 {selectedRank === rank.level && (
-                  <div className={`px-4 pb-4 pt-2 border-t ${border} ${isDark ? 'bg-[#161A1E]' : 'bg-gray-50'}`}>
+                  <div 
+                    style={{
+                      background: isDark 
+                        ? 'linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.1) 100%)' 
+                        : 'linear-gradient(180deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.05) 100%)'
+                    }}
+                    className={`px-4 pb-4 pt-3 border-t ${isDark ? 'border-white/5' : 'border-gray-200'}`}
+                  >
                     <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <p className={textMuted}>Self Wallet</p>
+                      <div className={`p-2 rounded-lg ${isDark ? 'bg-black/20' : 'bg-gray-100'}`}>
+                        <p className={`text-xs ${textMuted}`}>Self Wallet</p>
                         <p className="font-semibold">${rank.selfWallet}</p>
                       </div>
-                      <div>
-                        <p className={textMuted}>Direct L1 Active</p>
+                      <div className={`p-2 rounded-lg ${isDark ? 'bg-black/20' : 'bg-gray-100'}`}>
+                        <p className={`text-xs ${textMuted}`}>Direct L1 Active</p>
                         <p className="font-semibold">{rank.directL1} Members</p>
                       </div>
                       {rank.totalTeam > 0 && (
-                        <div>
-                          <p className={textMuted}>Total Team (10 Levels)</p>
+                        <div className={`p-2 rounded-lg ${isDark ? 'bg-black/20' : 'bg-gray-100'}`}>
+                          <p className={`text-xs ${textMuted}`}>Total Team (10 Levels)</p>
                           <p className="font-semibold">{formatNum(rank.totalTeam)} Members</p>
                         </div>
                       )}
-                      <div>
-                        <p className={textMuted}>Monthly Royalty</p>
-                        <p className="font-semibold text-blue-500">${formatNum(rank.monthlyRoyalty)}/month</p>
+                      <div className={`p-2 rounded-lg ${isDark ? 'bg-black/20' : 'bg-gray-100'}`}>
+                        <p className={`text-xs ${textMuted}`}>Monthly Royalty</p>
+                        <p className="font-semibold">${formatNum(rank.monthlyRoyalty)}/month</p>
                       </div>
-                      <div>
-                        <p className={textMuted}>Trading Income</p>
-                        <p className="font-semibold text-green-500">{rank.tradingPercent}% of Team Trading</p>
+                      <div className={`p-2 rounded-lg ${isDark ? 'bg-black/20' : 'bg-gray-100'}`}>
+                        <p className={`text-xs ${textMuted}`}>Trading Income</p>
+                        <p className="font-semibold">{rank.tradingPercent}% of Team Trading</p>
                       </div>
                     </div>
 
                     {/* Income Breakdown Info */}
-                    <div className={`mt-3 p-2 rounded-lg text-xs ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-100'}`}>
-                      <p className={textMuted}>Income System (10 Days Lock):</p>
+                    <div 
+                      style={{
+                        background: isDark 
+                          ? 'linear-gradient(145deg, rgba(255,255,255,0.03), rgba(0,0,0,0.1))' 
+                          : 'linear-gradient(145deg, #f8f8f8, #e8e8e8)',
+                        boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.1)'
+                      }}
+                      className="mt-3 p-3 rounded-lg text-xs"
+                    >
+                      <p className={`${textMuted} font-medium`}>Income System (10 Days Lock):</p>
                       <p className="mt-1">• 1st Claim: Fixed ${formatNum(Math.round(rank.monthlyRoyalty / 3))}</p>
                       <p>• All Next Claims: {rank.tradingPercent}% Team Trading (10 Levels)</p>
                     </div>
