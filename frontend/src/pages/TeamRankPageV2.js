@@ -89,21 +89,9 @@ const TeamRankPage = () => {
     return `$${amount?.toFixed(0) || 0}`;
   };
 
-  // Get rank gradient
+  // Get rank gradient - ALL GREEN
   const getRankGradient = (level) => {
-    const gradients = {
-      1: "from-slate-400 to-slate-500",
-      2: "from-blue-400 to-blue-600",
-      3: "from-emerald-400 to-emerald-600",
-      4: "from-yellow-400 to-amber-500",
-      5: "from-orange-400 to-orange-600",
-      6: "from-blue-500 to-indigo-600",
-      7: "from-purple-400 to-purple-600",
-      8: "from-pink-400 to-rose-600",
-      9: "from-amber-400 to-yellow-500",
-      10: "from-red-500 to-red-700"
-    };
-    return gradients[level] || gradients[1];
+    return "from-green-500 to-green-600";
   };
 
   // Get emoji for rank
@@ -796,18 +784,25 @@ const TeamRankPage = () => {
               const bronzeProgress = rank.bronze_required > 0 ? Math.min(100, ((rankInfo?.bronze_members || 0) / rank.bronze_required) * 100) : 100;
               const teamProgress = Math.min(100, ((rankInfo?.total_team || 0) / rank.team_required) * 100);
               
-              // Rank specific colors
+              // Rank specific colors - ALL SAME GREEN (Level 8 style)
+              const greenGradient = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
+              const greenGlow = '#22c55e';
               const rankColors = {
-                1: { bg: 'linear-gradient(135deg, #CD7F32 0%, #8B4513 100%)', glow: '#CD7F32' }, // Bronze
-                2: { bg: 'linear-gradient(135deg, #C0C0C0 0%, #808080 100%)', glow: '#C0C0C0' }, // Silver
-                3: { bg: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', glow: '#FFD700' }, // Gold
-                4: { bg: 'linear-gradient(135deg, #E5E4E2 0%, #B4B4B4 100%)', glow: '#E5E4E2' }, // Platinum
-                5: { bg: 'linear-gradient(135deg, #B9F2FF 0%, #00BFFF 100%)', glow: '#00BFFF' }, // Diamond
-                6: { bg: 'linear-gradient(135deg, #9400D3 0%, #4B0082 100%)', glow: '#9400D3' }, // Master
-                7: { bg: 'linear-gradient(135deg, #FF4500 0%, #DC143C 100%)', glow: '#FF4500' }, // Grandmaster
-                8: { bg: 'linear-gradient(135deg, #00FF00 0%, #008000 100%)', glow: '#00FF00' }, // Champion
-                9: { bg: 'linear-gradient(135deg, #FF1493 0%, #C71585 100%)', glow: '#FF1493' }, // Legend
-                10: { bg: 'linear-gradient(135deg, #FFD700 0%, #FF6347 50%, #9400D3 100%)', glow: '#FFD700' } // Immortal
+                1: { bg: greenGradient, glow: greenGlow },
+                2: { bg: greenGradient, glow: greenGlow },
+                3: { bg: greenGradient, glow: greenGlow },
+                4: { bg: greenGradient, glow: greenGlow },
+                5: { bg: greenGradient, glow: greenGlow },
+                6: { bg: greenGradient, glow: greenGlow },
+                7: { bg: greenGradient, glow: greenGlow },
+                8: { bg: greenGradient, glow: greenGlow },
+                9: { bg: greenGradient, glow: greenGlow },
+                10: { bg: greenGradient, glow: greenGlow },
+                11: { bg: greenGradient, glow: greenGlow },
+                12: { bg: greenGradient, glow: greenGlow },
+                13: { bg: greenGradient, glow: greenGlow },
+                14: { bg: greenGradient, glow: greenGlow },
+                15: { bg: greenGradient, glow: greenGlow }
               };
               
               const currentRankColor = rankColors[rank.level] || rankColors[1];
