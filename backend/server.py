@@ -3118,13 +3118,13 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
         last_claim_date = user_doc.get("last_salary_claim_date") if user_doc else None
         salary_cycle_start = user_doc.get("salary_cycle_start") if user_doc else None
         
-        # Calculate days remaining for claim (10-10-10 system: claim every 10 days)
+        # Calculate days remaining for claim (10 days lock, claim on 11th day)
         days_in_cycle = 0
         days_remaining = 10
         can_claim_salary = False
         salary_part = 0  # Which part (1, 2, or 3)
         
-        # Monthly salary is divided into 3 equal parts (10 days each)
+        # Monthly salary is divided into 3 equal parts (10 days lock each)
         if current_level > 0 and monthly_salary > 0:
             part_salary = round(monthly_salary / 3, 2)  # Each 10-day part
             
@@ -3138,7 +3138,7 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
                     cycle_start = cycle_start.replace(tzinfo=timezone.utc)
                 days_in_cycle = (now - cycle_start).days
                 
-                # Calculate which part we're in and if claimable
+                # Claim available on 11th day (after 10 days lock)
                 if days_in_cycle >= 10:
                     can_claim_salary = True
                     accumulated_salary = part_salary
@@ -3159,6 +3159,7 @@ async def get_team_rank_info(user: dict = Depends(get_current_user)):
                     last_claim = last_claim.replace(tzinfo=timezone.utc)
                 days_in_cycle = (now - last_claim).days
                 
+                # Claim available on 11th day (after 10 days lock)
                 if days_in_cycle >= 10:
                     can_claim_salary = True
                     accumulated_salary = part_salary
@@ -3328,7 +3329,7 @@ async def get_salary_history(user: dict = Depends(get_current_user)):
 
 @api_router.post("/team-rank/claim-salary")
 async def claim_salary(user: dict = Depends(get_current_user)):
-    """Claim monthly royalty every 10 days (1/3 of monthly salary per claim)"""
+    """Claim monthly royalty after 10 days lock (1/3 of monthly salary per claim) - Goes to Spot Wallet"""
     user_id = user["user_id"]
     now = datetime.now(timezone.utc)
     
@@ -3352,7 +3353,7 @@ async def claim_salary(user: dict = Depends(get_current_user)):
     last_claim_date = user_doc.get("last_salary_claim_date")
     salary_cycle_start = user_doc.get("salary_cycle_start")
     
-    # Check if 10 days have passed since last claim
+    # Check if 10 days lock period has passed (claim on 11th day)
     check_date = last_claim_date or salary_cycle_start
     if check_date:
         if isinstance(check_date, str):
@@ -3367,13 +3368,14 @@ async def claim_salary(user: dict = Depends(get_current_user)):
             remaining_days = 10 - days_passed
             raise HTTPException(
                 status_code=400, 
-                detail=f"Monthly Royalty can be claimed after {remaining_days} days"
+                detail=f"Royalty is locked for {remaining_days} more days"
             )
     
-    # Add to Futures wallet (not Spot)
+    # Add to SPOT wallet (balances.usdt)
     await db.wallets.update_one(
         {"user_id": user_id},
-        {"$inc": {"futures_balance": part_salary}}
+        {"$inc": {"balances.usdt": part_salary}},
+        upsert=True
     )
     
     # Update claim date
@@ -3394,7 +3396,7 @@ async def claim_salary(user: dict = Depends(get_current_user)):
         "type": "monthly_royalty",
         "coin": "usdt",
         "amount": part_salary,
-        "note": f"Monthly Royalty (10-Day Part) - Level {current_rank_level}",
+        "note": f"Monthly Royalty (10-Day Part) - Level {current_rank_level} → Spot Wallet",
         "status": "completed",
         "created_at": now.isoformat()
     })
@@ -3402,7 +3404,7 @@ async def claim_salary(user: dict = Depends(get_current_user)):
     return {
         "success": True,
         "salary_amount": part_salary,
-        "message": f"Successfully claimed ${part_salary:.2f} Monthly Royalty"
+        "message": f"${part_salary:.2f} credited to Spot Wallet"
     }
 
 @api_router.get("/team-rank/salary-info")
