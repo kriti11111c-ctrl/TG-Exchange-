@@ -28,6 +28,12 @@ async def give_codes():
         
         code = "".join(random.choices("abcdefghijklmnopqrstuvwxyz0123456789", k=12))
         
+        # Determine time slot (morning or evening)
+        if now.hour < 12:
+            time_slot = f"morning_{now.strftime('%Y-%m-%d')}"
+        else:
+            time_slot = f"evening_{now.strftime('%Y-%m-%d')}"
+        
         await db.trade_codes.insert_one({
             "code": code,
             "user_id": user["user_id"],
@@ -38,6 +44,7 @@ async def give_codes():
             "fund_percent": 1.0,
             "status": "live",
             "auto_generated": True,
+            "time_slot": time_slot,
             "created_at": now.isoformat(),
             "expires_at": expires.isoformat()
         })
