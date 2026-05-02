@@ -6406,7 +6406,14 @@ async def apply_trade_code(data: TradeCodeApply, user: dict = Depends(get_curren
         "completed_at": now.isoformat(),
         "execution_timestamp": now.timestamp()  # Unix timestamp for sorting
     }
-    await db.futures_history.insert_one(futures_trade)
+    
+    # PREVENT DUPLICATE: Use update with upsert instead of insert
+    # This ensures only 1 entry per trade_code in futures_history
+    await db.futures_history.update_one(
+        {"trade_code": trade_code["code"], "user_id": user["user_id"]},  # Find by trade_code
+        {"$setOnInsert": futures_trade},  # Only set if inserting new
+        upsert=True  # Insert if not exists
+    )
     
     # Get updated futures balance
     updated_wallet = await db.wallets.find_one({"user_id": user["user_id"]})
