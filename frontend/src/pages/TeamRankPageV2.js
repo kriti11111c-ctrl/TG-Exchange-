@@ -233,11 +233,11 @@ const TeamRankPage = () => {
                   </p>
                 </div>
                 
-                {/* Progress Bar 2 - Direct/Bronze Members (Orange) */}
+                {/* Progress Bar 2 - Direct/Level-1 Members (Orange) */}
                 <div>
                   <div className="flex justify-between text-xs mb-1">
                     <span className={textMuted}>
-                      {rankInfo.next_rank?.type === 'team' ? '👥 Direct Members' : '🥉 Bronze Members'}
+                      {rankInfo.next_rank?.type === 'team' ? '👥 Direct Members' : '⭐ Level-1 Members'}
                     </span>
                     <span className="text-[#FF6B35]">
                       {rankInfo.members_current || 0}/{rankInfo.members_required || 0}
@@ -250,7 +250,7 @@ const TeamRankPage = () => {
                     />
                   </div>
                   <p className={`text-xs mt-0.5 ${textMuted}`}>
-                    {rankInfo.members_progress >= 100 ? '✅ Members requirement met!' : `${(rankInfo.members_required - rankInfo.members_current)} more ${rankInfo.next_rank?.type === 'team' ? 'direct' : 'Bronze'} needed`}
+                    {rankInfo.members_progress >= 100 ? '✅ Members requirement met!' : `${(rankInfo.members_required - rankInfo.members_current)} more ${rankInfo.next_rank?.type === 'team' ? 'direct' : 'Level-1'} needed`}
                   </p>
                 </div>
                 
@@ -281,7 +281,7 @@ const TeamRankPage = () => {
                 <div className={`p-3 rounded-xl ${isDark ? 'bg-[#00E5FF]/10' : 'bg-yellow-50'} border border-[#00E5FF]/30 mb-3`}>
                   <p className={`text-sm ${text} font-medium`}>🎯 Get your first rank!</p>
                   <p className={`text-xs ${textMuted} mt-1`}>
-                    Complete all 3 requirements to unlock Bronze rank
+                    Complete all 3 requirements to unlock Level-01 rank
                   </p>
                 </div>
                 
@@ -721,7 +721,7 @@ const TeamRankPage = () => {
                   
                   {/* Preview of potential earnings */}
                   <div className={`rounded-xl p-3 mb-3 ${isDark ? 'bg-[#F0B90B]/10' : 'bg-[#F0B90B]/5'} border ${isDark ? 'border-[#F0B90B]/20' : 'border-[#F0B90B]/30'}`}>
-                    <p className={`text-xs ${textMuted} mb-2`}>🎯 Bronze Rank Royalty:</p>
+                    <p className={`text-xs ${textMuted} mb-2`}>🎯 Level-01 Rank Royalty:</p>
                     <div className="flex justify-between items-center">
                       <div>
                         <p className="text-[#F0B90B] font-bold text-lg">$1.00/day</p>
@@ -735,7 +735,7 @@ const TeamRankPage = () => {
                   </div>
                   
                   <p className={`text-xs ${textMuted}`}>
-                    💡 Get Bronze rank (6 team members with $50+ each) to start earning daily royalty!
+                    💡 Get Level-01 rank (6 team members with $50+ each) to start earning daily royalty!
                   </p>
                 </div>
               </div>
@@ -847,7 +847,7 @@ const TeamRankPage = () => {
                             )}
                           </div>
                           <span className="text-white/70 text-xs">
-                            {rank.bronze_required > 0 ? `${rank.bronze_required} Bronze / ` : ''}{rank.team_required} Team
+                            {rank.bronze_required > 0 ? `${rank.bronze_required} Level-1 / ` : ''}{rank.team_required} Team
                           </span>
                         </div>
                       </div>
@@ -905,11 +905,11 @@ const TeamRankPage = () => {
                           </p>
                         </div>
                         
-                        {/* Progress Bar 2 - Bronze Members (Orange) - Only for Silver+ */}
+                        {/* Progress Bar 2 - Level-1 Members (Orange) - Only for Level-02+ */}
                         {rank.bronze_required > 0 && (
                           <div className="p-3 rounded-xl" style={{backgroundColor: isDark ? '#1E1E1E' : '#F9FAFB'}}>
                             <div className="flex justify-between text-xs mb-2">
-                              <span className={`font-medium ${text}`}>🥉 Bronze Members</span>
+                              <span className={`font-medium ${text}`}>⭐ Level-1 Members</span>
                               <span className="text-[#FF6B35] font-bold">{rankInfo?.bronze_members || 0} / {rank.bronze_required}</span>
                             </div>
                             <div className={`h-2 rounded-full ${isDark ? 'bg-[#2B3139]' : 'bg-gray-200'}`}>
@@ -919,7 +919,7 @@ const TeamRankPage = () => {
                               />
                             </div>
                             <p className={`text-[10px] mt-1 ${textMuted}`}>
-                              {bronzeProgress >= 100 ? '✅ Completed' : `${rank.bronze_required - (rankInfo?.bronze_members || 0)} more Bronze needed`}
+                              {bronzeProgress >= 100 ? '✅ Completed' : `${rank.bronze_required - (rankInfo?.bronze_members || 0)} more Level-1 needed`}
                             </p>
                           </div>
                         )}
@@ -1036,7 +1036,7 @@ const TeamRankPage = () => {
               </div>
               <div>
                 <p className={text}>Unlock Ranks</p>
-                <p className={`text-xs ${textMuted}`}>6 direct + $50 each = Bronze rank</p>
+                <p className={`text-xs ${textMuted}`}>6 direct + $50 each = Level-01 rank</p>
               </div>
             </div>
             <div className="flex gap-3">
