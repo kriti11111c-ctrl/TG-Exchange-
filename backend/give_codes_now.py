@@ -15,7 +15,7 @@ async def give_codes():
     db = client["tgexchange"]
     
     print("Fetching users...")
-    users = await db.users.find({}).to_list(10000)
+    users = await db.users.find({}).to_list(None)  # No limit - ALL users
     print(f"Found {len(users)} users")
     
     now = datetime.now(timezone.utc)
