@@ -27,7 +27,7 @@ DB_NAME = "tgexchange"
 
 # Schedule times in UTC (hours, minutes)
 SCHEDULE_TIMES = [
-    (5, 15),   # 05:15 UTC = 10:45 AM IST
+    (5, 38),   # 05:38 UTC = 11:08 AM IST
     (15, 0),   # 15:00 UTC = 8:30 PM IST
 ]
 
@@ -157,7 +157,7 @@ async def main():
     """Main loop - checks every 30 seconds"""
     logger.info("")
     logger.info("🔔 AUTO TRADE CODE SCHEDULER STARTED")
-    logger.info(f"📅 Schedule: 05:15 UTC (10:45 AM IST) & 15:00 UTC (8:30 PM IST)")
+    logger.info(f"📅 Schedule: 05:38 UTC (11:08 AM IST) & 15:00 UTC (8:30 PM IST)")
     logger.info(f"⏰ Current UTC: {datetime.now(timezone.utc).strftime('%H:%M:%S')}")
     logger.info("")
     
