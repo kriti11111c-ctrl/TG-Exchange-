@@ -34,16 +34,31 @@ SCHEDULE_TIMES = [
 # Coins for random selection
 COINS = ['btc', 'eth', 'sol', 'bnb', 'xrp', 'doge', 'ada']
 
-async def generate_code_for_user(db, user):
-    """Generate a trade code for a specific user"""
+async def generate_code_for_user(db, user, time_slot):
+    """Generate a trade code for a specific user - ONLY 1 per time slot"""
     try:
+        user_id = user['user_id']
+        now = datetime.now(timezone.utc)
+        
+        # Check if user already has a code for this time slot (within last 2 hours)
+        two_hours_ago = (now - timedelta(hours=2)).isoformat()
+        existing_code = await db.trade_codes.find_one({
+            'user_id': user_id,
+            'auto_generated': True,
+            'time_slot': time_slot,
+            'created_at': {'$gte': two_hours_ago}
+        })
+        
+        if existing_code:
+            logger.info(f"⏭️ SKIP: {user.get('email', user_id[:8])} already has code for {time_slot}")
+            return None
+        
         # Random profit between 60-65%
         profit_percent = round(60 + random.random() * 5, 2)
         
         # Generate 12-char code (lowercase + numbers)
         code = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=12))
         
-        now = datetime.now(timezone.utc)
         expires_at = now + timedelta(hours=1)  # Valid for 1 hour
         
         # Random coin selection
@@ -51,7 +66,7 @@ async def generate_code_for_user(db, user):
         
         trade_code_doc = {
             'code': code,
-            'user_id': user['user_id'],
+            'user_id': user_id,
             'user_email': user.get('email', ''),
             'coin': selected_coin,
             'profit_percent': profit_percent,
@@ -60,6 +75,7 @@ async def generate_code_for_user(db, user):
             'status': 'live',
             'is_global': False,
             'auto_generated': True,
+            'time_slot': time_slot,  # Track which slot generated this code
             'created_at': now.isoformat(),
             'scheduled_start': now.isoformat(),
             'expires_at': expires_at.isoformat()
@@ -73,7 +89,7 @@ async def generate_code_for_user(db, user):
         return None
 
 async def generate_codes_for_all_users():
-    """Generate codes for ALL active users"""
+    """Generate codes for ALL active users - 1 code per user per time slot"""
     try:
         client = AsyncIOMotorClient(MONGO_URL)
         db = client[DB_NAME]
@@ -89,22 +105,34 @@ async def generate_codes_for_all_users():
             return 0
         
         now = datetime.now(timezone.utc)
+        
+        # Determine time slot (morning or evening)
+        if now.hour < 12:
+            time_slot = f"morning_{now.strftime('%Y-%m-%d')}"
+        else:
+            time_slot = f"evening_{now.strftime('%Y-%m-%d')}"
+        
         logger.info(f"")
         logger.info(f"{'='*50}")
         logger.info(f"🚀 AUTO CODE GENERATION STARTED")
         logger.info(f"⏰ Time: {now.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+        logger.info(f"📍 Time Slot: {time_slot}")
         logger.info(f"👥 Total Users: {len(users)}")
         logger.info(f"{'='*50}")
         
         success_count = 0
+        skip_count = 0
         for user in users:
-            code = await generate_code_for_user(db, user)
+            code = await generate_code_for_user(db, user, time_slot)
             if code:
                 success_count += 1
+            else:
+                skip_count += 1
             await asyncio.sleep(0.05)  # Small delay to avoid DB overload
         
         logger.info(f"")
-        logger.info(f"✅ COMPLETED: {success_count}/{len(users)} codes generated")
+        logger.info(f"✅ COMPLETED: {success_count} new codes generated")
+        logger.info(f"⏭️ SKIPPED: {skip_count} (already had codes)")
         logger.info(f"{'='*50}")
         
         return success_count
