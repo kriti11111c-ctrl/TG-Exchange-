@@ -3386,8 +3386,8 @@ async def get_salary_history(user: dict = Depends(get_current_user)):
 @api_router.post("/team-rank/claim-salary")
 async def claim_salary(user: dict = Depends(get_current_user)):
     """Claim royalty after 10 days lock:
-    - Part 1: Fixed Monthly Salary / 3
-    - Part 2 & 3: Team Trading Income % based on rank level
+    - First claim (Part 1): Fixed Monthly Salary / 3
+    - All subsequent claims: Team Trading Income % based on rank level (10 levels)
     Goes to Spot Wallet
     """
     user_id = user["user_id"]
@@ -3432,23 +3432,21 @@ async def claim_salary(user: dict = Depends(get_current_user)):
                 detail=f"Royalty is locked for {remaining_days} more days"
             )
     
-    # Determine which part this is (1, 2, or 3 in monthly cycle)
-    # Reset count after 3 claims
-    current_part = (salary_claim_count % 3) + 1
-    
-    # Calculate amount based on part
-    if current_part == 1:
-        # Part 1: Fixed Monthly Salary / 3
+    # Calculate amount based on claim count
+    if salary_claim_count == 0:
+        # FIRST CLAIM ONLY: Fixed Monthly Salary / 3
         claim_amount = round(monthly_salary / 3, 2)
-        note = f"Monthly Royalty Part 1 (Fixed) - Level {current_rank_level}"
+        note = f"Monthly Royalty (Fixed) - Level {current_rank_level}"
+        income_type = "fixed"
     else:
-        # Part 2 & 3: Team Trading Income based
+        # ALL SUBSEQUENT CLAIMS: Team Trading Income based (10 levels)
         team_trading_volume = await calculate_team_trading_income_for_period(user_id, 10)
         claim_amount = round(team_trading_volume * (trading_income_percent / 100), 2)
-        note = f"Trading Income Part {current_part} ({trading_income_percent}% of ${team_trading_volume:.2f}) - Level {current_rank_level}"
+        note = f"Trading Income ({trading_income_percent}% of ${team_trading_volume:.2f}) - Level {current_rank_level}"
+        income_type = "trading"
     
-    if claim_amount <= 0:
-        raise HTTPException(status_code=400, detail="No income to claim for this period")
+    if claim_amount <= 0 and income_type == "trading":
+        raise HTTPException(status_code=400, detail="No team trading income in last 10 days")
     
     # Add to SPOT wallet (balances.usdt)
     await db.wallets.update_one(
@@ -3484,7 +3482,8 @@ async def claim_salary(user: dict = Depends(get_current_user)):
     return {
         "success": True,
         "salary_amount": claim_amount,
-        "part": current_part,
+        "income_type": income_type,
+        "claim_number": salary_claim_count + 1,
         "message": f"${claim_amount:.2f} credited to Spot Wallet"
     }
 

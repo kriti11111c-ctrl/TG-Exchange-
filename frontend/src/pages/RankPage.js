@@ -277,9 +277,9 @@ const RankPage = () => {
 
                     {/* Income Breakdown Info */}
                     <div className={`mt-3 p-2 rounded-lg text-xs ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-100'}`}>
-                      <p className={textMuted}>10-10-10 Days Income:</p>
-                      <p className="mt-1">• Part 1: Fixed ${formatNum(Math.round(rank.monthlyRoyalty / 3))}</p>
-                      <p>• Part 2 & 3: {rank.tradingPercent}% Team Trading</p>
+                      <p className={textMuted}>Income System (10 Days Lock):</p>
+                      <p className="mt-1">• 1st Claim: Fixed ${formatNum(Math.round(rank.monthlyRoyalty / 3))}</p>
+                      <p>• All Next Claims: {rank.tradingPercent}% Team Trading (10 Levels)</p>
                     </div>
 
                     {/* Requirements Status */}
