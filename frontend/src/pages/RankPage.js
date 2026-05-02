@@ -258,38 +258,30 @@ const RankPage = () => {
                 key={rank.level}
                 onClick={() => setSelectedRank(selectedRank === rank.level ? null : rank.level)}
                 style={{
-                  transform: isCurrent ? 'perspective(1000px) rotateX(2deg)' : 'none',
-                  boxShadow: isCurrent 
-                    ? '0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1) inset' 
-                    : isAchieved 
-                      ? '0 8px 20px rgba(0,0,0,0.3)' 
-                      : '0 4px 12px rgba(0,0,0,0.2)'
+                  background: isDark 
+                    ? 'linear-gradient(145deg, #1a1d21, #12151a)' 
+                    : 'linear-gradient(145deg, #ffffff, #f5f5f5)',
+                  boxShadow: '6px 6px 15px rgba(0,0,0,0.25), -3px -3px 10px rgba(255,255,255,0.03)'
                 }}
-                className={`rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.02] ${
-                  isDark ? 'bg-gradient-to-br from-[#1a1d21] to-[#12151a]' : 'bg-gradient-to-br from-white to-gray-100'
-                } ${isCurrent ? 'ring-1 ring-white/20' : ''} ${isAchieved ? 'opacity-100' : 'opacity-60'}`}
+                className={`rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:scale-[1.01] ${
+                  isCurrent ? 'ring-1 ring-white/30' : ''
+                }`}
               >
                 {/* Main Row */}
                 <div className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {/* 3D Level Badge */}
+                    {/* Level Badge - Same for all */}
                     <div 
                       style={{
-                        background: isAchieved 
-                          ? 'linear-gradient(145deg, #2a2d32, #1a1d21)' 
-                          : 'linear-gradient(145deg, #1a1d21, #0d0f12)',
-                        boxShadow: isAchieved 
-                          ? '4px 4px 8px rgba(0,0,0,0.4), -2px -2px 6px rgba(255,255,255,0.05), inset 0 1px 1px rgba(255,255,255,0.1)' 
-                          : '2px 2px 4px rgba(0,0,0,0.3)'
+                        background: 'linear-gradient(145deg, #252830, #1a1d21)',
+                        boxShadow: '3px 3px 6px rgba(0,0,0,0.3), -1px -1px 4px rgba(255,255,255,0.05), inset 0 1px 1px rgba(255,255,255,0.08)'
                       }}
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm transition-all ${
-                        isAchieved ? 'text-white' : 'text-gray-500'
-                      }`}
+                      className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm text-gray-300"
                     >
-                      {isAchieved ? <CheckCircle size={22} weight="bold" /> : rank.level}
+                      {rank.level}
                     </div>
                     <div>
-                      <p className={`font-semibold ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>{rank.name}</p>
+                      <p className={`font-semibold ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{rank.name}</p>
                       <p className={`text-xs ${textMuted}`}>
                         {rank.level === 1 
                           ? `$${rank.selfWallet} Self + ${rank.directL1} Direct Active`
@@ -299,7 +291,7 @@ const RankPage = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`font-bold text-lg ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>${formatNum(rank.rankReward)}</p>
+                    <p className={`font-bold text-lg ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>${formatNum(rank.rankReward)}</p>
                     <p className={`text-xs ${textMuted}`}>Reward</p>
                   </div>
                 </div>
