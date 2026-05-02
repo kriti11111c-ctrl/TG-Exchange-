@@ -355,7 +355,7 @@ const TeamRankPage = () => {
                 </div>
                 <div className="text-center">
                   <p className={`text-xs ${textMuted}`}>Bonus Rate</p>
-                  <p className="text-[#00E5FF] font-bold">{rankInfo?.bonus_percent || 0}%</p>
+                  <p className="text-[#00E5FF] font-bold">{rankInfo?.current_rank?.trading_income_percent || rankInfo?.bonus_percent || 0}%</p>
                 </div>
                 <div className="text-right">
                   <p className={`text-xs ${textMuted}`}>Bonus Income</p>
@@ -945,7 +945,7 @@ const TeamRankPage = () => {
                       {/* Bottom Stats Grid */}
                       <div className="grid grid-cols-4 gap-2 mt-4">
                         <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#00E5FF15' : '#E0F7FA', border: `1px solid ${isDark ? '#00E5FF30' : '#B2EBF2'}`}}>
-                          <p className="text-[#00E5FF] font-bold text-sm">{rank.bonus_percent || 0}%</p>
+                          <p className="text-[#00E5FF] font-bold text-sm">{rank.trading_income_percent || 0}%</p>
                           <p className={`text-[9px] ${textMuted}`}>Bonus</p>
                         </div>
                         <div className="p-2 rounded-xl text-center" style={{backgroundColor: isDark ? '#0ECB8115' : '#E8F5E9', border: `1px solid ${isDark ? '#0ECB8130' : '#C8E6C9'}`}}>
