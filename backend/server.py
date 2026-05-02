@@ -457,7 +457,8 @@ TEAM_RANKS = [
         "type": "direct",
         "monthly_salary": 10,
         "levelup_reward": 20,
-        "self_deposit_required": 50
+        "self_deposit_required": 50,
+        "trading_income_percent": 0.3
     },
     {
         "level": 2, 
@@ -469,7 +470,8 @@ TEAM_RANKS = [
         "type": "bronze",
         "monthly_salary": 30,
         "levelup_reward": 100,
-        "self_deposit_required": 100
+        "self_deposit_required": 100,
+        "trading_income_percent": 0.5
     },
     {
         "level": 3, 
@@ -481,7 +483,8 @@ TEAM_RANKS = [
         "type": "bronze",
         "monthly_salary": 75,
         "levelup_reward": 150,
-        "self_deposit_required": 150
+        "self_deposit_required": 150,
+        "trading_income_percent": 0.7
     },
     {
         "level": 4, 
@@ -493,7 +496,8 @@ TEAM_RANKS = [
         "type": "bronze",
         "monthly_salary": 150,
         "levelup_reward": 300,
-        "self_deposit_required": 200
+        "self_deposit_required": 200,
+        "trading_income_percent": 1.0
     },
     {
         "level": 5, 
@@ -505,7 +509,8 @@ TEAM_RANKS = [
         "type": "bronze",
         "monthly_salary": 250,
         "levelup_reward": 400,
-        "self_deposit_required": 200
+        "self_deposit_required": 200,
+        "trading_income_percent": 1.5
     },
     {
         "level": 6, 
@@ -517,7 +522,8 @@ TEAM_RANKS = [
         "type": "bronze",
         "monthly_salary": 500,
         "levelup_reward": 800,
-        "self_deposit_required": 200
+        "self_deposit_required": 200,
+        "trading_income_percent": 2.0
     },
     {
         "level": 7, 
@@ -529,7 +535,8 @@ TEAM_RANKS = [
         "type": "bronze",
         "monthly_salary": 600,
         "levelup_reward": 1000,
-        "self_deposit_required": 200
+        "self_deposit_required": 200,
+        "trading_income_percent": 2.3
     },
     {
         "level": 8, 
@@ -541,7 +548,8 @@ TEAM_RANKS = [
         "type": "bronze",
         "monthly_salary": 1200,
         "levelup_reward": 2000,
-        "self_deposit_required": 200
+        "self_deposit_required": 200,
+        "trading_income_percent": 2.5
     },
     {
         "level": 9, 
@@ -553,7 +561,8 @@ TEAM_RANKS = [
         "type": "bronze",
         "monthly_salary": 2400,
         "levelup_reward": 5000,
-        "self_deposit_required": 200
+        "self_deposit_required": 200,
+        "trading_income_percent": 3.0
     },
     {
         "level": 10, 
@@ -565,7 +574,8 @@ TEAM_RANKS = [
         "type": "bronze",
         "monthly_salary": 5000,
         "levelup_reward": 12000,
-        "self_deposit_required": 200
+        "self_deposit_required": 200,
+        "trading_income_percent": 3.5
     },
     {
         "level": 11, 
@@ -577,7 +587,8 @@ TEAM_RANKS = [
         "type": "bronze",
         "monthly_salary": 10000,
         "levelup_reward": 25000,
-        "self_deposit_required": 200
+        "self_deposit_required": 200,
+        "trading_income_percent": 4.0
     },
     {
         "level": 12, 
@@ -589,7 +600,8 @@ TEAM_RANKS = [
         "type": "bronze",
         "monthly_salary": 20000,
         "levelup_reward": 50000,
-        "self_deposit_required": 200
+        "self_deposit_required": 200,
+        "trading_income_percent": 5.0
     },
     {
         "level": 13, 
@@ -601,7 +613,8 @@ TEAM_RANKS = [
         "type": "bronze",
         "monthly_salary": 40000,
         "levelup_reward": 100000,
-        "self_deposit_required": 200
+        "self_deposit_required": 200,
+        "trading_income_percent": 6.0
     },
     {
         "level": 14, 
@@ -613,7 +626,8 @@ TEAM_RANKS = [
         "type": "bronze",
         "monthly_salary": 80000,
         "levelup_reward": 200000,
-        "self_deposit_required": 200
+        "self_deposit_required": 200,
+        "trading_income_percent": 7.0
     },
     {
         "level": 15, 
@@ -625,9 +639,51 @@ TEAM_RANKS = [
         "type": "bronze",
         "monthly_salary": 160000,
         "levelup_reward": 400000,
-        "self_deposit_required": 200
+        "self_deposit_required": 200,
+        "trading_income_percent": 8.0
     }
 ]
+
+async def calculate_team_trading_income_for_period(user_id: str, days: int = 10):
+    """Calculate total trading volume of team members (10 levels) in last N days"""
+    from datetime import timedelta
+    
+    now = datetime.now(timezone.utc)
+    period_start = now - timedelta(days=days)
+    
+    # Get all referred users up to 10 levels
+    referrals = await db.referrals.find({
+        "referrer_id": user_id,
+        "level": {"$lte": 10}
+    }, {"_id": 0, "referred_id": 1}).to_list(100000)
+    
+    team_user_ids = [r["referred_id"] for r in referrals]
+    
+    if not team_user_ids:
+        return 0
+    
+    # Get trading volume from futures_trades in the period
+    pipeline = [
+        {
+            "$match": {
+                "user_id": {"$in": team_user_ids},
+                "created_at": {"$gte": period_start.isoformat()},
+                "status": {"$in": ["closed", "settled"]}
+            }
+        },
+        {
+            "$group": {
+                "_id": None,
+                "total_volume": {"$sum": {"$toDouble": "$amount"}}
+            }
+        }
+    ]
+    
+    result = await db.futures_trades.aggregate(pipeline).to_list(1)
+    total_volume = result[0]["total_volume"] if result else 0
+    
+    return total_volume
+
 
 async def get_team_stats(user_id: str) -> dict:
     """Get user's team statistics - counts users with $50+ FUTURES BALANCE
@@ -3329,26 +3385,31 @@ async def get_salary_history(user: dict = Depends(get_current_user)):
 
 @api_router.post("/team-rank/claim-salary")
 async def claim_salary(user: dict = Depends(get_current_user)):
-    """Claim monthly royalty after 10 days lock (1/3 of monthly salary per claim) - Goes to Spot Wallet"""
+    """Claim royalty after 10 days lock:
+    - Part 1: Fixed Monthly Salary / 3
+    - Part 2 & 3: Team Trading Income % based on rank level
+    Goes to Spot Wallet
+    """
     user_id = user["user_id"]
     now = datetime.now(timezone.utc)
     
     # Get user's rank and salary data
     user_doc = await db.users.find_one({"user_id": user_id}, {"_id": 0})
     current_rank_level = user_doc.get("team_rank_level", 0) if user_doc else 0
+    salary_claim_count = user_doc.get("salary_claim_count", 0) if user_doc else 0
     
-    # Get monthly salary from rank
-    monthly_salary = 0
+    # Get rank info
+    rank_info = None
     for rank in TEAM_RANKS:
         if rank["level"] == current_rank_level:
-            monthly_salary = rank["monthly_salary"]
+            rank_info = rank
             break
     
-    if monthly_salary <= 0:
+    if not rank_info:
         raise HTTPException(status_code=400, detail="No rank achieved yet")
     
-    # Calculate part salary (1/3 of monthly)
-    part_salary = round(monthly_salary / 3, 2)
+    monthly_salary = rank_info["monthly_salary"]
+    trading_income_percent = rank_info.get("trading_income_percent", 0)
     
     last_claim_date = user_doc.get("last_salary_claim_date")
     salary_cycle_start = user_doc.get("salary_cycle_start")
@@ -3371,21 +3432,40 @@ async def claim_salary(user: dict = Depends(get_current_user)):
                 detail=f"Royalty is locked for {remaining_days} more days"
             )
     
+    # Determine which part this is (1, 2, or 3 in monthly cycle)
+    # Reset count after 3 claims
+    current_part = (salary_claim_count % 3) + 1
+    
+    # Calculate amount based on part
+    if current_part == 1:
+        # Part 1: Fixed Monthly Salary / 3
+        claim_amount = round(monthly_salary / 3, 2)
+        note = f"Monthly Royalty Part 1 (Fixed) - Level {current_rank_level}"
+    else:
+        # Part 2 & 3: Team Trading Income based
+        team_trading_volume = await calculate_team_trading_income_for_period(user_id, 10)
+        claim_amount = round(team_trading_volume * (trading_income_percent / 100), 2)
+        note = f"Trading Income Part {current_part} ({trading_income_percent}% of ${team_trading_volume:.2f}) - Level {current_rank_level}"
+    
+    if claim_amount <= 0:
+        raise HTTPException(status_code=400, detail="No income to claim for this period")
+    
     # Add to SPOT wallet (balances.usdt)
     await db.wallets.update_one(
         {"user_id": user_id},
-        {"$inc": {"balances.usdt": part_salary}},
+        {"$inc": {"balances.usdt": claim_amount}},
         upsert=True
     )
     
-    # Update claim date
+    # Update claim date and increment claim count
     await db.users.update_one(
         {"user_id": user_id},
         {
             "$set": {
                 "last_salary_claim_date": now.isoformat(),
                 "salary_cycle_start": now.isoformat()
-            }
+            },
+            "$inc": {"salary_claim_count": 1}
         }
     )
     
@@ -3395,16 +3475,17 @@ async def claim_salary(user: dict = Depends(get_current_user)):
         "user_id": user_id,
         "type": "monthly_royalty",
         "coin": "usdt",
-        "amount": part_salary,
-        "note": f"Monthly Royalty (10-Day Part) - Level {current_rank_level} → Spot Wallet",
+        "amount": claim_amount,
+        "note": note,
         "status": "completed",
         "created_at": now.isoformat()
     })
     
     return {
         "success": True,
-        "salary_amount": part_salary,
-        "message": f"${part_salary:.2f} credited to Spot Wallet"
+        "salary_amount": claim_amount,
+        "part": current_part,
+        "message": f"${claim_amount:.2f} credited to Spot Wallet"
     }
 
 @api_router.get("/team-rank/salary-info")

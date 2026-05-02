@@ -23,23 +23,23 @@ const RankPage = () => {
   const textMuted = isDark ? 'text-[#848E9C]' : 'text-gray-500';
   const border = isDark ? 'border-[#2B3139]' : 'border-gray-200';
 
-  // 15 Level Rank Data
+  // 15 Level Rank Data with Trading Income %
   const rankData = [
-    { level: 1, name: "Level-01", selfWallet: 50, directL1: 6, totalTeam: 0, rankReward: 20, monthlyRoyalty: 10 },
-    { level: 2, name: "Level-02", selfWallet: 100, directL1: 2, totalTeam: 30, rankReward: 100, monthlyRoyalty: 30 },
-    { level: 3, name: "Level-03", selfWallet: 150, directL1: 3, totalTeam: 75, rankReward: 150, monthlyRoyalty: 75 },
-    { level: 4, name: "Level-04", selfWallet: 200, directL1: 4, totalTeam: 150, rankReward: 300, monthlyRoyalty: 150 },
-    { level: 5, name: "Level-05", selfWallet: 200, directL1: 5, totalTeam: 300, rankReward: 400, monthlyRoyalty: 250 },
-    { level: 6, name: "Level-06", selfWallet: 200, directL1: 6, totalTeam: 600, rankReward: 800, monthlyRoyalty: 500 },
-    { level: 7, name: "Level-07", selfWallet: 200, directL1: 7, totalTeam: 1500, rankReward: 1000, monthlyRoyalty: 600 },
-    { level: 8, name: "Level-08", selfWallet: 200, directL1: 8, totalTeam: 3000, rankReward: 2000, monthlyRoyalty: 1200 },
-    { level: 9, name: "Level-09", selfWallet: 200, directL1: 9, totalTeam: 6000, rankReward: 5000, monthlyRoyalty: 2400 },
-    { level: 10, name: "Level-10", selfWallet: 200, directL1: 10, totalTeam: 12000, rankReward: 12000, monthlyRoyalty: 5000 },
-    { level: 11, name: "Level-11", selfWallet: 200, directL1: 11, totalTeam: 30000, rankReward: 25000, monthlyRoyalty: 10000 },
-    { level: 12, name: "Level-12", selfWallet: 200, directL1: 12, totalTeam: 60000, rankReward: 50000, monthlyRoyalty: 20000 },
-    { level: 13, name: "Level-13", selfWallet: 200, directL1: 13, totalTeam: 120000, rankReward: 100000, monthlyRoyalty: 40000 },
-    { level: 14, name: "Level-14", selfWallet: 200, directL1: 14, totalTeam: 240000, rankReward: 200000, monthlyRoyalty: 80000 },
-    { level: 15, name: "Level-15", selfWallet: 200, directL1: 15, totalTeam: 480000, rankReward: 400000, monthlyRoyalty: 160000 },
+    { level: 1, name: "Level-01", selfWallet: 50, directL1: 6, totalTeam: 0, rankReward: 20, monthlyRoyalty: 10, tradingPercent: 0.3 },
+    { level: 2, name: "Level-02", selfWallet: 100, directL1: 2, totalTeam: 30, rankReward: 100, monthlyRoyalty: 30, tradingPercent: 0.5 },
+    { level: 3, name: "Level-03", selfWallet: 150, directL1: 3, totalTeam: 75, rankReward: 150, monthlyRoyalty: 75, tradingPercent: 0.7 },
+    { level: 4, name: "Level-04", selfWallet: 200, directL1: 4, totalTeam: 150, rankReward: 300, monthlyRoyalty: 150, tradingPercent: 1.0 },
+    { level: 5, name: "Level-05", selfWallet: 200, directL1: 5, totalTeam: 300, rankReward: 400, monthlyRoyalty: 250, tradingPercent: 1.5 },
+    { level: 6, name: "Level-06", selfWallet: 200, directL1: 6, totalTeam: 600, rankReward: 800, monthlyRoyalty: 500, tradingPercent: 2.0 },
+    { level: 7, name: "Level-07", selfWallet: 200, directL1: 7, totalTeam: 1500, rankReward: 1000, monthlyRoyalty: 600, tradingPercent: 2.3 },
+    { level: 8, name: "Level-08", selfWallet: 200, directL1: 8, totalTeam: 3000, rankReward: 2000, monthlyRoyalty: 1200, tradingPercent: 2.5 },
+    { level: 9, name: "Level-09", selfWallet: 200, directL1: 9, totalTeam: 6000, rankReward: 5000, monthlyRoyalty: 2400, tradingPercent: 3.0 },
+    { level: 10, name: "Level-10", selfWallet: 200, directL1: 10, totalTeam: 12000, rankReward: 12000, monthlyRoyalty: 5000, tradingPercent: 3.5 },
+    { level: 11, name: "Level-11", selfWallet: 200, directL1: 11, totalTeam: 30000, rankReward: 25000, monthlyRoyalty: 10000, tradingPercent: 4.0 },
+    { level: 12, name: "Level-12", selfWallet: 200, directL1: 12, totalTeam: 60000, rankReward: 50000, monthlyRoyalty: 20000, tradingPercent: 5.0 },
+    { level: 13, name: "Level-13", selfWallet: 200, directL1: 13, totalTeam: 120000, rankReward: 100000, monthlyRoyalty: 40000, tradingPercent: 6.0 },
+    { level: 14, name: "Level-14", selfWallet: 200, directL1: 14, totalTeam: 240000, rankReward: 200000, monthlyRoyalty: 80000, tradingPercent: 7.0 },
+    { level: 15, name: "Level-15", selfWallet: 200, directL1: 15, totalTeam: 480000, rankReward: 400000, monthlyRoyalty: 160000, tradingPercent: 8.0 },
   ];
 
   useEffect(() => {
@@ -269,6 +269,17 @@ const RankPage = () => {
                         <p className={textMuted}>Monthly Royalty</p>
                         <p className="font-semibold text-blue-500">${formatNum(rank.monthlyRoyalty)}/month</p>
                       </div>
+                      <div>
+                        <p className={textMuted}>Trading Income</p>
+                        <p className="font-semibold text-green-500">{rank.tradingPercent}% of Team Trading</p>
+                      </div>
+                    </div>
+
+                    {/* Income Breakdown Info */}
+                    <div className={`mt-3 p-2 rounded-lg text-xs ${isDark ? 'bg-[#0B0E11]' : 'bg-gray-100'}`}>
+                      <p className={textMuted}>10-10-10 Days Income:</p>
+                      <p className="mt-1">• Part 1: Fixed ${formatNum(Math.round(rank.monthlyRoyalty / 3))}</p>
+                      <p>• Part 2 & 3: {rank.tradingPercent}% Team Trading</p>
                     </div>
 
                     {/* Requirements Status */}
