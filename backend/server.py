@@ -6788,8 +6788,16 @@ async def get_futures_history(
             "date": formatted_date
         })
     
-    # Add trade_code_history (trades via trade codes)
+    # Add trade_code_history (trades via trade codes) - SKIP if trade_code already added
     for th in trade_code_history:
+        trade_code_val = th.get("trade_code", "")
+        
+        # Skip if this trade_code was already added via trade_codes_used
+        if trade_code_val and trade_code_val in seen_ids:
+            continue  # Skip duplicate
+        if trade_code_val:
+            seen_ids.add(trade_code_val)
+        
         created_at = th.get("created_at", "")
         try:
             if created_at:
