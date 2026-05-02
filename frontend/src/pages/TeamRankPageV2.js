@@ -34,6 +34,7 @@ const TeamRankPage = () => {
   const [showTeamMembers, setShowTeamMembers] = useState(false);  // Toggle for direct team members list
   const [showAllTeamMembers, setShowAllTeamMembers] = useState(false);  // Toggle for ALL team members (full hierarchy)
   const [expandedRank, setExpandedRank] = useState(null);  // Track which rank card is expanded (null = only current rank expanded)
+  const [dataLoaded, setDataLoaded] = useState(false);  // Track if data has been loaded at least once
 
   // Theme colors
   const bg = isDark ? 'bg-[#0B0E11]' : 'bg-gray-50';
@@ -46,6 +47,11 @@ const TeamRankPage = () => {
   }, []);
 
   const fetchData = async () => {
+    // Don't show loading spinner if we already have data (refresh scenario)
+    if (!dataLoaded) {
+      setLoading(true);
+    }
+    
     try {
       const [rankRes, levelsRes, historyRes] = await Promise.all([
         axios.get(`${API}/team-rank/info`, { withCredentials: true }),
@@ -59,6 +65,7 @@ const TeamRankPage = () => {
       setRankInfo(rankRes.data);
       setAllRanks(levelsRes.data.ranks || []);
       setSalaryHistory(historyRes.data.salaries || []);
+      setDataLoaded(true);
       
       // Show levelup reward notification
       if (rankRes.data.levelup_reward_received) {
@@ -66,6 +73,7 @@ const TeamRankPage = () => {
       }
     } catch (error) {
       console.error("Error fetching data:", error);
+      // Keep existing data on error (don't clear)
     } finally {
       setLoading(false);
     }
@@ -100,10 +108,63 @@ const TeamRankPage = () => {
     return "🌟".repeat(level - 5);
   };
 
-  if (loading) {
+  // Skeleton Loading Component
+  const SkeletonCard = () => (
+    <div className={`${cardBg} rounded-2xl p-4 animate-pulse`}>
+      <div className="flex items-center gap-4 mb-4">
+        <div className={`w-16 h-16 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}></div>
+        <div className="flex-1">
+          <div className={`h-4 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded w-24 mb-2`}></div>
+          <div className={`h-3 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded w-32`}></div>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-4">
+        {[1,2,3].map(i => (
+          <div key={i} className={`h-12 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded`}></div>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Show skeleton while loading (page opens immediately)
+  if (loading && !dataLoaded) {
     return (
-      <div className={`min-h-screen ${bg} flex items-center justify-center`}>
-        <div className="animate-spin w-8 h-8 border-2 border-[#00E5FF] border-t-transparent rounded-full"></div>
+      <div className={`min-h-screen ${bg} pb-6`}>
+        {/* Header - Always show immediately */}
+        <div className={`${isDark ? 'bg-[#0B0E11]' : 'bg-white'} px-4 py-3 flex items-center justify-between sticky top-0 z-50 border-b ${isDark ? 'border-[#2B3139]' : 'border-gray-200'}`}>
+          <button onClick={() => navigate(-1)} className={text}>
+            <CaretLeft size={24} weight="bold" />
+          </button>
+          <span className={`font-semibold text-lg ${text}`}>Team Building</span>
+          <button className={textMuted}>
+            <Info size={22} />
+          </button>
+        </div>
+        
+        {/* Skeleton Content */}
+        <div className="px-4 space-y-4 mt-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <div className={`${cardBg} rounded-2xl p-4 animate-pulse`}>
+            <div className={`h-4 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded w-32 mb-4`}></div>
+            <div className="space-y-3">
+              {[1,2,3].map(i => (
+                <div key={i} className="flex justify-between">
+                  <div className={`h-3 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded w-24`}></div>
+                  <div className={`h-3 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded w-16`}></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        
+        {/* Loading indicator at bottom */}
+        <div className="fixed bottom-20 left-0 right-0 flex justify-center">
+          <div className={`${cardBg} px-4 py-2 rounded-full shadow-lg flex items-center gap-2`}>
+            <div className="animate-spin w-4 h-4 border-2 border-[#00E5FF] border-t-transparent rounded-full"></div>
+            <span className={`text-sm ${textMuted}`}>Loading...</span>
+          </div>
+        </div>
       </div>
     );
   }
