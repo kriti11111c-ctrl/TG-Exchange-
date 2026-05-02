@@ -713,13 +713,28 @@ async def calculate_team_trading_income_for_period(user_id: str, days: int = 10)
     return total_income
 
 
+# Simple in-memory cache for team stats (60 second expiry)
+_team_stats_cache = {}
+_team_stats_cache_time = {}
+CACHE_TTL = 60  # seconds
+
 async def get_team_stats(user_id: str) -> dict:
     """Get user's team statistics - counts users with $50+ FUTURES BALANCE
     
     NEW LOGIC: Directly check futures_balance >= 50
     If user transfers from Futures to Spot, their futures_balance drops and they won't count anymore.
     This enables rank demotion when team members move money out of futures.
+    
+    CACHING: Results cached for 60 seconds to improve performance
     """
+    
+    # Check cache first
+    import time
+    current_time = time.time()
+    if user_id in _team_stats_cache:
+        cache_age = current_time - _team_stats_cache_time.get(user_id, 0)
+        if cache_age < CACHE_TTL:
+            return _team_stats_cache[user_id]
     
     # Get direct referrals count with FUTURES BALANCE check using aggregation
     # IMPORTANT: Real balance = futures_balance - welcome_bonus (welcome bonus doesn't count!)
@@ -797,13 +812,19 @@ async def get_team_stats(user_id: str) -> dict:
     team_result = await db.referrals.aggregate(team_pipeline).to_list(length=1)
     team_stats = team_result[0] if team_result else {"total_team": 0, "valid_team": 0}
     
-    return {
+    result = {
         "direct_referrals": direct_stats.get("valid_direct", 0),
         "bronze_members": direct_stats.get("bronze_members", 0),
         "total_team": team_stats.get("valid_team", 0),
         "total_direct_all": direct_stats.get("total_direct", 0),
         "total_team_all": team_stats.get("total_team", 0)
     }
+    
+    # Store in cache
+    _team_stats_cache[user_id] = result
+    _team_stats_cache_time[user_id] = current_time
+    
+    return result
 
 async def get_team_members_with_balance(user_id: str, include_all_levels: bool = False) -> list:
     """Get list of team members with their futures balance status
