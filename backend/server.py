@@ -4367,15 +4367,26 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
         if is_first_deposit and coin == "usdt":
             # Get user's direct referrer
             user_full = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
-            referrer_id = user_full.get("referred_by") if user_full else None
+            
+            # Get referrer - could be referrer_id or referred_by (referral code)
+            referrer_id = user_full.get("referrer_id") if user_full else None
+            
+            # If referrer_id not set, try to find by referral code
+            if not referrer_id and user_full:
+                referral_code = user_full.get("referred_by")
+                if referral_code:
+                    referrer = await db.users.find_one({"referral_code": referral_code}, {"_id": 0, "user_id": 1})
+                    if referrer:
+                        referrer_id = referrer["user_id"]
             
             if referrer_id:
-                referral_bonus = verified_amount * DIRECT_REFERRAL_BONUS_PERCENT  # 5%
+                referral_bonus = round(verified_amount * DIRECT_REFERRAL_BONUS_PERCENT, 2)  # 5%
                 
                 # Add bonus to referrer's Futures wallet (more visible to user)
                 await db.wallets.update_one(
                     {"user_id": referrer_id},
-                    {"$inc": {"futures_balance": referral_bonus}}
+                    {"$inc": {"futures_balance": referral_bonus}},
+                    upsert=True
                 )
                 
                 # Record bonus transaction
@@ -4385,10 +4396,14 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
                     "type": "first_deposit_referral_bonus",
                     "coin": "usdt",
                     "amount": referral_bonus,
-                    "note": f"5% Direct Reward from {user_data.get('name', 'User')}'s first deposit of ${verified_amount}",
+                    "referred_user": user["user_id"],
+                    "referred_email": user_data.get("email", ""),
+                    "note": f"5% Direct Reward from {user_data.get('name', user_data.get('email', 'User'))}'s first deposit of ${verified_amount}",
                     "status": "completed",
                     "created_at": now.isoformat()
                 })
+                
+                print(f"✅ 5% BONUS GIVEN: ${referral_bonus} to referrer {referrer_id} for first deposit ${verified_amount}")
         
         # Create transaction record
         tx_doc = {
@@ -4468,15 +4483,25 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
         
         # FIRST DEPOSIT BONUS - 5% to direct referrer (one time only)
         if is_first_deposit and coin == "usdt":
-            referrer_id = user_data.get("referred_by")
+            # Get referrer - could be referrer_id or referred_by (referral code)
+            referrer_id = user_data.get("referrer_id")
+            
+            # If referrer_id not set, try to find by referral code
+            if not referrer_id:
+                referral_code = user_data.get("referred_by")
+                if referral_code:
+                    referrer = await db.users.find_one({"referral_code": referral_code}, {"_id": 0, "user_id": 1})
+                    if referrer:
+                        referrer_id = referrer["user_id"]
             
             if referrer_id:
-                referral_bonus = submitted_amount * DIRECT_REFERRAL_BONUS_PERCENT  # 5%
+                referral_bonus = round(submitted_amount * DIRECT_REFERRAL_BONUS_PERCENT, 2)  # 5%
                 
-                # Add bonus to referrer's wallet (Spot)
+                # Add bonus to referrer's Futures wallet (more visible)
                 await db.wallets.update_one(
                     {"user_id": referrer_id},
-                    {"$inc": {"balances.usdt": referral_bonus}}
+                    {"$inc": {"futures_balance": referral_bonus}},
+                    upsert=True
                 )
                 
                 # Record bonus transaction
@@ -4486,10 +4511,14 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
                     "type": "first_deposit_referral_bonus",
                     "coin": "usdt",
                     "amount": referral_bonus,
-                    "note": f"5% bonus from {user_data.get('name', 'User')}'s first deposit of ${submitted_amount}",
+                    "referred_user": user["user_id"],
+                    "referred_email": user_data.get("email", ""),
+                    "note": f"5% Direct Reward from {user_data.get('name', user_data.get('email', 'User'))}'s first deposit of ${submitted_amount}",
                     "status": "completed",
                     "created_at": now.isoformat()
                 })
+                
+                print(f"✅ 5% BONUS GIVEN: ${referral_bonus} to referrer {referrer_id}")
         
         # Create transaction record
         tx_id = f"tx_{uuid.uuid4().hex[:16]}"
