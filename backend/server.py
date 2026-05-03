@@ -6158,7 +6158,11 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
     """Get all trade codes for current user with live/scheduled status"""
     from datetime import timedelta
     
-    # Get GLOBAL trade codes (not user-specific) that are active or scheduled
+    # Get today's date for filtering
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Get user's codes + global codes (show ALL today's codes regardless of status)
     codes = await db.trade_codes.find(
         {
             "$or": [
@@ -6166,7 +6170,7 @@ async def get_user_trade_codes(user: dict = Depends(get_current_user)):
                 {"user_id": {"$exists": False}},  # Global codes without user_id
                 {"is_global": True}  # Explicitly marked global codes
             ],
-            "status": {"$in": ["active", "scheduled", "live"]}
+            "created_at": {"$gte": today_start.isoformat()}  # Today's codes only
         },
         {"_id": 0}
     ).sort("created_at", -1).to_list(50)
