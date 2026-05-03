@@ -4364,7 +4364,8 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
         )
         
         # FIRST DEPOSIT BONUS - 5% to direct referrer (one time only)
-        if is_first_deposit and coin == "usdt":
+        # CONDITION: First deposit must be MORE THAN $50 USDT (>50, not >=50)
+        if is_first_deposit and coin == "usdt" and verified_amount > 50:
             # Get user's direct referrer
             user_full = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
             
@@ -4482,7 +4483,8 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
         )
         
         # FIRST DEPOSIT BONUS - 5% to direct referrer (one time only)
-        if is_first_deposit and coin == "usdt":
+        # CONDITION: First deposit must be MORE THAN $50 USDT (>50, not >=50)
+        if is_first_deposit and coin == "usdt" and submitted_amount > 50:
             # Get referrer - could be referrer_id or referred_by (referral code)
             referrer_id = user_data.get("referrer_id")
             
