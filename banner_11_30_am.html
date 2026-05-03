@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TG Exchange - Daily Trade Code Banner</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #1a1a2e;
+        }
+        
+        .banner {
+            width: 800px;
+            height: 450px;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 50%, #0f0f2a 100%);
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 229, 255, 0.3);
+            border: 2px solid rgba(0, 229, 255, 0.3);
+        }
+        
+        /* Animated Background */
+        .banner::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 229, 255, 0.1) 0%, transparent 50%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        
+        /* Grid Pattern */
+        .grid-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(0, 229, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 229, 255, 0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        
+        .content {
+            position: relative;
+            z-index: 10;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 28px;
+            font-weight: 900;
+            color: #00E5FF;
+            text-shadow: 0 0 20px rgba(0, 229, 255, 0.5);
+            margin-bottom: 15px;
+            letter-spacing: 3px;
+        }
+        
+        .logo span {
+            color: #FFD700;
+        }
+        
+        .headline {
+            font-family: 'Poppins', sans-serif;
+            font-size: 18px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .main-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 42px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+            margin-bottom: 20px;
+        }
+        
+        .time-box {
+            background: linear-gradient(135deg, #00C853, #00E676);
+            padding: 15px 50px;
+            border-radius: 50px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 40px rgba(0, 200, 83, 0.4);
+        }
+        
+        .time {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 48px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .time span {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            font-family: 'Poppins', sans-serif;
+            font-size: 16px;
+            color: #aaa;
+            margin-bottom: 20px;
+        }
+        
+        .profit-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 229, 255, 0.1);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            padding: 10px 25px;
+            border-radius: 30px;
+        }
+        
+        .profit-badge .icon {
+            font-size: 24px;
+        }
+        
+        .profit-badge .text {
+            font-family: 'Poppins', sans-serif;
+            font-size: 18px;
+            font-weight: 600;
+            color: #00E5FF;
+        }
+        
+        .profit-badge .percent {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            font-weight: 900;
+            color: #0ECB81;
+        }
+        
+        /* Decorative Elements */
+        .crypto-icon {
+            position: absolute;
+            font-size: 60px;
+            opacity: 0.1;
+        }
+        
+        .crypto-icon.btc { top: 20px; left: 30px; color: #F7931A; }
+        .crypto-icon.eth { bottom: 30px; right: 40px; color: #627EEA; }
+        .crypto-icon.bnb { top: 40px; right: 60px; color: #F3BA2F; }
+        
+        .glow-line {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #00E5FF, #0ECB81, #FFD700, transparent);
+        }
+    </style>
+</head>
+<body>
+    <div class="banner">
+        <div class="grid-bg"></div>
+        
+        <!-- Crypto Icons -->
+        <div class="crypto-icon btc">₿</div>
+        <div class="crypto-icon eth">Ξ</div>
+        <div class="crypto-icon bnb">◈</div>
+        
+        <div class="content">
+            <div class="logo">TG <span>EXCHANGE</span></div>
+            
+            <div class="headline">Daily Free Trade Code</div>
+            
+            <div class="main-text">GET YOUR CODE</div>
+            
+            <div class="time-box">
+                <div class="time">11:30 <span>AM IST</span></div>
+            </div>
+            
+            <div class="subtitle">Every Morning • Automatic • Free</div>
+            
+            <div class="profit-badge">
+                <span class="icon">🚀</span>
+                <span class="text">Profit up to</span>
+                <span class="percent">62%+</span>
+            </div>
+        </div>
+        
+        <div class="glow-line"></div>
+    </div>
+</body>
+</html>
