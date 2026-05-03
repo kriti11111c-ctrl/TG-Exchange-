@@ -45,6 +45,7 @@ const AdminPanelPro = () => {
   // Withdrawal filter state
   const [withdrawalFilter, setWithdrawalFilter] = useState('pending');
   const [showTodayOnly, setShowTodayOnly] = useState(false);
+  const [userIdSearch, setUserIdSearch] = useState('');
   
   // User pagination state
   const [userPage, setUserPage] = useState(1);
@@ -732,6 +733,43 @@ const AdminPanelPro = () => {
             {/* WITHDRAWALS - Professional with App Balance & TX Hash */}
             {activeTab === 'withdrawal' && (
               <div className="space-y-4">
+                {/* User ID Search Box */}
+                <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/30 rounded-xl p-4">
+                  <h4 className="text-purple-400 font-bold mb-2 flex items-center gap-2">
+                    <User size={18} /> Search User by ID
+                  </h4>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter User ID (e.g., user_abc123...)"
+                      value={userIdSearch || ''}
+                      onChange={(e) => setUserIdSearch(e.target.value)}
+                      className="flex-1 bg-[#111] border border-[#333] rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!userIdSearch) return;
+                        try {
+                          const token = localStorage.getItem('token');
+                          const res = await axios.get(`${API}/api/admin/user-by-id/${userIdSearch}`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                          });
+                          if (res.data) {
+                            setSelectedUser(res.data);
+                            setShowUserDetails(true);
+                            toast.success('User found!');
+                          }
+                        } catch (err) {
+                          toast.error('User not found');
+                        }
+                      }}
+                      className="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-medium flex items-center gap-2"
+                    >
+                      <Search size={18} /> Find
+                    </button>
+                  </div>
+                </div>
+
                 {/* Today Toggle + Stats Cards */}
                 <div className="mb-4">
                   <button

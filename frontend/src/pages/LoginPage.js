@@ -25,9 +25,10 @@ import { Label } from "../components/ui/label";
 
 const LoginPage = () => {
   const { isDark, toggleTheme } = useTheme();
-  const [loginMethod, setLoginMethod] = useState("email"); // "email" or "phone"
+  const [loginMethod, setLoginMethod] = useState("email"); // "email", "phone", or "userid"
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [requires2FA, setRequires2FA] = useState(false);
@@ -41,8 +42,15 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      // Use email or phone based on login method
-      const loginIdentifier = loginMethod === "email" ? email : `${phone}@phone.tgxchange.com`;
+      // Use email, phone, or user_id based on login method
+      let loginIdentifier;
+      if (loginMethod === "email") {
+        loginIdentifier = email;
+      } else if (loginMethod === "phone") {
+        loginIdentifier = `${phone}@phone.tgxchange.com`;
+      } else {
+        loginIdentifier = `userid:${userId}`;
+      }
       
       const payload = { email: loginIdentifier, password };
       if (requires2FA && totpCode) {
@@ -185,7 +193,7 @@ const LoginPage = () => {
               <span className="text-[#0ECB81] text-sm font-medium">Secure SSL Encrypted Connection</span>
             </div>
 
-            {/* Email/Phone Toggle */}
+            {/* Email/Phone/UserID Toggle */}
             <div className="flex bg-[#0B0E11] rounded-xl p-1 mb-6">
               <button
                 type="button"
@@ -208,6 +216,17 @@ const LoginPage = () => {
                 }`}
               >
                 Phone
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginMethod("userid")}
+                className={`flex-1 py-3 rounded-lg text-sm font-semibold transition-all ${
+                  loginMethod === "userid"
+                    ? "bg-[#2B3139] text-white"
+                    : "text-[#848E9C] hover:text-white"
+                }`}
+              >
+                User ID
               </button>
             </div>
 

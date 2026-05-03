@@ -5286,6 +5286,42 @@ async def get_all_users(admin: dict = Depends(get_current_admin)):
         "total": len(users)
     }
 
+
+@api_router.get("/admin/user-by-id/{user_id}")
+async def get_user_by_id(user_id: str, admin: dict = Depends(get_current_admin)):
+    """Admin: Get user details by user_id"""
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Get wallet info
+    wallet = await db.wallets.find_one({"user_id": user_id}, {"_id": 0})
+    user["wallet"] = wallet or {"balances": {}}
+    user["has_password"] = bool(user.get("password_hash") or user.get("password"))
+    user["is_blocked"] = user.get("is_blocked", False)
+    
+    # Get transactions
+    txs = await db.transactions.find({"user_id": user_id}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    user["transactions"] = txs
+    
+    # Get deposits
+    deposits = [t for t in txs if t.get("type") == "deposit"]
+    user["total_deposited"] = sum(float(t.get("amount", 0)) for t in deposits)
+    
+    # Get direct referrals count
+    ref_code = user.get("referral_code")
+    directs = await db.users.count_documents({
+        "$or": [
+            {"referred_by": user_id},
+            {"referred_by": ref_code},
+            {"referrer_id": user_id}
+        ]
+    })
+    user["direct_referrals"] = directs
+    
+    return user
+
+
 @api_router.post("/admin/block-user")
 async def admin_block_user(data: dict, admin: dict = Depends(get_current_admin)):
     """Admin: Block or unblock a user"""
