@@ -16,7 +16,8 @@ import {
   Globe,
   Lightning,
   LockKey,
-  Fingerprint
+  Fingerprint,
+  Phone
 } from "@phosphor-icons/react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -24,7 +25,9 @@ import { Label } from "../components/ui/label";
 
 const LoginPage = () => {
   const { isDark, toggleTheme } = useTheme();
+  const [loginMethod, setLoginMethod] = useState("email"); // "email" or "phone"
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [totpCode, setTotpCode] = useState("");
   const [requires2FA, setRequires2FA] = useState(false);
@@ -38,7 +41,10 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const payload = { email, password };
+      // Use email or phone based on login method
+      const loginIdentifier = loginMethod === "email" ? email : `${phone}@phone.tgxchange.com`;
+      
+      const payload = { email: loginIdentifier, password };
       if (requires2FA && totpCode) {
         payload.totp_code = totpCode;
       }
@@ -179,26 +185,73 @@ const LoginPage = () => {
               <span className="text-[#0ECB81] text-sm font-medium">Secure SSL Encrypted Connection</span>
             </div>
 
+            {/* Email/Phone Toggle */}
+            <div className="flex bg-[#0B0E11] rounded-xl p-1 mb-6">
+              <button
+                type="button"
+                onClick={() => setLoginMethod("email")}
+                className={`flex-1 py-3 rounded-lg text-sm font-semibold transition-all ${
+                  loginMethod === "email"
+                    ? "bg-[#2B3139] text-white"
+                    : "text-[#848E9C] hover:text-white"
+                }`}
+              >
+                Email
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginMethod("phone")}
+                className={`flex-1 py-3 rounded-lg text-sm font-semibold transition-all ${
+                  loginMethod === "phone"
+                    ? "bg-[#2B3139] text-white"
+                    : "text-[#848E9C] hover:text-white"
+                }`}
+              >
+                Phone
+              </button>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Email */}
-              <div className="space-y-2">
-                <Label className="text-[#848E9C] text-sm font-medium">Email Address</Label>
-                <div className="relative group">
-                  <EnvelopeSimple 
-                    size={20} 
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-[#848E9C] group-focus-within:text-[#00E5FF] transition-colors"
-                  />
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    className="pl-12 h-14 bg-[#0B0E11] border-[#2B3139] focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]/20 text-white rounded-xl transition-all placeholder:text-[#5E6673]"
-                    required
-                    data-testid="login-email-input"
-                  />
+              {/* Email or Phone */}
+              {loginMethod === "email" ? (
+                <div className="space-y-2">
+                  <Label className="text-[#848E9C] text-sm font-medium">Email Address</Label>
+                  <div className="relative group">
+                    <EnvelopeSimple 
+                      size={20} 
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-[#848E9C] group-focus-within:text-[#00E5FF] transition-colors"
+                    />
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      className="pl-12 h-14 bg-[#0B0E11] border-[#2B3139] focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]/20 text-white rounded-xl transition-all placeholder:text-[#5E6673]"
+                      required
+                      data-testid="login-email-input"
+                    />
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label className="text-[#848E9C] text-sm font-medium">Phone Number</Label>
+                  <div className="relative group">
+                    <Phone 
+                      size={20} 
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-[#848E9C] group-focus-within:text-[#00E5FF] transition-colors"
+                    />
+                    <Input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                      placeholder="Enter your phone number"
+                      className="pl-12 h-14 bg-[#0B0E11] border-[#2B3139] focus:border-[#00E5FF] focus:ring-1 focus:ring-[#00E5FF]/20 text-white rounded-xl transition-all placeholder:text-[#5E6673]"
+                      required
+                      data-testid="login-phone-input"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Password */}
               <div className="space-y-2">
