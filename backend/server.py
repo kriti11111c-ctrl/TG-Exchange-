@@ -4364,8 +4364,8 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
         )
         
         # FIRST DEPOSIT BONUS - 5% to direct referrer (one time only)
-        # CONDITION: First deposit must be more than $49 (>49)
-        if is_first_deposit and coin == "usdt" and verified_amount > 49:
+        # CONDITION: First deposit must be >= $50
+        if is_first_deposit and coin == "usdt" and verified_amount >= 50:
             # Get user's direct referrer
             user_full = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
             
@@ -4483,8 +4483,8 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
         )
         
         # FIRST DEPOSIT BONUS - 5% to direct referrer (one time only)
-        # CONDITION: First deposit must be more than $49 (>49)
-        if is_first_deposit and coin == "usdt" and submitted_amount > 49:
+        # CONDITION: First deposit must be >= $50
+        if is_first_deposit and coin == "usdt" and submitted_amount >= 50:
             # Get referrer - could be referrer_id or referred_by (referral code)
             referrer_id = user_data.get("referrer_id")
             
@@ -5079,18 +5079,70 @@ async def process_deposit_request(approval: DepositApproval, admin: dict = Depen
     if approval.action == "approve":
         # Credit user's wallet
         coin = request["coin"].lower()
-        amount = request["amount"]
+        amount = float(request["amount"])
         user_id = request["user_id"]
         
-        # Update wallet
+        # Check if this is user's first deposit
+        wallet = await db.wallets.find_one({"user_id": user_id})
+        is_first_deposit = not wallet.get("first_deposit_done", False) if wallet else True
+        
+        # Update wallet with deposit and mark first_deposit_done
+        update_ops = {
+            "$inc": {f"balances.{coin}": amount},
+            "$set": {"updated_at": now.isoformat()}
+        }
+        if is_first_deposit:
+            update_ops["$set"]["first_deposit_done"] = True
+        
         await db.wallets.update_one(
             {"user_id": user_id},
-            {
-                "$inc": {f"balances.{coin}": amount},
-                "$set": {"updated_at": now.isoformat()}
-            },
+            update_ops,
             upsert=True
         )
+        
+        # FIRST DEPOSIT BONUS - 5% to direct referrer (one time only)
+        # CONDITION: First deposit must be >= $50
+        if is_first_deposit and coin == "usdt" and amount >= 50:
+            # Get user data for referrer info
+            user_data = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+            
+            if user_data:
+                # Get referrer - could be referrer_id or referred_by (referral code)
+                referrer_id = user_data.get("referrer_id")
+                
+                # If referrer_id not set, try to find by referral code
+                if not referrer_id:
+                    referral_code = user_data.get("referred_by")
+                    if referral_code:
+                        referrer = await db.users.find_one({"referral_code": referral_code}, {"_id": 0, "user_id": 1})
+                        if referrer:
+                            referrer_id = referrer["user_id"]
+                
+                if referrer_id:
+                    referral_bonus = round(amount * DIRECT_REFERRAL_BONUS_PERCENT, 2)  # 5%
+                    
+                    # Add bonus to referrer's Futures wallet
+                    await db.wallets.update_one(
+                        {"user_id": referrer_id},
+                        {"$inc": {"futures_balance": referral_bonus}},
+                        upsert=True
+                    )
+                    
+                    # Record bonus transaction
+                    await db.transactions.insert_one({
+                        "tx_id": f"tx_{uuid.uuid4().hex[:12]}",
+                        "user_id": referrer_id,
+                        "type": "first_deposit_referral_bonus",
+                        "coin": "usdt",
+                        "amount": referral_bonus,
+                        "referred_user": user_id,
+                        "referred_email": user_data.get("email", ""),
+                        "note": f"5% Direct Reward from {user_data.get('name', user_data.get('email', 'User'))}'s first deposit of ${amount}",
+                        "status": "completed",
+                        "created_at": now.isoformat()
+                    })
+                    
+                    print(f"✅ 5% BONUS GIVEN (Admin Approval): ${referral_bonus} to referrer {referrer_id} for first deposit ${amount}")
         
         # Create transaction record
         tx_id = f"tx_{uuid.uuid4().hex[:16]}"
@@ -5125,7 +5177,7 @@ async def process_deposit_request(approval: DepositApproval, admin: dict = Depen
         )
         
         # UPDATE REFERRAL CHAIN - Track deposit in referrer's record
-        await update_team_deposits(db, deposit_request["user_id"], float(amount), now)
+        await update_team_deposits(db, user_id, float(amount), now)
         
         return {
             "success": True,
