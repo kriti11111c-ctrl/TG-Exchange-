@@ -4383,10 +4383,10 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
             if referrer_id:
                 referral_bonus = round(verified_amount * DIRECT_REFERRAL_BONUS_PERCENT, 2)  # 5%
                 
-                # Add bonus to referrer's Futures wallet (more visible to user)
+                # Add bonus to referrer's Spot Wallet (balances.usdt)
                 await db.wallets.update_one(
                     {"user_id": referrer_id},
-                    {"$inc": {"futures_balance": referral_bonus}},
+                    {"$inc": {"balances.usdt": referral_bonus}},
                     upsert=True
                 )
                 
@@ -4499,10 +4499,10 @@ async def create_deposit_request(deposit: DepositRequestModel, user: dict = Depe
             if referrer_id:
                 referral_bonus = round(submitted_amount * DIRECT_REFERRAL_BONUS_PERCENT, 2)  # 5%
                 
-                # Add bonus to referrer's Futures wallet (more visible)
+                # Add bonus to referrer's Spot Wallet (balances.usdt)
                 await db.wallets.update_one(
                     {"user_id": referrer_id},
-                    {"$inc": {"futures_balance": referral_bonus}},
+                    {"$inc": {"balances.usdt": referral_bonus}},
                     upsert=True
                 )
                 
@@ -5121,10 +5121,10 @@ async def process_deposit_request(approval: DepositApproval, admin: dict = Depen
                 if referrer_id:
                     referral_bonus = round(amount * DIRECT_REFERRAL_BONUS_PERCENT, 2)  # 5%
                     
-                    # Add bonus to referrer's Futures wallet
+                    # Add bonus to referrer's Spot Wallet (balances.usdt)
                     await db.wallets.update_one(
                         {"user_id": referrer_id},
-                        {"$inc": {"futures_balance": referral_bonus}},
+                        {"$inc": {"balances.usdt": referral_bonus}},
                         upsert=True
                     )
                     
