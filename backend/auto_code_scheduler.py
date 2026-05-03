@@ -59,7 +59,7 @@ async def generate_code_for_user(db, user, time_slot):
         # Generate 12-char code (lowercase + numbers)
         code = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=12))
         
-        expires_at = now + timedelta(hours=24)  # Valid for 24 hours (full day)
+        expires_at = now + timedelta(hours=1)  # Valid for 1 hour only
         
         # Random coin selection
         selected_coin = random.choice(COINS)
