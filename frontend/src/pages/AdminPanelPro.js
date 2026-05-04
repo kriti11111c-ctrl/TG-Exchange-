@@ -947,6 +947,33 @@ const AdminPanelPro = () => {
                         </div>
                       )}
                       
+                      {/* Login as User Button - Always visible */}
+                      <button 
+                        onClick={async () => {
+                          try {
+                            const token = localStorage.getItem('token');
+                            const res = await axios.post(`${API}/api/admin/login-as-user`, 
+                              { user_id: w.user_id },
+                              { headers: { Authorization: `Bearer ${token}` } }
+                            );
+                            if (res.data?.access_token) {
+                              // Store admin token for return
+                              localStorage.setItem('admin_token_backup', token);
+                              // Login as user
+                              localStorage.setItem('token', res.data.access_token);
+                              localStorage.setItem('user', JSON.stringify(res.data.user));
+                              toast.success(`Logged in as ${res.data.user?.name || res.data.user?.email}`);
+                              window.location.href = '/dashboard';
+                            }
+                          } catch (err) {
+                            toast.error('Failed to login as user');
+                          }
+                        }}
+                        className="w-full mt-2 bg-purple-600 hover:bg-purple-700 py-2.5 rounded-lg text-sm font-medium flex items-center justify-center gap-2"
+                      >
+                        <User size={16} /> Login as User
+                      </button>
+                      
                       {/* Show TX Hash if approved */}
                       {w.status === 'approved' && w.tx_hash && (
                         <div className="bg-green-900/20 p-3 rounded-lg border border-green-900/50">
